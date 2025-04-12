@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using SharpBridge.Models;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Interfaces
 {
     /// <summary>
     /// Interface for transforming tracking data into VTube Studio parameters
