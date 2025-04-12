@@ -4,6 +4,11 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpBridge", "SharpBridge.csproj", "{C26540E3-170B-5B6F-74EB-D40ACB034F13}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{9CF47860-2CEA-F379-09D8-9AEF27965D12}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C26540E3-170B-5B6F-74EB-D40ACB034F13} = {C26540E3-170B-5B6F-74EB-D40ACB034F13}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -14,11 +19,15 @@ Global
 		{C26540E3-170B-5B6F-74EB-D40ACB034F13}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C26540E3-170B-5B6F-74EB-D40ACB034F13}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C26540E3-170B-5B6F-74EB-D40ACB034F13}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CF47860-2CEA-F379-09D8-9AEF27965D12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CF47860-2CEA-F379-09D8-9AEF27965D12}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CF47860-2CEA-F379-09D8-9AEF27965D12}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CF47860-2CEA-F379-09D8-9AEF27965D12}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {C1060898-3EA1-45D8-9A6D-EAA0A74431C7}
+		SolutionGuid = {05621476-5B9B-40EF-B9B1-FE9CED82881F}
 	EndGlobalSection
 EndGlobal

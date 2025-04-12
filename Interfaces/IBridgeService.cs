@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Interfaces
 {
     /// <summary>
     /// Main bridge service connecting iPhone tracking to VTube Studio
