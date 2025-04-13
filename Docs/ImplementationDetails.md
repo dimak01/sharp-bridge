@@ -11,7 +11,7 @@ The `ITrackingReceiver` interface is responsible for receiving tracking data fro
 ```csharp
 public interface ITrackingReceiver
 {
-    Task RunAsync(string iphoneIp, CancellationToken cancellationToken);
+    Task RunAsync(CancellationToken cancellationToken);
     event EventHandler<TrackingResponse> TrackingDataReceived;
 }
 ```
@@ -21,6 +21,31 @@ Key responsibilities:
 - Deserializes incoming JSON into `TrackingResponse` objects
 - Raises events when new tracking data is received
 - Handles reconnection if connection is lost
+- Sends periodic tracking request messages to the iPhone
+
+### TrackingReceiver
+
+Our concrete implementation of `ITrackingReceiver` has these features:
+- Uses UDP client wrapper for better testability
+- Sends tracking requests at configurable intervals
+- Processes incoming JSON data
+- Raises events for valid tracking data
+- Handles network and deserialization errors gracefully
+- Supports timeout-based cancellation via tokens
+
+### IUdpClientWrapper
+
+This interface abstracts the UDP client for improved testability:
+
+```csharp
+public interface IUdpClientWrapper : IDisposable
+{
+    Task<int> SendAsync(byte[] datagram, int bytes, string hostname, int port);
+    Task<UdpReceiveResult> ReceiveAsync(CancellationToken token);
+    int Available { get; }
+    bool Poll(int microseconds, SelectMode mode);
+}
+```
 
 ### ITransformationEngine
 
@@ -66,7 +91,7 @@ The `IBridgeService` interface coordinates the overall data flow between compone
 ```csharp
 public interface IBridgeService
 {
-    Task RunAsync(string iphoneIp, string transformConfigPath, CancellationToken cancellationToken);
+    Task RunAsync(TrackingReceiverConfig config, string transformConfigPath, CancellationToken cancellationToken);
 }
 ```
 
@@ -76,6 +101,23 @@ Key responsibilities:
 - Manages error handling and graceful shutdown
 
 ## Data Models
+
+### TrackingReceiverConfig
+
+The `TrackingReceiverConfig` model specifies configuration for the tracking receiver:
+
+```csharp
+public class TrackingReceiverConfig
+{
+    public string IphoneIpAddress { get; init; } = string.Empty;
+    public int IphonePort { get; init; } = 21412;
+    public int LocalPort { get; init; } = 21413;
+    public int ReceiveBufferSize { get; init; } = 4096;
+    public int RequestIntervalSeconds { get; init; } = 1;
+    public int SendForSeconds { get; init; } = 10;
+    public int ReceiveTimeoutMs { get; init; } = 2000;
+}
+```
 
 ### TrackingResponse
 
@@ -90,6 +132,7 @@ public class TrackingResponse
     public Coordinates Rotation { get; set; }
     public Coordinates Position { get; set; }
     public Coordinates EyeLeft { get; set; }
+    public Coordinates EyeRight { get; set; }
     public List<BlendShape> BlendShapes { get; set; }
 }
 ```
@@ -114,7 +157,10 @@ The `BlendShape` model represents a facial expression blend shape.
 ```csharp
 public class BlendShape
 {
+    [JsonPropertyName("k")]
     public string Key { get; set; }
+    
+    [JsonPropertyName("v")]
     public double Value { get; set; }
 }
 ```
@@ -145,6 +191,20 @@ public class TrackingParam
     public double? Weight { get; set; }
     public double Value { get; set; }
 }
+```
+
+## Command-Line Interface
+
+Sharp Bridge provides a command-line interface with the following options:
+
+```
+--ip, -i               iPhone IP address
+--iphone-port, -p      iPhone port (default: 21412)
+--local-port, -l       Local listening port (default: 21413)
+--interval, -t         Request interval in seconds (default: 1)
+--send-seconds, -s     Time to send data for in seconds (default: 10)
+--timeout, -r          Receive timeout in milliseconds (default: 2000)
+--interactive, -x      Launch in interactive mode
 ```
 
 ## Communication Protocols
@@ -181,38 +241,30 @@ Communication with VTube Studio uses WebSocket protocol:
   - API state request/response
   - Parameter creation request/response
 
-## Expression Evaluation
+## Performance Monitoring
 
-For evaluating mathematical expressions in transformation rules, we plan to use:
+The application includes a built-in performance monitor that displays:
 
-- **TBD** - Selection of expression evaluation library is pending
+- Connection status
+- Frames per second (current and average)
+- Total frames received
+- Uptime
+- Facial tracking data visualization (head rotation, key facial expressions)
 
-Requirements for the expression library:
-- Support for basic arithmetic operations
-- Support for mathematical functions
-- Variables for tracking data parameters
-- Efficient evaluation of expressions
+## Error Handling
 
-## Authentication Flow
+The application implements robust error handling:
 
-The authentication flow with VTube Studio follows these steps:
+- Socket errors are detected and reported with helpful messages
+- JSON parsing errors are caught and logged
+- Reconnection is attempted after network errors
+- Resources are properly disposed even on error
 
-1. Check if a token file exists and read token if available
-2. Request API state to determine if authentication is needed
-3. If not authenticated and no token available, request a new token
-4. If not authenticated but token available, authenticate with existing token
-5. If token is invalid, request a new token
-6. Store valid token to file for future use
+## Testing Strategy
 
-## Parameter Transformation
+The application includes a comprehensive test suite:
 
-The parameter transformation process involves:
-
-1. Loading transformation rules from configuration file
-2. For each tracking data update:
-   - Create a context with tracking data values
-   - For each transformation rule:
-     - Evaluate the expression with the context
-     - Apply min/max bounds
-     - Add the resulting parameter to the output collection
-   - Send the transformed parameters to VTube Studio 
+- Unit tests for core components
+- Mock-based testing for network dependencies
+- Coverage tracking with XPlat Code Coverage
+- Performance monitoring for tracking real-time metrics 
