@@ -5,6 +5,7 @@ public class TrackingReceiverConfig
     // Communication settings
     public string IphoneIpAddress { get; init; } = string.Empty;
     public int IphonePort { get; init; } = 21412;
+    public int LocalPort { get; init; } = 0;
 
     // Performance settings
     public int ReceiveBufferSize { get; init; } = 1024;
