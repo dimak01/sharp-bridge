@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Models;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Interfaces
 {
     /// <summary>
     /// Interface for receiving tracking data from iPhone VTube Studio
@@ -11,12 +11,11 @@ namespace SharpBridge.Services
     public interface ITrackingReceiver
     {
         /// <summary>
-        /// Starts listening for tracking data from the specified iPhone IP
+        /// Starts listening for tracking data from the iPhone configured in TrackingReceiverConfig
         /// </summary>
-        /// <param name="iphoneIp">IP address of the iPhone</param>
         /// <param name="cancellationToken">Cancellation token to stop listening</param>
         /// <returns>An asynchronous operation that completes when stopped</returns>
-        Task RunAsync(string iphoneIp, CancellationToken cancellationToken);
+        Task RunAsync(CancellationToken cancellationToken);
         
         /// <summary>
         /// Event that fires when tracking data is received

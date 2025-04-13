@@ -1,10 +1,9 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Sockets;
 using FluentAssertions;
 using Moq;
 using SharpBridge.Interfaces;
@@ -21,11 +20,15 @@ namespace SharpBridge.Tests.TrackingTests
         [Fact]
         public void Constructor_InitializesCorrectly()
         {
-            // Arrange & Act - create a mock of the tracking receiver
-            var mockReceiver = new Mock<ITrackingReceiver>();
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Act
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
             
             // Assert
-            mockReceiver.Should().NotBeNull();
+            receiver.Should().NotBeNull();
         }
         
         // Test that the tracking receiver can start and stop when requested
@@ -38,35 +41,37 @@ namespace SharpBridge.Tests.TrackingTests
             
             // Set up the mock to return a completed task when RunAsync is called
             mockReceiver
-                .Setup(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token))
+                .Setup(r => r.RunAsync(cancellationTokenSource.Token))
                 .Returns(Task.CompletedTask);
             
             // Act
-            await mockReceiver.Object.RunAsync("127.0.0.1", cancellationTokenSource.Token);
+            await mockReceiver.Object.RunAsync(cancellationTokenSource.Token);
             
             // Assert
-            mockReceiver.Verify(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token), Times.Once);
+            mockReceiver.Verify(r => r.RunAsync(cancellationTokenSource.Token), Times.Once);
         }
         
         // Test that the tracking receiver binds to a UDP port successfully
         [Fact]
-        public async Task RunAsync_BindsToUdpPort_Successfully()
+        public async Task RunAsync_UsesUdpClient_Successfully()
         {
             // Arrange
             var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
-            var mockUdpClient = new Mock<IUdpClient>();
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
             
-            // Set up the mock receiver to use our mock UDP client (internal implementation detail mocked)
-            mockReceiver
-                .Setup(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token))
-                .Returns(Task.CompletedTask);
-                
-            // Act
-            await mockReceiver.Object.RunAsync("127.0.0.1", cancellationTokenSource.Token);
+            // Setup UDP client mock
+            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(false);
             
-            // Assert
-            mockReceiver.Verify(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token), Times.Once);
+            // Create a real receiver with the mock UDP client
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
+            
+            // Act & Assert - start and immediately cancel
+            cancellationTokenSource.CancelAfter(100);
+            await receiver.RunAsync(cancellationTokenSource.Token);
+            
+            // The poll should have been called at least once
+            mockUdpClient.Verify(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>()), Times.AtLeastOnce);
         }
         
         // Test that the tracking receiver sends tracking request messages
@@ -75,27 +80,34 @@ namespace SharpBridge.Tests.TrackingTests
         {
             // Arrange
             var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
-            var mockUdpClient = new Mock<IUdpClient>();
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig 
+            { 
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21412 
+            };
 
-            byte[] sentData = null;
-            string sentHost = null;
-            int sentPort = 0;
-            
-            // Setup mock UDP client to capture the sent data
+            // Setup UDP client mock
+            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(false);
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
-                .Callback<byte[], int, string, int>((data, bytes, host, port) => 
-                {
-                    sentData = data;
-                    sentHost = host;
-                    sentPort = port;
-                })
-                .ReturnsAsync(sentData?.Length ?? 0);
+                .ReturnsAsync(100);
                 
-            // Act & Assert
-            // Since we're mocking, we'll just verify the mock was set up correctly
-            mockUdpClient.Should().NotBeNull();
+            // Create receiver
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
+            
+            // Act
+            cancellationTokenSource.CancelAfter(100); // Cancel after 100ms
+            await receiver.RunAsync(cancellationTokenSource.Token);
+            
+            // Assert
+            mockUdpClient.Verify(
+                c => c.SendAsync(
+                    It.IsAny<byte[]>(), 
+                    It.IsAny<int>(), 
+                    "192.168.1.100", 
+                    21412),
+                Times.AtLeastOnce);
         }
         
         // Test that the tracking receiver properly processes valid tracking data and raises an event
@@ -103,8 +115,8 @@ namespace SharpBridge.Tests.TrackingTests
         public async Task TrackingDataReceived_IsRaised_WithProperlyDeserializedData_WhenValidDataReceived()
         {
             // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
             
             // Create expected tracking data
             var expectedData = new TrackingResponse
@@ -122,31 +134,38 @@ namespace SharpBridge.Tests.TrackingTests
                 }
             };
             
-            // Set up tracking for received data
+            // Serialize the expected data to JSON
+            var json = JsonSerializer.Serialize(expectedData);
+            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            
+            // Configure the UDP mock to return the JSON data
+            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(true);
+            mockUdpClient.Setup(c => c.Available).Returns(jsonBytes.Length);
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
+            
+            // Create the receiver and track event raising
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
             var eventWasRaised = false;
             TrackingResponse receivedData = null;
             
-            // Create an event handler to capture the data
-            EventHandler<TrackingResponse> handler = (sender, data) => 
+            receiver.TrackingDataReceived += (sender, data) => 
             {
                 eventWasRaised = true;
                 receivedData = data;
             };
             
-            // Subscribe to the event
-            mockReceiver.Object.TrackingDataReceived += handler;
-            
-            // Simulate starting the receiver
-            mockReceiver
-                .Setup(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token))
-                .Callback(() => {
-                    // Simulate the event being raised during operation
-                    mockReceiver.Raise(m => m.TrackingDataReceived += null, mockReceiver.Object, expectedData);
-                })
-                .Returns(Task.CompletedTask);
-            
-            // Act
-            await mockReceiver.Object.RunAsync("127.0.0.1", cancellationTokenSource.Token);
+            // Act - run until event is raised or timeout
+            var cts = new CancellationTokenSource(1000); // 1 second timeout
+            try 
+            {
+                await receiver.RunAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
             
             // Assert
             eventWasRaised.Should().BeTrue("the event should be raised when data is received");
@@ -164,35 +183,51 @@ namespace SharpBridge.Tests.TrackingTests
         public async Task RunAsync_ContinuesRunning_WhenInvalidDataReceived()
         {
             // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
             
-            // Set up the mock to continue running even after receiving invalid data
-            mockReceiver
-                .Setup(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token))
-                .Returns(Task.CompletedTask);
+            // First provide invalid JSON data, then valid data
+            var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
+            var validData = new TrackingResponse { FaceFound = true };
+            var validJson = JsonSerializer.Serialize(validData);
+            var validJsonBytes = Encoding.UTF8.GetBytes(validJson);
             
-            // Track if an event was raised after invalid data
-            var validEventRaised = false;
-            var expectedData = new TrackingResponse { FaceFound = true };
+            var callCount = 0;
+            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(true);
+            mockUdpClient.Setup(c => c.Available).Returns(100);
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => 
+                {
+                    callCount++;
+                    // First return invalid data, then valid
+                    return callCount == 1 
+                        ? new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0))
+                        : new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0));
+                });
             
-            // Set up an event handler
-            mockReceiver.Object.TrackingDataReceived += (sender, data) => {
-                if (data.FaceFound) validEventRaised = true;
+            // Create receiver and track event raising
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
+            var validEventCount = 0;
+            
+            receiver.TrackingDataReceived += (sender, data) => 
+            {
+                if (data.FaceFound) validEventCount++;
             };
             
-            // Act
-            var runTask = mockReceiver.Object.RunAsync("127.0.0.1", cancellationTokenSource.Token);
-            
-            // Simulate error handling by raising a valid event after an error would have occurred
-            mockReceiver.Raise(m => m.TrackingDataReceived += null, mockReceiver.Object, expectedData);
-            
-            await runTask;
+            // Act - run until event is raised twice or timeout
+            var cts = new CancellationTokenSource(1000); 
+            try
+            {
+                await receiver.RunAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
             
             // Assert
-            validEventRaised.Should().BeTrue("the receiver should continue processing valid data after encountering invalid data");
-            mockReceiver.Verify(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token), Times.Once, 
-                "RunAsync should complete successfully despite invalid data");
+            validEventCount.Should().BeGreaterThan(0, "the receiver should handle valid data after invalid data");
         }
         
         // Test that the tracking receiver handles invalid JSON gracefully
@@ -200,106 +235,49 @@ namespace SharpBridge.Tests.TrackingTests
         public async Task ProcessReceivedData_HandlesInvalidJson_Gracefully()
         {
             // Arrange
-            var invalidJson = @"{ this is not valid json }";
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
             
-            // Act
-            Action act = () => JsonSerializer.Deserialize<TrackingResponse>(invalidJson);
+            // Configure UDP client to return invalid JSON
+            var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
+            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(true);
+            mockUdpClient.Setup(c => c.Available).Returns(invalidJson.Length);
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0)));
             
-            // Assert
-            act.Should().Throw<JsonException>();
-        }
-        
-        // Test that the tracking receiver raises events when data is received
-        [Fact]
-        public async Task TrackingDataReceived_IsTriggered_WhenDataIsReceived()
-        {
-            // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
-            var mockData = new TrackingResponse
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
+            var eventRaised = false;
+            
+            receiver.TrackingDataReceived += (s, e) => eventRaised = true;
+            
+            // Act - run for a short time
+            var cts = new CancellationTokenSource(200);
+            try
             {
-                Timestamp = 12345,
-                Hotkey = 0,
-                FaceFound = true,
-                Rotation = new Coordinates { X = 10, Y = 20, Z = 30 },
-                Position = new Coordinates { X = 1, Y = 2, Z = 3 },
-                EyeLeft = new Coordinates { X = 0.1, Y = 0.2, Z = 0.3 },
-                BlendShapes = new List<BlendShape>
-                {
-                    new BlendShape { Key = "JawOpen", Value = 0.5 },
-                    new BlendShape { Key = "EyeBlinkLeft", Value = 0.2 }
-                }
-            };
+                await receiver.RunAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
             
-            // Set up tracking for event handling - using a simpler approach to avoid expression trees
-            var eventWasRaised = false;
-            TrackingResponse receivedData = null;
-            
-            // Create a mock event handler that will capture the data
-            EventHandler<TrackingResponse> handler = (sender, data) => 
-            { 
-                eventWasRaised = true;
-                receivedData = data;
-            };
-            
-            // Manually raise the event to simulate behavior
-            mockReceiver.Object.TrackingDataReceived += handler;
-            mockReceiver.Raise(m => m.TrackingDataReceived += null, mockReceiver.Object, mockData);
-            
-            // Assert
-            eventWasRaised.Should().BeTrue("event should have been raised");
-            receivedData.Should().NotBeNull();
-            receivedData.Should().BeSameAs(mockData);
+            // Assert - no event should be raised for invalid JSON, but no exception should be thrown
+            eventRaised.Should().BeFalse("invalid JSON should not trigger events");
         }
         
-        // Test that the tracking receiver handles connection errors gracefully
+        // Test that the tracking receiver validates config
         [Fact]
-        public async Task RunAsync_HandlesConnectionErrors_Gracefully()
+        public void Constructor_Validates_IphoneIpAddress()
         {
             // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
-            var invalidIpAddress = "999.999.999.999"; // Invalid IP address
-            
-            // Setup the mock to throw an exception when an invalid IP is used
-            mockReceiver
-                .Setup(r => r.RunAsync(invalidIpAddress, It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new ArgumentException("Invalid IP address"));
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var invalidConfig = new TrackingReceiverConfig { IphoneIpAddress = "" };
             
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => 
-                mockReceiver.Object.RunAsync(invalidIpAddress, cancellationTokenSource.Token));
+            Action act = () => new TrackingReceiver(mockUdpClient.Object, invalidConfig);
+            act.Should().Throw<ArgumentException>()
+               .WithMessage("*iPhone IP address cannot be null or empty*");
         }
-        
-        // Test that the tracking receiver can automatically reconnect
-        [Fact]
-        public async Task RunAsync_AutomaticallyReconnects_AfterConnectionLoss()
-        {
-            // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            var mockReceiver = new Mock<ITrackingReceiver>();
-            var reconnectCount = 0;
-            
-            // Setup mock to simulate reconnection attempts
-            mockReceiver
-                .Setup(r => r.RunAsync("127.0.0.1", It.IsAny<CancellationToken>()))
-                .Callback(() => reconnectCount++)
-                .Returns(Task.CompletedTask);
-            
-            // Act
-            await mockReceiver.Object.RunAsync("127.0.0.1", cancellationTokenSource.Token);
-            
-            // Assert
-            reconnectCount.Should().Be(1, "RunAsync should have been called once");
-        }
-    }
-    
-    // This interface is for mocking UdpClient - we'll likely need to create a wrapper
-    // around System.Net.Sockets.UdpClient to make it testable
-    public interface IUdpClient
-    {
-        Task<int> SendAsync(byte[] datagram, int bytes, string hostname, int port);
-        Task<UdpReceiveResult> ReceiveAsync();
-        void Close();
     }
 } 
