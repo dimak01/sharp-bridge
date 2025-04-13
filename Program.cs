@@ -21,7 +21,6 @@ namespace SharpBridge
         /// <returns>An asynchronous task representing the execution</returns>
         public static async Task<int> Main(string[] args)
         {
-            // Parse command-line arguments and get configuration
             var commandLineParser = new CommandLineParser();
             return await commandLineParser.ParseAndRunAsync(args, RunApplicationAsync);
         }
@@ -34,59 +33,28 @@ namespace SharpBridge
         /// <returns>A task representing the asynchronous operation</returns>
         private static async Task RunApplicationAsync(TrackingReceiverConfig config, CancellationTokenSource cts)
         {
-            // Set up console to reduce flickering
             Console.CursorVisible = false;
             
-            Console.WriteLine("Sharp Bridge - VTube Studio iPhone to PC Bridge");
-            Console.WriteLine("Inspired by: https://github.com/ovROG/rusty-bridge");
+            DisplayWelcomeMessage();
+            
+            UdpClient udpClient = null;
+            IUdpClientWrapper clientWrapper = null;
+            TrackingReceiver trackingReceiver = null;
             
             try
             {
-                // Create the UDP client with the specific port from config
-                Console.WriteLine($"Using local port {config.LocalPort} for listening");
-                var udpClient = new UdpClient(config.LocalPort);
+                (trackingReceiver, clientWrapper, udpClient) = CreateTrackingServices(config);
+                ITrackingReceiver trackingService = trackingReceiver;
                 
-                // Create and wire up our tracking receiver
-                var clientWrapper = new UdpClientWrapper(udpClient);
-                using var receiver = new TrackingReceiver(clientWrapper, config);
+                using var perfMonitor = SetupPerformanceMonitoring(trackingService);
+                DisplayConnectionInfo(config);
                 
-                // Create performance monitor with built-in console display
-                using var perfMonitor = new PerformanceMonitor(uiUpdateIntervalMs: CommandLineDefaults.UiUpdateIntervalMs);
-                
-                // Subscribe to tracking data events
-                receiver.TrackingDataReceived += (sender, data) => perfMonitor.ProcessFrame(data);
-                
-                // Clear the console before starting any output to ensure clean display
-                Console.Clear();
-                
-                // Show a simple waiting message before giving control to performance monitor
-                Console.WriteLine($"Connecting to iPhone at IP: {config.IphoneIpAddress}");
-                Console.WriteLine("Waiting for tracking data from iPhone VTube Studio...");
-                Console.WriteLine($"IMPORTANT: Make sure port {config.LocalPort} UDP is allowed in your firewall!");
-                
-                // Start the receiver in the background
-                var receiverTask = receiver.RunAsync(cts.Token);
-                
-                // Allow time for initial messages to be seen
-                await Task.Delay(2000);
-                
-                // Clear again before starting the performance monitor to avoid text overlap
-                Console.Clear();
-                
-                // Start the performance monitor
-                perfMonitor.Start();
-                
-                // Wait for cancellation
-                await Task.Delay(Timeout.Infinite, cts.Token);
-                
-                // Wait for receiver to complete after cancellation
+                var receiverTask = await StartTrackingAsync(trackingService, perfMonitor, cts.Token);
                 await receiverTask;
             }
             catch (SocketException ex)
             {
-                Console.WriteLine($"Socket error: {ex.Message}");
-                Console.WriteLine("This may be because the port is already in use or access is denied.");
-                Console.WriteLine("Check if another instance is running or if you need administrative privileges.");
+                HandleSocketException(ex);
             }
             catch (OperationCanceledException)
             {
@@ -98,11 +66,106 @@ namespace SharpBridge
             }
             finally
             {
-                // Restore console state
-                Console.CursorVisible = true;
+                CleanupResources(trackingReceiver, clientWrapper, udpClient);
             }
             
             Console.WriteLine("Application shutting down...");
+        }
+        
+        /// <summary>
+        /// Displays the welcome message
+        /// </summary>
+        private static void DisplayWelcomeMessage()
+        {
+            Console.WriteLine("Sharp Bridge - VTube Studio iPhone to PC Bridge");
+            Console.WriteLine("Inspired by: https://github.com/ovROG/rusty-bridge");
+        }
+        
+        /// <summary>
+        /// Creates and initializes tracking services
+        /// </summary>
+        /// <param name="config">The tracking configuration</param>
+        /// <returns>Tuple of initialized services</returns>
+        private static (TrackingReceiver receiver, IUdpClientWrapper wrapper, UdpClient client) 
+            CreateTrackingServices(TrackingReceiverConfig config)
+        {
+            Console.WriteLine($"Using local port {config.LocalPort} for listening");
+            var udpClient = new UdpClient(config.LocalPort);
+            var clientWrapper = new UdpClientWrapper(udpClient);
+            var trackingReceiver = new TrackingReceiver(clientWrapper, config);
+            
+            return (trackingReceiver, clientWrapper, udpClient);
+        }
+        
+        /// <summary>
+        /// Sets up performance monitoring for tracking data
+        /// </summary>
+        /// <param name="trackingService">The tracking service to monitor</param>
+        /// <returns>The configured performance monitor</returns>
+        private static PerformanceMonitor SetupPerformanceMonitoring(ITrackingReceiver trackingService)
+        {
+            var perfMonitor = new PerformanceMonitor(uiUpdateIntervalMs: CommandLineDefaults.UiUpdateIntervalMs);
+            trackingService.TrackingDataReceived += (sender, data) => perfMonitor.ProcessFrame(data);
+            return perfMonitor;
+        }
+        
+        /// <summary>
+        /// Displays connection information and initial instructions
+        /// </summary>
+        /// <param name="config">The tracking configuration</param>
+        private static void DisplayConnectionInfo(TrackingReceiverConfig config)
+        {
+            Console.Clear();
+            Console.WriteLine($"Connecting to iPhone at IP: {config.IphoneIpAddress}");
+            Console.WriteLine("Waiting for tracking data from iPhone VTube Studio...");
+            Console.WriteLine($"IMPORTANT: Make sure port {config.LocalPort} UDP is allowed in your firewall!");
+        }
+        
+        /// <summary>
+        /// Starts tracking and monitoring services
+        /// </summary>
+        /// <param name="trackingService">The tracking service</param>
+        /// <param name="perfMonitor">The performance monitor</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>A task that completes when tracking is cancelled</returns>
+        private static async Task<Task> StartTrackingAsync(
+            ITrackingReceiver trackingService, 
+            PerformanceMonitor perfMonitor,
+            CancellationToken cancellationToken)
+        {
+            var receiverTask = trackingService.RunAsync(cancellationToken);
+            await Task.Delay(2000);
+            
+            Console.Clear();
+            perfMonitor.Start();
+            
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return receiverTask;
+        }
+        
+        /// <summary>
+        /// Handles socket exceptions with appropriate error messages
+        /// </summary>
+        /// <param name="ex">The socket exception</param>
+        private static void HandleSocketException(SocketException ex)
+        {
+            Console.WriteLine($"Socket error: {ex.Message}");
+            Console.WriteLine("This may be because the port is already in use or access is denied.");
+            Console.WriteLine("Check if another instance is running or if you need administrative privileges.");
+        }
+        
+        /// <summary>
+        /// Cleans up all resources
+        /// </summary>
+        private static void CleanupResources(
+            TrackingReceiver trackingReceiver, 
+            IUdpClientWrapper clientWrapper, 
+            UdpClient udpClient)
+        {
+            trackingReceiver?.Dispose();
+            clientWrapper?.Dispose();
+            udpClient?.Dispose();
+            Console.CursorVisible = true;
         }
     }
 } 
