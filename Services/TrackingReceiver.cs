@@ -79,9 +79,8 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
                     var result = await _udpClient.ReceiveAsync(linkedCts.Token);
                     ProcessReceivedData(result.Buffer);
                 }
-                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Console.WriteLine($"OperationCanceledException in tracking receiver: {ex.Message}");
                     // This is just a timeout, not a cancellation request - continue
                     continue;
                 }
@@ -111,7 +110,7 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
             {
                 messageType = "iOSTrackingDataRequest",
                 sentBy = "SharpBridge",
-                sendForSeconds = _config.RequestIntervalSeconds,
+                sendForSeconds = _config.SendForSeconds,
                 ports = new[] { _config.LocalPort }
             };
 

@@ -12,6 +12,9 @@ public class UdpClientWrapper : IUdpClientWrapper
     public UdpClientWrapper(UdpClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
+        
+        // Set read timeout to match Rust implementation's 2-second timeout
+        _client.Client.ReceiveTimeout = 2000;
     }
 
     public int Available => _client.Available;

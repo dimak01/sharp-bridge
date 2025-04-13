@@ -11,6 +11,7 @@ using SharpBridge.Models;
 using SharpBridge.Services;
 using Xunit;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SharpBridge.Tests.TrackingTests
 {
@@ -51,32 +52,9 @@ namespace SharpBridge.Tests.TrackingTests
             mockReceiver.Verify(r => r.RunAsync(cancellationTokenSource.Token), Times.Once);
         }
         
-        // Test that the tracking receiver binds to a UDP port successfully
+        // Test that the tracking receiver sends tracking request with correct parameters
         [Fact]
-        public async Task RunAsync_UsesUdpClient_Successfully()
-        {
-            // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
-            var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
-            
-            // Setup UDP client mock
-            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(false);
-            
-            // Create a real receiver with the mock UDP client
-            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
-            
-            // Act & Assert - start and immediately cancel
-            cancellationTokenSource.CancelAfter(100);
-            await receiver.RunAsync(cancellationTokenSource.Token);
-            
-            // The poll should have been called at least once
-            mockUdpClient.Verify(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>()), Times.AtLeastOnce);
-        }
-        
-        // Test that the tracking receiver sends tracking request messages
-        [Fact]
-        public async Task RunAsync_SendsTrackingRequest_ToIPhone()
+        public async Task SendsTrackingRequest_WithCorrectParameters()
         {
             // Arrange
             var cancellationTokenSource = new CancellationTokenSource();
@@ -84,13 +62,19 @@ namespace SharpBridge.Tests.TrackingTests
             var config = new TrackingReceiverConfig 
             { 
                 IphoneIpAddress = "192.168.1.100",
-                IphonePort = 21412 
+                IphonePort = 21412,
+                LocalPort = 21413,
+                SendForSeconds = 10, // The duration should be 10 seconds
+                RequestIntervalSeconds = 1 // Requests should be sent every 1 second
             };
 
-            // Setup UDP client mock
-            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(false);
+            byte[] sentData = null;
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
+                .Callback<byte[], int, string, int>((data, bytes, host, port) => 
+                {
+                    sentData = data;
+                })
                 .ReturnsAsync(100);
                 
             // Create receiver
@@ -98,9 +82,33 @@ namespace SharpBridge.Tests.TrackingTests
             
             // Act
             cancellationTokenSource.CancelAfter(100); // Cancel after 100ms
-            await receiver.RunAsync(cancellationTokenSource.Token);
+            try
+            {
+                await receiver.RunAsync(cancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
             
             // Assert
+            sentData.Should().NotBeNull("a tracking request should be sent");
+            
+            // Decode and verify the request JSON
+            var requestJson = Encoding.UTF8.GetString(sentData);
+            var requestObj = JsonSerializer.Deserialize<JsonElement>(requestJson);
+            
+            // Verify the request parameters
+            requestObj.GetProperty("messageType").GetString().Should().Be("iOSTrackingDataRequest");
+            requestObj.GetProperty("sentBy").GetString().Should().Be("SharpBridge");
+            requestObj.GetProperty("sendForSeconds").GetInt32().Should().Be(10); // Should match SendForSeconds
+            
+            // Verify the ports array
+            var ports = requestObj.GetProperty("ports").EnumerateArray().ToList();
+            ports.Count.Should().Be(1);
+            ports[0].GetInt32().Should().Be(21413); // Should use the LocalPort
+            
+            // Verify it was sent to the correct destination
             mockUdpClient.Verify(
                 c => c.SendAsync(
                     It.IsAny<byte[]>(), 
@@ -108,6 +116,53 @@ namespace SharpBridge.Tests.TrackingTests
                     "192.168.1.100", 
                     21412),
                 Times.AtLeastOnce);
+        }
+        
+        // Test that the tracking receiver uses the new cancellation token approach for timeouts
+        [Fact]
+        public async Task ReceiveAsync_UsesTimeoutTokens()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var config = new TrackingReceiverConfig 
+            { 
+                IphoneIpAddress = "127.0.0.1",
+                ReceiveTimeoutMs = 2000 // The Rust 2-second timeout
+            };
+            
+            CancellationToken passedToken = CancellationToken.None;
+            
+            // Configure the mock to capture the cancellation token and throw a timeout
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .Callback<CancellationToken>(token => 
+                {
+                    passedToken = token;
+                    // Simulate a timeout by cancelling the token ourselves
+                    if (token.CanBeCanceled)
+                    {
+                        var source = CancellationTokenSource.CreateLinkedTokenSource(token);
+                        source.Cancel();
+                    }
+                })
+                .ThrowsAsync(new OperationCanceledException());
+                
+            var receiver = new TrackingReceiver(mockUdpClient.Object, config);
+            
+            // Act
+            var cts = new CancellationTokenSource(250); // Short main cancellation
+            try
+            {
+                await receiver.RunAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
+            
+            // Assert
+            passedToken.Should().NotBe(CancellationToken.None, "a cancellation token should be passed");
+            passedToken.Should().NotBe(cts.Token, "a different token should be passed (linked or timeout token)");
         }
         
         // Test that the tracking receiver properly processes valid tracking data and raises an event
@@ -118,7 +173,7 @@ namespace SharpBridge.Tests.TrackingTests
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new TrackingReceiverConfig { IphoneIpAddress = "127.0.0.1" };
             
-            // Create expected tracking data
+            // Create expected tracking data with EyeRight (matching our updated model)
             var expectedData = new TrackingResponse
             {
                 Timestamp = 12345,
@@ -127,6 +182,7 @@ namespace SharpBridge.Tests.TrackingTests
                 Rotation = new Coordinates { X = 10, Y = 20, Z = 30 },
                 Position = new Coordinates { X = 1, Y = 2, Z = 3 },
                 EyeLeft = new Coordinates { X = 0.1, Y = 0.2, Z = 0.3 },
+                EyeRight = new Coordinates { X = 0.15, Y = 0.25, Z = 0.35 },
                 BlendShapes = new List<BlendShape>
                 {
                     new BlendShape { Key = "JawOpen", Value = 0.5 },
@@ -138,12 +194,19 @@ namespace SharpBridge.Tests.TrackingTests
             var json = JsonSerializer.Serialize(expectedData);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             
-            // Configure the UDP mock to return the JSON data
-            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(true);
-            mockUdpClient.Setup(c => c.Available).Returns(jsonBytes.Length);
+            // Configure the UDP mock to return the JSON data directly (no polling first)
+            int callCount = 0;
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
+                .ReturnsAsync(() => 
+                {
+                    callCount++;
+                    if (callCount == 1)
+                    {
+                        return new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0));
+                    }
+                    throw new OperationCanceledException();
+                });
             
             // Create the receiver and track event raising
             var receiver = new TrackingReceiver(mockUdpClient.Object, config);
@@ -173,6 +236,8 @@ namespace SharpBridge.Tests.TrackingTests
             receivedData.FaceFound.Should().BeTrue("properties should match the expected data");
             receivedData.Timestamp.Should().Be(12345, "properties should match the expected data");
             receivedData.Rotation.Y.Should().Be(20, "properties should match the expected data");
+            receivedData.EyeRight.Should().NotBeNull("EyeRight should be processed");
+            receivedData.EyeRight.X.Should().Be(0.15, "EyeRight coordinates should be correct");
             receivedData.BlendShapes.Count.Should().Be(2, "all blend shapes should be included");
             receivedData.BlendShapes[0].Key.Should().Be("JawOpen", "blend shape keys should be correct");
             receivedData.BlendShapes[0].Value.Should().Be(0.5, "blend shape values should be correct");
@@ -193,17 +258,18 @@ namespace SharpBridge.Tests.TrackingTests
             var validJsonBytes = Encoding.UTF8.GetBytes(validJson);
             
             var callCount = 0;
-            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(true);
-            mockUdpClient.Setup(c => c.Available).Returns(100);
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => 
                 {
                     callCount++;
-                    // First return invalid data, then valid
-                    return callCount == 1 
-                        ? new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0))
-                        : new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0));
+                    // First return invalid data, then valid, then throw to end test
+                    if (callCount == 1)
+                        return new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0));
+                    else if (callCount == 2)
+                        return new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0));
+                    else
+                        throw new OperationCanceledException();
                 });
             
             // Create receiver and track event raising
@@ -228,6 +294,7 @@ namespace SharpBridge.Tests.TrackingTests
             
             // Assert
             validEventCount.Should().BeGreaterThan(0, "the receiver should handle valid data after invalid data");
+            callCount.Should().BeGreaterThan(1, "multiple receive calls should be made");
         }
         
         // Test that the tracking receiver handles invalid JSON gracefully
