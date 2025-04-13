@@ -602,5 +602,127 @@ namespace SharpBridge.Tests.TrackingTests
                 File.Delete(filePath);
             }
         }
+        
+        [Fact]
+        public async Task LoadRulesAsync_WarnsAndContinues_WhenMinGreaterThanMax()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""ValidRule"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""InvalidRangeRule"",
+                    ""func"": ""eyeBlinkRight * 50"",
+                    ""min"": 100,  
+                    ""max"": 0,    
+                    ""defaultValue"": 50
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine();
+                
+                // Act
+                await engine.LoadRulesAsync(filePath);
+                
+                // Prepare test data
+                var trackingData = new TrackingResponse
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                        new BlendShape { Key = "eyeBlinkRight", Value = 0.8 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData).ToList();
+                
+                // Assert
+                // Both rules should be loaded despite the invalid range in the second rule
+                result.Should().HaveCount(2);
+                
+                // Check that valid rule was processed correctly
+                var validRule = result.FirstOrDefault(p => p.Id == "ValidRule");
+                validRule.Should().NotBeNull();
+                validRule.Value.Should().Be(50); // 0.5 * 100
+                
+                // The invalid range rule should still be processed but with clamping behavior
+                var invalidRangeRule = result.FirstOrDefault(p => p.Id == "InvalidRangeRule");
+                invalidRangeRule.Should().NotBeNull();
+                invalidRangeRule.Value.Should().Be(50); // Value would be clamped to max (50)
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_TriggersExceptionHandling_DuringExpressionCreation()
+        {
+            // Arrange
+            // We'll create a custom rule with a function that causes an exception
+            // during expression creation but isn't caught by syntax validation
+            var ruleContent = @"[
+                {
+                    ""name"": ""ValidRule"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""ExceptionCausingRule"",
+                    ""func"": ""If(1, 1, UnexpectedFunction())"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine();
+                
+                // Act
+                await engine.LoadRulesAsync(filePath);
+                
+                // Prepare test data
+                var trackingData = new TrackingResponse
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData).ToList();
+                
+                // Assert
+                // Only the valid rule should be loaded as the exception-causing rule
+                // should be skipped during the loading process
+                result.Should().HaveCount(1);
+                
+                var validRule = result.FirstOrDefault(p => p.Id == "ValidRule");
+                validRule.Should().NotBeNull();
+                validRule.Value.Should().Be(50); // 0.5 * 100
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
     }
 } 
