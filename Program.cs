@@ -55,20 +55,18 @@ namespace SharpBridge
             
             try
             {
-                // Create the UDP client
-                var udpClient = new UdpClient(0); // 0 = Let OS assign a port
-                var localEndPoint = (IPEndPoint)udpClient.Client.LocalEndPoint;
-                var localPort = localEndPoint.Port;
-                Console.WriteLine($"Listening on local port: {localPort}");
-                
-                // Create the config
+                // Create the config first with our static port
                 var config = new TrackingReceiverConfig
                 {
                     IphoneIpAddress = iphoneIp,
                     IphonePort = 21412, // Default VTube Studio port
                     RequestIntervalSeconds = 5, // Request tracking data every 5 seconds
-                    LocalPort = localPort // Set the local port to be included in the tracking request
+                    // Using the default static LocalPort (21413) from the config
                 };
+                
+                // Create the UDP client with the specific port from config
+                Console.WriteLine($"Using local port {config.LocalPort} for listening");
+                var udpClient = new UdpClient(config.LocalPort);
                 
                 // Create and wire up our tracking receiver
                 var clientWrapper = new UdpClientWrapper(udpClient);
@@ -80,6 +78,7 @@ namespace SharpBridge
                 // Run the receiver
                 Console.WriteLine("Starting tracking receiver...");
                 Console.WriteLine("Waiting for tracking data from iPhone VTube Studio...");
+                Console.WriteLine($"IMPORTANT: Make sure port {config.LocalPort} UDP is allowed in your firewall!");
                 
                 // Start receiver in a separate task
                 var receiverTask = receiver.RunAsync(cts.Token);
@@ -89,6 +88,12 @@ namespace SharpBridge
                 
                 // Wait for receiver to complete after cancellation
                 await receiverTask;
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Socket error: {ex.Message}");
+                Console.WriteLine("This may be because the port is already in use or access is denied.");
+                Console.WriteLine("Check if another instance is running or if you need administrative privileges.");
             }
             catch (OperationCanceledException)
             {
