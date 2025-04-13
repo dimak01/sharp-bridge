@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
@@ -22,10 +21,13 @@ namespace SharpBridge
         /// <returns>An asynchronous task representing the execution</returns>
         public static async Task Main(string[] args)
         {
+            // Set up console to reduce flickering
+            Console.CursorVisible = false;
+            
             Console.WriteLine("Sharp Bridge - VTube Studio iPhone to PC Bridge");
             Console.WriteLine("Inspired by: https://github.com/ovROG/rusty-bridge");
             
-            string iphoneIp = "192.168.1.178"; // Default IP
+            string iphoneIp = "192.168.1.178"; // Default IP - DO NOT CHANGE!!!
             
             // Simple command-line argument parsing
             if (args.Length > 0)
@@ -35,7 +37,9 @@ namespace SharpBridge
             else
             {
                 Console.Write("Enter your iPhone's IP address: ");
+                Console.CursorVisible = true; // Show cursor for input
                 string input = Console.ReadLine();
+                Console.CursorVisible = false; // Hide cursor again
                 if (!string.IsNullOrWhiteSpace(input))
                 {
                     iphoneIp = input;
@@ -55,13 +59,12 @@ namespace SharpBridge
             
             try
             {
-                // Create the config first with our static port
+                // Create the config with our static port
                 var config = new TrackingReceiverConfig
                 {
                     IphoneIpAddress = iphoneIp,
                     IphonePort = 21412, // Default VTube Studio port
-                    RequestIntervalSeconds = 5, // Request tracking data every 5 seconds
-                    // Using the default static LocalPort (21413) from the config
+                    // Using default values matched to Rust implementation
                 };
                 
                 // Create the UDP client with the specific port from config
@@ -72,15 +75,42 @@ namespace SharpBridge
                 var clientWrapper = new UdpClientWrapper(udpClient);
                 using var receiver = new TrackingReceiver(clientWrapper, config);
                 
-                // Subscribe to tracking data events
-                receiver.TrackingDataReceived += OnTrackingDataReceived;
+                // Create performance monitor with a flicker-free display approach
+                using var perfMonitor = new PerformanceMonitor(
+                    displayAction: output => {
+                        // Position cursor at the beginning
+                        Console.SetCursorPosition(0, 0);
+                        
+                        // Write output
+                        Console.Write(output);
+                        
+                        // Clear any remaining content from previous outputs by writing spaces
+                        int currentLine = Console.CursorTop;
+                        int currentCol = Console.CursorLeft;
+                        
+                        // Clear to the end of the console
+                        for (int i = currentLine; i < Console.WindowHeight - 1; i++)
+                        {
+                            Console.SetCursorPosition(0, i);
+                            Console.Write(new string(' ', Console.WindowWidth - 1));
+                        }
+                        
+                        // Reset cursor position
+                        Console.SetCursorPosition(currentCol, currentLine);
+                    }, 
+                    uiUpdateIntervalMs: 250
+                );
                 
-                // Run the receiver
+                // Subscribe to tracking data events
+                receiver.TrackingDataReceived += (sender, data) => perfMonitor.ProcessFrame(data);
+                
+                // Run the receiver and performance monitor
+                Console.Clear(); // We need one initial clear to start fresh
                 Console.WriteLine("Starting tracking receiver...");
                 Console.WriteLine("Waiting for tracking data from iPhone VTube Studio...");
                 Console.WriteLine($"IMPORTANT: Make sure port {config.LocalPort} UDP is allowed in your firewall!");
                 
-                // Start receiver in a separate task
+                perfMonitor.Start();
                 var receiverTask = receiver.RunAsync(cts.Token);
                 
                 // Wait for cancellation
@@ -103,43 +133,13 @@ namespace SharpBridge
             {
                 Console.WriteLine($"Error: {ex.Message}");
             }
+            finally
+            {
+                // Restore console state
+                Console.CursorVisible = true;
+            }
             
             Console.WriteLine("Application shutting down...");
-        }
-        
-        private static void OnTrackingDataReceived(object sender, TrackingResponse data)
-        {
-            Console.Clear();
-            Console.WriteLine("Received tracking data from iPhone:");
-            Console.WriteLine($"Timestamp: {data.Timestamp}");
-            Console.WriteLine($"Face Found: {data.FaceFound}");
-            
-            if (data.Rotation != null)
-            {
-                Console.WriteLine("\nHead Rotation:");
-                Console.WriteLine($"  X: {data.Rotation.X:F2}°");
-                Console.WriteLine($"  Y: {data.Rotation.Y:F2}°");
-                Console.WriteLine($"  Z: {data.Rotation.Z:F2}°");
-            }
-            
-            if (data.Position != null)
-            {
-                Console.WriteLine("\nHead Position:");
-                Console.WriteLine($"  X: {data.Position.X:F2}");
-                Console.WriteLine($"  Y: {data.Position.Y:F2}");
-                Console.WriteLine($"  Z: {data.Position.Z:F2}");
-            }
-            
-            if (data.BlendShapes != null && data.BlendShapes.Count > 0)
-            {
-                Console.WriteLine("\nBlend Shapes:");
-                foreach (var shape in data.BlendShapes)
-                {
-                    Console.WriteLine($"  {shape.Key}: {shape.Value:F2}");
-                }
-            }
-            
-            Console.WriteLine("\nPress Ctrl+C to exit...");
         }
     }
 } 
