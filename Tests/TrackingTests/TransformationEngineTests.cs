@@ -304,19 +304,14 @@ namespace SharpBridge.Tests.TrackingTests
                     }
                 };
                 
-                // Act
-                var result = engine.TransformData(trackingData).ToList();
+                // Act & Assert
+                // With our new "fail fast" approach, we should expect an exception
+                var exception = Assert.Throws<InvalidOperationException>(() => 
+                    engine.TransformData(trackingData).ToList());
                 
-                // Assert
-                result.Should().HaveCount(2);
-                
-                var validParam = result.FirstOrDefault(p => p.Id == "ValidParam");
-                validParam.Should().NotBeNull();
-                validParam.Value.Should().Be(50); // 0.5 * 100 = 50
-                
-                var invalidParam = result.FirstOrDefault(p => p.Id == "InvalidParam");
-                invalidParam.Should().NotBeNull();
-                invalidParam.Value.Should().Be(50); // Default value when expression fails
+                // Verify that the exception message mentions the parameter name
+                exception.Message.Should().Contain("InvalidParam");
+                exception.Message.Should().Contain("unknownVariable");
             }
             finally
             {
@@ -414,21 +409,14 @@ namespace SharpBridge.Tests.TrackingTests
                     EyeRight = new Coordinates { X = 0.4, Y = 0.5, Z = 0.6 } // Valid eye right
                 };
                 
-                // Act
-                var result = engine.TransformData(trackingData).ToList();
+                // Act & Assert
+                // With our new behavior, we should expect an exception when trying to access EyeLeftX
+                var exception = Assert.Throws<InvalidOperationException>(() => 
+                    engine.TransformData(trackingData).ToList());
                 
-                // Assert
-                result.Should().HaveCount(2);
-                
-                // EyeLeftParam should use default value since EyeLeft is null
-                var eyeLeftParam = result.FirstOrDefault(p => p.Id == "EyeLeftParam");
-                eyeLeftParam.Should().NotBeNull();
-                eyeLeftParam.Value.Should().Be(5); // Default value
-                
-                // EyeRightParam should calculate correctly
-                var eyeRightParam = result.FirstOrDefault(p => p.Id == "EyeRightParam");
-                eyeRightParam.Should().NotBeNull();
-                eyeRightParam.Value.Should().BeApproximately(0.4 + 0.5 + 0.6, 0.001); // 1.5
+                // Verify that the exception message mentions the parameter
+                exception.Message.Should().Contain("EyeLeftParam");
+                exception.Message.Should().Contain("EyeLeftX");
             }
             finally
             {
@@ -471,20 +459,14 @@ namespace SharpBridge.Tests.TrackingTests
                     EyeRight = null
                 };
                 
-                // Act
-                var result = engine.TransformData(trackingData).ToList();
+                // Act & Assert
+                // With our new behavior, we should expect an exception when trying to access EyeLeftX
+                var exception = Assert.Throws<InvalidOperationException>(() => 
+                    engine.TransformData(trackingData).ToList());
                 
-                // Assert
-                result.Should().HaveCount(2);
-                
-                // Both parameters should use default values
-                var eyeLeftParam = result.FirstOrDefault(p => p.Id == "EyeLeftParam");
-                eyeLeftParam.Should().NotBeNull();
-                eyeLeftParam.Value.Should().Be(5); // Default value
-                
-                var eyeRightParam = result.FirstOrDefault(p => p.Id == "EyeRightParam");
-                eyeRightParam.Should().NotBeNull();
-                eyeRightParam.Value.Should().Be(10); // Default value
+                // Verify that the exception message mentions the parameter
+                exception.Message.Should().Contain("EyeLeftParam");
+                exception.Message.Should().Contain("EyeLeftX");
             }
             finally
             {
@@ -643,21 +625,18 @@ namespace SharpBridge.Tests.TrackingTests
                     }
                 };
                 
-                var result = engine.TransformData(trackingData).ToList();
+                // Act & Assert
+                // Math.Clamp will throw an exception because min > max
+                var exception = Assert.Throws<InvalidOperationException>(() => 
+                    engine.TransformData(trackingData).ToList());
                 
-                // Assert
-                // Both rules should be loaded despite the invalid range in the second rule
-                result.Should().HaveCount(2);
+                // Verify that the exception message contains relevant information
+                exception.Message.Should().Contain("InvalidRangeRule");
+                exception.Message.Should().Contain("100");
+                exception.Message.Should().Contain("0");
                 
-                // Check that valid rule was processed correctly
-                var validRule = result.FirstOrDefault(p => p.Id == "ValidRule");
-                validRule.Should().NotBeNull();
-                validRule.Value.Should().Be(50); // 0.5 * 100
-                
-                // The invalid range rule should still be processed but with clamping behavior
-                var invalidRangeRule = result.FirstOrDefault(p => p.Id == "InvalidRangeRule");
-                invalidRangeRule.Should().NotBeNull();
-                invalidRangeRule.Value.Should().Be(50); // Value would be clamped to max (50)
+                // Verify that the inner exception is an ArgumentException
+                exception.InnerException.Should().BeOfType<ArgumentException>();
             }
             finally
             {
@@ -707,16 +686,14 @@ namespace SharpBridge.Tests.TrackingTests
                     }
                 };
                 
-                var result = engine.TransformData(trackingData).ToList();
+                // Act & Assert
+                // With our new behavior, attempting to evaluate the expression will throw an exception
+                var exception = Assert.Throws<InvalidOperationException>(() => 
+                    engine.TransformData(trackingData).ToList());
                 
-                // Assert
-                // Only the valid rule should be loaded as the exception-causing rule
-                // should be skipped during the loading process
-                result.Should().HaveCount(1);
-                
-                var validRule = result.FirstOrDefault(p => p.Id == "ValidRule");
-                validRule.Should().NotBeNull();
-                validRule.Value.Should().Be(50); // 0.5 * 100
+                // Verify that the exception message mentions the function name
+                exception.Message.Should().Contain("ExceptionCausingRule");
+                exception.Message.Should().Contain("If");
             }
             finally
             {
