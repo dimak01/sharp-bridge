@@ -1,8 +1,8 @@
 @echo off
 echo Running tests with code coverage...
 
-REM Run tests with coverage and collect results
-dotnet test Tests/Tests.csproj --collect:"XPlat Code Coverage"
+REM Run tests with coverage and collect results with explicit output directory
+dotnet test Tests/Tests.csproj --collect:"XPlat Code Coverage" --results-directory:TestResults
 
 REM Find the latest coverage report directory
 FOR /F "delims=" %%i IN ('dir /b /ad /o-d TestResults\*') DO (
