@@ -1,0 +1,38 @@
+using System;
+using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace SharpBridge.Services;
+
+public class UdpClientWrapper : IUdpClientWrapper
+{
+    private readonly UdpClient _client;
+
+    public UdpClientWrapper(int port)
+    {
+        _client = new UdpClient(port);
+    }
+
+    public int Available => _client.Available;
+
+    public void Dispose()
+    {
+        _client.Dispose();
+    }
+
+    public bool Poll(int microseconds, SelectMode mode)
+    {
+        return _client.Client.Poll(microseconds, mode);
+    }
+
+    public async Task<UdpReceiveResult> ReceiveAsync(CancellationToken token)
+    {
+        return await _client.ReceiveAsync(token);
+    }
+
+    public Task<int> SendAsync(byte[] datagram, int bytes, string hostname, int port)
+    {
+        return _client.SendAsync(datagram, bytes, hostname, port);
+    }
+} 
