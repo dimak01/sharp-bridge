@@ -48,7 +48,7 @@ namespace SharpBridge.Services
         }
         
         /// <summary>
-        /// Creates a new instance of the PerformanceMonitor
+        /// Creates a new instance of the PerformanceMonitor with a custom display action
         /// </summary>
         /// <param name="displayAction">Action to call with the display output</param>
         /// <param name="maxFrameHistory">Maximum number of frames to keep in history for FPS calculation</param>
@@ -58,6 +58,62 @@ namespace SharpBridge.Services
             _displayAction = displayAction ?? throw new ArgumentNullException(nameof(displayAction));
             _maxFrameHistory = maxFrameHistory;
             _uiUpdateIntervalMs = uiUpdateIntervalMs;
+        }
+        
+        /// <summary>
+        /// Creates a new instance of the PerformanceMonitor with built-in console display
+        /// </summary>
+        /// <param name="maxFrameHistory">Maximum number of frames to keep in history for FPS calculation</param>
+        /// <param name="uiUpdateIntervalMs">How often to update the UI in milliseconds</param>
+        public PerformanceMonitor(int maxFrameHistory = 100, int uiUpdateIntervalMs = 250)
+            : this(ConsoleDisplayAction, maxFrameHistory, uiUpdateIntervalMs)
+        {
+        }
+        
+        /// <summary>
+        /// Built-in console display action that updates the console in a flicker-free way
+        /// </summary>
+        private static void ConsoleDisplayAction(string output)
+        {
+            try
+            {
+                // Position cursor at the beginning
+                Console.SetCursorPosition(0, 0);
+                
+                // Write output
+                Console.Write(output);
+                
+                // Get current cursor position after writing the output
+                int currentLine = Console.CursorTop;
+                int currentCol = Console.CursorLeft;
+                
+                // Clear any remaining content from previous outputs by writing spaces
+                // Make sure we clear at least to the end of the console window
+                int windowHeight = Console.WindowHeight;
+                for (int i = currentLine; i < windowHeight - 1; i++)
+                {
+                    Console.SetCursorPosition(0, i);
+                    Console.Write(new string(' ', Console.WindowWidth - 1));
+                }
+                
+                // Reset cursor position
+                Console.SetCursorPosition(currentCol, currentLine);
+            }
+            catch (Exception ex)
+            {
+                // If console operations fail, fallback to a simpler approach
+                // This can happen if the console window is resized or other issues
+                try
+                {
+                    Console.Clear();
+                    Console.Write(output);
+                }
+                catch
+                {
+                    // Last resort, just try to display without positioning
+                    // Do nothing more if this fails too
+                }
+            }
         }
         
         /// <summary>

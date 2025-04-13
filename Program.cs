@@ -75,43 +75,30 @@ namespace SharpBridge
                 var clientWrapper = new UdpClientWrapper(udpClient);
                 using var receiver = new TrackingReceiver(clientWrapper, config);
                 
-                // Create performance monitor with a flicker-free display approach
-                using var perfMonitor = new PerformanceMonitor(
-                    displayAction: output => {
-                        // Position cursor at the beginning
-                        Console.SetCursorPosition(0, 0);
-                        
-                        // Write output
-                        Console.Write(output);
-                        
-                        // Clear any remaining content from previous outputs by writing spaces
-                        int currentLine = Console.CursorTop;
-                        int currentCol = Console.CursorLeft;
-                        
-                        // Clear to the end of the console
-                        for (int i = currentLine; i < Console.WindowHeight - 1; i++)
-                        {
-                            Console.SetCursorPosition(0, i);
-                            Console.Write(new string(' ', Console.WindowWidth - 1));
-                        }
-                        
-                        // Reset cursor position
-                        Console.SetCursorPosition(currentCol, currentLine);
-                    }, 
-                    uiUpdateIntervalMs: 250
-                );
+                // Create performance monitor with built-in console display
+                using var perfMonitor = new PerformanceMonitor(uiUpdateIntervalMs: 250);
                 
                 // Subscribe to tracking data events
                 receiver.TrackingDataReceived += (sender, data) => perfMonitor.ProcessFrame(data);
                 
-                // Run the receiver and performance monitor
-                Console.Clear(); // We need one initial clear to start fresh
-                Console.WriteLine("Starting tracking receiver...");
+                // Clear the console before starting any output to ensure clean display
+                Console.Clear();
+                
+                // Show a simple waiting message before giving control to performance monitor
                 Console.WriteLine("Waiting for tracking data from iPhone VTube Studio...");
                 Console.WriteLine($"IMPORTANT: Make sure port {config.LocalPort} UDP is allowed in your firewall!");
                 
-                perfMonitor.Start();
+                // Start the receiver in the background
                 var receiverTask = receiver.RunAsync(cts.Token);
+                
+                // Allow time for initial messages to be seen
+                await Task.Delay(2000);
+                
+                // Clear again before starting the performance monitor to avoid text overlap
+                Console.Clear();
+                
+                // Start the performance monitor
+                perfMonitor.Start();
                 
                 // Wait for cancellation
                 await Task.Delay(Timeout.Infinite, cts.Token);
