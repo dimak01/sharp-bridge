@@ -26,6 +26,9 @@ namespace SharpBridge.Models
         /// <summary>Left eye position</summary>
         public Coordinates EyeLeft { get; set; }
         
+        /// <summary>Right eye position</summary>
+        public Coordinates EyeRight { get; set; }
+        
         /// <summary>Collection of blend shapes representing facial expressions</summary>
         public List<BlendShape> BlendShapes { get; set; }
     }
