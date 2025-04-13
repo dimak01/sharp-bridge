@@ -9,9 +9,9 @@ public class UdpClientWrapper : IUdpClientWrapper
 {
     private readonly UdpClient _client;
 
-    public UdpClientWrapper(int port)
+    public UdpClientWrapper(UdpClient client)
     {
-        _client = new UdpClient(port);
+        _client = client ?? throw new ArgumentNullException(nameof(client));
     }
 
     public int Available => _client.Available;

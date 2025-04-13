@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 using SharpBridge.Models;
+using SharpBridge.Interfaces;
 
 namespace SharpBridge.Services;
 
@@ -27,10 +28,16 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
     /// </summary>
     /// <param name="udpClient">The UDP client to use.</param>
     /// <param name="config">The configuration for the tracking receiver.</param>
-    public TrackingReceiver(IUdpClientWrapper udpClient, TrackingReceiverConfig config = null)
+    public TrackingReceiver(IUdpClientWrapper udpClient, TrackingReceiverConfig config)
     {
-        _udpClient = udpClient;
-        _config = config ?? new TrackingReceiverConfig();
+        _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+        
+        if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
+        {
+            throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(config));
+        }
+        
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -43,12 +50,11 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
     }
 
     /// <summary>
-    /// Starts listening for tracking data from the specified iPhone IP.
+    /// Starts listening for tracking data from the iPhone configured in TrackingReceiverConfig.
     /// </summary>
-    /// <param name="iphoneIp">The IP address of the iPhone running VTube Studio.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task that completes when the operation is cancelled.</returns>
-    public async Task RunAsync(string iphoneIp, CancellationToken cancellationToken)
+    public async Task RunAsync(CancellationToken cancellationToken)
     {
         var nextRequestTime = DateTime.UtcNow;
         var buffer = new byte[_config.ReceiveBufferSize];
@@ -60,7 +66,7 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
                 // Check if it's time to send another request
                 if (DateTime.UtcNow >= nextRequestTime)
                 {
-                    await SendTrackingRequestAsync(iphoneIp);
+                    await SendTrackingRequestAsync();
                     nextRequestTime = DateTime.UtcNow.AddSeconds(_config.RequestIntervalSeconds);
                 }
 
@@ -90,9 +96,8 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
     /// <summary>
     /// Sends a tracking request to the iPhone.
     /// </summary>
-    /// <param name="iphoneIp">The IP address of the iPhone.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task SendTrackingRequestAsync(string iphoneIp)
+    private async Task SendTrackingRequestAsync()
     {
         try
         {
@@ -101,12 +106,12 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
                 messageType = "iOSTrackingDataRequest",
                 sentBy = "SharpBridge",
                 sendForSeconds = _config.RequestIntervalSeconds,
-                ports = new[] { _config.IPhonePort }
+                ports = new[] { _config.IphonePort }
             };
 
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
-            await _udpClient.SendAsync(data, data.Length, iphoneIp, _config.IPhonePort);
+            await _udpClient.SendAsync(data, data.Length, _config.IphoneIpAddress, _config.IphonePort);
         }
         catch (Exception ex)
         {
