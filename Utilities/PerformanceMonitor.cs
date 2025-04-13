@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Models;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Tracks and displays performance metrics for the tracking data

@@ -9,7 +9,7 @@ using SharpBridge.Models;
 using SharpBridge.Services;
 using Xunit;
 
-namespace SharpBridge.Tests.TrackingTests
+namespace SharpBridge.Tests.Services
 {
     public class TransformConfigTests
     {

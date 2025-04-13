@@ -13,7 +13,7 @@ using Xunit;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SharpBridge.Tests.TrackingTests
+namespace SharpBridge.Tests.Services
 {
     public class TrackingReceiverTests
     {

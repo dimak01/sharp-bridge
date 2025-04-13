@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Net.Sockets;
 using SharpBridge.Models;
 using SharpBridge.Interfaces;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services;
 
