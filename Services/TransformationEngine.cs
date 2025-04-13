@@ -119,13 +119,9 @@ namespace SharpBridge.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error evaluating expression for parameter '{name}': {ex.Message}");
-                    results.Add(new TrackingParam
-                    {
-                        Id = name,
-                        Value = defaultValue,
-                        Weight = 1.0 // Default weight
-                    });
+                    // Instead of silently using default values, throw an exception with context
+                    throw new InvalidOperationException(
+                        $"Error evaluating expression for parameter '{name}': {ex.Message}", ex);
                 }
             }
             
