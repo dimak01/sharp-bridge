@@ -106,7 +106,7 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
                 messageType = "iOSTrackingDataRequest",
                 sentBy = "SharpBridge",
                 sendForSeconds = _config.RequestIntervalSeconds,
-                ports = new[] { _config.IphonePort }
+                ports = new[] { _config.LocalPort }
             };
 
             var json = JsonSerializer.Serialize(request);
