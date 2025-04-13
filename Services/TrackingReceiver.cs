@@ -57,7 +57,6 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         var nextRequestTime = DateTime.UtcNow;
-        var buffer = new byte[_config.ReceiveBufferSize];
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -70,22 +69,29 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
                     nextRequestTime = DateTime.UtcNow.AddSeconds(_config.RequestIntervalSeconds);
                 }
 
-                // Check if there's data to receive (with a short timeout)
-                if (!_udpClient.Poll(_config.PollTimeoutMs * 1000, SelectMode.SelectRead))
+                // Continuously try to receive data (with a short timeout)
+                try
                 {
+                    // Use a separate cancellation token with timeout to prevent blocking indefinitely
+                    using var receiveTimeoutCts = new CancellationTokenSource(_config.ReceiveTimeoutMs);
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeoutCts.Token);
+                    
+                    var result = await _udpClient.ReceiveAsync(linkedCts.Token);
+                    ProcessReceivedData(result.Buffer);
+                }
+                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    Console.WriteLine($"OperationCanceledException in tracking receiver: {ex.Message}");
+                    // This is just a timeout, not a cancellation request - continue
                     continue;
                 }
-
-                // Check if there's actually data available
-                if (_udpClient.Available == 0)
-                {
-                    continue;
-                }
-
-                var result = await _udpClient.ReceiveAsync(cancellationToken);
-                ProcessReceivedData(result.Buffer);
             }
-            catch (Exception ex)
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Socket error in tracking receiver: {ex.Message}");
+                await Task.Delay(1000, cancellationToken);
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
             {
                 Console.WriteLine($"Error in tracking receiver: {ex.Message}");
                 await Task.Delay(1000, cancellationToken);
