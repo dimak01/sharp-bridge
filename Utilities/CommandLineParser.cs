@@ -31,7 +31,7 @@ namespace SharpBridge.Utilities
         /// <param name="args">Command-line arguments</param>
         /// <param name="runAction">The action to run with the parsed configuration</param>
         /// <returns>An exit code representing the result of the operation</returns>
-        public async Task<int> ParseAndRunAsync(string[] args, Func<TrackingReceiverConfig, CancellationTokenSource, Task> runAction)
+        public async Task<int> ParseAndRunAsync(string[] args, Func<VTubeStudioPhoneClientConfig, CancellationTokenSource, Task> runAction)
         {
             // Create command line options
             var ipOption = new Option<string>(
@@ -100,7 +100,7 @@ namespace SharpBridge.Utilities
                 }
                 
                 // Create configuration
-                var config = new TrackingReceiverConfig
+                var config = new VTubeStudioPhoneClientConfig
                 {
                     IphoneIpAddress = iphoneIpAddress,
                     IphonePort = iphonePort,

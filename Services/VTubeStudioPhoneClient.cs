@@ -11,13 +11,14 @@ using SharpBridge.Utilities;
 namespace SharpBridge.Services;
 
 /// <summary>
-/// Receives tracking data from iPhone VTube Studio via UDP.
+/// Client for receiving tracking data from VTube Studio on iPhone via UDP.
 /// </summary>
-public class TrackingReceiver : ITrackingReceiver, IDisposable
+public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
 {
     private readonly IUdpClientWrapper _udpClient;
-    private readonly TrackingReceiverConfig _config;
+    private readonly VTubeStudioPhoneClientConfig _config;
     private readonly JsonSerializerOptions _jsonOptions;
+    private string _iphoneIpAddress;
     
     /// <summary>
     /// Event triggered when new tracking data is received.
@@ -25,19 +26,14 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
     public event EventHandler<TrackingResponse> TrackingDataReceived;
     
     /// <summary>
-    /// Initializes a new instance of the <see cref="TrackingReceiver"/> class.
+    /// Initializes a new instance of the <see cref="VTubeStudioPhoneClient"/> class.
     /// </summary>
     /// <param name="udpClient">The UDP client to use.</param>
-    /// <param name="config">The configuration for the tracking receiver.</param>
-    public TrackingReceiver(IUdpClientWrapper udpClient, TrackingReceiverConfig config)
+    /// <param name="config">The configuration for the phone client.</param>
+    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, VTubeStudioPhoneClientConfig config)
     {
         _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
         _config = config ?? throw new ArgumentNullException(nameof(config));
-        
-        if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
-        {
-            throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(config));
-        }
         
         _jsonOptions = new JsonSerializerOptions
         {
@@ -51,12 +47,19 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
     }
 
     /// <summary>
-    /// Starts listening for tracking data from the iPhone configured in TrackingReceiverConfig.
+    /// Starts listening for tracking data from the iPhone.
     /// </summary>
+    /// <param name="iphoneIp">IP address of the iPhone</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task that completes when the operation is cancelled.</returns>
-    public async Task RunAsync(CancellationToken cancellationToken)
+    public async Task RunAsync(string iphoneIp, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(iphoneIp))
+        {
+            throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(iphoneIp));
+        }
+        
+        _iphoneIpAddress = iphoneIp;
         var nextRequestTime = DateTime.UtcNow;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -117,7 +120,7 @@ public class TrackingReceiver : ITrackingReceiver, IDisposable
 
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
-            await _udpClient.SendAsync(data, data.Length, _config.IphoneIpAddress, _config.IphonePort);
+            await _udpClient.SendAsync(data, data.Length, _iphoneIpAddress, _config.IphonePort);
         }
         catch (Exception ex)
         {
