@@ -405,5 +405,208 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Verify(x => x.Dispose(), Times.Once);
             _vtubeStudioPhoneClientMock.Verify(x => x.Dispose(), Times.Once);
         }
+
+        // Constructor Parameter Tests
+
+        [Fact]
+        public void Constructor_WithNullVTubeStudioPCClient_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                null,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullVTubeStudioPhoneClient_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                null,
+                _transformationEngineMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullTransformationEngine_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                null));
+        }
+
+        // Additional Initialization Tests
+
+        [Fact]
+        public async Task InitializeAsync_WithEmptyTransformConfigPath_ThrowsArgumentException()
+        {
+            // Arrange
+            var iphoneIp = "192.168.1.100";
+            string emptyPath = string.Empty;
+            var cancellationToken = CancellationToken.None;
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => 
+                _orchestrator.InitializeAsync(iphoneIp, emptyPath, cancellationToken));
+        }
+
+        // Additional RunAsync Tests
+
+        [Fact]
+        public async Task RunAsync_WhenCloseAsyncThrowsException_HandlesGracefully()
+        {
+            // Arrange
+            var iphoneIp = "192.168.1.100";
+            var cts = new CancellationTokenSource();
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
+            // Setup CloseAsync to throw an exception
+            _vtubeStudioPCClientMock.Setup(x => 
+                x.CloseAsync(
+                    It.IsAny<WebSocketCloseStatus>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new WebSocketException("Test exception"));
+            
+            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cts.Token);
+            
+            // Immediately cancel so RunAsync doesn't hang
+            cts.CancelAfter(50);
+            
+            // Act
+            await _orchestrator.RunAsync(cts.Token);
+            
+            // Assert
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.CloseAsync(
+                    WebSocketCloseStatus.NormalClosure, 
+                    It.IsAny<string>(), 
+                    It.IsAny<CancellationToken>()), 
+                Times.Once);
+        }
+
+        // Additional OnTrackingDataReceived Tests
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WhenTransformDataThrowsException_HandlesGracefully()
+        {
+            // Arrange
+            var iphoneIp = "192.168.1.100";
+            var cancellationToken = CancellationToken.None;
+            var trackingResponse = new TrackingResponse 
+            { 
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>()
+            };
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _vtubeStudioPCClientMock.SetupGet(x => x.State)
+                .Returns(WebSocketState.Open);
+                
+            // Setup TransformData to throw an exception
+            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<TrackingResponse>()))
+                .Throws(new InvalidOperationException("Test exception"));
+            
+            // Initialize the orchestrator
+            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            
+            // Act - Trigger the event handler
+            _vtubeStudioPhoneClientMock.Raise(
+                x => x.TrackingDataReceived += null,
+                new object[] { _vtubeStudioPhoneClientMock.Object, trackingResponse });
+            
+            // Need a small delay for the async event handler to complete
+            await Task.Delay(50);
+            
+            // Assert - No exception should be thrown and no tracking data should be sent
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.SendTrackingAsync(
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WhenSendTrackingAsyncThrowsException_HandlesGracefully()
+        {
+            // Arrange
+            var iphoneIp = "192.168.1.100";
+            var cancellationToken = CancellationToken.None;
+            var trackingResponse = new TrackingResponse 
+            { 
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>()
+            };
+            var transformedParams = new List<TrackingParam> 
+            { 
+                new TrackingParam { Id = "Test", Value = 0.5 } 
+            };
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _vtubeStudioPCClientMock.SetupGet(x => x.State)
+                .Returns(WebSocketState.Open);
+                
+            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<TrackingResponse>()))
+                .Returns(transformedParams);
+            
+            // Setup SendTrackingAsync to throw an exception
+            _vtubeStudioPCClientMock.Setup(x => 
+                x.SendTrackingAsync(
+                    It.IsAny<IEnumerable<TrackingParam>>(), 
+                    It.IsAny<bool>(), 
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new WebSocketException("Test exception"));
+            
+            // Initialize the orchestrator
+            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            
+            // Act - Trigger the event handler
+            _vtubeStudioPhoneClientMock.Raise(
+                x => x.TrackingDataReceived += null,
+                new object[] { _vtubeStudioPhoneClientMock.Object, trackingResponse });
+            
+            // Need a small delay for the async event handler to complete
+            await Task.Delay(50);
+            
+            // Assert - Verify that the transform was called but exception was handled
+            _transformationEngineMock.Verify(x => x.TransformData(trackingResponse), Times.Once);
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.SendTrackingAsync(
+                    transformedParams,
+                    trackingResponse.FaceFound,
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
     }
 }
