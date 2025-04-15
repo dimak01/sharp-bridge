@@ -47,7 +47,58 @@ namespace SharpBridge.Services
         /// <returns>A task that completes when initialization and connection are done</returns>
         public async Task InitializeAsync(string iphoneIp, string transformConfigPath, CancellationToken cancellationToken)
         {
-            // Validate input parameters
+            ValidateInitializationParameters(iphoneIp, transformConfigPath);
+            _iphoneIp = iphoneIp;
+            
+            Console.WriteLine($"Initializing application with iPhone IP: {iphoneIp}");
+            Console.WriteLine($"Using transformation config: {transformConfigPath}");
+            
+            await InitializeTransformationEngine(transformConfigPath);
+            await DiscoverAndConnectToVTubeStudio(cancellationToken);
+            await AuthenticateWithVTubeStudio(cancellationToken);
+            
+            Console.WriteLine("Application initialized successfully");
+            _isInitialized = true;
+        }
+
+        /// <summary>
+        /// Starts the data flow between components and runs until cancelled
+        /// </summary>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>A task that completes when the orchestrator is stopped</returns>
+        public async Task RunAsync(CancellationToken cancellationToken)
+        {
+            EnsureInitialized();
+            
+            Console.WriteLine("Starting application...");
+            
+            try
+            {
+                SubscribeToEvents();
+                await RunUntilCancelled(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Operation was canceled, shutting down...");
+            }
+            finally
+            {
+                await PerformCleanup(cancellationToken);
+            }
+            
+            Console.WriteLine("Application stopped");
+        }
+
+        private void EnsureInitialized()
+        {
+            if (!_isInitialized)
+            {
+                throw new InvalidOperationException("ApplicationOrchestrator must be initialized before running");
+            }
+        }
+        
+        private void ValidateInitializationParameters(string iphoneIp, string transformConfigPath)
+        {
             if (string.IsNullOrWhiteSpace(iphoneIp))
             {
                 throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(iphoneIp));
@@ -62,18 +113,15 @@ namespace SharpBridge.Services
             {
                 throw new FileNotFoundException($"Transform configuration file not found: {transformConfigPath}");
             }
-            
-            // Store iPhone IP for later use
-            _iphoneIp = iphoneIp;
-            
-            // Log initialization
-            Console.WriteLine($"Initializing application with iPhone IP: {iphoneIp}");
-            Console.WriteLine($"Using transformation config: {transformConfigPath}");
-            
-            // Initialize transformation engine
+        }
+        
+        private async Task InitializeTransformationEngine(string transformConfigPath)
+        {
             await _transformationEngine.LoadRulesAsync(transformConfigPath);
-            
-            // Attempt to discover VTube Studio port
+        }
+        
+        private async Task DiscoverAndConnectToVTubeStudio(CancellationToken cancellationToken)
+        {
             Console.WriteLine("Discovering VTube Studio port...");
             int port = await _vtubeStudioPCClient.DiscoverPortAsync(cancellationToken);
             if (port <= 0)
@@ -82,11 +130,12 @@ namespace SharpBridge.Services
             }
             Console.WriteLine($"Discovered VTube Studio on port {port}");
             
-            // Connect to VTube Studio
             Console.WriteLine("Connecting to VTube Studio...");
             await _vtubeStudioPCClient.ConnectAsync(cancellationToken);
-            
-            // Authenticate with VTube Studio
+        }
+        
+        private async Task AuthenticateWithVTubeStudio(CancellationToken cancellationToken)
+        {
             Console.WriteLine("Authenticating with VTube Studio...");
             bool authenticated = await _vtubeStudioPCClient.AuthenticateAsync(cancellationToken);
             if (!authenticated)
@@ -94,63 +143,45 @@ namespace SharpBridge.Services
                 throw new InvalidOperationException("Could not authenticate with VTube Studio. Check if authentication was approved.");
             }
             Console.WriteLine("Successfully authenticated with VTube Studio");
-            
-            // Subscribe to the tracking data events
-            _vtubeStudioPhoneClient.TrackingDataReceived += OnTrackingDataReceived;
-            
-            // Log successful initialization
-            Console.WriteLine("Application initialized successfully");
-            _isInitialized = true;
         }
-
-        /// <summary>
-        /// Starts the data flow between components and runs until cancelled
-        /// </summary>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>A task that completes when the orchestrator is stopped</returns>
-        public async Task RunAsync(CancellationToken cancellationToken)
+        
+        private void SubscribeToEvents()
         {
-            if (!_isInitialized)
-            {
-                throw new InvalidOperationException("ApplicationOrchestrator must be initialized before running");
-            }
-            
-            Console.WriteLine("Starting application...");
-            
+            _vtubeStudioPhoneClient.TrackingDataReceived += OnTrackingDataReceived;
+        }
+        
+        private void UnsubscribeFromEvents()
+        {
+            _vtubeStudioPhoneClient.TrackingDataReceived -= OnTrackingDataReceived;
+        }
+        
+        private async Task RunUntilCancelled(CancellationToken cancellationToken)
+        {
+            await Task.WhenAll(
+                _vtubeStudioPhoneClient.RunAsync(_iphoneIp, cancellationToken),
+                Task.Delay(Timeout.Infinite, cancellationToken)
+            );
+        }
+        
+        private async Task PerformCleanup(CancellationToken cancellationToken)
+        {
+            UnsubscribeFromEvents();
+            await CloseVTubeStudioConnection();
+        }
+        
+        private async Task CloseVTubeStudioConnection()
+        {
             try
             {
-                // Start the iPhone tracking receiver
-                await Task.WhenAll(
-                    _vtubeStudioPhoneClient.RunAsync(_iphoneIp, cancellationToken),
-                    // Wait indefinitely (until cancellation) using a simple way
-                    Task.Delay(Timeout.Infinite, cancellationToken)
-                );
+                await _vtubeStudioPCClient.CloseAsync(
+                    System.Net.WebSockets.WebSocketCloseStatus.NormalClosure,
+                    "Application shutting down",
+                    CancellationToken.None);
             }
-            catch (OperationCanceledException)
+            catch (Exception ex)
             {
-                // This is expected, just clean up
-                Console.WriteLine("Operation was canceled, shutting down...");
+                Console.WriteLine($"Error closing VTube Studio connection: {ex.Message}");
             }
-            finally
-            {
-                // Clean up event handlers
-                _vtubeStudioPhoneClient.TrackingDataReceived -= OnTrackingDataReceived;
-                
-                // Gracefully close connections
-                try
-                {
-                    await _vtubeStudioPCClient.CloseAsync(
-                        System.Net.WebSockets.WebSocketCloseStatus.NormalClosure,
-                        "Application shutting down",
-                        CancellationToken.None); // Use a new token to ensure this completes
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error closing VTube Studio connection: {ex.Message}");
-                }
-            }
-            
-            Console.WriteLine("Application stopped");
         }
 
         /// <summary>
@@ -160,22 +191,19 @@ namespace SharpBridge.Services
         {
             try
             {
-                // Skip if no data or face not found
                 if (trackingData == null)
                 {
                     return;
                 }
                 
-                // Transform the tracking data
                 IEnumerable<TrackingParam> parameters = _transformationEngine.TransformData(trackingData);
                 
-                // Send to VTube Studio if connection is open
                 if (_vtubeStudioPCClient.State == System.Net.WebSockets.WebSocketState.Open)
                 {
                     await _vtubeStudioPCClient.SendTrackingAsync(
                         parameters, 
                         trackingData.FaceFound, 
-                        CancellationToken.None); // Using None as this should complete quickly
+                        CancellationToken.None);
                 }
             }
             catch (Exception ex)
@@ -203,7 +231,6 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    // Dispose managed resources
                     _vtubeStudioPCClient?.Dispose();
                     _vtubeStudioPhoneClient?.Dispose();
                 }
