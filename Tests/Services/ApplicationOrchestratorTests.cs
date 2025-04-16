@@ -243,6 +243,10 @@ namespace SharpBridge.Tests.Services
                 new TrackingParam { Id = "Test", Value = 0.5 } 
             };
             
+            // Make RunAsync return completed task instead of hanging
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(8001);
                 
@@ -255,18 +259,21 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.SetupGet(x => x.State)
                 .Returns(WebSocketState.Open);
                 
-            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<TrackingResponse>()))
+            _transformationEngineMock.Setup(x => x.TransformData(trackingResponse))
                 .Returns(transformedParams);
             
             _vtubeStudioPCClientMock.Setup(x => 
                 x.SendTrackingAsync(
-                    It.IsAny<IEnumerable<TrackingParam>>(), 
-                    It.IsAny<bool>(), 
+                    transformedParams, 
+                    trackingResponse.FaceFound, 
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
             // Initialize the orchestrator
             await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            
+            // Call RunAsync to subscribe to events but don't await it
+            var _ = _orchestrator.RunAsync(cancellationToken);
             
             // Act - Trigger the event handler
             _vtubeStudioPhoneClientMock.Raise(
@@ -339,6 +346,10 @@ namespace SharpBridge.Tests.Services
                 new TrackingParam { Id = "Test", Value = 0.5 } 
             };
             
+            // Make RunAsync return completed task instead of hanging
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(8001);
                 
@@ -351,11 +362,14 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.SetupGet(x => x.State)
                 .Returns(WebSocketState.Closed); // Connection is closed
                 
-            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<TrackingResponse>()))
+            _transformationEngineMock.Setup(x => x.TransformData(trackingResponse))
                 .Returns(transformedParams);
             
             // Initialize the orchestrator
             await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            
+            // Call RunAsync to subscribe to events but don't await it
+            var _ = _orchestrator.RunAsync(cancellationToken);
             
             // Act - Trigger the event handler
             _vtubeStudioPhoneClientMock.Raise(
@@ -513,6 +527,10 @@ namespace SharpBridge.Tests.Services
                 BlendShapes = new List<BlendShape>()
             };
             
+            // Make RunAsync return completed task instead of hanging
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(8001);
                 
@@ -526,11 +544,14 @@ namespace SharpBridge.Tests.Services
                 .Returns(WebSocketState.Open);
                 
             // Setup TransformData to throw an exception
-            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<TrackingResponse>()))
+            _transformationEngineMock.Setup(x => x.TransformData(trackingResponse))
                 .Throws(new InvalidOperationException("Test exception"));
             
             // Initialize the orchestrator
             await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            
+            // Call RunAsync to subscribe to events but don't await it
+            var _ = _orchestrator.RunAsync(cancellationToken);
             
             // Act - Trigger the event handler
             _vtubeStudioPhoneClientMock.Raise(
@@ -541,6 +562,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(50);
             
             // Assert - No exception should be thrown and no tracking data should be sent
+            _transformationEngineMock.Verify(x => x.TransformData(trackingResponse), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => 
                 x.SendTrackingAsync(
                     It.IsAny<IEnumerable<TrackingParam>>(),
@@ -565,6 +587,10 @@ namespace SharpBridge.Tests.Services
                 new TrackingParam { Id = "Test", Value = 0.5 } 
             };
             
+            // Make RunAsync return completed task instead of hanging
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(8001);
                 
@@ -577,19 +603,22 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.SetupGet(x => x.State)
                 .Returns(WebSocketState.Open);
                 
-            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<TrackingResponse>()))
+            _transformationEngineMock.Setup(x => x.TransformData(trackingResponse))
                 .Returns(transformedParams);
             
             // Setup SendTrackingAsync to throw an exception
             _vtubeStudioPCClientMock.Setup(x => 
                 x.SendTrackingAsync(
-                    It.IsAny<IEnumerable<TrackingParam>>(), 
-                    It.IsAny<bool>(), 
+                    transformedParams, 
+                    trackingResponse.FaceFound, 
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new WebSocketException("Test exception"));
             
             // Initialize the orchestrator
             await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            
+            // Call RunAsync to subscribe to events but don't await it
+            var _ = _orchestrator.RunAsync(cancellationToken);
             
             // Act - Trigger the event handler
             _vtubeStudioPhoneClientMock.Raise(
