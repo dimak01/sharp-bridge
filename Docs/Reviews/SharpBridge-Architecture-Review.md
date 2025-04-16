@@ -113,7 +113,7 @@ To better reflect component responsibilities:
 The revised interface follows standard .NET WebSocket patterns:
 
 ```csharp
-public interface IVTubeStudioClient : IDisposable
+public interface IVTubeStudioPCClient : IDisposable
 {
     // Standard WebSocket state property
     WebSocketState State { get; }
@@ -145,16 +145,23 @@ The revised interface:
 The Application Orchestrator is responsible for coordinating the components:
 
 ```csharp
-public interface IApplicationOrchestrator
+public interface IApplicationOrchestrator : IDisposable
 {
     /// <summary>
-    /// Initializes components, establishes connections, and coordinates the data flow between components
+    /// Initializes components and establishes connections
     /// </summary>
     /// <param name="iphoneIp">IP address of the iPhone</param>
     /// <param name="transformConfigPath">Path to the transformation configuration file</param>
-    /// <param name="cancellationToken">Cancellation token to stop the orchestrator</param>
-    /// <returns>An asynchronous operation that completes when the orchestrator is stopped</returns>
-    Task RunAsync(string iphoneIp, string transformConfigPath, CancellationToken cancellationToken);
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>A task that completes when initialization and connection are done</returns>
+    Task InitializeAsync(string iphoneIp, string transformConfigPath, CancellationToken cancellationToken);
+    
+    /// <summary>
+    /// Starts the data flow between components and runs until cancelled
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>A task that completes when the orchestrator is stopped</returns>
+    Task RunAsync(CancellationToken cancellationToken);
 }
 ```
 
@@ -167,6 +174,16 @@ The orchestrator handles:
 5. **Error Handling** - Implementing retry strategies
 6. **Data Flow** - Managing event handling and data transformation
 7. **Resource Cleanup** - Ensuring proper disposal
+
+### Initialization and Operation Separation
+
+Our implementation separates the initialization from operation, providing several key benefits:
+
+1. **Clearer Lifecycle Phases**: Initialization and runtime operation are distinct phases
+2. **Improved Error Management**: Initialization failures can be handled before entering the operation phase
+3. **Enhanced Testing**: Each phase can be tested independently
+4. **Resource Management**: Event subscriptions only exist during the active operation phase
+5. **Proper Cancellation Support**: Initialization can be cancelled independently from runtime operation
 
 ## Benefits of the Revised Architecture
 
@@ -206,4 +223,4 @@ The orchestrator handles:
 
 ## Conclusion
 
-The revised architecture provides a cleaner separation of concerns with a centralized orchestrator managing the application lifecycle. By following established .NET patterns and introducing proper component boundaries, we create a more maintainable, testable, and robust application. Centralized error handling and lifecycle management will improve reliability while making the system more extensible for future enhancements. 
+The revised architecture provides a cleaner separation of concerns with a centralized orchestrator managing the application lifecycle. By following established .NET patterns and introducing proper component boundaries, we create a more maintainable, testable, and robust application. The separation of initialization and runtime operation phases improves resource management and error handling, while dependency injection simplifies testing and component interactions. 
