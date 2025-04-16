@@ -3,7 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
-using System.Runtime.CompilerServices;
+using SharpBridge.Utilities;
 
 namespace SharpBridge
 {
@@ -21,22 +21,16 @@ namespace SharpBridge
         {
             Console.WriteLine("SharpBridge Application");
             
-            // Parse command line arguments (temporary simple version)
-            string iphoneIp = args.Length > 0 ? args[0] : string.Empty;
-            string transformConfigPath = args.Length > 1 ? args[1] : "Configs/default_transform.json";
+            // Parse command line arguments
+            var commandLineParser = new CommandLineParser();
+            var options = await commandLineParser.ParseAsync(args);
             
             // Setup DI container
             var services = new ServiceCollection();
-            services.AddSharpBridgeServices();
-            
-            // Configure options
-            services.ConfigureVTubeStudioPhoneClient(options => 
-            {
-                if (!string.IsNullOrEmpty(iphoneIp))
-                {
-                    options.IphoneIpAddress = iphoneIp;
-                }
-            });
+            services.AddSharpBridgeServices(
+                options.ConfigDirectory, 
+                options.PCConfigFilename, 
+                options.PhoneConfigFilename);
             
             using var serviceProvider = services.BuildServiceProvider();
             
@@ -57,7 +51,7 @@ namespace SharpBridge
                 var orchestrator = serviceProvider.GetRequiredService<IApplicationOrchestrator>();
                 
                 // Initialize and run the application
-                await orchestrator.InitializeAsync(transformConfigPath, cts.Token);
+                await orchestrator.InitializeAsync(options.TransformConfigPath, cts.Token);
                 await orchestrator.RunAsync(cts.Token);
                 
                 return 0;

@@ -3,9 +3,9 @@ using System;
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Configuration for VTube Studio client
+    /// Configuration for VTube Studio PC client
     /// </summary>
-    public class VTubeStudioConfig
+    public class VTubeStudioPCConfig
     {
         /// <summary>
         /// Host address of VTube Studio, defaults to localhost
