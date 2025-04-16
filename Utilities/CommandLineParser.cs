@@ -1,8 +1,7 @@
 using System;
 using System.CommandLine;
-using System.Threading;
+using System.IO;
 using System.Threading.Tasks;
-using SharpBridge.Models;
 
 namespace SharpBridge.Utilities
 {
@@ -11,13 +10,51 @@ namespace SharpBridge.Utilities
     /// </summary>
     public static class CommandLineDefaults
     {
-        public const string IphoneIp = "192.168.1.178";
-        public const int IphonePort = 21412;
-        public const int LocalPort = 21413;
-        public const int RequestIntervalSeconds = 1;
-        public const int SendForSeconds = 10;
-        public const int ReceiveTimeoutMs = 2000;
-        public const int UiUpdateIntervalMs = 250;
+        public const string ConfigDirectory = "Configs";
+        public const string TransformConfigFilename = "default_transform.json";
+        public const string PCConfigFilename = "VTubeStudioPCConfig.json";
+        public const string PhoneConfigFilename = "VTubeStudioPhoneConfig.json";
+    }
+
+    /// <summary>
+    /// Results from parsing command-line arguments
+    /// </summary>
+    public class CommandLineOptions
+    {
+        /// <summary>
+        /// Gets or sets the configuration directory path
+        /// </summary>
+        public string ConfigDirectory { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the transform configuration filename
+        /// </summary>
+        public string TransformConfigFilename { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the PC configuration filename
+        /// </summary>
+        public string PCConfigFilename { get; set; }
+        
+        /// <summary>
+        /// Gets or sets the phone configuration filename
+        /// </summary>
+        public string PhoneConfigFilename { get; set; }
+        
+        /// <summary>
+        /// Gets the full path to the transform configuration file
+        /// </summary>
+        public string TransformConfigPath => Path.Combine(ConfigDirectory, TransformConfigFilename);
+        
+        /// <summary>
+        /// Gets the full path to the PC configuration file
+        /// </summary>
+        public string PCConfigPath => Path.Combine(ConfigDirectory, PCConfigFilename);
+        
+        /// <summary>
+        /// Gets the full path to the phone configuration file
+        /// </summary>
+        public string PhoneConfigPath => Path.Combine(ConfigDirectory, PhoneConfigFilename);
     }
 
     /// <summary>
@@ -26,105 +63,53 @@ namespace SharpBridge.Utilities
     public class CommandLineParser
     {
         /// <summary>
-        /// Parses command-line arguments and runs the application with the resulting configuration
+        /// Parses command-line arguments and returns the configuration options
         /// </summary>
         /// <param name="args">Command-line arguments</param>
-        /// <param name="runAction">The action to run with the parsed configuration</param>
-        /// <returns>An exit code representing the result of the operation</returns>
-        public async Task<int> ParseAndRunAsync(string[] args, Func<VTubeStudioPhoneClientConfig, CancellationTokenSource, Task> runAction)
+        /// <returns>The parsed command line options</returns>
+        public async Task<CommandLineOptions> ParseAsync(string[] args)
         {
             // Create command line options
-            var ipOption = new Option<string>(
-                aliases: new[] { "--ip", "-i" },
-                description: "iPhone IP address",
-                getDefaultValue: () => CommandLineDefaults.IphoneIp);
+            var configDirOption = new Option<string>(
+                aliases: new[] { "--config-dir" },
+                description: "Configuration directory path",
+                getDefaultValue: () => CommandLineDefaults.ConfigDirectory);
 
-            var iphonePortOption = new Option<int>(
-                aliases: new[] { "--iphone-port", "-p" },
-                description: "iPhone port",
-                getDefaultValue: () => CommandLineDefaults.IphonePort);
+            var transformOption = new Option<string>(
+                aliases: new[] { "--transform-config" },
+                description: "Transform configuration filename",
+                getDefaultValue: () => CommandLineDefaults.TransformConfigFilename);
 
-            var localPortOption = new Option<int>(
-                aliases: new[] { "--local-port", "-l" },
-                description: "Local listening port",
-                getDefaultValue: () => CommandLineDefaults.LocalPort);
+            var pcConfigOption = new Option<string>(
+                aliases: new[] { "--pc-config" },
+                description: "PC configuration filename",
+                getDefaultValue: () => CommandLineDefaults.PCConfigFilename);
 
-            var requestIntervalOption = new Option<int>(
-                aliases: new[] { "--interval", "-t" },
-                description: "Request interval in seconds",
-                getDefaultValue: () => CommandLineDefaults.RequestIntervalSeconds);
-
-            var sendForSecondsOption = new Option<int>(
-                aliases: new[] { "--send-seconds", "-s" },
-                description: "Time to send data for in seconds",
-                getDefaultValue: () => CommandLineDefaults.SendForSeconds);
-
-            var receiveTimeoutOption = new Option<int>(
-                aliases: new[] { "--timeout", "-r" },
-                description: "Receive timeout in milliseconds",
-                getDefaultValue: () => CommandLineDefaults.ReceiveTimeoutMs);
-
-            var interactiveOption = new Option<bool>(
-                aliases: new[] { "--interactive", "-x" },
-                description: "Launch in interactive mode",
-                getDefaultValue: () => false);
+            var phoneConfigOption = new Option<string>(
+                aliases: new[] { "--phone-config" },
+                description: "Phone configuration filename",
+                getDefaultValue: () => CommandLineDefaults.PhoneConfigFilename);
 
             // Build the root command
             var rootCommand = new RootCommand("Sharp Bridge - VTube Studio iPhone to PC Bridge");
-            rootCommand.AddOption(ipOption);
-            rootCommand.AddOption(iphonePortOption);
-            rootCommand.AddOption(localPortOption);
-            rootCommand.AddOption(requestIntervalOption);
-            rootCommand.AddOption(sendForSecondsOption);
-            rootCommand.AddOption(receiveTimeoutOption);
-            rootCommand.AddOption(interactiveOption);
+            rootCommand.AddOption(configDirOption);
+            rootCommand.AddOption(transformOption);
+            rootCommand.AddOption(pcConfigOption);
+            rootCommand.AddOption(phoneConfigOption);
 
-            rootCommand.SetHandler(async (string ip, int iphonePort, int localPort, int requestInterval, 
-                                         int sendForSeconds, int receiveTimeout, bool interactive) =>
+            CommandLineOptions options = new CommandLineOptions();
+
+            rootCommand.SetHandler((string configDir, string transform, string pcConfig, string phoneConfig) =>
             {
-                // Handle interactive mode
-                string iphoneIpAddress = ip;
-                if (interactive || args.Length == 0)
-                {
-                    Console.WriteLine("Interactive mode enabled.");
-                    Console.Write($"Enter your iPhone's IP address (or press Enter for default [{ip}]): ");
-                    Console.CursorVisible = true; // Show cursor for input
-                    
-                    string input = Console.ReadLine();
-                    Console.CursorVisible = false; // Hide cursor again
-                    
-                    if (!string.IsNullOrWhiteSpace(input))
-                    {
-                        iphoneIpAddress = input;
-                    }
-                }
-                
-                // Create configuration
-                var config = new VTubeStudioPhoneClientConfig
-                {
-                    IphoneIpAddress = iphoneIpAddress,
-                    IphonePort = iphonePort,
-                    LocalPort = localPort,
-                    RequestIntervalSeconds = requestInterval,
-                    SendForSeconds = sendForSeconds,
-                    ReceiveTimeoutMs = receiveTimeout
-                };
-                
-                using var cts = new CancellationTokenSource();
-                Console.CancelKeyPress += (s, e) =>
-                {
-                    e.Cancel = true;
-                    cts.Cancel();
-                    Console.WriteLine("Shutdown requested, cleaning up...");
-                };
-                
-                // Run the application with the parsed configuration
-                await runAction(config, cts);
-            }, 
-            ipOption, iphonePortOption, localPortOption, requestIntervalOption, 
-            sendForSecondsOption, receiveTimeoutOption, interactiveOption);
+                options.ConfigDirectory = configDir;
+                options.TransformConfigFilename = transform;
+                options.PCConfigFilename = pcConfig;
+                options.PhoneConfigFilename = phoneConfig;
+            },
+            configDirOption, transformOption, pcConfigOption, phoneConfigOption);
 
-            return await rootCommand.InvokeAsync(args);
+            await rootCommand.InvokeAsync(args);
+            return options;
         }
     }
 } 

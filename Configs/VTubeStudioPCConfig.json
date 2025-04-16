@@ -1,0 +1,10 @@
+{
+  "Host": "localhost",
+  "Port": 8001,
+  "PluginName": "SharpBridge",
+  "PluginDeveloper": "SharpBridge Developer",
+  "TokenFilePath": "auth_token.txt",
+  "ConnectionTimeoutMs": 5000,
+  "ReconnectionDelayMs": 2000,
+  "UsePortDiscovery": true
+} 

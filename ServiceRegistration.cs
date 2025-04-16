@@ -5,6 +5,7 @@ using SharpBridge.Services;
 using SharpBridge.Utilities;
 using System;
 using System.Net.WebSockets;
+using System.Threading.Tasks;
 
 namespace SharpBridge
 {
@@ -20,9 +21,39 @@ namespace SharpBridge
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddSharpBridgeServices(this IServiceCollection services)
         {
+            return AddSharpBridgeServices(services, null, null, null);
+        }
+        
+        /// <summary>
+        /// Registers all application services with the DI container with custom configuration paths
+        /// </summary>
+        /// <param name="services">The service collection to add services to</param>
+        /// <param name="configDirectory">Optional custom config directory path</param>
+        /// <param name="pcConfigFilename">Optional custom PC config filename</param>
+        /// <param name="phoneConfigFilename">Optional custom Phone config filename</param>
+        /// <returns>The service collection for chaining</returns>
+        public static IServiceCollection AddSharpBridgeServices(
+            this IServiceCollection services, 
+            string configDirectory, 
+            string pcConfigFilename, 
+            string phoneConfigFilename)
+        {
+            // Register config manager
+            services.AddSingleton<ConfigManager>(provider => 
+                new ConfigManager(configDirectory, pcConfigFilename, phoneConfigFilename));
+            
             // Register configurations
-            services.AddSingleton<VTubeStudioConfig>();
-            services.AddSingleton<VTubeStudioPhoneClientConfig>();
+            services.AddSingleton(provider => 
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
+            });
+            
+            services.AddSingleton(provider => 
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
+            });
             
             // Register clients
             services.AddTransient<IWebSocketWrapper, WebSocketWrapper>();
@@ -56,8 +87,10 @@ namespace SharpBridge
         {
             services.AddSingleton(sp => 
             {
-                var config = new VTubeStudioPhoneClientConfig();
+                var configManager = sp.GetRequiredService<ConfigManager>();
+                var config = configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
                 configureOptions(config);
+                configManager.SavePhoneConfigAsync(config).GetAwaiter().GetResult();
                 return config;
             });
             
@@ -65,19 +98,21 @@ namespace SharpBridge
         }
         
         /// <summary>
-        /// Configures the VTubeStudioConfig with the specified settings
+        /// Configures the VTubeStudioPCConfig with the specified settings
         /// </summary>
         /// <param name="services">The service collection</param>
-        /// <param name="configureOptions">Action to configure the VTube Studio options</param>
+        /// <param name="configureOptions">Action to configure the VTube Studio PC options</param>
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection ConfigureVTubeStudioPC(
             this IServiceCollection services, 
-            Action<VTubeStudioConfig> configureOptions)
+            Action<VTubeStudioPCConfig> configureOptions)
         {
             services.AddSingleton(sp => 
             {
-                var config = new VTubeStudioConfig();
+                var configManager = sp.GetRequiredService<ConfigManager>();
+                var config = configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
                 configureOptions(config);
+                configManager.SavePCConfigAsync(config).GetAwaiter().GetResult();
                 return config;
             });
             
