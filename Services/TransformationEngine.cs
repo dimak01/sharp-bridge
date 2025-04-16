@@ -24,6 +24,7 @@ namespace SharpBridge.Services
         /// <returns>An asynchronous operation that completes when rules are loaded</returns>
         /// <exception cref="FileNotFoundException">Thrown when the specified file doesn't exist</exception>
         /// <exception cref="JsonException">Thrown when the file contains invalid JSON</exception>
+        /// <exception cref="InvalidOperationException">Thrown when one or more rules fail validation</exception>
         public async Task LoadRulesAsync(string filePath)
         {
             if (!File.Exists(filePath))
@@ -40,6 +41,7 @@ namespace SharpBridge.Services
             
             int validRules = 0;
             int invalidRules = 0;
+            List<string> validationErrors = new List<string>();
             
             foreach (var rule in rules)
             {
@@ -48,7 +50,8 @@ namespace SharpBridge.Services
                     // Check for null or empty expression
                     if (string.IsNullOrWhiteSpace(rule.Func))
                     {
-                        Console.WriteLine($"Warning: Rule '{rule.Name}' has an empty expression");
+                        string errorMsg = $"Rule '{rule.Name}' has an empty expression";
+                        validationErrors.Add(errorMsg);
                         invalidRules++;
                         continue;
                     }
@@ -59,7 +62,8 @@ namespace SharpBridge.Services
                     // Check for syntax errors
                     if (expression.HasErrors())
                     {
-                        Console.WriteLine($"Syntax error in rule '{rule.Name}': {expression.Error}");
+                        string errorMsg = $"Syntax error in rule '{rule.Name}': {expression.Error}";
+                        validationErrors.Add(errorMsg);
                         invalidRules++;
                         continue;
                     }
@@ -67,7 +71,10 @@ namespace SharpBridge.Services
                     // Check for valid min/max ranges
                     if (rule.Min > rule.Max)
                     {
-                        Console.WriteLine($"Warning: Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})");
+                        string errorMsg = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
+                        validationErrors.Add(errorMsg);
+                        // Still add the rule but count it as invalid
+                        invalidRules++;
                     }
                     
                     // All validation passed, add the rule
@@ -76,13 +83,29 @@ namespace SharpBridge.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error parsing expression '{rule.Func}': {ex.Message}");
+                    string errorMsg = $"Error parsing expression '{rule.Func}': {ex.Message}";
+                    validationErrors.Add(errorMsg);
                     invalidRules++;
                     // Continue with other rules even if one fails
                 }
             }
             
             Console.WriteLine($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
+            
+            // Throw an exception if any rules failed validation
+            if (invalidRules > 0)
+            {
+                string errorDetails = string.Join("\n- ", validationErrors);
+                throw new InvalidOperationException(
+                    $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.\n" +
+                    $"Errors:\n- {errorDetails}");
+            }
+            
+            // Check if we have at least one valid rule
+            if (validRules == 0)
+            {
+                throw new InvalidOperationException("No valid transformation rules found in the configuration file.");
+            }
         }
         
         /// <summary>
