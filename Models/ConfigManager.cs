@@ -10,33 +10,22 @@ namespace SharpBridge.Models
     /// </summary>
     public class ConfigManager
     {
-        private const string DEFAULT_CONFIG_DIRECTORY = "Configs";
-        private const string DEFAULT_PC_CONFIG_FILENAME = "VTubeStudioPCConfig.json";
-        private const string DEFAULT_PHONE_CONFIG_FILENAME = "VTubeStudioPhoneConfig.json";
-        
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly string _configDirectory;
         private readonly string _pcConfigFilename;
         private readonly string _phoneConfigFilename;
         
         /// <summary>
-        /// Initializes a new instance of the ConfigManager class with default paths.
-        /// </summary>
-        public ConfigManager() : this(DEFAULT_CONFIG_DIRECTORY, DEFAULT_PC_CONFIG_FILENAME, DEFAULT_PHONE_CONFIG_FILENAME)
-        {
-        }
-        
-        /// <summary>
-        /// Initializes a new instance of the ConfigManager class with custom paths.
+        /// Initializes a new instance of the ConfigManager class with specified paths.
         /// </summary>
         /// <param name="configDirectory">The directory where config files are stored</param>
         /// <param name="pcConfigFilename">Filename for the PC configuration</param>
         /// <param name="phoneConfigFilename">Filename for the Phone configuration</param>
         public ConfigManager(string configDirectory, string pcConfigFilename, string phoneConfigFilename)
         {
-            _configDirectory = configDirectory ?? DEFAULT_CONFIG_DIRECTORY;
-            _pcConfigFilename = pcConfigFilename ?? DEFAULT_PC_CONFIG_FILENAME;
-            _phoneConfigFilename = phoneConfigFilename ?? DEFAULT_PHONE_CONFIG_FILENAME;
+            _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
+            _pcConfigFilename = pcConfigFilename ?? throw new ArgumentNullException(nameof(pcConfigFilename));
+            _phoneConfigFilename = phoneConfigFilename ?? throw new ArgumentNullException(nameof(phoneConfigFilename));
             
             _jsonOptions = new JsonSerializerOptions
             {
