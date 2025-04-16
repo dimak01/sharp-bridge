@@ -42,14 +42,14 @@ namespace SharpBridge.Tests.Services
             
             // Set up the mock to return a completed task when RunAsync is called
             mockClient
-                .Setup(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token))
+                .Setup(r => r.RunAsync(cancellationTokenSource.Token))
                 .Returns(Task.CompletedTask);
             
             // Act
-            await mockClient.Object.RunAsync("127.0.0.1", cancellationTokenSource.Token);
+            await mockClient.Object.RunAsync(cancellationTokenSource.Token);
             
             // Assert
-            mockClient.Verify(r => r.RunAsync("127.0.0.1", cancellationTokenSource.Token), Times.Once);
+            mockClient.Verify(r => r.RunAsync(cancellationTokenSource.Token), Times.Once);
         }
         
         // Test that the phone client sends tracking request with correct parameters
@@ -61,6 +61,7 @@ namespace SharpBridge.Tests.Services
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig 
             { 
+                IphoneIpAddress = "192.168.1.100",
                 IphonePort = 21412,
                 LocalPort = 21413,
                 SendForSeconds = 10, // The duration should be 10 seconds
@@ -83,7 +84,7 @@ namespace SharpBridge.Tests.Services
             cancellationTokenSource.CancelAfter(100); // Cancel after 100ms
             try
             {
-                await client.RunAsync("192.168.1.100", cancellationTokenSource.Token);
+                await client.RunAsync(cancellationTokenSource.Token);
             }
             catch (OperationCanceledException)
             {
@@ -125,6 +126,7 @@ namespace SharpBridge.Tests.Services
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig 
             { 
+                IphoneIpAddress = "127.0.0.1",
                 ReceiveTimeoutMs = 2000 // The Rust 2-second timeout
             };
             
@@ -151,7 +153,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(250); // Short main cancellation
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -169,7 +171,10 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig();
+            var config = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "127.0.0.1"
+            };
             
             // Create expected tracking data with EyeRight (matching our updated model)
             var expectedData = new TrackingResponse
@@ -221,7 +226,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(1000); // 1 second timeout
             try 
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -247,7 +252,10 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig();
+            var config = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "127.0.0.1"
+            };
             
             // First provide invalid JSON data, then valid data
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
@@ -283,7 +291,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(1000); 
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -301,7 +309,10 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig();
+            var config = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "127.0.0.1"
+            };
             
             // Configure UDP client to return invalid JSON
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
@@ -320,7 +331,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(200);
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -412,7 +423,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(2000); // Longer timeout to ensure we get through the delay
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -481,7 +492,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(2000); // Longer timeout
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -519,7 +530,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(500);
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -594,7 +605,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(500);
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -633,7 +644,7 @@ namespace SharpBridge.Tests.Services
             
             // Act
             var cts = new CancellationTokenSource();
-            var runTask = client.RunAsync("127.0.0.1", cts.Token);
+            var runTask = client.RunAsync(cts.Token);
             
             // Wait a bit, then cancel
             await Task.Delay(100);
@@ -677,7 +688,7 @@ namespace SharpBridge.Tests.Services
             var cts = new CancellationTokenSource(500);
             try
             {
-                await client.RunAsync("127.0.0.1", cts.Token);
+                await client.RunAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -690,19 +701,6 @@ namespace SharpBridge.Tests.Services
                 c => c.ReceiveAsync(It.IsAny<CancellationToken>()), 
                 Times.AtLeastOnce, 
                 "ReceiveAsync should be called");
-        }
-
-        [Fact]
-        public void RunAsync_ThrowsArgumentException_WhenIphoneIpIsEmpty()
-        {
-            // Arrange
-            var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig();
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
-            
-            // Act & Assert
-            Assert.ThrowsAsync<ArgumentException>(async () => 
-                await client.RunAsync(string.Empty, CancellationToken.None));
         }
     }
 } 

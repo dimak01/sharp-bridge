@@ -18,7 +18,6 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
     private readonly IUdpClientWrapper _udpClient;
     private readonly VTubeStudioPhoneClientConfig _config;
     private readonly JsonSerializerOptions _jsonOptions;
-    private string _iphoneIpAddress;
     
     /// <summary>
     /// Event triggered when new tracking data is received.
@@ -35,6 +34,11 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
         _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         
+        if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
+        {
+            throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(config));
+        }
+        
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -49,17 +53,10 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
     /// <summary>
     /// Starts listening for tracking data from the iPhone.
     /// </summary>
-    /// <param name="iphoneIp">IP address of the iPhone</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     /// <returns>A task that completes when the operation is cancelled.</returns>
-    public async Task RunAsync(string iphoneIp, CancellationToken cancellationToken)
+    public async Task RunAsync(CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(iphoneIp))
-        {
-            throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(iphoneIp));
-        }
-        
-        _iphoneIpAddress = iphoneIp;
         var nextRequestTime = DateTime.UtcNow;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -120,7 +117,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
 
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
-            await _udpClient.SendAsync(data, data.Length, _iphoneIpAddress, _config.IphonePort);
+            await _udpClient.SendAsync(data, data.Length, _config.IphoneIpAddress, _config.IphonePort);
         }
         catch (Exception ex)
         {

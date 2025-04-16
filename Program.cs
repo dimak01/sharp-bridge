@@ -57,7 +57,7 @@ namespace SharpBridge
                 var orchestrator = serviceProvider.GetRequiredService<IApplicationOrchestrator>();
                 
                 // Initialize and run the application
-                await orchestrator.InitializeAsync(iphoneIp, transformConfigPath, cts.Token);
+                await orchestrator.InitializeAsync(transformConfigPath, cts.Token);
                 await orchestrator.RunAsync(cts.Token);
                 
                 return 0;
