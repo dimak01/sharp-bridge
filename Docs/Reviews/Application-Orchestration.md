@@ -6,7 +6,7 @@ This document outlines the orchestration approach for the SharpBridge applicatio
 
 ## Orchestrator Responsibilities
 
-The application orchestrator (previously referred to as "Bridge Service") is responsible for:
+The `ApplicationOrchestrator` is responsible for:
 
 1. **Configuration Validation** - Validating user inputs and configuration settings
 2. **Component Initialization** - Creating and initializing all required components
@@ -17,63 +17,55 @@ The application orchestrator (previously referred to as "Bridge Service") is res
 
 ## Application Lifecycle Flow
 
-### Initialization Phase
+The application lifecycle is now separated into distinct phases:
+
+### Initialization Phase (InitializeAsync)
 
 1. **Configuration Validation**
-   - Validate command-line arguments and configuration files
+   - Validate input parameters
    - Ensure required files exist and have proper permissions
    - Fail fast with clear error messages if configuration is invalid
 
-2. **Component Initialization**
-   - Create instances of required components (TrackingReceiver, TransformationEngine, VTubeStudioClient)
+2. **Transformation Engine Initialization**
    - Load transformation rules from configuration
-   - Subscribe to required events
 
-### Connection Phase
-
-1. **VTube Studio Connection**
-   - Attempt port discovery if enabled
-   - Establish WebSocket connection to VTube Studio
+3. **VTube Studio Connection**
+   - Discover VTube Studio port
+   - Establish WebSocket connection
    - Handle authentication with token management
-   - Implement retry logic with exponential backoff
-   - Provide user feedback during authentication process
+   - Provide user feedback during the process
 
-2. **iPhone Tracking Connection**
-   - Establish UDP connection to iPhone
-   - Verify data reception
-   - Implement timeout handling for connection verification
+The initialization phase is explicitly separated from the operation phase to:
+- Ensure proper setup before starting any data flow
+- Handle initialization errors before operation begins
+- Allow for testing of initialization in isolation
+- Enable clean up if initialization fails
 
-### Operation Phase
+### Operation Phase (RunAsync)
 
-1. **Event-Based Processing**
-   - Process tracking data events from iPhone
-   - Transform tracking data using the transformation engine
-   - Forward transformed parameters to VTube Studio
-   - Handle and recover from transient errors
+1. **Event Subscription**
+   - Subscribe to tracking data events from the VTubeStudioPhoneClient
+   - Only done during active operation, not during initialization
 
-2. **Error Recovery**
-   - Implement retries for recoverable errors
-   - Provide clear feedback on connection status
-   - Attempt to reconnect when connections are lost
+2. **Data Processing**
+   - Start the iPhone tracking client
+   - Process tracking data events
+   - Transform and forward data to VTube Studio
+   - Handle operational errors appropriately
 
-### Shutdown Phase
-
-1. **Graceful Termination**
+3. **Cleanup on Exit**
    - Unsubscribe from events
-   - Close connections properly
-   - Send appropriate close messages
+   - Close connections gracefully
+   - Dispose of resources properly
 
-2. **Resource Cleanup**
-   - Dispose all disposable resources
-   - Ensure no lingering connections or resources
+### Error Handling Strategy
 
-## Error Handling Strategy
+#### Categorization of Errors
 
-### Categorization of Errors
-
-1. **Configuration Errors** (Non-recoverable)
+1. **Initialization Errors** (Non-recoverable)
    - Missing or invalid files
    - Invalid network settings
+   - VTube Studio connection failures
    - Action: Fail fast with clear user guidance
 
 2. **Connection Errors** (Potentially recoverable)
@@ -111,161 +103,100 @@ During connection and authentication processes:
 
 ## Component Interactions
 
-### Orchestrator → VTubeStudioClient
+### ApplicationOrchestrator → VTubeStudioPCClient
 
 1. **Initialization**
-   ```
-   Create VTubeStudioClient with configuration
-   ```
-
-2. **Connection Management**
-   ```
-   Discover port (optional)
-   Connect to VTube Studio
-   Authenticate with token or request new token
-   ```
-
-3. **Operation**
-   ```
-   Monitor connection state
-   Handle reconnection when needed
+   ```csharp
+   // Discover port
+   int port = await _vtubeStudioPCClient.DiscoverPortAsync(cancellationToken);
+   
+   // Connect to VTube Studio
+   await _vtubeStudioPCClient.ConnectAsync(cancellationToken);
+   
+   // Authenticate with token or request new token
+   bool authenticated = await _vtubeStudioPCClient.AuthenticateAsync(cancellationToken);
    ```
 
-4. **Shutdown**
-   ```
-   Close connection gracefully
-   Dispose resources
-   ```
-
-### Orchestrator → TrackingReceiver
-
-1. **Initialization**
-   ```
-   Create TrackingReceiver with configuration
-   Subscribe to tracking data events
-   ```
-
-2. **Connection Management**
-   ```
-   Start receiver
-   Verify data reception
+2. **Operation**
+   ```csharp
+   // Send tracking data if connection is open
+   if (_vtubeStudioPCClient.State == WebSocketState.Open)
+   {
+       await _vtubeStudioPCClient.SendTrackingAsync(
+           parameters, 
+           trackingData.FaceFound, 
+           CancellationToken.None);
+   }
    ```
 
 3. **Shutdown**
-   ```
-   Unsubscribe from events
-   Stop receiver
-   Dispose resources
+   ```csharp
+   // Close connection gracefully
+   await _vtubeStudioPCClient.CloseAsync(
+       WebSocketCloseStatus.NormalClosure,
+       "Application shutting down",
+       CancellationToken.None);
+   
+   // Dispose resources
+   _vtubeStudioPCClient?.Dispose();
    ```
 
-### TrackingReceiver → Orchestrator → VTubeStudioClient
+### ApplicationOrchestrator → VTubeStudioPhoneClient
+
+1. **Subscription (during RunAsync)**
+   ```csharp
+   // Subscribe to tracking data events
+   _vtubeStudioPhoneClient.TrackingDataReceived += OnTrackingDataReceived;
+   ```
+
+2. **Operation**
+   ```csharp
+   // Start receiver
+   await _vtubeStudioPhoneClient.RunAsync(_iphoneIp, cancellationToken);
+   ```
+
+3. **Shutdown**
+   ```csharp
+   // Unsubscribe from events
+   _vtubeStudioPhoneClient.TrackingDataReceived -= OnTrackingDataReceived;
+   
+   // Dispose resources
+   _vtubeStudioPhoneClient?.Dispose();
+   ```
+
+### Data Flow
 
 The data flow follows an event-based pattern:
 
 ```
-TrackingReceiver
+VTubeStudioPhoneClient
     raises TrackingDataReceived event
-        → Orchestrator handles event
+        → ApplicationOrchestrator handles event
             → Transforms data using TransformationEngine
-                → Sends parameters to VTubeStudioClient
+                → Sends parameters to VTubeStudioPCClient
 ```
 
-## Initialization and Connection Sequence
+## Dependency Injection
 
-```
-┌───────────────┐
-│ Load Config   │
-└───────┬───────┘
-        │
-        ▼
-┌───────────────┐    No     ┌────────────────┐
-│ Config Valid? ├──────────►│ Error and Exit │
-└───────┬───────┘           └────────────────┘
-        │ Yes
-        ▼
-┌───────────────┐
-│ Initialize    │
-│ Components    │
-└───────┬───────┘
-        │
-        ▼
-┌───────────────┐    No     ┌────────────────┐
-│ Connect VTS?  ├──────────►│ Retry Logic    │
-└───────┬───────┘           └───────┬────────┘
-        │ Yes                       │
-        │                           │ Max Retries
-        │                           ▼
-        │                  ┌────────────────┐
-        │                  │ Error and Exit │
-        │                  └────────────────┘
-        ▼
-┌───────────────┐    No     ┌────────────────┐
-│ Authenticate? ├──────────►│ Wait for User  │
-└───────┬───────┘           │ Approval       │
-        │ Yes               └────────┬───────┘
-        │                            │
-        │                            │ Timeout
-        │                            ▼
-        │                   ┌────────────────┐
-        │                   │ Error and Exit │
-        │                   └────────────────┘
-        ▼
-┌───────────────┐    No     ┌────────────────┐
-│ Connect       ├──────────►│ Retry Logic    │
-│ Tracking?     │           └───────┬────────┘
-└───────┬───────┘                   │
-        │ Yes                       │ Max Retries
-        │                           ▼
-        │                  ┌────────────────┐
-        │                  │ Error and Exit │
-        │                  └────────────────┘
-        ▼
-┌───────────────┐
-│ Start Event   │
-│ Processing    │
-└───────┬───────┘
-        │
-        ▼
-┌───────────────┐
-│ Wait for      │
-│ Cancellation  │
-└───────┬───────┘
-        │
-        ▼
-┌───────────────┐
-│ Cleanup       │
-│ Resources     │
-└───────────────┘
+The application now uses dependency injection to:
+1. **Simplify Component Creation** - Components are instantiated by the DI container
+2. **Improve Testability** - Dependencies can be easily mocked in tests
+3. **Centralize Configuration** - Component configurations are managed centrally
+4. **Ensure Proper Lifecycle** - Components are disposed properly by the container
+
+Registration is handled through extension methods:
+
+```csharp
+services.AddSharpBridgeServices();
 ```
 
-## Renaming Considerations
+## Next Steps
 
-The current "Bridge Service" name doesn't fully capture the component's orchestration responsibilities. Alternative names that better reflect its role include:
-
-- **ApplicationOrchestrator**
-- **SharpBridgeOrchestrator**
-- **TrackingOrchestrator**
-- **TrackingPipeline**
-
-We recommend renaming the component to **ApplicationOrchestrator** to clearly communicate its primary responsibility of coordinating the application lifecycle.
-
-## Future Considerations
-
-1. **UI Integration**
-   - When a UI is added, the orchestrator will need to provide status updates to the UI
-   - Connection state changes should be observable by the UI
-   - The UI may need to trigger reconnection or parameter creation
-
-2. **Parameter Creation**
-   - Future support for creating VTube Studio parameters
-   - These operations should be exposed through the orchestrator
-   - Will require additional error handling and user feedback
-
-3. **Configuration Updates**
-   - Support for runtime configuration changes
-   - May require component reinitialization
-   - Should maintain state where possible
+1. **Error Handling Refinement** - Implement retry strategies for recoverable errors
+2. **UI Integration** - Prepare for eventual UI integration with observable state
+3. **Telemetry and Monitoring** - Add performance monitoring and diagnostics
+4. **Comprehensive Testing** - Create unit and integration tests for all components
 
 ## Conclusion
 
-This orchestration approach provides a clear separation of concerns, with individual components handling their specific tasks while the orchestrator manages the overall application lifecycle. By centralizing connection management, error handling, and lifecycle coordination, we create a more maintainable and robust application that can gracefully handle various error conditions while providing clear feedback to users. 
+The application orchestration approach provides a clear separation of concerns, with the `ApplicationOrchestrator` managing the overall application lifecycle while individual components focus on their core responsibilities. By separating initialization from operation and using dependency injection, we've created a more maintainable, testable, and robust architecture that handles errors gracefully and provides clear user feedback. 
