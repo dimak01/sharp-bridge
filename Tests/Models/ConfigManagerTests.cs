@@ -154,5 +154,134 @@ namespace SharpBridge.Tests.Models
             manager.PCConfigPath.Should().Be(Path.Combine(customDir, customPcFile));
             manager.PhoneConfigPath.Should().Be(Path.Combine(customDir, customPhoneFile));
         }
+        
+        [Fact]
+        public void ConfigManager_Constructor_NullConfigDirectory_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Action act = () => new ConfigManager(null, "pc.json", "phone.json");
+            act.Should().Throw<ArgumentNullException>()
+               .And.ParamName.Should().Be("configDirectory");
+        }
+        
+        [Fact]
+        public void ConfigManager_Constructor_NullPCConfigFilename_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Action act = () => new ConfigManager("Configs", null, "phone.json");
+            act.Should().Throw<ArgumentNullException>()
+               .And.ParamName.Should().Be("pcConfigFilename");
+        }
+        
+        [Fact]
+        public void ConfigManager_Constructor_NullPhoneConfigFilename_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Action act = () => new ConfigManager("Configs", "pc.json", null);
+            act.Should().Throw<ArgumentNullException>()
+               .And.ParamName.Should().Be("phoneConfigFilename");
+        }
+        
+        [Fact]
+        public void EnsureConfigDirectoryExists_CreatesDirectoryIfNotExists()
+        {
+            // Arrange
+            string testDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            
+            try
+            {
+                // Make sure directory doesn't exist
+                if (Directory.Exists(testDir))
+                {
+                    Directory.Delete(testDir, true);
+                }
+                
+                // Act - constructor calls EnsureConfigDirectoryExists internally
+                var manager = new ConfigManager(testDir, "pc.json", "phone.json");
+                
+                // Assert
+                Directory.Exists(testDir).Should().BeTrue("directory should be created if it doesn't exist");
+            }
+            finally
+            {
+                // Cleanup
+                if (Directory.Exists(testDir))
+                {
+                    Directory.Delete(testDir, true);
+                }
+            }
+        }
+        
+        [Fact]
+        public async Task LoadConfigAsync_JsonException_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            string testDir = Path.Combine(_testDirectory, "InvalidJson");
+            Directory.CreateDirectory(testDir);
+            string invalidJsonPath = Path.Combine(testDir, "invalid.json");
+            
+            // Create a file with invalid JSON content
+            File.WriteAllText(invalidJsonPath, "{ this is not valid json }");
+            
+            var manager = new ConfigManager(testDir, "invalid.json", "phone.json");
+            
+            // Act & Assert
+            Func<Task> act = async () => await manager.LoadPCConfigAsync();
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Error parsing configuration file*");
+        }
+        
+        [Fact]
+        public async Task LoadConfigAsync_DeserializesToNull_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            string testDir = Path.Combine(_testDirectory, "NullConfig");
+            Directory.CreateDirectory(testDir);
+            string nullConfigPath = Path.Combine(testDir, "null.json");
+            
+            // Create a file with JSON null
+            File.WriteAllText(nullConfigPath, "null");
+            
+            var manager = new ConfigManager(testDir, "null.json", "phone.json");
+            
+            // Act & Assert
+            Func<Task> act = async () => await manager.LoadPCConfigAsync();
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*Failed to deserialize configuration*");
+        }
+        
+        [Fact]
+        public async Task SaveConfigAsync_IOException_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            // Create a readonly directory to cause an IO exception on save
+            string readOnlyDir = Path.Combine(_testDirectory, "ReadOnly");
+            Directory.CreateDirectory(readOnlyDir);
+            
+            var manager = new ConfigManager(readOnlyDir, "readonly.json", "phone.json");
+            var config = new VTubeStudioPCConfig();
+            
+            try
+            {
+                // Create a file and make it read-only to cause an exception
+                string readOnlyPath = Path.Combine(readOnlyDir, "readonly.json");
+                File.WriteAllText(readOnlyPath, "{}");
+                File.SetAttributes(readOnlyPath, FileAttributes.ReadOnly);
+                
+                // Act & Assert
+                Func<Task> act = async () => await manager.SavePCConfigAsync(config);
+                await act.Should().ThrowAsync<InvalidOperationException>()
+                    .WithMessage("*Error saving configuration*");
+            }
+            finally
+            {
+                // Cleanup - reset readonly attribute to allow deletion
+                string readOnlyPath = Path.Combine(readOnlyDir, "readonly.json");
+                if (File.Exists(readOnlyPath))
+                {
+                    File.SetAttributes(readOnlyPath, FileAttributes.Normal);
+                }
+            }
+        }
     }
 } 

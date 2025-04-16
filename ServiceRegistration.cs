@@ -15,22 +15,12 @@ namespace SharpBridge
     public static class ServiceRegistration
     {
         /// <summary>
-        /// Registers all application services with the DI container
-        /// </summary>
-        /// <param name="services">The service collection to add services to</param>
-        /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddSharpBridgeServices(this IServiceCollection services)
-        {
-            return AddSharpBridgeServices(services, null, null, null);
-        }
-        
-        /// <summary>
         /// Registers all application services with the DI container with custom configuration paths
         /// </summary>
         /// <param name="services">The service collection to add services to</param>
-        /// <param name="configDirectory">Optional custom config directory path</param>
-        /// <param name="pcConfigFilename">Optional custom PC config filename</param>
-        /// <param name="phoneConfigFilename">Optional custom Phone config filename</param>
+        /// <param name="configDirectory">Config directory path</param>
+        /// <param name="pcConfigFilename">PC config filename</param>
+        /// <param name="phoneConfigFilename">Phone config filename</param>
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddSharpBridgeServices(
             this IServiceCollection services, 
@@ -38,6 +28,14 @@ namespace SharpBridge
             string pcConfigFilename, 
             string phoneConfigFilename)
         {
+            // Validate parameters
+            if (string.IsNullOrEmpty(configDirectory))
+                throw new ArgumentException("Config directory cannot be null or empty", nameof(configDirectory));
+            if (string.IsNullOrEmpty(pcConfigFilename))
+                throw new ArgumentException("PC config filename cannot be null or empty", nameof(pcConfigFilename));
+            if (string.IsNullOrEmpty(phoneConfigFilename))
+                throw new ArgumentException("Phone config filename cannot be null or empty", nameof(phoneConfigFilename));
+                
             // Register config manager
             services.AddSingleton<ConfigManager>(provider => 
                 new ConfigManager(configDirectory, pcConfigFilename, phoneConfigFilename));

@@ -476,7 +476,37 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_SkipsRulesWithInvalidSyntax()
+        public async Task LoadRulesAsync_ThrowsJsonException_WhenDeserializationReturnsNull()
+        {
+            // To test this scenario, we need a valid JSON that deserializes to null
+            // For System.Text.Json, an empty array is still a valid array, not null
+            // So we'll create a valid JSON that's not an array of TransformRule
+            
+            // Arrange - this is valid JSON but not a List<TransformRule>
+            var jsonContent = "{}"; // An empty object, not an array
+            var filePath = CreateTempRuleFile(jsonContent);
+            
+            try
+            {
+                var engine = new TransformationEngine();
+                
+                // Act & Assert
+                // This should trigger the `??` operator in the LoadRulesAsync method
+                var exception = await Assert.ThrowsAsync<JsonException>(async () => 
+                    await engine.LoadRulesAsync(filePath));
+                
+                // Verify that an exception is thrown - don't check specific message since it depends on JsonSerializer
+                exception.Should().NotBeNull();
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_ThrowsExceptionForRulesWithInvalidSyntax()
         {
             // Arrange
             var ruleContent = @"[
@@ -515,68 +545,15 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine();
                 
-                // Act
-                await engine.LoadRulesAsync(filePath);
-                
-                // Prepare test data
-                var trackingData = new TrackingResponse
-                {
-                    FaceFound = true,
-                    BlendShapes = new List<BlendShape>
-                    {
-                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
-                        new BlendShape { Key = "eyeBlinkRight", Value = 0.8 }
-                    }
-                };
-                
-                var result = engine.TransformData(trackingData).ToList();
-                
-                // Assert
-                // Should only have the valid rules, since invalid ones should be skipped during loading
-                result.Should().HaveCount(2);
-                
-                // Check that valid rules were processed correctly
-                var validRule1 = result.FirstOrDefault(p => p.Id == "ValidRule");
-                validRule1.Should().NotBeNull();
-                validRule1.Value.Should().Be(50); // 0.5 * 100
-                
-                var validRule2 = result.FirstOrDefault(p => p.Id == "AnotherValidRule");
-                validRule2.Should().NotBeNull();
-                validRule2.Value.Should().Be(40); // 0.8 * 50
-                
-                // The invalid rules should not be in the results
-                result.FirstOrDefault(p => p.Id == "InvalidSyntaxRule").Should().BeNull();
-                result.FirstOrDefault(p => p.Id == "EmptyRule").Should().BeNull();
-            }
-            finally
-            {
-                // Cleanup
-                File.Delete(filePath);
-            }
-        }
-        
-        [Fact]
-        public async Task LoadRulesAsync_ThrowsJsonException_WhenDeserializationReturnsNull()
-        {
-            // To test this scenario, we need a valid JSON that deserializes to null
-            // For System.Text.Json, an empty array is still a valid array, not null
-            // So we'll create a valid JSON that's not an array of TransformRule
-            
-            // Arrange - this is valid JSON but not a List<TransformRule>
-            var jsonContent = "{}"; // An empty object, not an array
-            var filePath = CreateTempRuleFile(jsonContent);
-            
-            try
-            {
-                var engine = new TransformationEngine();
-                
                 // Act & Assert
-                // This should trigger the `??` operator in the LoadRulesAsync method
-                var exception = await Assert.ThrowsAsync<JsonException>(async () => 
+                // With the new behavior, we should throw an exception during loading
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
                     await engine.LoadRulesAsync(filePath));
                 
-                // Verify that an exception is thrown - don't check specific message since it depends on JsonSerializer
-                exception.Should().NotBeNull();
+                // Verify that the exception message contains details about the invalid rules
+                exception.Message.Should().Contain("Failed to load");
+                exception.Message.Should().Contain("InvalidSyntaxRule");
+                exception.Message.Should().Contain("EmptyRule");
             }
             finally
             {
@@ -586,7 +563,7 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_WarnsAndContinues_WhenMinGreaterThanMax()
+        public async Task LoadRulesAsync_ThrowsExceptionWhenMinGreaterThanMax()
         {
             // Arrange
             var ruleContent = @"[
@@ -611,32 +588,16 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine();
                 
-                // Act
-                await engine.LoadRulesAsync(filePath);
-                
-                // Prepare test data
-                var trackingData = new TrackingResponse
-                {
-                    FaceFound = true,
-                    BlendShapes = new List<BlendShape>
-                    {
-                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
-                        new BlendShape { Key = "eyeBlinkRight", Value = 0.8 }
-                    }
-                };
-                
                 // Act & Assert
-                // Math.Clamp will throw an exception because min > max
-                var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData).ToList());
+                // With the new behavior, we should throw an exception during loading
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
+                    await engine.LoadRulesAsync(filePath));
                 
-                // Verify that the exception message contains relevant information
+                // Verify that the exception message contains details about the invalid rule
+                exception.Message.Should().Contain("Failed to load");
                 exception.Message.Should().Contain("InvalidRangeRule");
-                exception.Message.Should().Contain("100");
-                exception.Message.Should().Contain("0");
-                
-                // Verify that the inner exception is an ArgumentException
-                exception.InnerException.Should().BeOfType<ArgumentException>();
+                exception.Message.Should().Contain("Min value");
+                exception.Message.Should().Contain("greater than Max value");
             }
             finally
             {
@@ -649,19 +610,11 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_TriggersExceptionHandling_DuringExpressionCreation()
         {
             // Arrange
-            // We'll create a custom rule with a function that causes an exception
-            // during expression creation but isn't caught by syntax validation
+            // Create a rule that will pass syntax check but fail when evaluated
             var ruleContent = @"[
                 {
-                    ""name"": ""ValidRule"",
-                    ""func"": ""eyeBlinkLeft * 100"",
-                    ""min"": 0,
-                    ""max"": 100,
-                    ""defaultValue"": 0
-                },
-                {
-                    ""name"": ""ExceptionCausingRule"",
-                    ""func"": ""If(1, 1, UnexpectedFunction())"",
+                    ""name"": ""BadRule"",
+                    ""func"": ""If(0 > 1, 1, 1 \/ 0)"",  // This will cause a divide by zero error when evaluated
                     ""min"": 0,
                     ""max"": 100,
                     ""defaultValue"": 0
@@ -673,27 +626,84 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine();
                 
-                // Act
+                // First load the rules (this should succeed as the syntax is valid)
                 await engine.LoadRulesAsync(filePath);
                 
-                // Prepare test data
+                // Now create tracking data and try to transform it
                 var trackingData = new TrackingResponse
                 {
                     FaceFound = true,
-                    BlendShapes = new List<BlendShape>
-                    {
-                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
-                    }
+                    BlendShapes = new List<BlendShape>()
                 };
                 
-                // Act & Assert
-                // With our new behavior, attempting to evaluate the expression will throw an exception
+                // Act & Assert - this should throw when the expression is evaluated
                 var exception = Assert.Throws<InvalidOperationException>(() => 
                     engine.TransformData(trackingData).ToList());
                 
-                // Verify that the exception message mentions the function name
-                exception.Message.Should().Contain("ExceptionCausingRule");
-                exception.Message.Should().Contain("If");
+                // Verify the exception details
+                exception.Message.Should().Contain("BadRule");
+                exception.Message.Should().Contain("evaluating expression");
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_HandlesExceptionDuringRuleParsing()
+        {
+            // Arrange
+            // Use a completely invalid JSON rule file
+            var ruleContent = @"{ This is not valid JSON }";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine();
+                
+                // Act & Assert
+                var exception = await Assert.ThrowsAsync<JsonException>(async () => 
+                    await engine.LoadRulesAsync(filePath));
+                
+                // We don't need to check the specific message as it may vary by JSON parser
+                exception.Should().NotBeNull();
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_ThrowsInvalidOperationException_ForRuleValidationFailures()
+        {
+            // Arrange
+            // Create a rule with min > max which fails validation
+            var ruleContent = @"[
+                {
+                    ""name"": ""InvalidRangeRule"",
+                    ""func"": ""x + 1"",
+                    ""min"": 100,
+                    ""max"": 0,  // min > max, should trigger validation error
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine();
+                
+                // Act & Assert
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                    async () => await engine.LoadRulesAsync(filePath));
+                
+                // Verify the exception details
+                exception.Message.Should().Contain("InvalidRangeRule");
+                exception.Message.Should().Contain("min must be less than or equal to max");
             }
             finally
             {
