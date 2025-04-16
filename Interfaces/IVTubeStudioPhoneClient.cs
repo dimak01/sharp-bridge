@@ -18,9 +18,8 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Starts listening for tracking data from the iPhone
         /// </summary>
-        /// <param name="iphoneIp">IP address of the iPhone</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Task representing the asynchronous operation</returns>
-        Task RunAsync(string iphoneIp, CancellationToken cancellationToken);
+        Task RunAsync(CancellationToken cancellationToken);
     }
 } 

@@ -62,7 +62,6 @@ namespace SharpBridge.Tests.Services
         public async Task InitializeAsync_WithValidConfig_InitializesComponents()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -75,7 +74,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(true);
             
             // Act
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Assert
             _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.Once);
@@ -87,33 +86,26 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public async Task InitializeAsync_WithEmptyIphoneIp_ThrowsArgumentException()
         {
-            // Arrange
-            string emptyIp = string.Empty;
-            var cancellationToken = CancellationToken.None;
-            
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => 
-                _orchestrator.InitializeAsync(emptyIp, _tempConfigPath, cancellationToken));
+            // This test is no longer relevant since the iPhone IP is now handled through config
+            // and validated in the VTubeStudioPhoneClient constructor
         }
         
         [Fact]
         public async Task InitializeAsync_WithNonExistentConfigFile_ThrowsFileNotFoundException()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             var cancellationToken = CancellationToken.None;
             
             // Act & Assert
             await Assert.ThrowsAsync<FileNotFoundException>(() => 
-                _orchestrator.InitializeAsync(iphoneIp, nonExistentPath, cancellationToken));
+                _orchestrator.InitializeAsync(nonExistentPath, cancellationToken));
         }
         
         [Fact]
         public async Task InitializeAsync_WhenPortDiscoveryFails_ThrowsInvalidOperationException()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -121,14 +113,13 @@ namespace SharpBridge.Tests.Services
             
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken));
+                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
         }
         
         [Fact]
         public async Task InitializeAsync_WhenAuthenticationFails_ThrowsInvalidOperationException()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -142,7 +133,7 @@ namespace SharpBridge.Tests.Services
             
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken));
+                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
         }
         
         // Connection and Lifecycle Tests
@@ -162,7 +153,6 @@ namespace SharpBridge.Tests.Services
         public async Task RunAsync_WithInitialization_StartsPhoneClient()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cts = new CancellationTokenSource();
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -174,10 +164,10 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
                 
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
             
             // Immediately cancel so RunAsync doesn't hang
             cts.CancelAfter(50);
@@ -186,14 +176,13 @@ namespace SharpBridge.Tests.Services
             await _orchestrator.RunAsync(cts.Token);
             
             // Assert
-            _vtubeStudioPhoneClientMock.Verify(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()), Times.Once);
+            _vtubeStudioPhoneClientMock.Verify(x => x.RunAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
         
         [Fact]
         public async Task RunAsync_WhenCancelled_ClosesConnectionsGracefully()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cts = new CancellationTokenSource();
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -205,10 +194,10 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
                 
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
             
             // Immediately cancel so RunAsync doesn't hang
             cts.CancelAfter(50);
@@ -231,7 +220,6 @@ namespace SharpBridge.Tests.Services
         public async Task OnTrackingDataReceived_TransformsDataAndSendsToVTubeStudio()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             var trackingResponse = new TrackingResponse 
             { 
@@ -244,7 +232,7 @@ namespace SharpBridge.Tests.Services
             };
             
             // Make RunAsync return completed task instead of hanging
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -270,7 +258,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(Task.CompletedTask);
             
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Call RunAsync to subscribe to events but don't await it
             var _ = _orchestrator.RunAsync(cancellationToken);
@@ -297,7 +285,6 @@ namespace SharpBridge.Tests.Services
         public async Task OnTrackingDataReceived_WhenTrackingDataIsNull_DoesNotProcessOrSend()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -310,7 +297,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(true);
             
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Act - Trigger the event handler with null data
             _vtubeStudioPhoneClientMock.Raise(
@@ -334,7 +321,6 @@ namespace SharpBridge.Tests.Services
         public async Task OnTrackingDataReceived_WhenConnectionClosed_DoesNotSendTracking()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             var trackingResponse = new TrackingResponse 
             { 
@@ -347,7 +333,7 @@ namespace SharpBridge.Tests.Services
             };
             
             // Make RunAsync return completed task instead of hanging
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -366,7 +352,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(transformedParams);
             
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Call RunAsync to subscribe to events but don't await it
             var _ = _orchestrator.RunAsync(cancellationToken);
@@ -458,13 +444,12 @@ namespace SharpBridge.Tests.Services
         public async Task InitializeAsync_WithEmptyTransformConfigPath_ThrowsArgumentException()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             string emptyPath = string.Empty;
             var cancellationToken = CancellationToken.None;
             
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(() => 
-                _orchestrator.InitializeAsync(iphoneIp, emptyPath, cancellationToken));
+                _orchestrator.InitializeAsync(emptyPath, cancellationToken));
         }
 
         // Additional RunAsync Tests
@@ -473,7 +458,6 @@ namespace SharpBridge.Tests.Services
         public async Task RunAsync_WhenCloseAsyncThrowsException_HandlesGracefully()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cts = new CancellationTokenSource();
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -485,7 +469,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
                 
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
             // Setup CloseAsync to throw an exception
@@ -496,7 +480,7 @@ namespace SharpBridge.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new WebSocketException("Test exception"));
             
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
             
             // Immediately cancel so RunAsync doesn't hang
             cts.CancelAfter(50);
@@ -519,7 +503,6 @@ namespace SharpBridge.Tests.Services
         public async Task OnTrackingDataReceived_WhenTransformDataThrowsException_HandlesGracefully()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             var trackingResponse = new TrackingResponse 
             { 
@@ -528,7 +511,7 @@ namespace SharpBridge.Tests.Services
             };
             
             // Make RunAsync return completed task instead of hanging
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -548,7 +531,7 @@ namespace SharpBridge.Tests.Services
                 .Throws(new InvalidOperationException("Test exception"));
             
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Call RunAsync to subscribe to events but don't await it
             var _ = _orchestrator.RunAsync(cancellationToken);
@@ -575,7 +558,6 @@ namespace SharpBridge.Tests.Services
         public async Task OnTrackingDataReceived_WhenSendTrackingAsyncThrowsException_HandlesGracefully()
         {
             // Arrange
-            var iphoneIp = "192.168.1.100";
             var cancellationToken = CancellationToken.None;
             var trackingResponse = new TrackingResponse 
             { 
@@ -588,7 +570,7 @@ namespace SharpBridge.Tests.Services
             };
             
             // Make RunAsync return completed task instead of hanging
-            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(iphoneIp, It.IsAny<CancellationToken>()))
+            _vtubeStudioPhoneClientMock.Setup(x => x.RunAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
@@ -615,7 +597,7 @@ namespace SharpBridge.Tests.Services
                 .ThrowsAsync(new WebSocketException("Test exception"));
             
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(iphoneIp, _tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Call RunAsync to subscribe to events but don't await it
             var _ = _orchestrator.RunAsync(cancellationToken);

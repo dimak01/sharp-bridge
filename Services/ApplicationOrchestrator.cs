@@ -20,7 +20,6 @@ namespace SharpBridge.Services
         
         private bool _isInitialized;
         private bool _isDisposed;
-        private string _iphoneIp;
         
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -41,16 +40,13 @@ namespace SharpBridge.Services
         /// <summary>
         /// Initializes components and establishes connections
         /// </summary>
-        /// <param name="iphoneIp">IP address of the iPhone</param>
         /// <param name="transformConfigPath">Path to the transformation configuration file</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>A task that completes when initialization and connection are done</returns>
-        public async Task InitializeAsync(string iphoneIp, string transformConfigPath, CancellationToken cancellationToken)
+        public async Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken)
         {
-            ValidateInitializationParameters(iphoneIp, transformConfigPath);
-            _iphoneIp = iphoneIp;
+            ValidateInitializationParameters(transformConfigPath);
             
-            Console.WriteLine($"Initializing application with iPhone IP: {iphoneIp}");
             Console.WriteLine($"Using transformation config: {transformConfigPath}");
             
             await InitializeTransformationEngine(transformConfigPath);
@@ -97,13 +93,8 @@ namespace SharpBridge.Services
             }
         }
         
-        private void ValidateInitializationParameters(string iphoneIp, string transformConfigPath)
+        private void ValidateInitializationParameters(string transformConfigPath)
         {
-            if (string.IsNullOrWhiteSpace(iphoneIp))
-            {
-                throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(iphoneIp));
-            }
-            
             if (string.IsNullOrWhiteSpace(transformConfigPath))
             {
                 throw new ArgumentException("Transform configuration path cannot be null or empty", nameof(transformConfigPath));
@@ -158,7 +149,7 @@ namespace SharpBridge.Services
         private async Task RunUntilCancelled(CancellationToken cancellationToken)
         {
             await Task.WhenAll(
-                _vtubeStudioPhoneClient.RunAsync(_iphoneIp, cancellationToken),
+                _vtubeStudioPhoneClient.RunAsync(cancellationToken),
                 Task.Delay(Timeout.Infinite, cancellationToken)
             );
         }
