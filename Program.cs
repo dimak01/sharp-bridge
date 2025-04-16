@@ -3,6 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
+using System.Runtime.CompilerServices;
 
 namespace SharpBridge
 {
@@ -21,8 +22,8 @@ namespace SharpBridge
             Console.WriteLine("SharpBridge Application");
             
             // Parse command line arguments (temporary simple version)
-            string iphoneIp = args.Length > 0 ? args[0] : "127.0.0.1";
-            string transformConfigPath = args.Length > 1 ? args[1] : "Configs/default-transform.json";
+            string iphoneIp = args.Length > 0 ? args[0] : string.Empty;
+            string transformConfigPath = args.Length > 1 ? args[1] : "Configs/default_transform.json";
             
             // Setup DI container
             var services = new ServiceCollection();
@@ -31,9 +32,10 @@ namespace SharpBridge
             // Configure options
             services.ConfigureVTubeStudioPhoneClient(options => 
             {
-                // Default configuration - will be replaced with command-line args or config file
-                options.ReceiveTimeoutMs = 100;
-                options.SendForSeconds = 3;
+                if (!string.IsNullOrEmpty(iphoneIp))
+                {
+                    options.IphoneIpAddress = iphoneIp;
+                }
             });
             
             using var serviceProvider = services.BuildServiceProvider();
