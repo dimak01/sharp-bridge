@@ -187,14 +187,20 @@ namespace SharpBridge.Services
                     return;
                 }
                 
+                // Transform tracking data
                 IEnumerable<TrackingParam> parameters = _transformationEngine.TransformData(trackingData);
                 
+                // Create PCTrackingInfo to encapsulate the transformed data
+                var pcTrackingInfo = new PCTrackingInfo
+                {
+                    Parameters = parameters,
+                    FaceFound = trackingData.FaceFound
+                };
+                
+                // Send to VTube Studio if connection is open
                 if (_vtubeStudioPCClient.State == System.Net.WebSockets.WebSocketState.Open)
                 {
-                    await _vtubeStudioPCClient.SendTrackingAsync(
-                        parameters, 
-                        trackingData.FaceFound, 
-                        CancellationToken.None);
+                    await _vtubeStudioPCClient.SendTrackingAsync(pcTrackingInfo, CancellationToken.None);
                 }
             }
             catch (Exception ex)

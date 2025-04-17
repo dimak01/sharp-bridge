@@ -252,8 +252,9 @@ namespace SharpBridge.Tests.Services
             
             _vtubeStudioPCClientMock.Setup(x => 
                 x.SendTrackingAsync(
-                    transformedParams, 
-                    trackingResponse.FaceFound, 
+                    It.Is<PCTrackingInfo>(pc => 
+                        pc.FaceFound == trackingResponse.FaceFound && 
+                        pc.Parameters == transformedParams),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
@@ -275,8 +276,9 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Verify(x => x.TransformData(trackingResponse), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => 
                 x.SendTrackingAsync(
-                    transformedParams,
-                    trackingResponse.FaceFound,
+                    It.Is<PCTrackingInfo>(pc => 
+                        pc.FaceFound == trackingResponse.FaceFound && 
+                        pc.Parameters == transformedParams),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
@@ -310,10 +312,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             _transformationEngineMock.Verify(x => x.TransformData(It.IsAny<PhoneTrackingInfo>()), Times.Never);
             _vtubeStudioPCClientMock.Verify(x => 
-                x.SendTrackingAsync(
-                    It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<CancellationToken>()),
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
                 Times.Never);
         }
         
@@ -368,10 +367,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             _transformationEngineMock.Verify(x => x.TransformData(trackingResponse), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => 
-                x.SendTrackingAsync(
-                    It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<CancellationToken>()),
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
                 Times.Never);
         }
         
@@ -547,10 +543,7 @@ namespace SharpBridge.Tests.Services
             // Assert - No exception should be thrown and no tracking data should be sent
             _transformationEngineMock.Verify(x => x.TransformData(trackingResponse), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => 
-                x.SendTrackingAsync(
-                    It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<bool>(),
-                    It.IsAny<CancellationToken>()),
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
                 Times.Never);
         }
 
@@ -588,11 +581,10 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.TransformData(trackingResponse))
                 .Returns(transformedParams);
             
-            // Setup SendTrackingAsync to throw an exception
+            // Setup SendTrackingAsync to throw an exception with PCTrackingInfo parameter
             _vtubeStudioPCClientMock.Setup(x => 
                 x.SendTrackingAsync(
-                    transformedParams, 
-                    trackingResponse.FaceFound, 
+                    It.IsAny<PCTrackingInfo>(),
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new WebSocketException("Test exception"));
             
@@ -613,10 +605,7 @@ namespace SharpBridge.Tests.Services
             // Assert - Verify that the transform was called but exception was handled
             _transformationEngineMock.Verify(x => x.TransformData(trackingResponse), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => 
-                x.SendTrackingAsync(
-                    transformedParams,
-                    trackingResponse.FaceFound,
-                    It.IsAny<CancellationToken>()),
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
                 Times.Once);
         }
     }

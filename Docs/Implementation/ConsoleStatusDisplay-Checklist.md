@@ -61,7 +61,7 @@ This checklist tracks the implementation status of the console status display sy
   }
   ```
 
-- [ ] Refactor current logic that collects TrackingParams and FaceFound separately to use this new file  
+- [x] Refactor current logic that collects TrackingParams and FaceFound separately to use this new file  
 
 ## Phase 2: Service Statistics Implementation
 

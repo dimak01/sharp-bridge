@@ -48,12 +48,11 @@ namespace SharpBridge.Interfaces
         Task<int> DiscoverPortAsync(CancellationToken cancellationToken);
         
         /// <summary>
-        /// Sends tracking parameters to VTube Studio
+        /// Sends tracking data to VTube Studio
         /// </summary>
-        /// <param name="parameters">The parameters to send</param>
-        /// <param name="faceFound">Whether a face is detected</param>
+        /// <param name="trackingData">The tracking data to send</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Task representing the asynchronous operation</returns>
-        Task SendTrackingAsync(IEnumerable<TrackingParam> parameters, bool faceFound, CancellationToken cancellationToken);
+        Task SendTrackingAsync(PCTrackingInfo trackingData, CancellationToken cancellationToken);
     }
 } 
