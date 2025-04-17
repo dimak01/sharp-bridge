@@ -221,7 +221,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var cancellationToken = CancellationToken.None;
-            var trackingResponse = new TrackingResponse 
+            var trackingResponse = new PhoneTrackingInfo 
             { 
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
@@ -308,7 +308,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(50);
             
             // Assert
-            _transformationEngineMock.Verify(x => x.TransformData(It.IsAny<TrackingResponse>()), Times.Never);
+            _transformationEngineMock.Verify(x => x.TransformData(It.IsAny<PhoneTrackingInfo>()), Times.Never);
             _vtubeStudioPCClientMock.Verify(x => 
                 x.SendTrackingAsync(
                     It.IsAny<IEnumerable<TrackingParam>>(),
@@ -322,7 +322,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var cancellationToken = CancellationToken.None;
-            var trackingResponse = new TrackingResponse 
+            var trackingResponse = new PhoneTrackingInfo 
             { 
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
@@ -504,7 +504,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var cancellationToken = CancellationToken.None;
-            var trackingResponse = new TrackingResponse 
+            var trackingResponse = new PhoneTrackingInfo 
             { 
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
@@ -559,7 +559,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var cancellationToken = CancellationToken.None;
-            var trackingResponse = new TrackingResponse 
+            var trackingResponse = new PhoneTrackingInfo 
             { 
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()

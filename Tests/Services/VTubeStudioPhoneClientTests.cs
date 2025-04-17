@@ -177,7 +177,7 @@ namespace SharpBridge.Tests.Services
             };
             
             // Create expected tracking data with EyeRight (matching our updated model)
-            var expectedData = new TrackingResponse
+            var expectedData = new PhoneTrackingInfo
             {
                 Timestamp = 12345,
                 Hotkey = 0,
@@ -214,7 +214,7 @@ namespace SharpBridge.Tests.Services
             // Create the receiver and track event raising
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
             var eventWasRaised = false;
-            TrackingResponse receivedData = null;
+            PhoneTrackingInfo receivedData = null;
             
             client.TrackingDataReceived += (sender, data) => 
             {
@@ -259,7 +259,7 @@ namespace SharpBridge.Tests.Services
             
             // First provide invalid JSON data, then valid data
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
-            var validData = new TrackingResponse { FaceFound = true };
+            var validData = new PhoneTrackingInfo { FaceFound = true };
             var validJson = JsonSerializer.Serialize(validData);
             var validJsonBytes = Encoding.UTF8.GetBytes(validJson);
             
@@ -399,7 +399,7 @@ namespace SharpBridge.Tests.Services
                     {
                         dataReceived = true;
                         // Valid tracking data after exception
-                        var validData = new TrackingResponse { FaceFound = true };
+                        var validData = new PhoneTrackingInfo { FaceFound = true };
                         var validJson = JsonSerializer.Serialize(validData);
                         return new UdpReceiveResult(Encoding.UTF8.GetBytes(validJson), new System.Net.IPEndPoint(0, 0));
                     }
@@ -468,7 +468,7 @@ namespace SharpBridge.Tests.Services
                     {
                         dataReceived = true;
                         // Valid tracking data after exception
-                        var validData = new TrackingResponse { FaceFound = true };
+                        var validData = new PhoneTrackingInfo { FaceFound = true };
                         var validJson = JsonSerializer.Serialize(validData);
                         return new UdpReceiveResult(Encoding.UTF8.GetBytes(validJson), new System.Net.IPEndPoint(0, 0));
                     }
@@ -578,7 +578,7 @@ namespace SharpBridge.Tests.Services
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
             
-            var validData = new TrackingResponse { FaceFound = true };
+            var validData = new PhoneTrackingInfo { FaceFound = true };
             var validJson = JsonSerializer.Serialize(validData);
             var jsonBytes = Encoding.UTF8.GetBytes(validJson);
             

@@ -13,7 +13,7 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Event raised when tracking data is received from iPhone
         /// </summary>
-        event EventHandler<TrackingResponse> TrackingDataReceived;
+        event EventHandler<PhoneTrackingInfo> TrackingDataReceived;
         
         /// <summary>
         /// Starts listening for tracking data from the iPhone

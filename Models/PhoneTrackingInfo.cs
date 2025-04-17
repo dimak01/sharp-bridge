@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using SharpBridge.Interfaces;
 
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Tracking data response from iPhone VTube Studio
+    /// Tracking data received from iPhone VTube Studio
     /// </summary>
-    public class TrackingResponse
+    public class PhoneTrackingInfo : IFormattableObject
     {
         /// <summary>Timestamp of the tracking data</summary>
         public ulong Timestamp { get; set; }

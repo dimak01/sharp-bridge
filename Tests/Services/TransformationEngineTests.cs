@@ -45,7 +45,7 @@ namespace SharpBridge.Tests.Services
                 await engine.LoadRulesAsync(filePath);
                 
                 // Create tracking data to test transformation
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     BlendShapes = new List<BlendShape>
@@ -107,7 +107,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var engine = new TransformationEngine();
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -143,7 +143,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = false, // Face not found
                     BlendShapes = new List<BlendShape>
@@ -192,7 +192,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     Position = new Coordinates { X = 0.1, Y = 0, Z = 0 },
@@ -245,7 +245,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     BlendShapes = new List<BlendShape>
@@ -295,7 +295,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     BlendShapes = new List<BlendShape>
@@ -347,7 +347,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     EyeLeft = new Coordinates { X = 0.1, Y = 0.2, Z = 0.3 },
@@ -402,7 +402,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     EyeLeft = null, // Null eye left
@@ -452,7 +452,7 @@ namespace SharpBridge.Tests.Services
                 var engine = new TransformationEngine();
                 await engine.LoadRulesAsync(filePath);
                 
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     EyeLeft = null,
@@ -630,7 +630,7 @@ namespace SharpBridge.Tests.Services
                 await engine.LoadRulesAsync(filePath);
                 
                 // Now create tracking data and try to transform it
-                var trackingData = new TrackingResponse
+                var trackingData = new PhoneTrackingInfo
                 {
                     FaceFound = true,
                     BlendShapes = new List<BlendShape>()

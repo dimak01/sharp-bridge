@@ -113,7 +113,7 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="trackingData">The tracking data to transform</param>
         /// <returns>Collection of transformed parameters</returns>
-        public IEnumerable<TrackingParam> TransformData(TrackingResponse trackingData)
+        public IEnumerable<TrackingParam> TransformData(PhoneTrackingInfo trackingData)
         {
             if (_rules.Count == 0 || !trackingData.FaceFound)
             {
@@ -154,7 +154,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Sets parameters on the expression from tracking data
         /// </summary>
-        private void SetParametersFromTrackingData(Expression expression, TrackingResponse trackingData)
+        private void SetParametersFromTrackingData(Expression expression, PhoneTrackingInfo trackingData)
         {
             // Add head position
             if (trackingData.Position != null)

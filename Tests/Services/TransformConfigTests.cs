@@ -26,7 +26,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0, Y = 0.5, Z = 0 }
@@ -53,7 +53,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0.3, Y = 0.2, Z = 0.1 }
@@ -82,7 +82,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0.5, Y = 0, Z = 0 }
@@ -109,7 +109,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -145,7 +145,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -178,7 +178,7 @@ namespace SharpBridge.Tests.Services
             await engine.LoadRulesAsync(_configPath);
             
             // Create extreme values that should trigger max clamping
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 1000, Y = 0, Z = 0 }, // Extreme rotation
@@ -223,7 +223,7 @@ namespace SharpBridge.Tests.Services
             await engine.LoadRulesAsync(_configPath);
             
             // Create extreme values that should trigger min clamping
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = -1000, Y = 0, Z = 0 }, // Extreme negative rotation
@@ -268,7 +268,7 @@ namespace SharpBridge.Tests.Services
             await engine.LoadRulesAsync(_configPath);
             
             // Create tracking data with missing values required by expressions
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 // No Position or Rotation
@@ -311,7 +311,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0.3, Y = 0.2, Z = 0.1 }
@@ -340,7 +340,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0.5, Z = 0 }
@@ -367,7 +367,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0, Z = 0.5 }
@@ -394,7 +394,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0.3, Y = 0, Z = 0 },
@@ -429,7 +429,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -462,7 +462,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -495,7 +495,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -532,7 +532,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -562,7 +562,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -592,7 +592,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -628,7 +628,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -658,7 +658,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -688,7 +688,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -723,7 +723,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -757,7 +757,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -787,7 +787,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -825,7 +825,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -861,7 +861,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -891,7 +891,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -926,7 +926,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -961,7 +961,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -996,7 +996,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -1034,7 +1034,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0, Y = 0.4, Z = 0 }
@@ -1062,7 +1062,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0.3, Y = 0, Z = 0 },
@@ -1096,7 +1096,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0, Y = 0, Z = 0.2 }
@@ -1124,7 +1124,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0.3, Y = 0, Z = 0 }
@@ -1152,7 +1152,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0.4, Z = 0 }
@@ -1180,7 +1180,7 @@ namespace SharpBridge.Tests.Services
             var engine = new TransformationEngine();
             await engine.LoadRulesAsync(_configPath);
             
-            var trackingData = new TrackingResponse
+            var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0, Z = 0.5 }

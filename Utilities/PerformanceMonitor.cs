@@ -20,7 +20,7 @@ namespace SharpBridge.Utilities
         private readonly Stopwatch _uptimeStopwatch = new Stopwatch();
         private DateTime _lastUiUpdate = DateTime.MinValue;
         private readonly object _lockObject = new object();
-        private TrackingResponse _lastFrame = null;
+        private PhoneTrackingInfo _lastFrame = null;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly int _uiUpdateIntervalMs;
         private Task _uiTask;
@@ -131,7 +131,7 @@ namespace SharpBridge.Utilities
         /// Process a new frame of tracking data
         /// </summary>
         /// <param name="frame">The tracking data frame</param>
-        public void ProcessFrame(TrackingResponse frame)
+        public void ProcessFrame(PhoneTrackingInfo frame)
         {
             if (frame == null) return;
             
@@ -298,7 +298,7 @@ namespace SharpBridge.Utilities
         /// <summary>Average frames per second since monitoring started</summary>
         public double AverageFps { get; set; }
         
-        /// <summary>The most recent tracking data frame</summary>
-        public TrackingResponse LastFrame { get; set; }
+        /// <summary>Last frame received</summary>
+        public PhoneTrackingInfo LastFrame { get; set; }
     }
 } 
