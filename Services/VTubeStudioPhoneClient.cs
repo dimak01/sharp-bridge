@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Sockets;
+using System.Collections.Generic;
 using SharpBridge.Models;
 using SharpBridge.Interfaces;
 using SharpBridge.Utilities;
@@ -13,16 +14,22 @@ namespace SharpBridge.Services;
 /// <summary>
 /// Client for receiving tracking data from VTube Studio on iPhone via UDP.
 /// </summary>
-public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
+public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProvider<PhoneTrackingInfo>, IDisposable
 {
     private readonly IUdpClientWrapper _udpClient;
     private readonly VTubeStudioPhoneClientConfig _config;
     private readonly JsonSerializerOptions _jsonOptions;
     
+    private long _totalFramesReceived = 0;
+    private long _failedFrames = 0;
+    private DateTime _startTime;
+    private PhoneTrackingInfo _lastTrackingData;
+    private string _status = "Initializing";
+    
     /// <summary>
     /// Event triggered when new tracking data is received.
     /// </summary>
-    public event EventHandler<TrackingResponse> TrackingDataReceived;
+    public event EventHandler<PhoneTrackingInfo> TrackingDataReceived;
     
     /// <summary>
     /// Initializes a new instance of the <see cref="VTubeStudioPhoneClient"/> class.
@@ -43,11 +50,41 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
         {
             PropertyNameCaseInsensitive = true
         };
+        
+        _startTime = DateTime.UtcNow;
     }
 
     public void Dispose()
     {
         _udpClient.Dispose();
+    }
+
+    /// <summary>
+    /// Gets the current service statistics
+    /// </summary>
+    public ServiceStats<PhoneTrackingInfo> GetServiceStats()
+    {
+        var counters = new Dictionary<string, long>
+        {
+            { "Total Frames", _totalFramesReceived },
+            { "Failed Frames", _failedFrames },
+            { "Uptime (seconds)", (long)(DateTime.UtcNow - _startTime).TotalSeconds }
+        };
+        
+        if (_lastTrackingData != null && _totalFramesReceived > 0)
+        {
+            var timeSinceStart = (DateTime.UtcNow - _startTime).TotalSeconds;
+            if (timeSinceStart > 0)
+            {
+                counters["FPS"] = (long)(_totalFramesReceived / timeSinceStart);
+            }
+        }
+        
+        return new ServiceStats<PhoneTrackingInfo>(
+            "Phone Client", 
+            _status,
+            _lastTrackingData,
+            counters);
     }
 
     /// <summary>
@@ -57,6 +94,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
     /// <returns>A task that completes when the operation is cancelled.</returns>
     public async Task RunAsync(CancellationToken cancellationToken)
     {
+        _status = "Running";
         var nextRequestTime = DateTime.UtcNow;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -89,15 +127,19 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
             }
             catch (SocketException ex)
             {
+                _status = $"Error: {ex.Message}";
                 Console.WriteLine($"Socket error in tracking receiver: {ex.Message}");
                 await Task.Delay(1000, cancellationToken);
             }
             catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
             {
+                _status = $"Error: {ex.Message}";
                 Console.WriteLine($"Error in tracking receiver: {ex.Message}");
                 await Task.Delay(1000, cancellationToken);
             }
         }
+        
+        _status = "Stopped";
     }
 
     /// <summary>
@@ -122,6 +164,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
         }
         catch (Exception ex)
         {
+            _status = $"Error sending request: {ex.Message}";
             Console.WriteLine($"Error sending tracking request: {ex.Message}");
         }
     }
@@ -135,15 +178,19 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
         try
         {
             var json = Encoding.UTF8.GetString(data);
-            var response = JsonSerializer.Deserialize<TrackingResponse>(json, _jsonOptions);
+            var response = JsonSerializer.Deserialize<PhoneTrackingInfo>(json, _jsonOptions);
 
             if (response != null)
             {
+                _totalFramesReceived++;
+                _lastTrackingData = response;
                 TrackingDataReceived?.Invoke(this, response);
             }
         }
         catch (Exception ex)
         {
+            _failedFrames++;
+            _status = $"Error processing data: {ex.Message}";
             Console.WriteLine($"Error processing received data: {ex.Message}");
         }
     }
