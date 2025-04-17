@@ -11,10 +11,17 @@ namespace SharpBridge.Services
     /// <summary>
     /// Dummy implementation of VTubeStudioPCClient that doesn't do any real work
     /// </summary>
-    public class VTubeStudioPCClient : IVTubeStudioPCClient
+    public class VTubeStudioPCClient : IVTubeStudioPCClient, IServiceStatsProvider<PCTrackingInfo>
     {
         private WebSocketState _state = WebSocketState.None;
         private bool _isDisposed;
+        private DateTime _startTime;
+        private int _messagesSent;
+        private int _lastSuccessfulSend;
+        private PCTrackingInfo _lastTrackingData;
+        private int _connectionAttempts;
+        private int _failedConnections;
+        private int _lastSuccessfulConnection;
         
         /// <summary>
         /// Gets the current state of the WebSocket connection
@@ -27,6 +34,7 @@ namespace SharpBridge.Services
         public VTubeStudioPCClient()
         {
             Console.WriteLine("Creating dummy VTubeStudioPCClient");
+            _startTime = DateTime.Now;
         }
         
         /// <summary>
@@ -35,6 +43,8 @@ namespace SharpBridge.Services
         public Task ConnectAsync(CancellationToken cancellationToken)
         {
             Console.WriteLine("Dummy VTubeStudioPCClient - Connecting");
+            _connectionAttempts++;
+            _lastSuccessfulConnection = Environment.TickCount;
             _state = WebSocketState.Open;
             return Task.CompletedTask;
         }
@@ -77,12 +87,37 @@ namespace SharpBridge.Services
         /// <returns>Task representing the asynchronous operation</returns>
         public Task SendTrackingAsync(PCTrackingInfo trackingData, CancellationToken cancellationToken)
         {
+            _messagesSent++;
+            _lastSuccessfulSend = Environment.TickCount;
+            _lastTrackingData = trackingData;
             // Only log occasionally to avoid console spam
             if (DateTime.Now.Second % 5 == 0)
             {
                 Console.WriteLine($"Dummy VTubeStudioPCClient - Sending tracking data. Face found: {trackingData.FaceFound}");
             }
             return Task.CompletedTask;
+        }
+        
+        /// <summary>
+        /// Gets the current service statistics
+        /// </summary>
+        /// <returns>Service statistics for the PC client</returns>
+        public ServiceStats<PCTrackingInfo> GetServiceStats()
+        {
+            var counters = new Dictionary<string, long>
+            {
+                ["MessagesSent"] = _messagesSent,
+                ["ConnectionAttempts"] = _connectionAttempts,
+                ["FailedConnections"] = _failedConnections,
+                ["UptimeSeconds"] = (int)(DateTime.Now - _startTime).TotalSeconds
+            };
+            
+            return new ServiceStats<PCTrackingInfo>(
+                serviceName: "VTubeStudioPCClient",
+                status: _state.ToString(),
+                currentEntity: _lastTrackingData,
+                counters: counters
+            );
         }
         
         /// <summary>

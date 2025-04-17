@@ -129,7 +129,7 @@ This checklist tracks the implementation status of the console status display sy
 
 ### Update Service Classes to Implement IServiceStatsProvider
 - [x] Update `VTubeStudioPhoneClient` to implement `IServiceStatsProvider<PhoneTrackingInfo>`
-- [ ] Update `VTubeStudioPCClient` to implement `IServiceStatsProvider<PCTrackingInfo>`
+- [x] Update `VTubeStudioPCClient` to implement `IServiceStatsProvider<PCTrackingInfo>`
 
 ## Phase 3: Formatters and Renderer Implementation
 
