@@ -1,0 +1,222 @@
+# Console Status Display Implementation Checklist
+
+## Overview
+This checklist tracks the implementation status of the console status display system as outlined in the `ConsoleStatusDisplay.md` document. It breaks down each task into concrete steps and serves as a reference during implementation.
+
+## Phase 1: Domain Model Refactoring
+
+### Create Marker Interface
+- [ ] Create `Interfaces/IFormattableObject.cs`
+  ```csharp
+  namespace SharpBridge.Interfaces
+  {
+      /// <summary>
+      /// Marker interface for objects that can be formatted for display
+      /// </summary>
+      public interface IFormattableObject
+      {
+      }
+  }
+  ```
+
+### Rename TrackingResponse to PhoneTrackingInfo
+- [ ] Rename `Models/TrackingResponse` into `Models/PhoneTrackingInfo.cs` and make sure it implements `IFormattableObject`
+  ```csharp
+  namespace SharpBridge.Models
+  {
+      /// <summary>
+      /// Tracking data received from iPhone VTube Studio
+      /// </summary>
+      public class PhoneTrackingInfo : IFormattableObject
+      {
+          // properties from TrackingResponse remains untouched
+      }
+  }
+  ```
+- [ ] Update all references to `TrackingResponse` to use `PhoneTrackingInfo`
+  - [ ] Application Orchestrator
+  - [ ] Tests
+  - [ ] Any other references
+
+### Create PCTrackingInfo Class
+- [ ] Create `Models/PCTrackingInfo.cs` implementing `IFormattableObject`
+  ```csharp
+  namespace SharpBridge.Models
+  {
+      /// <summary>
+      /// Tracking data sent to VTube Studio PC
+      /// </summary>
+      public class PCTrackingInfo : IFormattableObject
+      {
+          /// <summary>
+          /// Parameters to send to VTube Studio PC
+          /// </summary>
+          public IEnumerable<TrackingParam> Parameters { get; set; }
+          
+          /// <summary>
+          /// Whether a face is detected
+          /// </summary>
+          public bool FaceFound { get; set; }
+      }
+  }
+  ```
+
+- [ ] Refactor current logic that collects TrackingParams and FaceFound separately to use this new file  
+
+## Phase 2: Service Statistics Implementation
+
+### Create ServiceStats Container
+- [ ] Create `Models/ServiceStats.cs`
+  ```csharp
+  namespace SharpBridge.Models
+  {
+      /// <summary>
+      /// Container for service statistics
+      /// </summary>
+      public class ServiceStats<T> where T : IFormattableObject
+      {
+          /// <summary>
+          /// The name of the service
+          /// </summary>
+          public string ServiceName { get; }
+          
+          /// <summary>
+          /// The current status of the service
+          /// </summary>
+          public string Status { get; }
+          
+          /// <summary>
+          /// Service-specific counters and metrics
+          /// </summary>
+          public Dictionary<string, long> Counters { get; }
+          
+          /// <summary>
+          /// The current entity being processed by the service
+          /// </summary>
+          public T CurrentEntity { get; }
+          
+          /// <summary>
+          /// Creates a new instance of ServiceStats
+          /// </summary>
+          public ServiceStats(string serviceName, string status, T currentEntity, Dictionary<string, long> counters = null)
+          {
+              ServiceName = serviceName;
+              Status = status;
+              CurrentEntity = currentEntity;
+              Counters = counters ?? new Dictionary<string, long>();
+          }
+      }
+  }
+  ```
+
+### Create Service Stats Provider Interface
+- [ ] Create `Interfaces/IServiceStatsProvider.cs`
+  ```csharp
+  namespace SharpBridge.Interfaces
+  {
+      /// <summary>
+      /// Interface for components that provide service statistics
+      /// </summary>
+      public interface IServiceStatsProvider<T> where T : IFormattableObject
+      {
+          /// <summary>
+          /// Gets the current service statistics
+          /// </summary>
+          ServiceStats<T> GetServiceStats();
+      }
+  }
+  ```
+
+### Update Service Classes to Implement IServiceStatsProvider
+- [ ] Update `VTubeStudioPhoneClient` to implement `IServiceStatsProvider<PhoneTrackingInfo>`
+- [ ] Update `VTubeStudioPCClient` to implement `IServiceStatsProvider<PCTrackingInfo>`
+
+## Phase 3: Formatters and Renderer Implementation
+
+### Create Formatter Interface and Verbosity Enum
+- [ ] Create `Interfaces/IFormatter.cs`
+  ```csharp
+  namespace SharpBridge.Interfaces
+  {
+      /// <summary>
+      /// Defines verbosity levels for formatting
+      /// </summary>
+      public enum VerbosityLevel
+      {
+          Basic,
+          Normal,
+          Detailed
+      }
+      
+      /// <summary>
+      /// Interface for formatters that convert entities to display strings
+      /// </summary>
+      public interface IFormatter<T> where T : IFormattableObject
+      {
+          /// <summary>
+          /// Formats an entity into a display string
+          /// </summary>
+          string Format(T entity, VerbosityLevel verbosity);
+      }
+  }
+  ```
+
+### Create Concrete Formatters
+- [ ] Create `Utilities/PhoneTrackingInfoFormatter.cs`
+  ```csharp
+  namespace SharpBridge.Utilities
+  {
+      /// <summary>
+      /// Formatter for PhoneTrackingInfo objects
+      /// </summary>
+      public class PhoneTrackingInfoFormatter : IFormatter<PhoneTrackingInfo>
+      {
+          // Implementation
+      }
+  }
+  ```
+- [ ] Create `Utilities/PCTrackingInfoFormatter.cs`
+
+### Create Console Renderer
+- [ ] Create `Utilities/ConsoleRenderer.cs`
+  ```csharp
+  namespace SharpBridge.Utilities
+  {
+      /// <summary>
+      /// Centralized console rendering utility
+      /// </summary>
+      public static class ConsoleRenderer
+      {
+          // Implementation
+      }
+  }
+  ```
+
+## Phase 4: Application Logic Refactoring
+
+### Move Application Loop Logic
+- [ ] Update `VTubeStudioPhoneClient.RunAsync()` to focus on receiving data
+- [ ] Enhance `ApplicationOrchestrator.RunUntilCancelled()` to handle all application loop logic
+
+### Update OnTrackingDataReceived to Use Console Renderer
+- [ ] Modify `ApplicationOrchestrator.OnTrackingDataReceived()` method to collect stats and update the console
+
+## Testing and Integration
+
+### Add Unit Tests
+- [ ] Test `ServiceStats<T>` class
+- [ ] Test formatters
+- [ ] Test console renderer
+- [ ] Test updated application orchestrator logic
+
+### Manual Testing
+- [ ] Test with different verbosity levels
+- [ ] Test with different tracking data scenarios
+- [ ] Test error handling
+
+## Final Cleanup and Documentation
+
+- [ ] Update XML documentation comments
+- [ ] Remove old console output code
+- [ ] Update any remaining references to old class names
+- [ ] Add keyboard command to cycle through verbosity levels (if time permits) 
