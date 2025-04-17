@@ -8,14 +8,14 @@
     },
     {
       "name": "FaceAngleX",
-      "func": "(((HeadRotX * ((90 - math::abs(HeadRotY)) / 90)) + (HeadRotZ * (HeadRotY / 45))))",
+      "func": "(((HeadRotX * ((90 - Abs(HeadRotY)) / 90)) + (HeadRotZ * (HeadRotY / 45))))",
       "min": -40.0,
       "max": 40.0,
       "defaultValue": 0
     },
     {
       "name": "FaceAngleZ",
-      "func": "((HeadRotZ * ((90 - math::abs(HeadRotY)) / 90)) - (HeadRotX * (HeadRotY / 45)))",
+      "func": "((HeadRotZ * ((90 - Abs(HeadRotY)) / 90)) - (HeadRotX * (HeadRotY / 45)))",
       "min": -40.0,
       "max": 40.0,
       "defaultValue": 0

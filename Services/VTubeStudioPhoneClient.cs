@@ -82,6 +82,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IDisposable
                 }
                 catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
+                    Console.WriteLine($"Socket error in tracking receiver: Timed out");
                     // This is just a timeout, not a cancellation request - continue
                     continue;
                 }
