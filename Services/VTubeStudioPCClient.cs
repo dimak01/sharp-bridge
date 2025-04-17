@@ -70,14 +70,17 @@ namespace SharpBridge.Services
         }
         
         /// <summary>
-        /// Sends tracking parameters to VTube Studio (dummy implementation)
+        /// Sends tracking data to VTube Studio (dummy implementation)
         /// </summary>
-        public Task SendTrackingAsync(IEnumerable<TrackingParam> parameters, bool faceFound, CancellationToken cancellationToken)
+        /// <param name="trackingData">The tracking data to send</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>Task representing the asynchronous operation</returns>
+        public Task SendTrackingAsync(PCTrackingInfo trackingData, CancellationToken cancellationToken)
         {
             // Only log occasionally to avoid console spam
             if (DateTime.Now.Second % 5 == 0)
             {
-                Console.WriteLine($"Dummy VTubeStudioPCClient - Sending tracking data. Face found: {faceFound}");
+                Console.WriteLine($"Dummy VTubeStudioPCClient - Sending tracking data. Face found: {trackingData.FaceFound}");
             }
             return Task.CompletedTask;
         }
