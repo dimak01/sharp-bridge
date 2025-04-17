@@ -56,23 +56,23 @@ namespace SharpBridge.Utilities
                 _lastUpdate = now;
                 var actualVerbosity = verbosity ?? _currentVerbosity;
                 
-                var sb = new StringBuilder();
-                sb.AppendLine($"=== SharpBridge Status (Verbosity: {actualVerbosity}) ===");
-                sb.AppendLine($"Current Time: {DateTime.Now:HH:mm:ss}");
-                sb.AppendLine();
+                var lines = new List<string>();
+                lines.Add($"=== SharpBridge Status (Verbosity: {actualVerbosity}) ===");
+                lines.Add($"Current Time: {DateTime.Now:HH:mm:ss}");
+                lines.Add(string.Empty);
                 
                 foreach (var stat in stats.Where(s => s != null))
                 {
-                    sb.AppendLine($"=== {stat.ServiceName} ({stat.Status}) ===");
+                    lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
                     
                     if (actualVerbosity >= VerbosityLevel.Normal && stat.Counters.Any())
                     {
-                        sb.AppendLine("Metrics:");
+                        lines.Add("Metrics:");
                         foreach (var counter in stat.Counters)
                         {
-                            sb.AppendLine($"  {counter.Key}: {counter.Value}");
+                            lines.Add($"  {counter.Key}: {counter.Value}");
                         }
-                        sb.AppendLine();
+                        lines.Add(string.Empty);
                     }
                     
                     if (stat.CurrentEntity != null)
@@ -86,21 +86,26 @@ namespace SharpBridge.Utilities
                                 string formattedOutput = (string)formatterMethod.Invoke(
                                     formatter, 
                                     new object[] { stat.CurrentEntity, actualVerbosity });
-                                sb.AppendLine(formattedOutput);
+                                
+                                // Split formatted output into lines and add each one
+                                foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+                                {
+                                    lines.Add(line);
+                                }
                             }
                         }
                         else
                         {
-                            sb.AppendLine($"[No formatter registered for {entityType.Name}]");
+                            lines.Add($"[No formatter registered for {entityType.Name}]");
                         }
                     }
                     
-                    sb.AppendLine();
+                    lines.Add(string.Empty);
                 }
                 
-                sb.AppendLine("Press Ctrl+C to exit");
+                lines.Add("Press Ctrl+C to exit");
                 
-                ConsoleDisplayAction(sb.ToString());
+                ConsoleDisplayAction(lines.ToArray());
             }
         }
         
@@ -119,32 +124,55 @@ namespace SharpBridge.Utilities
         }
         
         // Reusing PerformanceMonitor's console display technique
-        private static void ConsoleDisplayAction(string output)
+        private static void ConsoleDisplayAction(string[] outputLines)
         {
             try
             {
-
                 Console.SetCursorPosition(0, 0);
-                Console.Write(output);
-
-                int currentLine = Console.CursorTop;
-                int currentCol = Console.CursorLeft;
-
+                
+                int currentLine = 0;
+                int windowWidth = Console.WindowWidth - 1;
+                
+                // Write each line and clear the remainder of each line
+                foreach (var line in outputLines)
+                {
+                    Console.SetCursorPosition(0, currentLine);
+                    Console.Write(line);
+                    
+                    // Clear the rest of this line (in case previous content was longer)
+                    int remainingSpace = windowWidth - line.Length;
+                    if (remainingSpace > 0)
+                    {
+                        Console.Write(new string(' ', remainingSpace));
+                    }
+                    
+                    currentLine++;
+                    
+                    // Ensure we don't exceed console boundaries
+                    if (currentLine >= Console.WindowHeight - 1)
+                        break;
+                }
+                
+                // Clear any remaining lines that might have had content before
                 int windowHeight = Console.WindowHeight;
                 for (int i = currentLine; i < windowHeight - 1; i++)
                 {
                     Console.SetCursorPosition(0, i);
-                    Console.Write(new string(' ', Console.WindowWidth - 1));
+                    Console.Write(new string(' ', windowWidth));
                 }
-
-                Console.SetCursorPosition(currentCol, currentLine);
+                
+                // Reset cursor position to the end of our content
+                Console.SetCursorPosition(0, currentLine);
             }
             catch (Exception)
             {
                 try
                 {
                     Console.Clear();
-                    Console.Write(output);
+                    foreach (var line in outputLines)
+                    {
+                        Console.WriteLine(line);
+                    }
                 }
                 catch
                 {
