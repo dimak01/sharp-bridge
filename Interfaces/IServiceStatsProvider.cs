@@ -10,6 +10,6 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Gets the current service statistics
         /// </summary>
-        ServiceStats<T> GetServiceStats();
+        IServiceStats<T> GetServiceStats();
     }
 } 

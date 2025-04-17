@@ -8,16 +8,24 @@ This project is inspired by and references [rusty-bridge](https://github.com/ovR
 
 ## High-Level Architecture
 
-The application follows a simple data flow architecture:
+The application follows an orchestrated data flow architecture:
 
-1. **Tracking Data Receiver** - Listens for UDP packets from iPhone VTube Studio
-2. **Transformation Engine** - Processes tracking data according to configuration rules
-3. **VTube Studio Client** - Sends transformed data to PC VTube Studio via WebSocket
+1. **VTubeStudioPhoneClient** - Receives tracking data from iPhone VTube Studio via UDP
+2. **TransformationEngine** - Processes tracking data according to configuration rules
+3. **VTubeStudioPCClient** - Sends transformed data to PC VTube Studio via WebSocket
+4. **ApplicationOrchestrator** - Coordinates the flow between all components
 
 ```
+                                        ┌───────────────────────┐
+                                        │                       │
+                                        │  ApplicationOrchestrator  │
+                                        │                       │
+                                        └───────────┬───────────┘
+                                                    │ coordinates
+                                                    ▼
 ┌─────────────┐    UDP    ┌─────────────────┐            ┌────────────────────┐   WebSocket   ┌─────────────┐
-│ iPhone      │ ───────► │ Tracking Data   │ ───────► │ Transformation     │ ────────────► │ VTube      │
-│ VTube Studio│           │ Receiver        │            │ Engine             │                │ Studio (PC) │
+│ iPhone      │ ───────► │ VTubeStudio     │ ───────► │ Transformation     │ ────────────► │ VTube      │
+│ VTube Studio│           │ PhoneClient     │            │ Engine             │                │ Studio (PC) │
 └─────────────┘           └─────────────────┘            └────────────────────┘                └─────────────┘
                                                                  ▲
                                                                  │
@@ -31,53 +39,52 @@ The application follows a simple data flow architecture:
 
 ### Completed Components
 
-1. **TrackingReceiver** (fully implemented)
+1. **VTubeStudioPhoneClient** (fully implemented)
    - Receives tracking data from iPhone's VTube Studio via UDP
    - Sends periodic tracking requests to iPhone
    - Processes and raises events for new tracking data
    - Handles network and deserialization errors
+   - Implements IServiceStatsProvider for statistics reporting
    - 100% test coverage with comprehensive unit tests
 
-2. **Command-Line Interface** (fully implemented)
+2. **VTubeStudioPCClient** (fully implemented)
+   - Communicates with VTube Studio via WebSocket
+   - Handles authentication and parameter injection
+   - Manages connection state and reconnection
+   - Implements IServiceStatsProvider for statistics reporting
+
+3. **TransformationEngine** (fully implemented)
+   - Loads and validates transformation rules from JSON configuration
+   - Transforms tracking data according to mathematical expressions
+   - Applies min/max bounds to tracking parameters
+   - Features robust validation during rule loading
+   - Uses fail-fast error handling during transformation
+
+4. **ApplicationOrchestrator** (fully implemented)
+   - Coordinates data flow between all components
+   - Manages application lifecycle (initialization, operation, shutdown)
+   - Handles error conditions gracefully
+   - Processes events from VTubeStudioPhoneClient
+   - Forwards transformed data to VTubeStudioPCClient
+
+5. **Command-Line Interface** (fully implemented)
    - Uses System.CommandLine for declarative parameter definition
    - Supports all necessary configuration options
    - Includes interactive and non-interactive modes
    - Provides helpful error messages and usage information
 
-3. **Performance Monitor** (fully implemented)
-   - Displays real-time tracking statistics
-   - Shows FPS, connection status, and facial tracking data
-   - Provides visual representation of key facial expressions
-   - Updates continuously with minimal UI flicker
-
 ### In-Progress Components
 
-1. **Transformation Engine** (implemented with basic features)
-   - Loads and validates transformation rules from JSON configuration
-   - Transforms tracking data according to mathematical expressions
-   - Applies min/max bounds to tracking parameters
-   - Features robust validation during rule loading:
-     - Checks for syntax errors in expressions
-     - Validates min/max range constraints
-     - Skips invalid rules rather than failing silently
-   - Uses fail-fast error handling during transformation:
-     - Throws detailed exceptions for runtime evaluation errors
-     - Provides context about which rule failed and why
-     - Prevents silent failures with default values
-   - Comprehensive test coverage for both normal and error cases
-
-2. **VTube Studio Client** (planned)
-   - Will communicate with VTube Studio via WebSocket
-   - Will handle authentication and parameter injection
-   - Will manage connection state and reconnection
-
-3. **Bridge Service** (planned)
-   - Will coordinate data flow between components
-   - Will handle error conditions and shutdown
+1. **Console Status Display System** (in progress)
+   - Displays real-time statistics from all components
+   - Shows connection status, tracking data, and performance metrics
+   - Implements formatters for different data types
+   - Supports different verbosity levels
+   - Uses centralized console rendering
 
 ## Core Interfaces
 
-1. **ITrackingReceiver** - Interface for receiving tracking data
+1. **IVTubeStudioPhoneClient** - Interface for receiving tracking data from the phone
    - Handles UDP socket communication
    - Parses tracking data
    - Provides events for new data
@@ -92,43 +99,48 @@ The application follows a simple data flow architecture:
    - Applies expressions to track data
    - Manages parameter boundaries
 
-4. **IVTubeStudioClient** - Interface for VTube Studio communication
+4. **IVTubeStudioPCClient** - Interface for VTube Studio communication
    - Manages WebSocket connection
    - Handles authentication
    - Discovers VTube Studio port
    - Sends parameters
 
-5. **IBridgeService** - Primary service that coordinates the flow
-   - Connects the tracking receiver to transformation engine
-   - Forwards transformed parameters to VTube Studio
+5. **IApplicationOrchestrator** - Primary service that coordinates the flow
+   - Initializes and connects all components 
+   - Manages component lifecycle (initialization, operation, shutdown)
+   - Processes tracking data from phone to PC
+
+6. **IServiceStatsProvider<T>** - Interface for components that provide statistics
+   - Returns structured statistics about component state
+   - Enables centralized monitoring of application health
+   - Supports console status display
 
 ## Application Organization
 
 The application is organized into several key areas:
 
-1. **Models** - Data structures for tracking data, configuration, and parameters
+1. **Models** - Data structures for tracking data, configuration, parameters, and statistics
 2. **Interfaces** - Well-defined contracts between components
 3. **Services** - Concrete implementations of interfaces
-4. **Utilities** - Helper classes like command-line parsing
+4. **Utilities** - Helper classes for formatting, console rendering, etc.
 
 ## Code Structure
 
 The code follows clean architecture principles:
-- Each component has clear responsibilities
-- Services communicate via well-defined interfaces
-- Resource management follows IDisposable pattern
-- Error handling is comprehensive and consistent
-- Methods follow single-responsibility principle
+- Components communicate via well-defined interfaces
+- Separation of concerns with clear responsibilities
+- Centralized orchestration for application flow
+- Consistent error handling and resource management
+- Standardized statistics reporting
 
 ## Key Design Decisions
 
-1. **Component Isolation** - Components communicate through well-defined interfaces
-2. **Clean Architecture** - Separation of concerns with clear boundaries
-3. **Dependency Injection** - Services depend on abstractions, not implementations
-4. **Command Pattern** - Command-line handling uses declarative definitions
-5. **Asynchronous Operations** - Leveraging C# async/await for non-blocking I/O
-6. **Event-Driven Design** - Using events to propagate tracking data changes
-7. **Resource Management** - Careful handling of I/O resources with proper cleanup
+1. **Centralized Orchestration** - ApplicationOrchestrator manages all component interactions
+2. **Statistic Standardization** - Consistent approach to reporting component status
+3. **Clean Architecture** - Separation of concerns with clear boundaries
+4. **Dependency Injection** - Services depend on abstractions, not implementations
+5. **Event-Driven Design** - Using events to propagate tracking data changes
+6. **Resource Management** - Careful handling of I/O resources with proper cleanup
 
 ## Testing Strategy
 
@@ -140,16 +152,16 @@ The project implements a comprehensive testing strategy:
 
 ## Future Enhancements
 
-1. **Transformation Engine** - Implementation of mathematical expression evaluation
-2. **VTube Studio Integration** - WebSocket communication with VTube Studio
-3. **Configuration UI** - Graphical interface for editing transformation rules
-4. **Parameter Visualization** - Live preview of parameter values
-5. **Profile Management** - Support for multiple configuration profiles
+1. **Advanced Console UI** - Interactive console interface with real-time visualization
+2. **Configuration UI** - Graphical interface for editing transformation rules
+3. **Profile Management** - Support for multiple configuration profiles
+4. **Performance Optimizations** - Benchmarking and optimizing critical paths
+5. **Extended Statistics** - More detailed performance and error metrics
 
 ## Technology Stack
 
 - **.NET 8.0** - Modern, cross-platform .NET implementation
 - **System.CommandLine** - For declarative command-line parsing
 - **System.Text.Json** - For JSON serialization/deserialization
-- **System.Net.WebSockets** - For WebSocket communication (planned)
+- **System.Net.WebSockets** - For WebSocket communication
 - **Moq & FluentAssertions** - For comprehensive unit testing 

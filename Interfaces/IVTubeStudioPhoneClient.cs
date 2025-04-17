@@ -16,10 +16,16 @@ namespace SharpBridge.Interfaces
         event EventHandler<PhoneTrackingInfo> TrackingDataReceived;
         
         /// <summary>
-        /// Starts listening for tracking data from the iPhone
+        /// Sends a tracking request to the iPhone
+        /// </summary>
+        /// <returns>Task representing the asynchronous operation</returns>
+        Task SendTrackingRequestAsync();
+        
+        /// <summary>
+        /// Attempts to receive a single response from the iPhone
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Task representing the asynchronous operation</returns>
-        Task RunAsync(CancellationToken cancellationToken);
+        /// <returns>True if data was received, false on timeout</returns>
+        Task<bool> ReceiveResponseAsync(CancellationToken cancellationToken);
     }
 } 

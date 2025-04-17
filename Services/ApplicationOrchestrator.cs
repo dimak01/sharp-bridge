@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,9 +18,11 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPCClient _vtubeStudioPCClient;
         private readonly IVTubeStudioPhoneClient _vtubeStudioPhoneClient;
         private readonly ITransformationEngine _transformationEngine;
+        private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         
         private bool _isInitialized;
         private bool _isDisposed;
+        private string _status = "Initializing";
         
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -27,14 +30,17 @@ namespace SharpBridge.Services
         /// <param name="vtubeStudioPCClient">The VTube Studio PC client</param>
         /// <param name="vtubeStudioPhoneClient">The VTube Studio phone client</param>
         /// <param name="transformationEngine">The transformation engine</param>
+        /// <param name="phoneConfig">Configuration for the phone client</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
-            ITransformationEngine transformationEngine)
+            ITransformationEngine transformationEngine,
+            VTubeStudioPhoneClientConfig phoneConfig = null)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
+            _phoneConfig = phoneConfig;
         }
 
         /// <summary>
@@ -148,10 +154,65 @@ namespace SharpBridge.Services
         
         private async Task RunUntilCancelled(CancellationToken cancellationToken)
         {
-            await Task.WhenAll(
-                _vtubeStudioPhoneClient.RunAsync(cancellationToken),
-                Task.Delay(Timeout.Infinite, cancellationToken)
-            );
+            _status = "Running";
+            Console.WriteLine("Starting main application loop...");
+            
+            // Initialize timing variables
+            var nextRequestTime = DateTime.UtcNow;
+            var nextStatusUpdateTime = DateTime.UtcNow;
+            
+            try
+            {
+                // Send initial tracking request
+                await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        // Check if it's time to send another tracking request
+                        if (DateTime.UtcNow >= nextRequestTime)
+                        {
+                            await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                            
+                            // Set the next request time based on phone configuration
+                            double requestIntervalSeconds = _phoneConfig?.RequestIntervalSeconds ?? 5.0;
+                            nextRequestTime = DateTime.UtcNow.AddSeconds(requestIntervalSeconds);
+                        }
+                        
+                        // Try to receive tracking data
+                        bool dataReceived = await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
+                        
+                        // Check if it's time to update console status
+                        if (DateTime.UtcNow >= nextStatusUpdateTime)
+                        {
+                            UpdateConsoleStatus();
+                            nextStatusUpdateTime = DateTime.UtcNow.AddSeconds(0.1f); // Update status every second
+                        }
+                        
+                        // If no data was received, add a small delay to prevent CPU spinning
+                        if (!dataReceived)
+                        {
+                            await Task.Delay(10, cancellationToken);
+                        }
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
+                    {
+                        _status = $"Error: {ex.Message}";
+                        Console.WriteLine($"Error in application loop: {ex.Message}");
+                        await Task.Delay(1000, cancellationToken); // Add delay on error before retrying
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _status = "Cancellation requested";
+                Console.WriteLine("Operation was canceled, shutting down...");
+            }
+            finally
+            {
+                _status = "Stopped";
+            }
         }
         
         private async Task PerformCleanup(CancellationToken cancellationToken)
@@ -172,6 +233,33 @@ namespace SharpBridge.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error closing VTube Studio connection: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Updates the console with the current status of all components
+        /// </summary>
+        private void UpdateConsoleStatus()
+        {
+            try
+            {
+                // Get statistics from both clients
+                var phoneStats = (_vtubeStudioPhoneClient as IServiceStatsProvider<PhoneTrackingInfo>)?.GetServiceStats();
+                var pcStats = (_vtubeStudioPCClient as IServiceStatsProvider<PCTrackingInfo>)?.GetServiceStats();
+                
+                // Create a list of all service stats to display
+                var allStats = new List<IServiceStats<IFormattableObject>>();
+                
+                // Add stats to the list - this works because of covariance with the 'out' parameter in IServiceStats<out T>
+                if (phoneStats != null) allStats.Add(phoneStats);
+                if (pcStats != null) allStats.Add(pcStats);
+                
+                // Display all stats using our new covariance-enabled Update method
+                ConsoleRenderer.UpdateMultiple(allStats);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating console status: {ex.Message}");
             }
         }
 
