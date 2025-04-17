@@ -614,7 +614,7 @@ namespace SharpBridge.Tests.Services
             var ruleContent = @"[
                 {
                     ""name"": ""BadRule"",
-                    ""func"": ""If(0 > 1, 1, 1 \/ 0)"",  // This will cause a divide by zero error when evaluated
+                    ""func"": ""If(0 > 1, 1, 1 / 0)"", 
                     ""min"": 0,
                     ""max"": 100,
                     ""defaultValue"": 0
@@ -687,7 +687,7 @@ namespace SharpBridge.Tests.Services
                     ""name"": ""InvalidRangeRule"",
                     ""func"": ""x + 1"",
                     ""min"": 100,
-                    ""max"": 0,  // min > max, should trigger validation error
+                    ""max"": 0,  
                     ""defaultValue"": 0
                 }
             ]";
@@ -701,9 +701,9 @@ namespace SharpBridge.Tests.Services
                 var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                     async () => await engine.LoadRulesAsync(filePath));
                 
-                // Verify the exception details
-                exception.Message.Should().Contain("InvalidRangeRule");
-                exception.Message.Should().Contain("min must be less than or equal to max");
+                // Verify the exception details 
+                exception.Message.Should().Contain("Failed to load 1 transformation rules.");
+                exception.Message.Should().Contain("Rule 'InvalidRangeRule' has Min value (100) greater than Max value (0)");
             }
             finally
             {
