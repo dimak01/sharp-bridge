@@ -62,7 +62,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     /// <summary>
     /// Gets the current service statistics
     /// </summary>
-    public ServiceStats<PhoneTrackingInfo> GetServiceStats()
+    public IServiceStats<PhoneTrackingInfo> GetServiceStats()
     {
         var counters = new Dictionary<string, long>
         {
@@ -88,65 +88,10 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     }
 
     /// <summary>
-    /// Starts listening for tracking data from the iPhone.
-    /// </summary>
-    /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <returns>A task that completes when the operation is cancelled.</returns>
-    public async Task RunAsync(CancellationToken cancellationToken)
-    {
-        _status = "Running";
-        var nextRequestTime = DateTime.UtcNow;
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            try
-            {
-                // Check if it's time to send another request
-                if (DateTime.UtcNow >= nextRequestTime)
-                {
-                    await SendTrackingRequestAsync();
-                    nextRequestTime = DateTime.UtcNow.AddSeconds(_config.RequestIntervalSeconds);
-                }
-
-                // Continuously try to receive data (with a short timeout)
-                try
-                {
-                    // Use a separate cancellation token with timeout to prevent blocking indefinitely
-                    using var receiveTimeoutCts = new CancellationTokenSource(_config.ReceiveTimeoutMs);
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeoutCts.Token);
-                    
-                    var result = await _udpClient.ReceiveAsync(linkedCts.Token);
-                    ProcessReceivedData(result.Buffer);
-                }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine($"Socket error in tracking receiver: Timed out");
-                    // This is just a timeout, not a cancellation request - continue
-                    continue;
-                }
-            }
-            catch (SocketException ex)
-            {
-                _status = $"Error: {ex.Message}";
-                Console.WriteLine($"Socket error in tracking receiver: {ex.Message}");
-                await Task.Delay(1000, cancellationToken);
-            }
-            catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
-            {
-                _status = $"Error: {ex.Message}";
-                Console.WriteLine($"Error in tracking receiver: {ex.Message}");
-                await Task.Delay(1000, cancellationToken);
-            }
-        }
-        
-        _status = "Stopped";
-    }
-
-    /// <summary>
     /// Sends a tracking request to the iPhone.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task SendTrackingRequestAsync()
+    public async Task SendTrackingRequestAsync()
     {
         try
         {
@@ -166,6 +111,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         {
             _status = $"Error sending request: {ex.Message}";
             Console.WriteLine($"Error sending tracking request: {ex.Message}");
+            throw; // Let the orchestrator handle this error
         }
     }
 
@@ -192,6 +138,36 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             _failedFrames++;
             _status = $"Error processing data: {ex.Message}";
             Console.WriteLine($"Error processing received data: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Attempts to receive a single response from the iPhone
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>True if data was received, false on timeout</returns>
+    public async Task<bool> ReceiveResponseAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Use a separate cancellation token with timeout to prevent blocking indefinitely
+            using var receiveTimeoutCts = new CancellationTokenSource(_config.ReceiveTimeoutMs);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeoutCts.Token);
+            
+            var result = await _udpClient.ReceiveAsync(linkedCts.Token);
+            ProcessReceivedData(result.Buffer);
+            return true;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // This is just a timeout, not a cancellation request
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _status = $"Error: {ex.Message}";
+            Console.WriteLine($"Error receiving data: {ex.Message}");
+            return false;
         }
     }
 } 

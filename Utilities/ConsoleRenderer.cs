@@ -44,7 +44,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Updates the console display with service statistics
         /// </summary>
-        public static void Update<T>(IEnumerable<ServiceStats<T>> stats, VerbosityLevel? verbosity = null) 
+        public static void Update<T>(IEnumerable<IServiceStats<T>> stats, VerbosityLevel? verbosity = null) 
             where T : IFormattableObject
         {
             lock (_lock)
@@ -102,6 +102,14 @@ namespace SharpBridge.Utilities
                 
                 ConsoleDisplayAction(sb.ToString());
             }
+        }
+        
+        /// <summary>
+        /// Updates the console display with mixed service statistics types
+        /// </summary>
+        public static void UpdateMultiple(IEnumerable<IServiceStats<IFormattableObject>> stats, VerbosityLevel? verbosity = null)
+        {
+            Update(stats, verbosity);
         }
         
         /// <summary>

@@ -102,7 +102,7 @@ namespace SharpBridge.Services
         /// Gets the current service statistics
         /// </summary>
         /// <returns>Service statistics for the PC client</returns>
-        public ServiceStats<PCTrackingInfo> GetServiceStats()
+        public IServiceStats<PCTrackingInfo> GetServiceStats()
         {
             var counters = new Dictionary<string, long>
             {

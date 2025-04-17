@@ -34,22 +34,30 @@ namespace SharpBridge.Tests.Services
         
         // Test that the phone client can start and stop when requested
         [Fact]
-        public async Task RunAsync_StartsAndStops_WhenCancelled()
+        public async Task SendAndReceive_WorksCorrectly()
         {
             // Arrange
             var cancellationTokenSource = new CancellationTokenSource();
             var mockClient = new Mock<IVTubeStudioPhoneClient>();
             
-            // Set up the mock to return a completed task when RunAsync is called
+            // Set up the mock to return a completed task for SendTrackingRequestAsync
             mockClient
-                .Setup(r => r.RunAsync(cancellationTokenSource.Token))
+                .Setup(r => r.SendTrackingRequestAsync())
                 .Returns(Task.CompletedTask);
+                
+            // Set up the mock to return true for ReceiveResponseAsync
+            mockClient
+                .Setup(r => r.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
             
             // Act
-            await mockClient.Object.RunAsync(cancellationTokenSource.Token);
+            await mockClient.Object.SendTrackingRequestAsync();
+            var result = await mockClient.Object.ReceiveResponseAsync(cancellationTokenSource.Token);
             
             // Assert
-            mockClient.Verify(r => r.RunAsync(cancellationTokenSource.Token), Times.Once);
+            mockClient.Verify(r => r.SendTrackingRequestAsync(), Times.Once);
+            mockClient.Verify(r => r.ReceiveResponseAsync(cancellationTokenSource.Token), Times.Once);
+            result.Should().BeTrue("ReceiveResponseAsync should return true when data is received");
         }
         
         // Test that the phone client sends tracking request with correct parameters
@@ -57,7 +65,6 @@ namespace SharpBridge.Tests.Services
         public async Task SendsTrackingRequest_WithCorrectParameters()
         {
             // Arrange
-            var cancellationTokenSource = new CancellationTokenSource();
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig 
             { 
@@ -80,16 +87,8 @@ namespace SharpBridge.Tests.Services
             // Create receiver
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
             
-            // Act
-            cancellationTokenSource.CancelAfter(100); // Cancel after 100ms
-            try
-            {
-                await client.RunAsync(cancellationTokenSource.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            // Act - directly call SendTrackingRequestAsync
+            await client.SendTrackingRequestAsync();
             
             // Assert
             sentData.Should().NotBeNull("a tracking request should be sent");
@@ -115,12 +114,12 @@ namespace SharpBridge.Tests.Services
                     It.IsAny<int>(), 
                     "192.168.1.100", 
                     21412),
-                Times.AtLeastOnce);
+                Times.Once);
         }
         
         // Test that the phone client uses the new cancellation token approach for timeouts
         [Fact]
-        public async Task ReceiveAsync_UsesTimeoutTokens()
+        public async Task ReceiveResponseAsync_UsesTimeoutTokens()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
@@ -150,19 +149,13 @@ namespace SharpBridge.Tests.Services
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
             
             // Act
-            var cts = new CancellationTokenSource(250); // Short main cancellation
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            var cts = new CancellationTokenSource();
+            bool result = await client.ReceiveResponseAsync(cts.Token);
             
             // Assert
             passedToken.Should().NotBe(CancellationToken.None, "a cancellation token should be passed");
             passedToken.Should().NotBe(cts.Token, "a different token should be passed (linked or timeout token)");
+            result.Should().BeFalse("the method should return false on timeout");
         }
         
         // Test that the phone client properly processes valid tracking data and raises an event
@@ -197,19 +190,10 @@ namespace SharpBridge.Tests.Services
             var json = JsonSerializer.Serialize(expectedData);
             var jsonBytes = Encoding.UTF8.GetBytes(json);
             
-            // Configure the UDP mock to return the JSON data directly (no polling first)
-            int callCount = 0;
+            // Configure the UDP mock to return the JSON data
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => 
-                {
-                    callCount++;
-                    if (callCount == 1)
-                    {
-                        return new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0));
-                    }
-                    throw new OperationCanceledException();
-                });
+                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
             
             // Create the receiver and track event raising
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
@@ -222,18 +206,11 @@ namespace SharpBridge.Tests.Services
                 receivedData = data;
             };
             
-            // Act - run until event is raised or timeout
-            var cts = new CancellationTokenSource(1000); // 1 second timeout
-            try 
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            // Act - directly call ReceiveResponseAsync
+            var result = await client.ReceiveResponseAsync(CancellationToken.None);
             
             // Assert
+            result.Should().BeTrue("the method should return true when data is received");
             eventWasRaised.Should().BeTrue("the event should be raised when data is received");
             receivedData.Should().NotBeNull("the event should include the tracking data");
             receivedData.FaceFound.Should().BeTrue("properties should match the expected data");
@@ -248,7 +225,7 @@ namespace SharpBridge.Tests.Services
         
         // Test that the phone client continues to function when invalid data is received
         [Fact]
-        public async Task RunAsync_ContinuesRunning_WhenInvalidDataReceived()
+        public async Task ReceiveResponseAsync_ContinuesWorking_AfterInvalidDataReceived()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
@@ -257,25 +234,22 @@ namespace SharpBridge.Tests.Services
                 IphoneIpAddress = "127.0.0.1"
             };
             
-            // First provide invalid JSON data, then valid data
+            // Prepare invalid and valid data
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
             var validData = new PhoneTrackingInfo { FaceFound = true };
             var validJson = JsonSerializer.Serialize(validData);
             var validJsonBytes = Encoding.UTF8.GetBytes(validJson);
             
-            var callCount = 0;
+            // Configure mock to first return invalid data, then valid data
+            int callCount = 0;
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => 
                 {
                     callCount++;
-                    // First return invalid data, then valid, then throw to end test
-                    if (callCount == 1)
-                        return new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0));
-                    else if (callCount == 2)
-                        return new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0));
-                    else
-                        throw new OperationCanceledException();
+                    return callCount == 1 
+                        ? new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0))
+                        : new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0));
                 });
             
             // Create receiver and track event raising
@@ -287,25 +261,18 @@ namespace SharpBridge.Tests.Services
                 if (data.FaceFound) validEventCount++;
             };
             
-            // Act - run until event is raised twice or timeout
-            var cts = new CancellationTokenSource(1000); 
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            // Act - call ReceiveResponseAsync twice
+            await client.ReceiveResponseAsync(CancellationToken.None); // Should handle invalid JSON
+            await client.ReceiveResponseAsync(CancellationToken.None); // Should process valid JSON
             
             // Assert
-            validEventCount.Should().BeGreaterThan(0, "the receiver should handle valid data after invalid data");
-            callCount.Should().BeGreaterThan(1, "multiple receive calls should be made");
+            validEventCount.Should().Be(1, "the event should be raised once for the valid data");
+            callCount.Should().Be(2, "both receive calls should be made");
         }
         
         // Test that the phone client handles invalid JSON gracefully
         [Fact]
-        public async Task ProcessReceivedData_HandlesInvalidJson_Gracefully()
+        public async Task ReceiveResponseAsync_HandlesInvalidJson_Gracefully()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
@@ -316,8 +283,6 @@ namespace SharpBridge.Tests.Services
             
             // Configure UDP client to return invalid JSON
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
-            mockUdpClient.Setup(c => c.Poll(It.IsAny<int>(), It.IsAny<SelectMode>())).Returns(true);
-            mockUdpClient.Setup(c => c.Available).Returns(invalidJson.Length);
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0)));
@@ -327,18 +292,11 @@ namespace SharpBridge.Tests.Services
             
             client.TrackingDataReceived += (s, e) => eventRaised = true;
             
-            // Act - run for a short time
-            var cts = new CancellationTokenSource(200);
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            // Act - directly call ReceiveResponseAsync
+            bool result = await client.ReceiveResponseAsync(CancellationToken.None);
             
-            // Assert - no event should be raised for invalid JSON, but no exception should be thrown
+            // Assert
+            result.Should().BeTrue("the method should return true when data is received, even if invalid");
             eventRaised.Should().BeFalse("invalid JSON should not trigger events");
         }
         
@@ -374,174 +332,56 @@ namespace SharpBridge.Tests.Services
             mockUdpClient.Verify(c => c.Dispose(), Times.Once, "Dispose should be called on the UDP client");
         }
 
-        // Test socket exception handling in RunAsync
+        // Test that the general exception catch block in ReceiveResponseAsync works
         [Fact]
-        public async Task RunAsync_HandlesSocketExceptions_AndContinuesRunning()
+        public async Task ReceiveResponseAsync_HandlesGeneralExceptions_AndLogsMessages()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
             
-            bool exceptionThrown = false;
-            bool dataReceived = false;
-            int callCount = 0;
+            // Setup the mock to specifically trigger the general exception handler
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => 
-                {
-                    callCount++;
-                    if (!exceptionThrown)
-                    {
-                        exceptionThrown = true;
-                        throw new SocketException(10054); // Connection reset
-                    }
-                    else if (!dataReceived)
-                    {
-                        dataReceived = true;
-                        // Valid tracking data after exception
-                        var validData = new PhoneTrackingInfo { FaceFound = true };
-                        var validJson = JsonSerializer.Serialize(validData);
-                        return new UdpReceiveResult(Encoding.UTF8.GetBytes(validJson), new System.Net.IPEndPoint(0, 0));
-                    }
-                    else
-                    {
-                        throw new OperationCanceledException();
-                    }
-                });
-            
-            // Allow SendAsync to succeed
-            mockUdpClient
-                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
-                .ReturnsAsync(100);
+                .ThrowsAsync(new InvalidOperationException("This should hit the general exception handler"));
             
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
-            var eventRaised = false;
-            
-            client.TrackingDataReceived += (s, e) => eventRaised = true;
             
             // Act
-            var cts = new CancellationTokenSource(2000); // Longer timeout to ensure we get through the delay
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            bool result = await client.ReceiveResponseAsync(CancellationToken.None);
             
             // Assert
-            // In case the callCount isn't greater than 1, we should at least confirm:
-            // 1) It reached the point of throwing the exception
-            // 2) No uncaught exceptions occurred
-            exceptionThrown.Should().BeTrue("the socket exception should be thrown");
-            
-            // Check if we reached the data processing step
-            if (callCount > 1)
-            {
-                eventRaised.Should().BeTrue("events should be raised after recovering from socket exception");
-            }
-        }
-
-        // Test handling of generic exceptions in RunAsync
-        [Fact]
-        public async Task RunAsync_HandlesGenericExceptions_AndContinuesRunning()
-        {
-            // Arrange
-            var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
-            
-            bool exceptionThrown = false;
-            bool dataReceived = false;
-            int callCount = 0;
-            mockUdpClient
-                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => 
-                {
-                    callCount++;
-                    if (!exceptionThrown)
-                    {
-                        exceptionThrown = true;
-                        throw new InvalidOperationException("Test exception");
-                    }
-                    else if (!dataReceived)
-                    {
-                        dataReceived = true;
-                        // Valid tracking data after exception
-                        var validData = new PhoneTrackingInfo { FaceFound = true };
-                        var validJson = JsonSerializer.Serialize(validData);
-                        return new UdpReceiveResult(Encoding.UTF8.GetBytes(validJson), new System.Net.IPEndPoint(0, 0));
-                    }
-                    else
-                    {
-                        throw new OperationCanceledException();
-                    }
-                });
-            
-            // Allow SendAsync to succeed
-            mockUdpClient
-                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
-                .ReturnsAsync(100);
-            
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
-            var eventRaised = false;
-            
-            client.TrackingDataReceived += (s, e) => eventRaised = true;
-            
-            // Act
-            var cts = new CancellationTokenSource(2000); // Longer timeout
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
-            
-            // Assert
-            // In case the callCount isn't greater than 1, we should at least confirm:
-            // 1) It reached the point of throwing the exception
-            // 2) No uncaught exceptions occurred
-            exceptionThrown.Should().BeTrue("the generic exception should be thrown");
-            
-            // Check if we reached the data processing step
-            if (callCount > 1)
-            {
-                eventRaised.Should().BeTrue("events should be raised after recovering from generic exception");
-            }
+            result.Should().BeFalse("the method should return false when an exception occurs");
+            mockUdpClient.Verify(
+                c => c.ReceiveAsync(It.IsAny<CancellationToken>()), 
+                Times.Once, 
+                "ReceiveAsync should be called");
         }
 
         // Test exception handling in SendTrackingRequestAsync
         [Fact]
-        public async Task SendTrackingRequestAsync_HandlesExceptions_Gracefully()
+        public async Task SendTrackingRequestAsync_HandlesSocketExceptions_And_Rethrows()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
             
+            // Configure SendAsync to throw a SocketException
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
-                .ThrowsAsync(new SocketException(10051)); // Network unreachable
+                .ThrowsAsync(new SocketException(10054)); // Connection reset
             
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
             
-            // Act
-            var cts = new CancellationTokenSource(500);
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
+            // Act & Assert
+            await Assert.ThrowsAsync<SocketException>(async () => 
+                await client.SendTrackingRequestAsync());
             
-            // Assert - no exception should bubble up from SendTrackingRequestAsync
+            // Verify SendAsync was called
             mockUdpClient.Verify(
                 c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()), 
-                Times.AtLeastOnce, 
-                "SendAsync should be called despite exceptions");
+                Times.Once, 
+                "SendAsync should be called");
         }
 
         // NEW TEST: Test constructor with null UDP client
@@ -570,7 +410,7 @@ namespace SharpBridge.Tests.Services
                .And.ParamName.Should().Be("config");
         }
 
-        // Test event without subscribers
+        // TrackingDataReceived_NoErrorWhenNoSubscribers test references RunAsync which doesn't exist anymore
         [Fact]
         public async Task TrackingDataReceived_NoErrorWhenNoSubscribers()
         {
@@ -582,17 +422,10 @@ namespace SharpBridge.Tests.Services
             var validJson = JsonSerializer.Serialize(validData);
             var jsonBytes = Encoding.UTF8.GetBytes(validJson);
             
-            // Set up the mock to return valid data once, then throw to exit
+            // Set up the mock to return valid data
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)))
-                .Callback(() => 
-                {
-                    // After first call, setup to throw on next call
-                    mockUdpClient
-                        .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                        .ThrowsAsync(new OperationCanceledException());
-                });
+                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
             
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
@@ -601,27 +434,21 @@ namespace SharpBridge.Tests.Services
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
             // Intentionally not subscribing to the event
             
-            // Act - use a short timeout to ensure the test doesn't hang
-            var cts = new CancellationTokenSource(500);
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected - this is how we exit the loop
-            }
+            // Act - call the methods directly instead of using RunAsync
+            await client.SendTrackingRequestAsync();
+            bool receiveResult = await client.ReceiveResponseAsync(CancellationToken.None);
             
-            // Assert - verify the data was processed
+            // Assert
+            receiveResult.Should().BeTrue("ReceiveResponseAsync should return true on success");
             mockUdpClient.Verify(
                 c => c.ReceiveAsync(It.IsAny<CancellationToken>()), 
-                Times.AtLeastOnce, 
+                Times.Once, 
                 "Receiver should process data even without subscribers");
         }
 
-        // NEW TEST: Test cancellation handling directly
+        // Test cancellation handling in ReceiveResponseAsync
         [Fact]
-        public async Task RunAsync_ExitsCleanly_WhenCancellationIsRequested()
+        public async Task ReceiveResponseAsync_ReturnsFalse_WhenCancelled()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
@@ -644,63 +471,37 @@ namespace SharpBridge.Tests.Services
             
             // Act
             var cts = new CancellationTokenSource();
-            var runTask = client.RunAsync(cts.Token);
+            var receiveTask = client.ReceiveResponseAsync(cts.Token);
             
-            // Wait a bit, then cancel
-            await Task.Delay(100);
+            // Cancel after a short delay
+            await Task.Delay(50);
             cts.Cancel();
             
-            // Wait for the task to complete
-            await Task.WhenAny(runTask, Task.Delay(1000));
+            bool result = await receiveTask;
             
             // Assert
-            runTask.IsCompleted.Should().BeTrue("the method should exit when cancellation is requested");
+            result.Should().BeFalse("the method should return false when cancelled");
         }
 
-        // Test that the general exception catch block gets called (line 93)
         [Fact]
-        public async Task RunAsync_HandlesGeneralExceptions_AndLogsMessages()
+        public async Task SendTrackingRequestReturnsFalse_WhenSendAsyncThrowsSocketExceptionOtherThan10054()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
             
-            bool generalExceptionThrown = false;
-            
-            // Setup the mock to specifically trigger the general exception handler
-            // by making it throw a non-OperationCanceledException that isn't a SocketException
-            mockUdpClient
-                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
-                .Callback(() => 
-                {
-                    generalExceptionThrown = true;
-                })
-                .ThrowsAsync(new InvalidOperationException("This should hit the general exception handler"));
-            
-            // Allow SendAsync to succeed to test that branch
+            // Configure SendAsync to throw a different SocketException
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
-                .ReturnsAsync(100);
+                .ThrowsAsync(new SocketException(10053)); // Connection aborted
             
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config);
             
-            // Act - use a short timeout to ensure the test doesn't hang
-            var cts = new CancellationTokenSource(500);
-            try
-            {
-                await client.RunAsync(cts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when the timeout occurs
-            }
+            // Act & Assert - Use the signature without cancellationToken parameter since it's not available
+            var ex = await Assert.ThrowsAsync<SocketException>(() => 
+                client.SendTrackingRequestAsync());
             
-            // Assert
-            generalExceptionThrown.Should().BeTrue("the general exception should be thrown");
-            mockUdpClient.Verify(
-                c => c.ReceiveAsync(It.IsAny<CancellationToken>()), 
-                Times.AtLeastOnce, 
-                "ReceiveAsync should be called");
+            ex.ErrorCode.Should().Be(10053);
         }
     }
 } 
