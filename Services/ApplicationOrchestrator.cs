@@ -163,6 +163,8 @@ namespace SharpBridge.Services
             
             try
             {
+                Console.Clear();
+
                 // Send initial tracking request
                 await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
                 
@@ -255,7 +257,7 @@ namespace SharpBridge.Services
                 if (pcStats != null) allStats.Add(pcStats);
                 
                 // Display all stats using our new covariance-enabled Update method
-                ConsoleRenderer.UpdateMultiple(allStats);
+                ConsoleRenderer.Update(allStats);
             }
             catch (Exception ex)
             {

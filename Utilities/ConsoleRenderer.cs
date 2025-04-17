@@ -105,14 +105,6 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Updates the console display with mixed service statistics types
-        /// </summary>
-        public static void UpdateMultiple(IEnumerable<IServiceStats<IFormattableObject>> stats, VerbosityLevel? verbosity = null)
-        {
-            Update(stats, verbosity);
-        }
-        
-        /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
         public static void CycleVerbosity()
@@ -131,19 +123,20 @@ namespace SharpBridge.Utilities
         {
             try
             {
+
                 Console.SetCursorPosition(0, 0);
                 Console.Write(output);
-                
+
                 int currentLine = Console.CursorTop;
                 int currentCol = Console.CursorLeft;
-                
+
                 int windowHeight = Console.WindowHeight;
                 for (int i = currentLine; i < windowHeight - 1; i++)
                 {
                     Console.SetCursorPosition(0, i);
                     Console.Write(new string(' ', Console.WindowWidth - 1));
                 }
-                
+
                 Console.SetCursorPosition(currentCol, currentLine);
             }
             catch (Exception)

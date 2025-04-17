@@ -93,7 +93,7 @@ namespace SharpBridge.Services
             // Only log occasionally to avoid console spam
             if (DateTime.Now.Second % 5 == 0)
             {
-                Console.WriteLine($"Dummy VTubeStudioPCClient - Sending tracking data. Face found: {trackingData.FaceFound}");
+                //Console.WriteLine($"Dummy VTubeStudioPCClient - Sending tracking data. Face found: {trackingData.FaceFound}");
             }
             return Task.CompletedTask;
         }
