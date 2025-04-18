@@ -11,6 +11,8 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class PhoneTrackingInfoFormatter : IFormatter<PhoneTrackingInfo>
     {
+        private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
+        
         /// <summary>
         /// Formats a PhoneTrackingInfo object into a display string
         /// </summary>
@@ -39,19 +41,28 @@ namespace SharpBridge.Utilities
             }
             
             // Show blend shapes data in detailed mode
-            if (verbosity == VerbosityLevel.Detailed && entity.BlendShapes != null && entity.BlendShapes.Count > 0)
+            if (verbosity >= VerbosityLevel.Normal && entity.BlendShapes != null && entity.BlendShapes.Count > 0)
             {
                 var expressions = new[] { "JawOpen", "EyeBlinkLeft", "EyeBlinkRight", "BrowInnerUp", "MouthSmile" };
                 builder.AppendLine("\nKey Expressions:");
+                int displayCount = verbosity == VerbosityLevel.Detailed ? entity.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
+
+                // Calculate the length of the longest blend shape key for proper alignment
+                int maxKeyLength = entity.BlendShapes.Take(displayCount)
+                    .Select(s => s?.Key?.Length ?? 0)
+                    .DefaultIfEmpty(0)
+                    .Max();
                 
-                foreach (var expression in expressions)
+                // Add 1 for extra spacing
+                maxKeyLength += 1;
+
+                foreach (var shape in entity.BlendShapes.Take(displayCount))
                 {
-                    var shape = entity.BlendShapes.FirstOrDefault(s => s.Key == expression);
                     if (shape != null)
                     {
                         var barLength = (int)(shape.Value * 20); // Scale to 0-20 characters
                         var bar = new string('█', barLength) + new string('░', 20 - barLength);
-                        builder.AppendLine($"{expression.PadRight(15)}: {bar} {shape.Value:F2}");
+                        builder.AppendLine($"{shape.Key.PadRight(maxKeyLength)}: {bar} {shape.Value:F2}");
                     }
                 }
                 

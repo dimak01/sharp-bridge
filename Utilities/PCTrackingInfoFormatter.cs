@@ -12,6 +12,7 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class PCTrackingInfoFormatter : IFormatter<PCTrackingInfo>
     {
+        private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
         /// <summary>
         /// Formats a PCTrackingInfo object into a display string
         /// </summary>
@@ -29,10 +30,36 @@ namespace SharpBridge.Utilities
             if (verbosity >= VerbosityLevel.Normal && parameters.Any())
             {
                 builder.AppendLine("\nTop Parameters:");
-                int displayCount = verbosity == VerbosityLevel.Detailed ? 10 : 5;
+                int displayCount = verbosity == VerbosityLevel.Detailed ? parameters.Count : PARAM_DISPLAY_COUNT_NORMAL;
+                
+                // Calculate the length of the longest parameter ID for proper alignment
+                int maxIdLength = parameters.Take(displayCount)
+                    .Select(p => p.Id?.Length ?? 0)
+                    .DefaultIfEmpty(0)
+                    .Max();
+                
+                // Add 1 for extra spacing
+                maxIdLength += 1;
+                
+                // Fixed width for the value portion (accounting for "-xxx.xx" format)
+                const int valueWidth = 8;
+                
                 foreach (var param in parameters.Take(displayCount))
                 {
-                    builder.AppendLine($"  {param.Id}: {param.Value:F2}" + (param.Weight.HasValue ? $" (weight: {param.Weight:F2})" : ""));
+                    // Format the value with sign-aware padding to ensure decimal point alignment
+                    // Add a space before positive numbers to align with negative numbers
+                    string formattedValue = param.Value >= 0 
+                        ? $" {param.Value:F2}" 
+                        : $"{param.Value:F2}";
+                    
+                    string valueStr = formattedValue.PadRight(valueWidth);
+                    
+                    // Format the weight part if available
+                    string weightStr = param.Weight.HasValue 
+                        ? $"(weight: {(param.Weight >= 0 ? " " : "")}{param.Weight:F2})" 
+                        : "";
+                    
+                    builder.AppendLine($"  {param.Id.PadRight(maxIdLength)}: {valueStr} {weightStr}");
                 }
                 
                 if (parameters.Count > displayCount)
