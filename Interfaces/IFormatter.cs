@@ -27,8 +27,24 @@ namespace SharpBridge.Interfaces
     public interface IFormatter<T> where T : IFormattableObject
     {
         /// <summary>
-        /// Formats an entity into a display string
+        /// Gets or sets the current verbosity level used by this formatter
         /// </summary>
+        VerbosityLevel CurrentVerbosity { get; }
+        
+        /// <summary>
+        /// Cycles through the verbosity levels
+        /// </summary>
+        void CycleVerbosity();
+        
+        /// <summary>
+        /// Formats an entity into a display string using the formatter's current verbosity level
+        /// </summary>
+        string Format(T entity);
+        
+        /// <summary>
+        /// Formats an entity into a display string with the specified verbosity level
+        /// </summary>
+        /// <remarks>This method is maintained for backward compatibility</remarks>
         string Format(T entity, VerbosityLevel verbosity);
     }
 } 

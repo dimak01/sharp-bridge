@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -305,7 +306,13 @@ namespace SharpBridge.Tests.Services
             };
             var transformedParams = new List<TrackingParam> 
             { 
-                new TrackingParam { Id = "Test", Value = 0.5 } 
+                new TrackingParam { 
+                    Id = "Test", 
+                    Value = 0.5,
+                    Min = -0.75,
+                    Max = 1.25,
+                    DefaultValue = 0.33
+                } 
             };
             
             // Setup basic orchestrator requirements
@@ -320,7 +327,10 @@ namespace SharpBridge.Tests.Services
                 x.SendTrackingAsync(
                     It.Is<PCTrackingInfo>(pc => 
                         pc.FaceFound == trackingResponse.FaceFound && 
-                        pc.Parameters == transformedParams),
+                        pc.Parameters == transformedParams &&
+                        pc.Parameters.First().Min == -0.75 &&
+                        pc.Parameters.First().Max == 1.25 &&
+                        pc.Parameters.First().DefaultValue == 0.33),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
@@ -336,7 +346,10 @@ namespace SharpBridge.Tests.Services
                 x.SendTrackingAsync(
                     It.Is<PCTrackingInfo>(pc => 
                         pc.FaceFound == trackingResponse.FaceFound && 
-                        pc.Parameters == transformedParams),
+                        pc.Parameters == transformedParams &&
+                        pc.Parameters.First().Min == -0.75 &&
+                        pc.Parameters.First().Max == 1.25 &&
+                        pc.Parameters.First().DefaultValue == 0.33),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
@@ -374,7 +387,13 @@ namespace SharpBridge.Tests.Services
             };
             var transformedParams = new List<TrackingParam> 
             { 
-                new TrackingParam { Id = "Test", Value = 0.5 } 
+                new TrackingParam { 
+                    Id = "Test", 
+                    Value = 0.5,
+                    Min = -0.75,
+                    Max = 1.25,
+                    DefaultValue = 0.33
+                } 
             };
             
             // Setup basic orchestrator requirements with closed connection state
@@ -568,7 +587,13 @@ namespace SharpBridge.Tests.Services
             };
             var transformedParams = new List<TrackingParam> 
             { 
-                new TrackingParam { Id = "Test", Value = 0.5 } 
+                new TrackingParam { 
+                    Id = "Test", 
+                    Value = 0.5,
+                    Min = -0.75,
+                    Max = 1.25,
+                    DefaultValue = 0.33
+                } 
             };
             
             // Setup basic orchestrator requirements
