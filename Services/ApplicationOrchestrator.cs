@@ -185,11 +185,16 @@ namespace SharpBridge.Services
                         // Try to receive tracking data
                         bool dataReceived = await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
                         
+                        
+                        // Check for keyboard input every tick of the loop
+                        CheckForKeyboardInput();
+
                         // Check if it's time to update console status
                         if (DateTime.UtcNow >= nextStatusUpdateTime)
                         {
                             UpdateConsoleStatus();
-                            nextStatusUpdateTime = DateTime.UtcNow.AddSeconds(0.1f); // Update status every second
+                            
+                            nextStatusUpdateTime = DateTime.UtcNow.AddSeconds(0.1f); // Update status every 0.1 seconds
                         }
                         
                         // If no data was received, add a small delay to prevent CPU spinning
@@ -262,6 +267,34 @@ namespace SharpBridge.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating console status: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Checks for keyboard input and handles key combinations
+        /// </summary>
+        private void CheckForKeyboardInput()
+        {
+            if (Console.KeyAvailable)
+            {
+                var keyInfo = Console.ReadKey(true); // true means don't echo to screen
+                
+                // Check for Alt+P combination for Phone client
+                if (keyInfo.Key == ConsoleKey.P && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
+                {
+                    // For now just log that we detected the key combo
+                    _status = "Alt+P detected - Phone client hotkey";
+                    Console.WriteLine("\nAlt+P detected - Phone client hotkey");
+                    ConsoleRenderer.CycleVerbosity();
+                }
+                
+                // Check for Alt+C combination for PC client
+                if (keyInfo.Key == ConsoleKey.O && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
+                {
+                    // For now just log that we detected the key combo
+                    _status = "Alt+O detected - PC client hotkey";
+                    Console.WriteLine("\nAlt+C detected - PC client hotkey");
+                }
             }
         }
 
