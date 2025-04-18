@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using SharpBridge.Models;
 using SharpBridge.Interfaces;
 using SharpBridge.Utilities;
+using System.Net.NetworkInformation;
 
 namespace SharpBridge.Services;
 
@@ -95,6 +96,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     {
         try
         {
+            _status = "Sending Requests";
             var request = new
             {
                 messageType = "iOSTrackingDataRequest",
@@ -109,6 +111,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         }
         catch (Exception ex)
         {
+            _failedFrames++;
             _status = $"Error sending request: {ex.Message}";
             Console.WriteLine($"Error sending tracking request: {ex.Message}");
             throw; // Let the orchestrator handle this error
@@ -165,6 +168,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         }
         catch (Exception ex)
         {
+            _failedFrames++;
             _status = $"Error: {ex.Message}";
             Console.WriteLine($"Error receiving data: {ex.Message}");
             return false;

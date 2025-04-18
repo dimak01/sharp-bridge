@@ -15,16 +15,6 @@ namespace SharpBridge.Utilities
         private static readonly Dictionary<Type, object> _formatters = new Dictionary<Type, object>();
         private static DateTime _lastUpdate = DateTime.MinValue;
         private static readonly object _lock = new object();
-        private static VerbosityLevel _currentVerbosity = VerbosityLevel.Normal;
-        
-        /// <summary>
-        /// Current verbosity level
-        /// </summary>
-        public static VerbosityLevel CurrentVerbosity
-        {
-            get => _currentVerbosity;
-            set => _currentVerbosity = value;
-        }
         
         static ConsoleRenderer()
         {
@@ -42,9 +32,21 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
+        /// Gets a formatter for the specified type
+        /// </summary>
+        public static IFormatter<T> GetFormatter<T>() where T : IFormattableObject
+        {
+            if (_formatters.TryGetValue(typeof(T), out var formatter))
+            {
+                return (IFormatter<T>)formatter;
+            }
+            return null;
+        }
+        
+        /// <summary>
         /// Updates the console display with service statistics
         /// </summary>
-        public static void Update<T>(IEnumerable<IServiceStats<T>> stats, VerbosityLevel? verbosity = null) 
+        public static void Update<T>(IEnumerable<IServiceStats<T>> stats) 
             where T : IFormattableObject
         {
             lock (_lock)
@@ -54,10 +56,9 @@ namespace SharpBridge.Utilities
                     return;
                 
                 _lastUpdate = now;
-                var actualVerbosity = verbosity ?? _currentVerbosity;
                 
                 var lines = new List<string>();
-                lines.Add($"=== SharpBridge Status (Verbosity: {actualVerbosity}) ===");
+                lines.Add($"=== SharpBridge Status ===");
                 lines.Add($"Current Time: {DateTime.Now:HH:mm:ss}");
                 lines.Add(string.Empty);
                 
@@ -65,7 +66,8 @@ namespace SharpBridge.Utilities
                 {
                     lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
                     
-                    if (actualVerbosity >= VerbosityLevel.Normal && stat.Counters.Any())
+                    // Show counters for normal and detailed verbosity
+                    if (stat.Counters.Any())
                     {
                         lines.Add("Metrics:");
                         foreach (var counter in stat.Counters)
@@ -80,12 +82,16 @@ namespace SharpBridge.Utilities
                         var entityType = stat.CurrentEntity.GetType();
                         if (_formatters.TryGetValue(entityType, out var formatter))
                         {
-                            var formatterMethod = formatter.GetType().GetMethod("Format");
-                            if (formatterMethod != null)
+                            // Use the formatter's Format method without passing verbosity
+                            var formatterInterface = formatter.GetType().GetInterfaces()
+                                .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IFormatter<>));
+                            
+                            var formatMethod = formatterInterface.GetMethod("Format", new[] { entityType });
+                            if (formatMethod != null)
                             {
-                                string formattedOutput = (string)formatterMethod.Invoke(
-                                    formatter, 
-                                    new object[] { stat.CurrentEntity, actualVerbosity });
+                                string formattedOutput = (string)formatMethod.Invoke(
+                                    formatter,
+                                    new object[] { stat.CurrentEntity });
                                 
                                 // Split formatted output into lines and add each one
                                 foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
@@ -103,24 +109,10 @@ namespace SharpBridge.Utilities
                     lines.Add(string.Empty);
                 }
                 
-                lines.Add("Press Ctrl+C to exit");
+                lines.Add("Press Ctrl+C to exit | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
                 
                 ConsoleDisplayAction(lines.ToArray());
             }
-        }
-        
-        /// <summary>
-        /// Cycles to the next verbosity level
-        /// </summary>
-        public static void CycleVerbosity()
-        {
-            _currentVerbosity = _currentVerbosity switch
-            {
-                VerbosityLevel.Basic => VerbosityLevel.Normal,
-                VerbosityLevel.Normal => VerbosityLevel.Detailed,
-                VerbosityLevel.Detailed => VerbosityLevel.Basic,
-                _ => VerbosityLevel.Normal
-            };
         }
         
         // Reusing PerformanceMonitor's console display technique

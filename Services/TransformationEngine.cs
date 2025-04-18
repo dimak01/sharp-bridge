@@ -137,7 +137,10 @@ namespace SharpBridge.Services
                     {
                         Id = name,
                         Value = value,
-                        Weight = 1.0 // Default weight
+                        Weight = 1.0, // Default weight
+                        Min = min,
+                        Max = max,
+                        DefaultValue = defaultValue
                     });
                 }
                 catch (Exception ex)

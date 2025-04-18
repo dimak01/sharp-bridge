@@ -279,21 +279,28 @@ namespace SharpBridge.Services
             {
                 var keyInfo = Console.ReadKey(true); // true means don't echo to screen
                 
-                // Check for Alt+P combination for Phone client
+                // Check for Alt+P combination for PC client
                 if (keyInfo.Key == ConsoleKey.P && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
                 {
-                    // For now just log that we detected the key combo
-                    _status = "Alt+P detected - Phone client hotkey";
-                    Console.WriteLine("\nAlt+P detected - Phone client hotkey");
-                    ConsoleRenderer.CycleVerbosity();
+                    // Cycle verbosity specifically for PC client formatter
+                    var pcFormatter = ConsoleRenderer.GetFormatter<PCTrackingInfo>();
+                    if (pcFormatter != null)
+                    {
+                        pcFormatter.CycleVerbosity();
+                        _status = $"PC client verbosity changed to {pcFormatter.CurrentVerbosity}";
+                    }
                 }
                 
-                // Check for Alt+C combination for PC client
+                // Check for Alt+O combination for Phone client
                 if (keyInfo.Key == ConsoleKey.O && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
                 {
-                    // For now just log that we detected the key combo
-                    _status = "Alt+O detected - PC client hotkey";
-                    Console.WriteLine("\nAlt+C detected - PC client hotkey");
+                    // Cycle verbosity specifically for Phone client formatter
+                    var phoneFormatter = ConsoleRenderer.GetFormatter<PhoneTrackingInfo>();
+                    if (phoneFormatter != null)
+                    {
+                        phoneFormatter.CycleVerbosity();
+                        _status = $"Phone client verbosity changed to {phoneFormatter.CurrentVerbosity}";
+                    }
                 }
             }
         }

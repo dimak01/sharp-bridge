@@ -54,7 +54,13 @@ namespace SharpBridge.Tests.Services
                 FaceFound = true,
                 Parameters = new[]
                 {
-                    new TrackingParam { Id = "Test", Value = 0.5 }
+                    new TrackingParam { 
+                        Id = "Test", 
+                        Value = 0.5, 
+                        Min = -0.75, 
+                        Max = 1.25, 
+                        DefaultValue = 0.33 
+                    }
                 }
             };
             
@@ -81,6 +87,9 @@ namespace SharpBridge.Tests.Services
             Assert.Single(stats.CurrentEntity.Parameters);
             Assert.Equal("Test", stats.CurrentEntity.Parameters.First().Id);
             Assert.Equal(0.5, stats.CurrentEntity.Parameters.First().Value);
+            Assert.Equal(-0.75, stats.CurrentEntity.Parameters.First().Min);
+            Assert.Equal(1.25, stats.CurrentEntity.Parameters.First().Max);
+            Assert.Equal(0.33, stats.CurrentEntity.Parameters.First().DefaultValue);
             
             // Cleanup
             client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None)
