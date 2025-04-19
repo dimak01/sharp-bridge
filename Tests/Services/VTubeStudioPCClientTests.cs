@@ -37,8 +37,9 @@ namespace SharpBridge.Tests.Services
             // The entity might be null initially since no tracking data has been sent yet
             if (stats.CurrentEntity != null)
             {
-                Assert.Equal(false, stats.CurrentEntity.FaceFound);
-                Assert.NotNull(stats.CurrentEntity.Parameters);
+                var pcTrackingInfo = stats.CurrentEntity as PCTrackingInfo; 
+                Assert.Equal(false, pcTrackingInfo.FaceFound);
+                Assert.NotNull(pcTrackingInfo.Parameters);
             }
         }
         
@@ -84,14 +85,16 @@ namespace SharpBridge.Tests.Services
             
             // Check the PCTrackingInfo entity
             Assert.NotNull(stats.CurrentEntity);
-            Assert.True(stats.CurrentEntity.FaceFound);
-            Assert.NotNull(stats.CurrentEntity.Parameters);
-            Assert.Single(stats.CurrentEntity.Parameters);
-            Assert.Equal("Test", stats.CurrentEntity.Parameters.First().Id);
-            Assert.Equal(0.5, stats.CurrentEntity.Parameters.First().Value);
-            Assert.Equal(-0.75, stats.CurrentEntity.Parameters.First().Min);
-            Assert.Equal(1.25, stats.CurrentEntity.Parameters.First().Max);
-            Assert.Equal(0.33, stats.CurrentEntity.Parameters.First().DefaultValue);
+            Assert.IsType<PCTrackingInfo>(stats.CurrentEntity);
+            var pcTrackingInfo = stats.CurrentEntity as PCTrackingInfo;
+            Assert.True(pcTrackingInfo.FaceFound);
+            Assert.NotNull(pcTrackingInfo.Parameters);
+            Assert.Single(pcTrackingInfo.Parameters);
+            Assert.Equal("Test", pcTrackingInfo.Parameters.First().Id);
+            Assert.Equal(0.5, pcTrackingInfo.Parameters.First().Value);
+            Assert.Equal(-0.75, pcTrackingInfo.Parameters.First().Min);
+            Assert.Equal(1.25, pcTrackingInfo.Parameters.First().Max);
+            Assert.Equal(0.33, pcTrackingInfo.Parameters.First().DefaultValue);
             
             // Cleanup
             client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None)

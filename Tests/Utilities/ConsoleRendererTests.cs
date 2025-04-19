@@ -38,15 +38,16 @@ namespace SharpBridge.Tests.Utilities
         }
         
         // Special test formatter that implements multiple interfaces to test LINQ branch coverage
-        public class MultiInterfaceFormatter : IFormatter<TestEntity>, IDisposable
+        public class MultiInterfaceFormatter : IFormatter, IDisposable
         {
             public VerbosityLevel CurrentVerbosity => VerbosityLevel.Normal;
             
             public void CycleVerbosity() { }
             
-            public string Format(TestEntity entity) => $"Test: {entity.Name}";
+            public string Format(IFormattableObject entity) => 
+                entity is TestEntity testEntity ? $"Test: {testEntity.Name}" : "Unknown entity";
             
-            public string Format(TestEntity entity, VerbosityLevel verbosity) => Format(entity);
+            public string Format(IFormattableObject entity, VerbosityLevel verbosity) => Format(entity);
             
             public void Dispose() { }
         }
@@ -54,10 +55,10 @@ namespace SharpBridge.Tests.Utilities
         // Fields for common test objects
         private TestConsole _testConsole;
         private ConsoleRenderer _renderer;
-        private Mock<IFormatter<TestEntity>> _mockFormatter;
+        private Mock<IFormatter> _mockFormatter;
         private Mock<IAppLogger> _mockLogger;
         private TestEntity _testEntity;
-        private ServiceStats<TestEntity> _testStats;
+        private ServiceStats _testStats;
         
         /// <summary>
         /// Setup for each test
@@ -71,7 +72,7 @@ namespace SharpBridge.Tests.Utilities
             _mockLogger = new Mock<IAppLogger>();
             
             // Create and configure the formatter mock
-            _mockFormatter = new Mock<IFormatter<TestEntity>>();
+            _mockFormatter = new Mock<IFormatter>();
             
             // Set up CurrentVerbosity property
             _mockFormatter.Setup(f => f.CurrentVerbosity)
@@ -82,13 +83,20 @@ namespace SharpBridge.Tests.Utilities
                 .Verifiable();
             
             // The Format method with just the entity parameter
-            _mockFormatter.Setup(f => f.Format(It.IsAny<TestEntity>()))
-                .Returns<TestEntity>(entity => $"Test Entity: {entity.Name}, Value: {entity.Value}");
+            _mockFormatter.Setup(f => f.Format(It.IsAny<IFormattableObject>()))
+                .Returns<IFormattableObject>(entity => {
+                    if (entity is TestEntity testEntity)
+                        return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}";
+                    return "Unknown entity";
+                });
                 
             // The Format method with entity and verbosity parameters
-            _mockFormatter.Setup(f => f.Format(It.IsAny<TestEntity>(), It.IsAny<VerbosityLevel>()))
-                .Returns<TestEntity, VerbosityLevel>((entity, verbosity) => 
-                    $"Test Entity: {entity.Name}, Value: {entity.Value}, Verbosity: {verbosity}");
+            _mockFormatter.Setup(f => f.Format(It.IsAny<IFormattableObject>(), It.IsAny<VerbosityLevel>()))
+                .Returns<IFormattableObject, VerbosityLevel>((entity, verbosity) => {
+                    if (entity is TestEntity testEntity)
+                        return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}, Verbosity: {verbosity}";
+                    return $"Unknown entity, Verbosity: {verbosity}";
+                });
             
             // Create test entity and stats
             _testEntity = new TestEntity("Test", 42);
@@ -99,7 +107,7 @@ namespace SharpBridge.Tests.Utilities
                 ["Counter2"] = 20
             };
             
-            _testStats = new ServiceStats<TestEntity>(
+            _testStats = new ServiceStats(
                 serviceName: "TestService",
                 status: "Running",
                 currentEntity: _testEntity,
@@ -108,7 +116,7 @@ namespace SharpBridge.Tests.Utilities
             
             // Create the renderer with our test console and register our formatter
             _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
-            _renderer.RegisterFormatter(_mockFormatter.Object);
+            _renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
         }
         
         /// <summary>
@@ -139,10 +147,10 @@ namespace SharpBridge.Tests.Utilities
         public void RegisterFormatter_RegistersAndRetrievesFormatter()
         {
             // Arrange
-            var formatter = new Mock<IFormatter<TestEntity>>().Object;
+            var formatter = new Mock<IFormatter>().Object;
             
             // Act
-            _renderer.RegisterFormatter(formatter);
+            _renderer.RegisterFormatter<TestEntity>(formatter);
             var retrievedFormatter = _renderer.GetFormatter<TestEntity>();
             
             // Assert
@@ -169,7 +177,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WithValidStats_CallsFormatterWithCorrectEntity()
         {
             // Arrange
-            var stats = new List<IServiceStats<TestEntity>> { _testStats };
+            var stats = new List<IServiceStats> { _testStats };
             
             // Act
             _renderer.Update(stats);
@@ -182,7 +190,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WritesFormattedOutputToConsole()
         {
             // Arrange
-            var stats = new List<IServiceStats<TestEntity>> { _testStats };
+            var stats = new List<IServiceStats> { _testStats };
             
             // Act
             _renderer.Update(stats);
@@ -199,7 +207,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WhenCalledRapidly_ThrottlesUpdates()
         {
             // Arrange
-            var stats = new List<IServiceStats<TestEntity>> { _testStats };
+            var stats = new List<IServiceStats> { _testStats };
             
             // Act - Call update twice in quick succession
             _renderer.Update(stats);
@@ -214,14 +222,14 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var otherEntity = new OtherEntity("test data");
-            var statsWithNoFormatter = new ServiceStats<OtherEntity>(
+            var statsWithNoFormatter = new ServiceStats(
                 serviceName: "OtherService",
                 status: "Running",
                 currentEntity: otherEntity,
                 counters: new Dictionary<string, long>()
             );
             
-            var stats = new List<IServiceStats<OtherEntity>> { statsWithNoFormatter };
+            var stats = new List<IServiceStats> { statsWithNoFormatter };
             
             // We need a renderer that doesn't have formatters for OtherEntity
             var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
@@ -239,7 +247,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var multiFormatter = new MultiInterfaceFormatter();
             var entity = new TestEntity("Test", 42);
-            var stats = new ServiceStats<TestEntity>(
+            var stats = new ServiceStats(
                 serviceName: "TestService",
                 status: "Running",
                 currentEntity: entity,
@@ -248,10 +256,10 @@ namespace SharpBridge.Tests.Utilities
             
             // Register our special multi-interface formatter
             var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
-            renderer.RegisterFormatter(multiFormatter);
+            renderer.RegisterFormatter<TestEntity>(multiFormatter);
             
             // Act - This should exercise the LINQ expression
-            renderer.Update(new List<IServiceStats<TestEntity>> { stats });
+            renderer.Update(new List<IServiceStats> { stats });
             
             // Assert - If it gets here without exception, the LINQ worked
             _testConsole.Output.Should().Contain("Test: Test");
@@ -270,10 +278,10 @@ namespace SharpBridge.Tests.Utilities
             var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object);
             
             // Create more lines than the window height
-            var manyStats = new List<IServiceStats<TestEntity>>();
+            var manyStats = new List<IServiceStats>();
             for (int i = 0; i < 10; i++)
             {
-                manyStats.Add(new ServiceStats<TestEntity>(
+                manyStats.Add(new ServiceStats(
                     serviceName: $"Service{i}",
                     status: "Running",
                     currentEntity: new TestEntity($"Entity{i}", i),
@@ -324,7 +332,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WhenConsoleThrowsException_LogsErrorAndRethrows()
         {
             // Arrange
-            var stats = new List<IServiceStats<TestEntity>> { _testStats };
+            var stats = new List<IServiceStats> { _testStats };
             
             // Configure the test console to throw an exception on cursor positioning
             var throwingConsole = new Mock<IConsole>();
@@ -333,7 +341,7 @@ namespace SharpBridge.Tests.Utilities
             
             // Create a renderer with the throwing console
             var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object);
-            renderer.RegisterFormatter(_mockFormatter.Object);
+            renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
             
             // Act & Assert
             Action act = () => renderer.Update(stats);
