@@ -5,17 +5,19 @@ using System.Threading;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
+using SharpBridge.Utilities;
 using Xunit;
 
 namespace SharpBridge.Tests.Services
 {
     public class VTubeStudioPCClientTests
     {
+
         [Fact]
         public void GetServiceStats_ReturnsValidStats()
         {
             // Arrange
-            var client = new VTubeStudioPCClient();
+            var client = new VTubeStudioPCClient(new ConsoleAppLogger());
             
             // Act
             var stats = client.GetServiceStats();
@@ -44,7 +46,7 @@ namespace SharpBridge.Tests.Services
         public void GetServiceStats_AfterConnectAndSend_UpdatesStatistics()
         {
             // Arrange
-            var client = new VTubeStudioPCClient();
+            var client = new VTubeStudioPCClient(new ConsoleAppLogger());
             
             // Act - Connect and send tracking data
             client.ConnectAsync(CancellationToken.None).GetAwaiter().GetResult();

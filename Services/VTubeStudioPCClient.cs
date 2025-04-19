@@ -13,6 +13,7 @@ namespace SharpBridge.Services
     /// </summary>
     public class VTubeStudioPCClient : IVTubeStudioPCClient, IServiceStatsProvider<PCTrackingInfo>
     {
+        private readonly IAppLogger _logger;
         private WebSocketState _state = WebSocketState.None;
         private bool _isDisposed;
         private DateTime _startTime;
@@ -31,9 +32,10 @@ namespace SharpBridge.Services
         /// <summary>
         /// Creates a new instance of the VTubeStudioPCClient
         /// </summary>
-        public VTubeStudioPCClient()
+        public VTubeStudioPCClient(IAppLogger logger)
         {
-            Console.WriteLine("Creating dummy VTubeStudioPCClient");
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger.Debug("Creating dummy VTubeStudioPCClient");
             _startTime = DateTime.Now;
         }
         
@@ -42,10 +44,11 @@ namespace SharpBridge.Services
         /// </summary>
         public Task ConnectAsync(CancellationToken cancellationToken)
         {
-            Console.WriteLine("Dummy VTubeStudioPCClient - Connecting");
+            _logger.Info("Dummy VTubeStudioPCClient - Connecting");
             _connectionAttempts++;
             _lastSuccessfulConnection = Environment.TickCount;
             _state = WebSocketState.Open;
+            _logger.Info("PC state changed from None to Open");
             return Task.CompletedTask;
         }
         
@@ -54,8 +57,9 @@ namespace SharpBridge.Services
         /// </summary>
         public Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"Dummy VTubeStudioPCClient - Closing connection: {statusDescription}");
+            _logger.Info("Dummy VTubeStudioPCClient - Closing connection: {0}", statusDescription);
             _state = WebSocketState.Closed;
+            _logger.Info("PC state changed from {0} to Closed: {1}", _state, statusDescription);
             return Task.CompletedTask;
         }
         
@@ -64,7 +68,8 @@ namespace SharpBridge.Services
         /// </summary>
         public Task<bool> AuthenticateAsync(CancellationToken cancellationToken)
         {
-            Console.WriteLine("Dummy VTubeStudioPCClient - Authenticating");
+            _logger.Info("Dummy VTubeStudioPCClient - Authenticating");
+            _logger.Info("PC Authentication: Success");
             // Always return successful authentication
             return Task.FromResult(true);
         }
@@ -74,7 +79,8 @@ namespace SharpBridge.Services
         /// </summary>
         public Task<int> DiscoverPortAsync(CancellationToken cancellationToken)
         {
-            Console.WriteLine("Dummy VTubeStudioPCClient - Discovering port");
+            _logger.Info("Dummy VTubeStudioPCClient - Discovering port");
+            _logger.Info("PC Port Discovery: Found port 8001");
             // Return a fixed dummy port
             return Task.FromResult(8001);
         }
@@ -90,11 +96,6 @@ namespace SharpBridge.Services
             _messagesSent++;
             _lastSuccessfulSend = Environment.TickCount;
             _lastTrackingData = trackingData;
-            // Only log occasionally to avoid console spam
-            if (DateTime.Now.Second % 5 == 0)
-            {
-                //Console.WriteLine($"Dummy VTubeStudioPCClient - Sending tracking data. Face found: {trackingData.FaceFound}");
-            }
             return Task.CompletedTask;
         }
         
@@ -139,7 +140,7 @@ namespace SharpBridge.Services
                 if (disposing)
                 {
                     // Nothing to dispose in this dummy implementation
-                    Console.WriteLine("Dummy VTubeStudioPCClient - Disposing");
+                    _logger.Debug("Dummy VTubeStudioPCClient - Disposing");
                 }
                 
                 _isDisposed = true;

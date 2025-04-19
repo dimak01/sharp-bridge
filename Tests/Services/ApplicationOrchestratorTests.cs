@@ -225,34 +225,42 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public async Task RunAsync_WithInitialization_StartsPhoneClient()
         {
-            // Arrange
-            var cts = new CancellationTokenSource();
-            
-            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8001);
+            var originalOut = Console.Out;  
+            try{
+                var consoleWriter = new StringWriter();
+                Console.SetOut(consoleWriter);
+                // Arrange
+                var cts = new CancellationTokenSource();
                 
-            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+                _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(8001);
+                    
+                _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                    .Returns(Task.CompletedTask);
+                    
+                _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(true);
+                    
+                _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                    .Returns(Task.CompletedTask);
+                    
+                _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(true);
                 
-            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+                await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
                 
-            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
-                .Returns(Task.CompletedTask);
+                // Immediately cancel so RunAsync doesn't hang
+                cts.CancelAfter(50);
                 
-            _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-            
-            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
-            
-            // Immediately cancel so RunAsync doesn't hang
-            cts.CancelAfter(50);
-            
-            // Act
-            await _orchestrator.RunAsync(cts.Token);
-            
-            // Assert
-            _vtubeStudioPhoneClientMock.Verify(x => x.SendTrackingRequestAsync(), Times.AtLeastOnce);
+                // Act
+                await _orchestrator.RunAsync(cts.Token);
+                
+                // Assert
+                _vtubeStudioPhoneClientMock.Verify(x => x.SendTrackingRequestAsync(), Times.AtLeastOnce);
+            }
+            finally{
+                Console.SetOut(originalOut);
+            }
         }
         
         [Fact]

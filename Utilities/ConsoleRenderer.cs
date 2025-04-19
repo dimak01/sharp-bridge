@@ -172,5 +172,11 @@ namespace SharpBridge.Utilities
                 }
             }
         }
+
+        internal static void ClearConsole()
+        {
+            if (!Console.IsOutputRedirected)
+                Console.Clear();
+        }
     }
 } 

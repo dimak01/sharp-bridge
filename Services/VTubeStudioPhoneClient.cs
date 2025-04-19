@@ -20,6 +20,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private readonly IUdpClientWrapper _udpClient;
     private readonly VTubeStudioPhoneClientConfig _config;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IAppLogger _logger;
     
     private long _totalFramesReceived = 0;
     private long _failedFrames = 0;
@@ -37,10 +38,12 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     /// </summary>
     /// <param name="udpClient">The UDP client to use.</param>
     /// <param name="config">The configuration for the phone client.</param>
-    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, VTubeStudioPhoneClientConfig config)
+    /// <param name="logger">The logger to use.</param>
+    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, VTubeStudioPhoneClientConfig config, IAppLogger logger)
     {
         _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
         _config = config ?? throw new ArgumentNullException(nameof(config));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         
         if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
         {
@@ -53,10 +56,12 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         };
         
         _startTime = DateTime.UtcNow;
+        _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress, _config.IphonePort);
     }
 
     public void Dispose()
     {
+        _logger.Debug("Disposing VTubeStudioPhoneClient");
         _udpClient.Dispose();
     }
 
@@ -113,7 +118,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         {
             _failedFrames++;
             _status = $"Error sending request: {ex.Message}";
-            Console.WriteLine($"Error sending tracking request: {ex.Message}");
+            _logger.Error("Error sending tracking request: {0}", ex.Message);
             throw; // Let the orchestrator handle this error
         }
     }
@@ -140,7 +145,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         {
             _failedFrames++;
             _status = $"Error processing data: {ex.Message}";
-            Console.WriteLine($"Error processing received data: {ex.Message}");
+            _logger.Error("Error processing received data: {0}", ex.Message);
         }
     }
 
@@ -170,7 +175,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         {
             _failedFrames++;
             _status = $"Error: {ex.Message}";
-            Console.WriteLine($"Error receiving data: {ex.Message}");
+            _logger.Error("Error receiving data: {0}", ex.Message);
             return false;
         }
     }

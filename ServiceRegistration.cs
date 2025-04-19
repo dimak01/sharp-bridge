@@ -67,6 +67,9 @@ namespace SharpBridge
             services.AddTransient<IVTubeStudioPhoneClient, VTubeStudioPhoneClient>();
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
+            // Register logging services
+            services.AddSingleton<IAppLogger, ConsoleAppLogger>();
+            
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
             
