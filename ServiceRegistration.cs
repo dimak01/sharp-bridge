@@ -73,7 +73,9 @@ namespace SharpBridge
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();
             
+            // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
+            
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
             

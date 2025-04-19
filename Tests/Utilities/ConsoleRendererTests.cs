@@ -26,10 +26,36 @@ namespace SharpBridge.Tests.Utilities
             }
         }
         
+        // Another test entity class for testing missing formatter scenarios
+        public class OtherEntity : IFormattableObject
+        {
+            public string Data { get; set; }
+            
+            public OtherEntity(string data)
+            {
+                Data = data;
+            }
+        }
+        
+        // Special test formatter that implements multiple interfaces to test LINQ branch coverage
+        public class MultiInterfaceFormatter : IFormatter<TestEntity>, IDisposable
+        {
+            public VerbosityLevel CurrentVerbosity => VerbosityLevel.Normal;
+            
+            public void CycleVerbosity() { }
+            
+            public string Format(TestEntity entity) => $"Test: {entity.Name}";
+            
+            public string Format(TestEntity entity, VerbosityLevel verbosity) => Format(entity);
+            
+            public void Dispose() { }
+        }
+        
         // Fields for common test objects
         private TestConsole _testConsole;
         private ConsoleRenderer _renderer;
         private Mock<IFormatter<TestEntity>> _mockFormatter;
+        private Mock<IAppLogger> _mockLogger;
         private TestEntity _testEntity;
         private ServiceStats<TestEntity> _testStats;
         
@@ -40,6 +66,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Create test console to capture output
             _testConsole = new TestConsole();
+            
+            // Create and configure the logger mock
+            _mockLogger = new Mock<IAppLogger>();
             
             // Create and configure the formatter mock
             _mockFormatter = new Mock<IFormatter<TestEntity>>();
@@ -78,7 +107,7 @@ namespace SharpBridge.Tests.Utilities
             );
             
             // Create the renderer with our test console and register our formatter
-            _renderer = new ConsoleRenderer(_testConsole);
+            _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
             _renderer.RegisterFormatter(_mockFormatter.Object);
         }
         
@@ -88,6 +117,22 @@ namespace SharpBridge.Tests.Utilities
         public void Dispose()
         {
             // Nothing to dispose
+        }
+        
+        [Fact]
+        public void Constructor_WithNullConsole_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Action act = () => new ConsoleRenderer(null, _mockLogger.Object);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("console");
+        }
+
+        [Fact]
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Action act = () => new ConsoleRenderer(_testConsole, null);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
         }
         
         [Fact]
@@ -111,7 +156,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             // Create a new renderer without registering formatters
             var testConsole = new TestConsole();
-            var renderer = new ConsoleRenderer(testConsole);
+            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object);
             
             // Act
             var result = renderer.GetFormatter<TestEntity>();
@@ -151,6 +196,107 @@ namespace SharpBridge.Tests.Utilities
         }
         
         [Fact]
+        public void Update_WhenCalledRapidly_ThrottlesUpdates()
+        {
+            // Arrange
+            var stats = new List<IServiceStats<TestEntity>> { _testStats };
+            
+            // Act - Call update twice in quick succession
+            _renderer.Update(stats);
+            _renderer.Update(stats); // This should be throttled
+            
+            // Assert - Formatting should only happen once due to throttling
+            _mockFormatter.Verify(f => f.Format(_testEntity), Times.Once);
+        }
+        
+        [Fact]
+        public void Update_WithNoFormatterForEntityType_DisplaysNoFormatterMessage()
+        {
+            // Arrange
+            var otherEntity = new OtherEntity("test data");
+            var statsWithNoFormatter = new ServiceStats<OtherEntity>(
+                serviceName: "OtherService",
+                status: "Running",
+                currentEntity: otherEntity,
+                counters: new Dictionary<string, long>()
+            );
+            
+            var stats = new List<IServiceStats<OtherEntity>> { statsWithNoFormatter };
+            
+            // We need a renderer that doesn't have formatters for OtherEntity
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
+            
+            // Act
+            renderer.Update(stats);
+            
+            // Assert
+            _testConsole.Output.Should().Contain($"[No formatter registered for {typeof(OtherEntity).Name}]");
+        }
+        
+        [Fact]
+        public void Update_WithMultiInterfaceFormatter_HandlesLINQExpressionCorrectly()
+        {
+            // Arrange
+            var multiFormatter = new MultiInterfaceFormatter();
+            var entity = new TestEntity("Test", 42);
+            var stats = new ServiceStats<TestEntity>(
+                serviceName: "TestService",
+                status: "Running",
+                currentEntity: entity,
+                counters: new Dictionary<string, long>()
+            );
+            
+            // Register our special multi-interface formatter
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
+            renderer.RegisterFormatter(multiFormatter);
+            
+            // Act - This should exercise the LINQ expression
+            renderer.Update(new List<IServiceStats<TestEntity>> { stats });
+            
+            // Assert - If it gets here without exception, the LINQ worked
+            _testConsole.Output.Should().Contain("Test: Test");
+        }
+        
+        [Fact]
+        public void ConsoleDisplayAction_WithMoreLinesThanWindowHeight_HandlesOverflow()
+        {
+            // Arrange
+            // Create a console with a small window height
+            var smallConsole = new Mock<IConsole>();
+            smallConsole.Setup(c => c.WindowHeight).Returns(5);
+            smallConsole.Setup(c => c.WindowWidth).Returns(80);
+            
+            // Create a renderer with the small console
+            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object);
+            
+            // Create more lines than the window height
+            var manyStats = new List<IServiceStats<TestEntity>>();
+            for (int i = 0; i < 10; i++)
+            {
+                manyStats.Add(new ServiceStats<TestEntity>(
+                    serviceName: $"Service{i}",
+                    status: "Running",
+                    currentEntity: new TestEntity($"Entity{i}", i),
+                    counters: new Dictionary<string, long> { [$"Counter{i}"] = i }
+                ));
+            }
+            
+            // Act
+            // This will call ConsoleDisplayAction with more lines than the window height
+            // The method should handle this by only displaying up to the window height
+            Action act = () => renderer.Update(manyStats);
+            
+            // Assert - should not throw exception
+            act.Should().NotThrow();
+            
+            // Verify SetCursorPosition was called correctly and didn't try to 
+            // position beyond the window height
+            smallConsole.Verify(c => c.SetCursorPosition(It.IsAny<int>(), 
+                It.Is<int>(i => i < smallConsole.Object.WindowHeight)), 
+                Times.AtLeast(1));
+        }
+        
+        [Fact]
         public void GetFormatter_ReturnsCorrectFormatter()
         {
             // Act
@@ -172,6 +318,35 @@ namespace SharpBridge.Tests.Utilities
             
             // Assert
             _testConsole.Output.Should().BeEmpty();
+        }
+        
+        [Fact]
+        public void Update_WhenConsoleThrowsException_LogsErrorAndRethrows()
+        {
+            // Arrange
+            var stats = new List<IServiceStats<TestEntity>> { _testStats };
+            
+            // Configure the test console to throw an exception on cursor positioning
+            var throwingConsole = new Mock<IConsole>();
+            throwingConsole.Setup(c => c.SetCursorPosition(It.IsAny<int>(), It.IsAny<int>()))
+                .Throws(new InvalidOperationException("Test exception"));
+            
+            // Create a renderer with the throwing console
+            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object);
+            renderer.RegisterFormatter(_mockFormatter.Object);
+            
+            // Act & Assert
+            Action act = () => renderer.Update(stats);
+            
+            // Exception should be thrown
+            act.Should().Throw<InvalidOperationException>().WithMessage("Test exception");
+            
+            // Error should be logged
+            _mockLogger.Verify(l => l.ErrorWithException(
+                It.Is<string>(s => s.Contains("Console rendering failed")),
+                It.IsAny<Exception>(),
+                It.IsAny<object[]>()),
+                Times.Once);
         }
     }
 } 
