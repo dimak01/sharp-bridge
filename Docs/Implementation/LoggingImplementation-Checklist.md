@@ -29,9 +29,9 @@ This checklist tracks the implementation of a proper logging system for the appl
 - [x] Update `TransformationEngine.cs` to use `IAppLogger`
 
 ### Status Tracking
-- [ ] Enhance service classes to track status messages
-  - [ ] Add status properties to expose in `GetServiceStats()`
-  - [ ] Update formatters to display status messages
+- [x] Enhance service classes to track status messages
+  - [x] Add status properties to expose in `GetServiceStats()`
+  - [x] Update formatters to display status messages
 
 ## Phase 3: Implement Serilog
 
@@ -63,10 +63,10 @@ This checklist tracks the implementation of a proper logging system for the appl
 - [ ] Mock `IAppLogger` in component tests
 
 ### Documentation
-- [ ] Update README with logging information
+- [x] Update README with logging information
 - [ ] Add comments about log level usage
 
 ## Final Cleanup
-- [ ] Remove any remaining direct `Console.WriteLine` calls
+- [x] Remove any remaining direct `Console.WriteLine` calls
 - [ ] Review log levels for appropriate usage
 - [ ] Ensure consistent log message format 

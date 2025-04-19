@@ -15,9 +15,16 @@ namespace SharpBridge.Utilities
         private readonly Dictionary<Type, object> _formatters = new Dictionary<Type, object>();
         private DateTime _lastUpdate = DateTime.MinValue;
         private readonly object _lock = new object();
+        private readonly IConsole _console;
         
-        public ConsoleRenderer()
+        /// <summary>
+        /// Initializes a new instance of the ConsoleRenderer class
+        /// </summary>
+        /// <param name="console">The console implementation to use for output</param>
+        public ConsoleRenderer(IConsole console)
         {
+            _console = console ?? throw new ArgumentNullException(nameof(console));
+            
             // Register formatters for known types
             RegisterFormatter(new PhoneTrackingInfoFormatter());
             RegisterFormatter(new PCTrackingInfoFormatter());
@@ -120,50 +127,50 @@ namespace SharpBridge.Utilities
         {
             try
             {
-                Console.SetCursorPosition(0, 0);
+                _console.SetCursorPosition(0, 0);
                 
                 int currentLine = 0;
-                int windowWidth = Console.WindowWidth - 1;
+                int windowWidth = _console.WindowWidth - 1;
                 
                 // Write each line and clear the remainder of each line
                 foreach (var line in outputLines)
                 {
-                    Console.SetCursorPosition(0, currentLine);
-                    Console.Write(line);
+                    _console.SetCursorPosition(0, currentLine);
+                    _console.Write(line);
                     
                     // Clear the rest of this line (in case previous content was longer)
                     int remainingSpace = windowWidth - line.Length;
                     if (remainingSpace > 0)
                     {
-                        Console.Write(new string(' ', remainingSpace));
+                        _console.Write(new string(' ', remainingSpace));
                     }
                     
                     currentLine++;
                     
                     // Ensure we don't exceed console boundaries
-                    if (currentLine >= Console.WindowHeight - 1)
+                    if (currentLine >= _console.WindowHeight - 1)
                         break;
                 }
                 
                 // Clear any remaining lines that might have had content before
-                int windowHeight = Console.WindowHeight;
+                int windowHeight = _console.WindowHeight;
                 for (int i = currentLine; i < windowHeight - 1; i++)
                 {
-                    Console.SetCursorPosition(0, i);
-                    Console.Write(new string(' ', windowWidth));
+                    _console.SetCursorPosition(0, i);
+                    _console.Write(new string(' ', windowWidth));
                 }
                 
                 // Reset cursor position to the end of our content
-                Console.SetCursorPosition(0, currentLine);
+                _console.SetCursorPosition(0, currentLine);
             }
             catch (Exception)
             {
                 try
                 {
-                    Console.Clear();
+                    ClearConsole();
                     foreach (var line in outputLines)
                     {
-                        Console.WriteLine(line);
+                        _console.WriteLine(line);
                     }
                 }
                 catch
@@ -173,10 +180,12 @@ namespace SharpBridge.Utilities
             }
         }
 
+        /// <summary>
+        /// Clears the console
+        /// </summary>
         public void ClearConsole()
         {
-            if (!Console.IsOutputRedirected)
-                Console.Clear();
+            _console.Clear();
         }
     }
 } 
