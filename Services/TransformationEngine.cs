@@ -16,6 +16,12 @@ namespace SharpBridge.Services
     public class TransformationEngine : ITransformationEngine
     {
         private readonly List<(string Name, Expression Expression, double Min, double Max, double DefaultValue)> _rules = new();
+        private readonly IAppLogger _logger;
+        
+        public TransformationEngine(IAppLogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
         
         /// <summary>
         /// Loads transformation rules from the specified file
@@ -29,6 +35,7 @@ namespace SharpBridge.Services
         {
             if (!File.Exists(filePath))
             {
+                _logger.Error($"Transformation rules file not found: {filePath}");
                 throw new FileNotFoundException($"Transformation rules file not found: {filePath}");
             }
             
@@ -90,12 +97,13 @@ namespace SharpBridge.Services
                 }
             }
             
-            Console.WriteLine($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
+            _logger.Info($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
             
             // Throw an exception if any rules failed validation
             if (invalidRules > 0)
             {
                 string errorDetails = string.Join("\n- ", validationErrors);
+                _logger.Error($"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.\nErrors:\n- {errorDetails}");
                 throw new InvalidOperationException(
                     $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.\n" +
                     $"Errors:\n- {errorDetails}");
@@ -104,6 +112,7 @@ namespace SharpBridge.Services
             // Check if we have at least one valid rule
             if (validRules == 0)
             {
+                _logger.Error("No valid transformation rules found in the configuration file.");
                 throw new InvalidOperationException("No valid transformation rules found in the configuration file.");
             }
         }
@@ -145,6 +154,9 @@ namespace SharpBridge.Services
                 }
                 catch (Exception ex)
                 {
+                    // Log the error
+                    _logger.Error($"Error evaluating expression for parameter '{name}': {ex.Message}", ex);
+                    
                     // Instead of silently using default values, throw an exception with context
                     throw new InvalidOperationException(
                         $"Error evaluating expression for parameter '{name}': {ex.Message}", ex);

@@ -26,7 +26,7 @@ This checklist tracks the implementation of a proper logging system for the appl
 - [x] Update `ApplicationOrchestrator.cs` to use `IAppLogger`
 - [x] Update `VTubeStudioPCClient.cs` to use `IAppLogger`
 - [x] Update `VTubeStudioPhoneClient.cs` to use `IAppLogger`
-- [ ] Update `TransformationEngine.cs` to use `IAppLogger`
+- [x] Update `TransformationEngine.cs` to use `IAppLogger`
 
 ### Status Tracking
 - [ ] Enhance service classes to track status messages
