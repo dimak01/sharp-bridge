@@ -90,24 +90,16 @@ namespace SharpBridge.Utilities
                     if (stat.CurrentEntity != null)
                     {
                         var entityType = stat.CurrentEntity.GetType();
-                        if (_formatters.TryGetValue(entityType, out var formatter))
+                        if (_formatters.TryGetValue(entityType, out var formatterObj))
                         {
-                            // Use the formatter's Format method without passing verbosity
-                            var formatterInterface = formatter.GetType().GetInterfaces()
-                                .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IFormatter<>));
+                            // We know it must be IFormatter<T> based on how we put it in the dictionary
+                            var typedFormatter = (IFormatter<T>)formatterObj;
+                            var formattedOutput = typedFormatter.Format(stat.CurrentEntity);
                             
-                            var formatMethod = formatterInterface.GetMethod("Format", new[] { entityType });
-                            if (formatMethod != null)
+                            // Split formatted output into lines and add each one
+                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
                             {
-                                string formattedOutput = (string)formatMethod.Invoke(
-                                    formatter,
-                                    new object[] { stat.CurrentEntity });
-                                
-                                // Split formatted output into lines and add each one
-                                foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
-                                {
-                                    lines.Add(line);
-                                }
+                                lines.Add(line);
                             }
                         }
                         else
