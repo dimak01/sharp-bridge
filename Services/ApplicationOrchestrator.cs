@@ -175,7 +175,7 @@ namespace SharpBridge.Services
             
             try
             {
-                _consoleRenderer.ClearDisplay();
+                _consoleRenderer.ClearConsole();
 
                 // Send initial tracking request
                 await _vtubeStudioPhoneClient.SendTrackingRequestAsync();

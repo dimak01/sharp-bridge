@@ -10,13 +10,13 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Centralized console rendering utility
     /// </summary>
-    public static class ConsoleRenderer
+    public class ConsoleRenderer: IConsoleRenderer
     {
-        private static readonly Dictionary<Type, object> _formatters = new Dictionary<Type, object>();
-        private static DateTime _lastUpdate = DateTime.MinValue;
-        private static readonly object _lock = new object();
+        private readonly Dictionary<Type, object> _formatters = new Dictionary<Type, object>();
+        private DateTime _lastUpdate = DateTime.MinValue;
+        private readonly object _lock = new object();
         
-        static ConsoleRenderer()
+        public ConsoleRenderer()
         {
             // Register formatters for known types
             RegisterFormatter(new PhoneTrackingInfoFormatter());
@@ -26,7 +26,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Registers a formatter for a specific entity type
         /// </summary>
-        public static void RegisterFormatter<T>(IFormatter<T> formatter) where T : IFormattableObject
+        public void RegisterFormatter<T>(IFormatter<T> formatter) where T : IFormattableObject
         {
             _formatters[typeof(T)] = formatter;
         }
@@ -34,7 +34,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
-        public static IFormatter<T> GetFormatter<T>() where T : IFormattableObject
+        public IFormatter<T> GetFormatter<T>() where T : IFormattableObject
         {
             if (_formatters.TryGetValue(typeof(T), out var formatter))
             {
@@ -46,7 +46,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Updates the console display with service statistics
         /// </summary>
-        public static void Update<T>(IEnumerable<IServiceStats<T>> stats) 
+        public void Update<T>(IEnumerable<IServiceStats<T>> stats) 
             where T : IFormattableObject
         {
             lock (_lock)
@@ -116,7 +116,7 @@ namespace SharpBridge.Utilities
         }
         
         // Reusing PerformanceMonitor's console display technique
-        private static void ConsoleDisplayAction(string[] outputLines)
+        private void ConsoleDisplayAction(string[] outputLines)
         {
             try
             {
@@ -173,7 +173,7 @@ namespace SharpBridge.Utilities
             }
         }
 
-        internal static void ClearConsole()
+        public void ClearConsole()
         {
             if (!Console.IsOutputRedirected)
                 Console.Clear();
