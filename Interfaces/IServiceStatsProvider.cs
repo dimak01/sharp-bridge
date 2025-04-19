@@ -5,11 +5,11 @@ namespace SharpBridge.Interfaces
     /// <summary>
     /// Interface for components that provide service statistics
     /// </summary>
-    public interface IServiceStatsProvider<T> where T : IFormattableObject
+    public interface IServiceStatsProvider
     {
         /// <summary>
         /// Gets the current service statistics
         /// </summary>
-        IServiceStats<T> GetServiceStats();
+        IServiceStats GetServiceStats();
     }
 } 

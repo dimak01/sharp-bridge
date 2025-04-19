@@ -263,11 +263,11 @@ namespace SharpBridge.Services
             try
             {
                 // Get statistics from both clients
-                var phoneStats = (_vtubeStudioPhoneClient as IServiceStatsProvider<PhoneTrackingInfo>)?.GetServiceStats();
-                var pcStats = (_vtubeStudioPCClient as IServiceStatsProvider<PCTrackingInfo>)?.GetServiceStats();
+                var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+                var pcStats = _vtubeStudioPCClient.GetServiceStats();
                 
                 // Create a list of all service stats to display
-                var allStats = new List<IServiceStats<IFormattableObject>>();
+                var allStats = new List<IServiceStats>();
                 
                 // Add stats to the list - this works because of covariance with the 'out' parameter in IServiceStats<out T>
                 if (phoneStats != null) allStats.Add(phoneStats);

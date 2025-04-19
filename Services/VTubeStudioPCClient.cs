@@ -11,7 +11,7 @@ namespace SharpBridge.Services
     /// <summary>
     /// Dummy implementation of VTubeStudioPCClient that doesn't do any real work
     /// </summary>
-    public class VTubeStudioPCClient : IVTubeStudioPCClient, IServiceStatsProvider<PCTrackingInfo>
+    public class VTubeStudioPCClient : IVTubeStudioPCClient, IServiceStatsProvider
     {
         private readonly IAppLogger _logger;
         private WebSocketState _state = WebSocketState.None;
@@ -103,7 +103,7 @@ namespace SharpBridge.Services
         /// Gets the current service statistics
         /// </summary>
         /// <returns>Service statistics for the PC client</returns>
-        public IServiceStats<PCTrackingInfo> GetServiceStats()
+        public IServiceStats GetServiceStats()
         {
             var counters = new Dictionary<string, long>
             {
@@ -113,7 +113,7 @@ namespace SharpBridge.Services
                 ["UptimeSeconds"] = (int)(DateTime.Now - _startTime).TotalSeconds
             };
             
-            return new ServiceStats<PCTrackingInfo>(
+            return new ServiceStats(
                 serviceName: "VTubeStudioPCClient",
                 status: _state.ToString(),
                 currentEntity: _lastTrackingData,

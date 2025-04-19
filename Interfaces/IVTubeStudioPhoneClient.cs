@@ -8,7 +8,7 @@ namespace SharpBridge.Interfaces
     /// <summary>
     /// Client for receiving tracking data from VTube Studio on iPhone
     /// </summary>
-    public interface IVTubeStudioPhoneClient : IDisposable
+    public interface IVTubeStudioPhoneClient : IDisposable, IServiceStatsProvider
     {
         /// <summary>
         /// Event raised when tracking data is received from iPhone
