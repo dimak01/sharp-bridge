@@ -19,10 +19,12 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPhoneClient _vtubeStudioPhoneClient;
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
+        private readonly IAppLogger _logger;
         
         private bool _isInitialized;
         private bool _isDisposed;
         private string _status = "Initializing";
+        private string _transformConfigPath; // Store the config path for reloading
         
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -31,16 +33,19 @@ namespace SharpBridge.Services
         /// <param name="vtubeStudioPhoneClient">The VTube Studio phone client</param>
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
+        /// <param name="logger">Application logger</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
-            VTubeStudioPhoneClientConfig phoneConfig = null)
+            VTubeStudioPhoneClientConfig phoneConfig = null,
+            IAppLogger logger = null)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
             _phoneConfig = phoneConfig;
+            _logger = logger ?? new ConsoleAppLogger(); // Fallback to console logger if none provided
         }
 
         /// <summary>
@@ -53,13 +58,16 @@ namespace SharpBridge.Services
         {
             ValidateInitializationParameters(transformConfigPath);
             
-            Console.WriteLine($"Using transformation config: {transformConfigPath}");
+            _logger.Info("Using transformation config: {0}", transformConfigPath);
+            
+            // Store the config path for reloading
+            _transformConfigPath = transformConfigPath;
             
             await InitializeTransformationEngine(transformConfigPath);
             await DiscoverAndConnectToVTubeStudio(cancellationToken);
             await AuthenticateWithVTubeStudio(cancellationToken);
             
-            Console.WriteLine("Application initialized successfully");
+            _logger.Info("Application initialized successfully");
             _isInitialized = true;
         }
 
@@ -72,7 +80,7 @@ namespace SharpBridge.Services
         {
             EnsureInitialized();
             
-            Console.WriteLine("Starting application...");
+            _logger.Info("Starting application...");
             
             try
             {
@@ -81,14 +89,14 @@ namespace SharpBridge.Services
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("Operation was canceled, shutting down...");
+                _logger.Info("Operation was canceled, shutting down...");
             }
             finally
             {
                 await PerformCleanup(cancellationToken);
             }
             
-            Console.WriteLine("Application stopped");
+            _logger.Info("Application stopped");
         }
 
         private void EnsureInitialized()
@@ -119,27 +127,27 @@ namespace SharpBridge.Services
         
         private async Task DiscoverAndConnectToVTubeStudio(CancellationToken cancellationToken)
         {
-            Console.WriteLine("Discovering VTube Studio port...");
+            _logger.Info("Discovering VTube Studio port...");
             int port = await _vtubeStudioPCClient.DiscoverPortAsync(cancellationToken);
             if (port <= 0)
             {
                 throw new InvalidOperationException("Could not discover VTube Studio port. Is VTube Studio running?");
             }
-            Console.WriteLine($"Discovered VTube Studio on port {port}");
+            _logger.Info("Discovered VTube Studio on port {0}", port);
             
-            Console.WriteLine("Connecting to VTube Studio...");
+            _logger.Info("Connecting to VTube Studio...");
             await _vtubeStudioPCClient.ConnectAsync(cancellationToken);
         }
         
         private async Task AuthenticateWithVTubeStudio(CancellationToken cancellationToken)
         {
-            Console.WriteLine("Authenticating with VTube Studio...");
+            _logger.Info("Authenticating with VTube Studio...");
             bool authenticated = await _vtubeStudioPCClient.AuthenticateAsync(cancellationToken);
             if (!authenticated)
             {
                 throw new InvalidOperationException("Could not authenticate with VTube Studio. Check if authentication was approved.");
             }
-            Console.WriteLine("Successfully authenticated with VTube Studio");
+            _logger.Info("Successfully authenticated with VTube Studio");
         }
         
         private void SubscribeToEvents()
@@ -155,7 +163,7 @@ namespace SharpBridge.Services
         private async Task RunUntilCancelled(CancellationToken cancellationToken)
         {
             _status = "Running";
-            Console.WriteLine("Starting main application loop...");
+            _logger.Info("Starting main application loop...");
             
             // Initialize timing variables
             var nextRequestTime = DateTime.UtcNow;
@@ -163,7 +171,7 @@ namespace SharpBridge.Services
             
             try
             {
-                Console.Clear();
+                ConsoleRenderer.ClearConsole();
 
                 // Send initial tracking request
                 await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
@@ -206,7 +214,7 @@ namespace SharpBridge.Services
                     catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
                     {
                         _status = $"Error: {ex.Message}";
-                        Console.WriteLine($"Error in application loop: {ex.Message}");
+                        _logger.Error("Error in application loop: {0}", ex.Message);
                         await Task.Delay(1000, cancellationToken); // Add delay on error before retrying
                     }
                 }
@@ -214,7 +222,7 @@ namespace SharpBridge.Services
             catch (OperationCanceledException)
             {
                 _status = "Cancellation requested";
-                Console.WriteLine("Operation was canceled, shutting down...");
+                _logger.Info("Operation was canceled, shutting down...");
             }
             finally
             {
@@ -239,7 +247,7 @@ namespace SharpBridge.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error closing VTube Studio connection: {ex.Message}");
+                _logger.ErrorWithException("Error closing VTube Studio connection", ex);
             }
         }
 
@@ -266,7 +274,7 @@ namespace SharpBridge.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating console status: {ex.Message}");
+                _logger.ErrorWithException("Error updating console status", ex);
             }
         }
 
@@ -302,6 +310,42 @@ namespace SharpBridge.Services
                         _status = $"Phone client verbosity changed to {phoneFormatter.CurrentVerbosity}";
                     }
                 }
+                
+                // Check for Alt+R combination to reload transformation config
+                if (keyInfo.Key == ConsoleKey.K && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
+                {
+                    // Reload transformation config
+                    ReloadTransformationConfig();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Reloads the transformation configuration
+        /// </summary>
+        private async void ReloadTransformationConfig()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_transformConfigPath))
+                {
+                    _status = "Error: No transformation config path available for reload";
+                    return;
+                }
+                
+                _status = "Reloading transformation config...";
+                _logger.Info("Reloading transformation config...");
+                
+                // Use a lock or semaphore here if there are concurrency concerns
+                await InitializeTransformationEngine(_transformConfigPath);
+                
+                _status = "Transformation config reloaded successfully";
+                _logger.Info("Transformation config reloaded successfully");
+            }
+            catch (Exception ex)
+            {
+                _status = $"Error reloading config: {ex.Message}";
+                _logger.ErrorWithException("Error reloading transformation config", ex);
             }
         }
 
@@ -335,7 +379,7 @@ namespace SharpBridge.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error processing tracking data: {ex.Message}");
+                _logger.ErrorWithException("Error processing tracking data", ex);
             }
         }
 
