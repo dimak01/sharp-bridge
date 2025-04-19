@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Moq;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
@@ -15,6 +16,13 @@ namespace SharpBridge.Tests.Services
 {
     public class TransformationEngineTests
     {
+        private readonly Mock<IAppLogger> _mockLogger;
+
+        public TransformationEngineTests()
+        {
+            _mockLogger = new Mock<IAppLogger>();
+        }
+        
         private string CreateTempRuleFile(string content)
         {
             var tempPath = Path.GetTempFileName();
@@ -39,7 +47,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act
                 await engine.LoadRulesAsync(filePath);
@@ -73,7 +81,7 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_ThrowsException_WhenFileNotFound()
         {
             // Arrange
-            var engine = new TransformationEngine();
+            var engine = new TransformationEngine(_mockLogger.Object);
             var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             
             // Act & Assert
@@ -89,7 +97,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
                 await Assert.ThrowsAsync<JsonException>(async () => 
@@ -106,7 +114,7 @@ namespace SharpBridge.Tests.Services
         public void TransformData_ReturnsEmptyCollection_WhenNoRulesLoaded()
         {
             // Arrange
-            var engine = new TransformationEngine();
+            var engine = new TransformationEngine(_mockLogger.Object);
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -140,7 +148,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -189,7 +197,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -242,7 +250,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -292,7 +300,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -344,7 +352,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -399,7 +407,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -449,7 +457,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -488,7 +496,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
                 // This should trigger the `??` operator in the LoadRulesAsync method
@@ -543,7 +551,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
                 // With the new behavior, we should throw an exception during loading
@@ -586,7 +594,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
                 // With the new behavior, we should throw an exception during loading
@@ -624,7 +632,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // First load the rules (this should succeed as the syntax is valid)
                 await engine.LoadRulesAsync(filePath);
@@ -661,7 +669,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
                 var exception = await Assert.ThrowsAsync<JsonException>(async () => 
@@ -695,7 +703,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine();
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
                 var exception = await Assert.ThrowsAsync<InvalidOperationException>(
