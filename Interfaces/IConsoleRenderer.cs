@@ -24,8 +24,8 @@ namespace SharpBridge.Interfaces
         void Update<T>(IEnumerable<IServiceStats<T>> stats) where T : IFormattableObject;
 
         /// <summary>
-        /// Clears the display
+        /// Clears the console
         /// </summary>
-        void ClearDisplay();
+        void ClearConsole();
     }
 } 

@@ -70,6 +70,7 @@ namespace SharpBridge
             // Register logging services
             services.AddSingleton<IAppLogger, ConsoleAppLogger>();
             
+            services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
             
