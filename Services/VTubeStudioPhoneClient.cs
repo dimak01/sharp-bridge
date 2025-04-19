@@ -15,7 +15,7 @@ namespace SharpBridge.Services;
 /// <summary>
 /// Client for receiving tracking data from VTube Studio on iPhone via UDP.
 /// </summary>
-public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProvider<PhoneTrackingInfo>, IDisposable
+public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProvider, IDisposable
 {
     private readonly IUdpClientWrapper _udpClient;
     private readonly VTubeStudioPhoneClientConfig _config;
@@ -68,7 +68,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     /// <summary>
     /// Gets the current service statistics
     /// </summary>
-    public IServiceStats<PhoneTrackingInfo> GetServiceStats()
+    public IServiceStats GetServiceStats()
     {
         var counters = new Dictionary<string, long>
         {
@@ -86,7 +86,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             }
         }
         
-        return new ServiceStats<PhoneTrackingInfo>(
+        return new ServiceStats(
             "Phone Client", 
             _status,
             _lastTrackingData,

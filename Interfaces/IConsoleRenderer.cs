@@ -11,17 +11,17 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Registers a formatter for a specific entity type
         /// </summary>
-        void RegisterFormatter<T>(IFormatter<T> formatter) where T : IFormattableObject;
+        void RegisterFormatter<T>(IFormatter formatter) where T : IFormattableObject;
 
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
-        IFormatter<T> GetFormatter<T>() where T : IFormattableObject;
+        IFormatter GetFormatter<T>() where T : IFormattableObject;
 
         /// <summary>
         /// Updates the display with service statistics
         /// </summary>
-        void Update<T>(IEnumerable<IServiceStats<T>> stats) where T : IFormattableObject;
+        void Update(IEnumerable<IServiceStats> stats);
 
         /// <summary>
         /// Clears the console

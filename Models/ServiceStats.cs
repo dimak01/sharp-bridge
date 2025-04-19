@@ -6,7 +6,7 @@ namespace SharpBridge.Models
     /// <summary>
     /// Interface for service statistics with covariance support
     /// </summary>
-    public interface IServiceStats<out T> where T : IFormattableObject
+    public interface IServiceStats
     {
         /// <summary>
         /// The name of the service
@@ -26,13 +26,13 @@ namespace SharpBridge.Models
         /// <summary>
         /// The current entity being processed by the service
         /// </summary>
-        T CurrentEntity { get; }
+        IFormattableObject CurrentEntity { get; }
     }
 
     /// <summary>
     /// Container for service statistics
     /// </summary>
-    public class ServiceStats<T> : IServiceStats<T> where T : IFormattableObject
+    public class ServiceStats : IServiceStats
     {
         /// <summary>
         /// The name of the service
@@ -52,12 +52,12 @@ namespace SharpBridge.Models
         /// <summary>
         /// The current entity being processed by the service
         /// </summary>
-        public T CurrentEntity { get; }
+        public IFormattableObject CurrentEntity { get; }
         
         /// <summary>
         /// Creates a new instance of ServiceStats
         /// </summary>
-        public ServiceStats(string serviceName, string status, T currentEntity, Dictionary<string, long> counters = null)
+        public ServiceStats(string serviceName, string status, IFormattableObject currentEntity, Dictionary<string, long> counters = null)
         {
             ServiceName = serviceName;
             Status = status;

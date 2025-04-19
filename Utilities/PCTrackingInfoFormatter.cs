@@ -10,7 +10,7 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Formatter for PCTrackingInfo objects
     /// </summary>
-    public class PCTrackingInfoFormatter : IFormatter<PCTrackingInfo>
+    public class PCTrackingInfoFormatter : IFormatter
     {
         private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
         
@@ -36,14 +36,16 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats a PCTrackingInfo object into a display string
         /// </summary>
-        public string Format(PCTrackingInfo entity)
+        public string Format(IFormattableObject formattableEntity)
         {
-            if (entity == null) return "No PC tracking data";
+            if (formattableEntity == null) return "No PC tracking data";
+            if (!(formattableEntity is PCTrackingInfo pcTrackingInfo))
+                throw new ArgumentException(nameof(formattableEntity));
             
             var builder = new StringBuilder();
-            AppendHeader(builder, entity);
+            AppendHeader(builder, pcTrackingInfo);
             
-            var parameters = entity.Parameters?.ToList() ?? new List<TrackingParam>();
+            var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
             
             if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
             {
@@ -185,7 +187,7 @@ namespace SharpBridge.Utilities
         }
         
         // Keep this method for compatibility with the IFormatter interface
-        string IFormatter<PCTrackingInfo>.Format(PCTrackingInfo entity, VerbosityLevel verbosity)
+        string IFormatter.Format(IFormattableObject entity, VerbosityLevel verbosity)
         {
             // Temporarily use the provided verbosity if needed
             var savedVerbosity = CurrentVerbosity;

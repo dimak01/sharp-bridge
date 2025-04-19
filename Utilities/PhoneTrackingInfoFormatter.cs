@@ -9,7 +9,7 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Formatter for PhoneTrackingInfo objects
     /// </summary>
-    public class PhoneTrackingInfoFormatter : IFormatter<PhoneTrackingInfo>
+    public class PhoneTrackingInfoFormatter : IFormatter
     {
         private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
         
@@ -35,40 +35,42 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats a PhoneTrackingInfo object into a display string
         /// </summary>
-        public string Format(PhoneTrackingInfo entity)
+        public string Format(IFormattableObject formattableEntity)
         {
-            if (entity == null) return "No tracking data";
+            if (formattableEntity == null) return "No tracking data";
+            if (!(formattableEntity is PhoneTrackingInfo phoneTrackingInfo))
+                throw new ArgumentException(nameof(formattableEntity));
             
             var builder = new StringBuilder();
             builder.AppendLine("=== iPhone Tracking Data === [Alt+O]");
             builder.AppendLine($"Verbosity: {CurrentVerbosity}");
-            builder.AppendLine($"Face Detected: {entity.FaceFound}");
+            builder.AppendLine($"Face Detected: {phoneTrackingInfo.FaceFound}");
             
-            if (CurrentVerbosity >= VerbosityLevel.Normal && entity.Rotation != null)
+            if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.Rotation != null)
             {
                 builder.AppendLine($"Head Rotation (X,Y,Z): " +
-                    $"{entity.Rotation.X:F1}°, " +
-                    $"{entity.Rotation.Y:F1}°, " +
-                    $"{entity.Rotation.Z:F1}°");
+                    $"{phoneTrackingInfo.Rotation.X:F1}°, " +
+                    $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
+                    $"{phoneTrackingInfo.Rotation.Z:F1}°");
             }
             
-            if (CurrentVerbosity >= VerbosityLevel.Normal && entity.Position != null)
+            if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.Position != null)
             {
                 builder.AppendLine($"Head Position (X,Y,Z): " +
-                    $"{entity.Position.X:F1}, " +
-                    $"{entity.Position.Y:F1}, " +
-                    $"{entity.Position.Z:F1}");
+                    $"{phoneTrackingInfo.Position.X:F1}, " +
+                    $"{phoneTrackingInfo.Position.Y:F1}, " +
+                    $"{phoneTrackingInfo.Position.Z:F1}");
             }
             
             // Show blend shapes data in detailed mode
-            if (CurrentVerbosity >= VerbosityLevel.Normal && entity.BlendShapes != null && entity.BlendShapes.Count > 0)
+            if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes != null && phoneTrackingInfo.BlendShapes.Count > 0)
             {
                 var expressions = new[] { "JawOpen", "EyeBlinkLeft", "EyeBlinkRight", "BrowInnerUp", "MouthSmile" };
                 builder.AppendLine("\nKey Expressions:");
-                int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? entity.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
+                int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? phoneTrackingInfo.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
 
                 // Calculate the length of the longest blend shape key for proper alignment
-                int maxKeyLength = entity.BlendShapes.Take(displayCount)
+                int maxKeyLength = phoneTrackingInfo.BlendShapes.Take(displayCount)
                     .Select(s => s?.Key?.Length ?? 0)
                     .DefaultIfEmpty(0)
                     .Max();
@@ -76,7 +78,7 @@ namespace SharpBridge.Utilities
                 // Add 1 for extra spacing
                 maxKeyLength += 1;
 
-                foreach (var shape in entity.BlendShapes.Take(displayCount))
+                foreach (var shape in phoneTrackingInfo.BlendShapes.Take(displayCount))
                 {
                     if (shape != null)
                     {
@@ -86,14 +88,14 @@ namespace SharpBridge.Utilities
                     }
                 }
                 
-                builder.AppendLine($"\nTotal Blend Shapes: {entity.BlendShapes.Count}");
+                builder.AppendLine($"\nTotal Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
             }
             
             return builder.ToString();
         }
         
         // Keep this method for compatibility with the IFormatter interface
-        string IFormatter<PhoneTrackingInfo>.Format(PhoneTrackingInfo entity, VerbosityLevel verbosity)
+        string IFormatter.Format(IFormattableObject entity, VerbosityLevel verbosity)
         {
             // Temporarily use the provided verbosity if needed
             var savedVerbosity = CurrentVerbosity;

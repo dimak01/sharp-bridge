@@ -12,7 +12,7 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class ConsoleRenderer: IConsoleRenderer
     {
-        private readonly Dictionary<Type, object> _formatters = new Dictionary<Type, object>();
+        private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private DateTime _lastUpdate = DateTime.MinValue;
         private readonly object _lock = new object();
         private readonly IConsole _console;
@@ -29,14 +29,14 @@ namespace SharpBridge.Utilities
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Register formatters for known types
-            RegisterFormatter(new PhoneTrackingInfoFormatter());
-            RegisterFormatter(new PCTrackingInfoFormatter());
+            RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter());
+            RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter());
         }
         
         /// <summary>
         /// Registers a formatter for a specific entity type
         /// </summary>
-        public void RegisterFormatter<T>(IFormatter<T> formatter) where T : IFormattableObject
+        public void RegisterFormatter<T>(IFormatter formatter) where T : IFormattableObject
         {
             _formatters[typeof(T)] = formatter;
         }
@@ -44,11 +44,11 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
-        public IFormatter<T> GetFormatter<T>() where T : IFormattableObject
+        public IFormatter GetFormatter<T>() where T : IFormattableObject
         {
             if (_formatters.TryGetValue(typeof(T), out var formatter))
             {
-                return (IFormatter<T>)formatter;
+                return formatter;
             }
             return null;
         }
@@ -56,8 +56,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Updates the console display with service statistics
         /// </summary>
-        public void Update<T>(IEnumerable<IServiceStats<T>> stats) 
-            where T : IFormattableObject
+        public void Update(IEnumerable<IServiceStats> stats)
         {
             lock (_lock)
             {
@@ -90,10 +89,8 @@ namespace SharpBridge.Utilities
                     if (stat.CurrentEntity != null)
                     {
                         var entityType = stat.CurrentEntity.GetType();
-                        if (_formatters.TryGetValue(entityType, out var formatterObj))
+                        if (_formatters.TryGetValue(entityType, out var typedFormatter))
                         {
-                            // We know it must be IFormatter<T> based on how we put it in the dictionary
-                            var typedFormatter = (IFormatter<T>)formatterObj;
                             var formattedOutput = typedFormatter.Format(stat.CurrentEntity);
                             
                             // Split formatted output into lines and add each one
