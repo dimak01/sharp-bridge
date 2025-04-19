@@ -16,14 +16,17 @@ namespace SharpBridge.Utilities
         private DateTime _lastUpdate = DateTime.MinValue;
         private readonly object _lock = new object();
         private readonly IConsole _console;
+        private readonly IAppLogger _logger;
         
         /// <summary>
         /// Initializes a new instance of the ConsoleRenderer class
         /// </summary>
         /// <param name="console">The console implementation to use for output</param>
-        public ConsoleRenderer(IConsole console)
+        /// <param name="logger">The logger to use for error reporting</param>
+        public ConsoleRenderer(IConsole console, IAppLogger logger)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Register formatters for known types
             RegisterFormatter(new PhoneTrackingInfoFormatter());
@@ -163,20 +166,11 @@ namespace SharpBridge.Utilities
                 // Reset cursor position to the end of our content
                 _console.SetCursorPosition(0, currentLine);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                try
-                {
-                    ClearConsole();
-                    foreach (var line in outputLines)
-                    {
-                        _console.WriteLine(line);
-                    }
-                }
-                catch
-                {
-                    // Last resort fallback
-                }
+                // Log the error and rethrow - let the application crash rather than attempting to recover
+                _logger.ErrorWithException("Console rendering failed", ex);
+                throw; // Rethrow the original exception
             }
         }
 
