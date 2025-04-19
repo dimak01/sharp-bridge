@@ -19,6 +19,8 @@ namespace SharpBridge.Tests.Services
         private Mock<IVTubeStudioPCClient> _vtubeStudioPCClientMock;
         private Mock<IVTubeStudioPhoneClient> _vtubeStudioPhoneClientMock;
         private Mock<ITransformationEngine> _transformationEngineMock;
+        private Mock<IAppLogger> _loggerMock;
+        private Mock<IConsoleRenderer> _consoleRendererMock;
         private ApplicationOrchestrator _orchestrator;
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
@@ -29,6 +31,8 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock = new Mock<IVTubeStudioPCClient>();
             _vtubeStudioPhoneClientMock = new Mock<IVTubeStudioPhoneClient>();
             _transformationEngineMock = new Mock<ITransformationEngine>();
+            _loggerMock = new Mock<IAppLogger>();
+            _consoleRendererMock = new Mock<IConsoleRenderer>();
             
             // Create a simple phone config for testing
             _phoneConfig = new VTubeStudioPhoneClientConfig
@@ -46,7 +50,9 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPCClientMock.Object,
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
-                _phoneConfig);
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object);
                 
             // Create temp config file for tests
             _tempConfigPath = CreateTempConfigFile("[]");
@@ -465,7 +471,9 @@ namespace SharpBridge.Tests.Services
                 null,
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
-                _phoneConfig));
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object));
         }
 
         [Fact]
@@ -476,7 +484,9 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPCClientMock.Object,
                 null,
                 _transformationEngineMock.Object,
-                _phoneConfig));
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object));
         }
 
         [Fact]
@@ -487,7 +497,48 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPCClientMock.Object,
                 _vtubeStudioPhoneClientMock.Object,
                 null,
-                _phoneConfig));
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullPhoneConfig_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                null,
+                _loggerMock.Object,
+                _consoleRendererMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                null,
+                _consoleRendererMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullConsoleRenderer_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                _loggerMock.Object,
+                null));
         }
 
         // Additional Initialization Tests

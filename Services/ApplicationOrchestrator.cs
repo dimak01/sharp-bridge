@@ -20,6 +20,7 @@ namespace SharpBridge.Services
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly IAppLogger _logger;
+        private readonly IConsoleRenderer _consoleRenderer;
         
         private bool _isInitialized;
         private bool _isDisposed;
@@ -34,18 +35,21 @@ namespace SharpBridge.Services
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
         /// <param name="logger">Application logger</param>
+        /// <param name="consoleRenderer">Console renderer for displaying status</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
-            VTubeStudioPhoneClientConfig phoneConfig = null,
-            IAppLogger logger = null)
+            VTubeStudioPhoneClientConfig phoneConfig,
+            IAppLogger logger,
+            IConsoleRenderer consoleRenderer)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
-            _phoneConfig = phoneConfig;
-            _logger = logger ?? new ConsoleAppLogger(); // Fallback to console logger if none provided
+            _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
         }
 
         /// <summary>
@@ -171,7 +175,7 @@ namespace SharpBridge.Services
             
             try
             {
-                ConsoleRenderer.ClearConsole();
+                _consoleRenderer.ClearDisplay();
 
                 // Send initial tracking request
                 await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
@@ -270,7 +274,7 @@ namespace SharpBridge.Services
                 if (pcStats != null) allStats.Add(pcStats);
                 
                 // Display all stats using our new covariance-enabled Update method
-                ConsoleRenderer.Update(allStats);
+                _consoleRenderer.Update(allStats);
             }
             catch (Exception ex)
             {
@@ -291,7 +295,7 @@ namespace SharpBridge.Services
                 if (keyInfo.Key == ConsoleKey.P && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
                 {
                     // Cycle verbosity specifically for PC client formatter
-                    var pcFormatter = ConsoleRenderer.GetFormatter<PCTrackingInfo>();
+                    var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
                     if (pcFormatter != null)
                     {
                         pcFormatter.CycleVerbosity();
@@ -303,7 +307,7 @@ namespace SharpBridge.Services
                 if (keyInfo.Key == ConsoleKey.O && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
                 {
                     // Cycle verbosity specifically for Phone client formatter
-                    var phoneFormatter = ConsoleRenderer.GetFormatter<PhoneTrackingInfo>();
+                    var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
                     if (phoneFormatter != null)
                     {
                         phoneFormatter.CycleVerbosity();
