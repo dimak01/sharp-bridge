@@ -21,6 +21,7 @@ namespace SharpBridge.Tests.Services
         private Mock<ITransformationEngine> _transformationEngineMock;
         private Mock<IAppLogger> _loggerMock;
         private Mock<IConsoleRenderer> _consoleRendererMock;
+        private Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
         private ApplicationOrchestrator _orchestrator;
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
@@ -33,6 +34,7 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock = new Mock<ITransformationEngine>();
             _loggerMock = new Mock<IAppLogger>();
             _consoleRendererMock = new Mock<IConsoleRenderer>();
+            _keyboardInputHandlerMock = new Mock<IKeyboardInputHandler>();
             
             // Create a simple phone config for testing
             _phoneConfig = new VTubeStudioPhoneClientConfig
@@ -52,10 +54,25 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _loggerMock.Object,
-                _consoleRendererMock.Object);
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object
+            );
                 
             // Create temp config file for tests
             _tempConfigPath = CreateTempConfigFile("[]");
+        }
+        
+        private ApplicationOrchestrator CreateOrchestrator()
+        {
+            return new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object
+            );
         }
         
         // Helper method to set up basic orchestrator requirements for event-based tests
@@ -473,7 +490,8 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _loggerMock.Object,
-                _consoleRendererMock.Object));
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object));
         }
 
         [Fact]
@@ -486,7 +504,8 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _loggerMock.Object,
-                _consoleRendererMock.Object));
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object));
         }
 
         [Fact]
@@ -499,7 +518,8 @@ namespace SharpBridge.Tests.Services
                 null,
                 _phoneConfig,
                 _loggerMock.Object,
-                _consoleRendererMock.Object));
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object));
         }
 
         [Fact]
@@ -512,7 +532,8 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 null,
                 _loggerMock.Object,
-                _consoleRendererMock.Object));
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object));
         }
 
         [Fact]
@@ -525,7 +546,8 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 null,
-                _consoleRendererMock.Object));
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object));
         }
 
         [Fact]
@@ -538,6 +560,20 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _loggerMock.Object,
+                null,
+                _keyboardInputHandlerMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullKeyboardInputHandler_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object,
                 null));
         }
 
@@ -680,6 +716,107 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Verify(x => 
                 x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_RegistersKeyboardShortcuts()
+        {
+            // Arrange
+            _vtubeStudioPCClientMock
+                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock
+                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock
+                .Setup(client => client.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _transformationEngineMock
+                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+                
+            // Setup keyboard handler mock to verify registration calls
+            _keyboardInputHandlerMock
+                .Setup(handler => handler.RegisterShortcut(
+                    It.IsAny<ConsoleKey>(), 
+                    It.IsAny<ConsoleModifiers>(), 
+                    It.IsAny<Action>(), 
+                    It.IsAny<string>()))
+                .Verifiable();
+                
+            var orchestrator = CreateOrchestrator();
+            
+            // Act
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            // Assert
+            _keyboardInputHandlerMock.Verify(
+                handler => handler.RegisterShortcut(
+                    It.IsAny<ConsoleKey>(), 
+                    It.IsAny<ConsoleModifiers>(), 
+                    It.IsAny<Action>(), 
+                    It.IsAny<string>()),
+                Times.AtLeast(3));
+        }
+
+        [Fact]
+        public async Task RunAsync_ChecksForKeyboardInput()
+        {
+            // Arrange
+            // Setup basic mocks for initialization
+            _vtubeStudioPCClientMock
+                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock
+                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock
+                .Setup(client => client.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _transformationEngineMock
+                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
+                .Returns(Task.CompletedTask);
+            
+            // Set up the keyboardInputHandler to signal when CheckForKeyboardInput is called
+            bool keyboardInputChecked = false;
+            _keyboardInputHandlerMock
+                .Setup(handler => handler.CheckForKeyboardInput())
+                .Callback(() => keyboardInputChecked = true);
+                
+            // Set up phoneClient to return no data after N tries
+            int attempts = 0;
+            _vtubeStudioPhoneClientMock
+                .Setup(client => client.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => {
+                    attempts++;
+                    return attempts <= 3; // Only return true for first 3 attempts
+                });
+                
+            _vtubeStudioPhoneClientMock
+                .Setup(client => client.SendTrackingRequestAsync())
+                .Returns(Task.CompletedTask);
+                
+            // Create and initialize orchestrator
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            // Use a cancellation token that will cancel after a delay
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            
+            // Act
+            await orchestrator.RunAsync(cts.Token);
+            
+            // Assert
+            _keyboardInputHandlerMock.Verify(
+                handler => handler.CheckForKeyboardInput(),
+                Times.AtLeast(1));
+            Assert.True(keyboardInputChecked, "Keyboard input should have been checked");
         }
     }
 }

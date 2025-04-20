@@ -21,6 +21,7 @@ namespace SharpBridge.Services
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly IAppLogger _logger;
         private readonly IConsoleRenderer _consoleRenderer;
+        private readonly IKeyboardInputHandler _keyboardInputHandler;
         
         private bool _isInitialized;
         private bool _isDisposed;
@@ -36,13 +37,15 @@ namespace SharpBridge.Services
         /// <param name="phoneConfig">Configuration for the phone client</param>
         /// <param name="logger">Application logger</param>
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
+        /// <param name="keyboardInputHandler">Keyboard input handler</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
             IAppLogger logger,
-            IConsoleRenderer consoleRenderer)
+            IConsoleRenderer consoleRenderer,
+            IKeyboardInputHandler keyboardInputHandler)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -50,6 +53,7 @@ namespace SharpBridge.Services
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
+            _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
         }
 
         /// <summary>
@@ -70,6 +74,9 @@ namespace SharpBridge.Services
             await InitializeTransformationEngine(transformConfigPath);
             await DiscoverAndConnectToVTubeStudio(cancellationToken);
             await AuthenticateWithVTubeStudio(cancellationToken);
+            
+            // Register keyboard shortcuts
+            RegisterKeyboardShortcuts();
             
             _logger.Info("Application initialized successfully");
             _isInitialized = true;
@@ -287,41 +294,7 @@ namespace SharpBridge.Services
         /// </summary>
         private void CheckForKeyboardInput()
         {
-            if (Console.KeyAvailable)
-            {
-                var keyInfo = Console.ReadKey(true); // true means don't echo to screen
-                
-                // Check for Alt+P combination for PC client
-                if (keyInfo.Key == ConsoleKey.P && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
-                {
-                    // Cycle verbosity specifically for PC client formatter
-                    var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
-                    if (pcFormatter != null)
-                    {
-                        pcFormatter.CycleVerbosity();
-                        _status = $"PC client verbosity changed to {pcFormatter.CurrentVerbosity}";
-                    }
-                }
-                
-                // Check for Alt+O combination for Phone client
-                if (keyInfo.Key == ConsoleKey.O && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
-                {
-                    // Cycle verbosity specifically for Phone client formatter
-                    var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
-                    if (phoneFormatter != null)
-                    {
-                        phoneFormatter.CycleVerbosity();
-                        _status = $"Phone client verbosity changed to {phoneFormatter.CurrentVerbosity}";
-                    }
-                }
-                
-                // Check for Alt+R combination to reload transformation config
-                if (keyInfo.Key == ConsoleKey.K && keyInfo.Modifiers.HasFlag(ConsoleModifiers.Alt))
-                {
-                    // Reload transformation config
-                    ReloadTransformationConfig();
-                }
-            }
+            _keyboardInputHandler.CheckForKeyboardInput();
         }
         
         /// <summary>
@@ -385,6 +358,50 @@ namespace SharpBridge.Services
             {
                 _logger.ErrorWithException("Error processing tracking data", ex);
             }
+        }
+
+        /// <summary>
+        /// Registers the keyboard shortcuts for the application
+        /// </summary>
+        private void RegisterKeyboardShortcuts()
+        {
+            // Register Alt+P to cycle PC client verbosity
+            _keyboardInputHandler.RegisterShortcut(
+                ConsoleKey.P, 
+                ConsoleModifiers.Alt, 
+                () => {
+                    var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
+                    if (pcFormatter != null)
+                    {
+                        pcFormatter.CycleVerbosity();
+                        _status = $"PC client verbosity changed to {pcFormatter.CurrentVerbosity}";
+                    }
+                },
+                "Cycle PC client verbosity"
+            );
+            
+            // Register Alt+O to cycle Phone client verbosity
+            _keyboardInputHandler.RegisterShortcut(
+                ConsoleKey.O, 
+                ConsoleModifiers.Alt, 
+                () => {
+                    var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
+                    if (phoneFormatter != null)
+                    {
+                        phoneFormatter.CycleVerbosity();
+                        _status = $"Phone client verbosity changed to {phoneFormatter.CurrentVerbosity}";
+                    }
+                },
+                "Cycle Phone client verbosity"
+            );
+            
+            // Register Alt+K to reload transformation config
+            _keyboardInputHandler.RegisterShortcut(
+                ConsoleKey.K, 
+                ConsoleModifiers.Alt, 
+                () => ReloadTransformationConfig(),
+                "Reload transformation configuration"
+            );
         }
 
         /// <summary>
