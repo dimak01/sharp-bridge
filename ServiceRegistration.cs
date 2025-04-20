@@ -6,6 +6,8 @@ using SharpBridge.Utilities;
 using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
+using Serilog;
+using System.IO;
 
 namespace SharpBridge
 {
@@ -67,11 +69,15 @@ namespace SharpBridge
             services.AddTransient<IVTubeStudioPhoneClient, VTubeStudioPhoneClient>();
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
-            // Register logging services
-            services.AddSingleton<IAppLogger, ConsoleAppLogger>();
             
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();
+            
+            // Register logging services
+            services.AddSingleton(ConfigureSerilog());
+            
+            // Register the Serilog logger as a singleton
+            services.AddSingleton<IAppLogger, SerilogAppLogger>();
             
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
@@ -80,6 +86,31 @@ namespace SharpBridge
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
             
             return services;
+        }
+        
+        /// <summary>
+        /// Configures Serilog for the application
+        /// </summary>
+        private static ILogger ConfigureSerilog()
+        {
+            // Ensure the logs directory exists
+            string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+            Directory.CreateDirectory(logDirectory);
+            
+            // Configure Serilog with basic settings
+            // This is a temporary configuration, will be replaced with a proper configuration file
+            return new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File(
+                    path: Path.Combine(logDirectory, "sharp-bridge-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    rollOnFileSizeLimit: true,
+                    fileSizeLimitBytes: 1024 * 1024, // 1MB size limit per file
+                    retainedFileCountLimit: 31,      // Keep 31 files (for a month of logs)
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+                
         }
         
         /// <summary>
