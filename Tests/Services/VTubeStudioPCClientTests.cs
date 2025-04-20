@@ -2,22 +2,28 @@ using System;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
+using Moq;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
-using SharpBridge.Utilities;
 using Xunit;
 
 namespace SharpBridge.Tests.Services
 {
     public class VTubeStudioPCClientTests
     {
+        private readonly Mock<IAppLogger> _mockLogger;
+        
+        public VTubeStudioPCClientTests()
+        {
+            _mockLogger = new Mock<IAppLogger>();
+        }
 
         [Fact]
         public void GetServiceStats_ReturnsValidStats()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(new ConsoleAppLogger());
+            var client = new VTubeStudioPCClient(_mockLogger.Object);
             
             // Act
             var stats = client.GetServiceStats();
@@ -47,7 +53,7 @@ namespace SharpBridge.Tests.Services
         public void GetServiceStats_AfterConnectAndSend_UpdatesStatistics()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(new ConsoleAppLogger());
+            var client = new VTubeStudioPCClient(_mockLogger.Object);
             
             // Act - Connect and send tracking data
             client.ConnectAsync(CancellationToken.None).GetAwaiter().GetResult();
@@ -95,6 +101,9 @@ namespace SharpBridge.Tests.Services
             Assert.Equal(-0.75, pcTrackingInfo.Parameters.First().Min);
             Assert.Equal(1.25, pcTrackingInfo.Parameters.First().Max);
             Assert.Equal(0.33, pcTrackingInfo.Parameters.First().DefaultValue);
+            
+            // Verify logger was called with connection info
+            _mockLogger.Verify(l => l.Info(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeastOnce);
             
             // Cleanup
             client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None)

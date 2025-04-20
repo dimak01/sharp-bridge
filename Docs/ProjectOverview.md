@@ -202,3 +202,12 @@ The project implements a comprehensive testing strategy:
 - **System.Text.Json** - For JSON serialization/deserialization
 - **System.Net.WebSockets** - For WebSocket communication
 - **Moq & FluentAssertions** - For comprehensive unit testing 
+- **Serilog** - For structured logging with file and console output
+
+## Logging Architecture
+
+**Core Abstraction**: The application uses a logging system based on the `IAppLogger` interface, which provides standard methods (Debug, Info, Warning, Error) with consistent parameter patterns. This abstraction decouples the application from specific logging implementations.
+
+**Implementation**: The `SerilogAppLogger` provides structured logging with both console and file outputs, configured with daily rolling logs (1MB size limit) and a retention policy (31 days).
+
+**Integration & Testing**: Logging is fully integrated into all major components via constructor injection, with proper error reporting and status tracking.
