@@ -79,6 +79,9 @@ namespace SharpBridge
             // Register the Serilog logger as a singleton
             services.AddSingleton<IAppLogger, SerilogAppLogger>();
             
+            // Register keyboard input handler
+            services.AddSingleton<IKeyboardInputHandler, KeyboardInputHandler>();
+            
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
             
