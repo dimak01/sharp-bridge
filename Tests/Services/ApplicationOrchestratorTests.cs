@@ -818,5 +818,585 @@ namespace SharpBridge.Tests.Services
                 Times.AtLeast(1));
             Assert.True(keyboardInputChecked, "Keyboard input should have been checked");
         }
+
+        // Additional tests for ReloadTransformationConfig
+
+        [Fact]
+        public async Task ReloadTransformationConfig_LoadsNewConfiguration()
+        {
+            // Arrange
+            var cancellationToken = CancellationToken.None;
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+            
+            // Initialize the orchestrator
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Setup transform engine to track reloads
+            _transformationEngineMock.Invocations.Clear(); // Clear previous invocations
+            
+            // Get the reload action from registered shortcuts
+            Action reloadAction = null;
+            _keyboardInputHandlerMock.Verify(x => x.RegisterShortcut(
+                ConsoleKey.K,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()),
+                Times.Once);
+                
+            // Capture the reload action from the registration
+            _keyboardInputHandlerMock
+                .Setup(x => x.RegisterShortcut(
+                    ConsoleKey.K,
+                    ConsoleModifiers.Alt,
+                    It.IsAny<Action>(),
+                    It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+                
+            // Re-initialize to capture the action
+            _orchestrator = CreateOrchestrator();
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Act - trigger the reload action
+            reloadAction.Should().NotBeNull("Reload action should be registered");
+            reloadAction();
+            
+            // Allow time for async operations to complete
+            await Task.Delay(100);
+            
+            // Assert
+            _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.Exactly(2));
+        }
+        
+        [Fact]
+        public async Task ReloadTransformationConfig_WhenConfigPathIsNull_LogsError()
+        {
+            // Arrange
+            // Get the reload action from registered shortcuts
+            Action reloadAction = null;
+            _keyboardInputHandlerMock
+                .Setup(x => x.RegisterShortcut(
+                    ConsoleKey.K,
+                    ConsoleModifiers.Alt,
+                    It.IsAny<Action>(),
+                    It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+                
+            // Initialize orchestrator without calling InitializeAsync, so path is null
+            _orchestrator = CreateOrchestrator();
+            
+            // Re-register shortcuts manually since we're not calling InitializeAsync
+            typeof(ApplicationOrchestrator)
+                .GetMethod("RegisterKeyboardShortcuts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(_orchestrator, null);
+            
+            // Act
+            reloadAction.Should().NotBeNull("Reload action should be registered");
+            reloadAction();
+            
+            // Allow time for async operations to complete
+            await Task.Delay(100);
+            
+            // Assert - with reflection, check that the internal _status field has the error message
+            var statusField = typeof(ApplicationOrchestrator)
+                .GetField("_status", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            var statusValue = statusField.GetValue(_orchestrator) as string;
+            statusValue.Should().Contain("Error:");
+            statusValue.Should().Contain("No transformation config path available");
+            
+            // Verify the transform engine was never called
+            _transformationEngineMock.Verify(x => x.LoadRulesAsync(It.IsAny<string>()), Times.Never);
+        }
+        
+        [Fact]
+        public async Task ReloadTransformationConfig_WhenLoadingFails_LogsError()
+        {
+            // Arrange
+            var cancellationToken = CancellationToken.None;
+            var expectedException = new InvalidOperationException("Test exception");
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            // Setup transform engine to throw on second load
+            int loadCount = 0;
+            _transformationEngineMock.Setup(x => x.LoadRulesAsync(It.IsAny<string>()))
+                .Returns(() => {
+                    loadCount++;
+                    if (loadCount > 1)
+                        throw expectedException;
+                    return Task.CompletedTask;
+                });
+            
+            // Get the reload action from registered shortcuts
+            Action reloadAction = null;
+            _keyboardInputHandlerMock
+                .Setup(x => x.RegisterShortcut(
+                    ConsoleKey.K,
+                    ConsoleModifiers.Alt,
+                    It.IsAny<Action>(),
+                    It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+                
+            // Initialize the orchestrator
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Act
+            reloadAction();
+            
+            // Allow time for async operations to complete
+            await Task.Delay(100);
+            
+            // Assert
+            _loggerMock.Verify(x => x.ErrorWithException(
+                It.Is<string>(s => s.Contains("Error reloading transformation config")),
+                expectedException), Times.Once);
+        }
+        
+        // Tests for UpdateConsoleStatus
+        
+        [Fact]
+        public void UpdateConsoleStatus_WithValidStats_UpdatesConsoleRenderer()
+        {
+            // Arrange
+            var phoneStats = new ServiceStats("PhoneClient", "Connected", new PhoneTrackingInfo());
+            var pcStats = new ServiceStats("PCClient", "Connected", new PCTrackingInfo());
+            
+            _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
+                .Returns(phoneStats);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
+                .Returns(pcStats);
+            
+            // Get the private method via reflection
+            var updateConsoleStatusMethod = typeof(ApplicationOrchestrator)
+                .GetMethod("UpdateConsoleStatus", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            // Act
+            updateConsoleStatusMethod.Invoke(_orchestrator, null);
+            
+            // Assert
+            _consoleRendererMock.Verify(x => x.Update(It.Is<List<IServiceStats>>(
+                stats => stats.Count == 2 && stats.Contains(phoneStats) && stats.Contains(pcStats))), 
+                Times.Once);
+        }
+        
+        [Fact]
+        public void UpdateConsoleStatus_WithNullStats_HandlesGracefully()
+        {
+            // Arrange
+            _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
+                .Returns((ServiceStats)null);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
+                .Returns(new ServiceStats("PCClient", "Connected", new PCTrackingInfo()));
+            
+            // Get the private method via reflection
+            var updateConsoleStatusMethod = typeof(ApplicationOrchestrator)
+                .GetMethod("UpdateConsoleStatus", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            // Act
+            updateConsoleStatusMethod.Invoke(_orchestrator, null);
+            
+            // Assert
+            _consoleRendererMock.Verify(x => x.Update(It.Is<List<IServiceStats>>(
+                stats => stats.Count == 1 && stats[0] is ServiceStats)), 
+                Times.Once);
+        }
+        
+        [Fact]
+        public void UpdateConsoleStatus_WhenRendererThrowsException_LogsError()
+        {
+            // Arrange
+            var phoneStats = new ServiceStats("PhoneClient", "Connected", new PhoneTrackingInfo());
+            var pcStats = new ServiceStats("PCClient", "Connected", new PCTrackingInfo());
+            var expectedException = new InvalidOperationException("Test exception");
+            
+            _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
+                .Returns(phoneStats);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
+                .Returns(pcStats);
+                
+            _consoleRendererMock.Setup(x => x.Update(It.IsAny<List<IServiceStats>>()))
+                .Throws(expectedException);
+            
+            // Get the private method via reflection
+            var updateConsoleStatusMethod = typeof(ApplicationOrchestrator)
+                .GetMethod("UpdateConsoleStatus", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            // Act - should not throw
+            updateConsoleStatusMethod.Invoke(_orchestrator, null);
+            
+            // Assert
+            _loggerMock.Verify(x => x.ErrorWithException(
+                It.Is<string>(s => s.Contains("Error updating console status")),
+                expectedException), Times.Once);
+        }
+        
+        // Tests for Console Renderer Formatting
+        
+        [Fact]
+        public void RegisterKeyboardShortcuts_RegistersCycleVerbosityForPCClient()
+        {
+            // Arrange
+            var pcFormatter = new Mock<IFormatter>();
+            pcFormatter.Setup(x => x.CycleVerbosity());
+            
+            _consoleRendererMock.Setup(x => x.GetFormatter<PCTrackingInfo>())
+                .Returns(pcFormatter.Object);
+                
+            // Get the registered action for Alt+P
+            Action cycleAction = null;
+            _keyboardInputHandlerMock
+                .Setup(x => x.RegisterShortcut(
+                    ConsoleKey.P,
+                    ConsoleModifiers.Alt,
+                    It.IsAny<Action>(),
+                    It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => cycleAction = action);
+                
+            // Initialize orchestrator
+            _orchestrator = CreateOrchestrator();
+            
+            // Register shortcuts manually
+            typeof(ApplicationOrchestrator)
+                .GetMethod("RegisterKeyboardShortcuts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(_orchestrator, null);
+            
+            // Act
+            cycleAction.Should().NotBeNull("Cycle action should be registered");
+            cycleAction();
+            
+            // Assert
+            pcFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+        
+        [Fact]
+        public void RegisterKeyboardShortcuts_RegistersCycleVerbosityForPhoneClient()
+        {
+            // Arrange
+            var phoneFormatter = new Mock<IFormatter>();
+            phoneFormatter.Setup(x => x.CycleVerbosity());
+            
+            _consoleRendererMock.Setup(x => x.GetFormatter<PhoneTrackingInfo>())
+                .Returns(phoneFormatter.Object);
+                
+            // Get the registered action for Alt+O
+            Action cycleAction = null;
+            _keyboardInputHandlerMock
+                .Setup(x => x.RegisterShortcut(
+                    ConsoleKey.O,
+                    ConsoleModifiers.Alt,
+                    It.IsAny<Action>(),
+                    It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => cycleAction = action);
+                
+            // Initialize orchestrator
+            _orchestrator = CreateOrchestrator();
+            
+            // Register shortcuts manually
+            typeof(ApplicationOrchestrator)
+                .GetMethod("RegisterKeyboardShortcuts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(_orchestrator, null);
+            
+            // Act
+            cycleAction.Should().NotBeNull("Cycle action should be registered");
+            cycleAction();
+            
+            // Assert
+            phoneFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+        
+        // Tests for error handling during the main loop
+        
+        [Fact]
+        public async Task RunAsync_WhenReceiveResponseAsyncThrowsException_ContinuesRunning()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var exceptionThrown = false;
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                .Returns(Task.CompletedTask);
+                
+            // Setup to throw exception on first call, then succeed on second call, then cancel
+            int receiveCallCount = 0;
+            _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => {
+                    receiveCallCount++;
+                    if (receiveCallCount == 1)
+                    {
+                        exceptionThrown = true;
+                        throw new InvalidOperationException("Test exception");
+                    }
+                    else if (receiveCallCount == 2)
+                    {
+                        Task.Delay(50).ContinueWith(_ => cts.Cancel());
+                        return Task.FromResult(true);
+                    }
+                    return Task.FromResult(false);
+                });
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
+            
+            // Act
+            await _orchestrator.RunAsync(cts.Token);
+            
+            // Assert
+            Assert.True(exceptionThrown, "Exception should have been thrown");
+            _vtubeStudioPhoneClientMock.Verify(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
+            _loggerMock.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error in application loop")), It.IsAny<object[]>()), Times.Once);
+        }
+        
+        // Tests for multiple consecutive tracking data events
+        
+        [Fact]
+        public async Task OnTrackingDataReceived_WithMultipleEvents_ProcessesAllEvents()
+        {
+            // Arrange
+            var trackingData1 = new PhoneTrackingInfo { FaceFound = true, BlendShapes = new List<BlendShape>() };
+            var trackingData2 = new PhoneTrackingInfo { FaceFound = false, BlendShapes = new List<BlendShape>() };
+            var transformedParams1 = new List<TrackingParam> { new TrackingParam { Id = "Test1", Value = 0.5 } };
+            var transformedParams2 = new List<TrackingParam> { new TrackingParam { Id = "Test2", Value = 0.7 } };
+            
+            // Setup basic orchestrator requirements
+            SetupOrchestratorTest();
+            
+            // Configure transformation for both events
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)))
+                .Returns(transformedParams1);
+                
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)))
+                .Returns(transformedParams2);
+            
+            // Configure PC client to track sends
+            var sentParams = new List<PCTrackingInfo>();
+            _vtubeStudioPCClientMock.Setup(x => 
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()))
+                .Callback<PCTrackingInfo, CancellationToken>((info, _) => sentParams.Add(info))
+                .Returns(Task.CompletedTask);
+            
+            // Initialize orchestrator to subscribe to events
+            var cancellationToken = CancellationToken.None;
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Get the event handler method via reflection
+            var onTrackingDataReceivedMethod = typeof(ApplicationOrchestrator)
+                .GetMethod("OnTrackingDataReceived", 
+                    System.Reflection.BindingFlags.NonPublic | 
+                    System.Reflection.BindingFlags.Instance);
+            
+            // Act
+            // Directly invoke the event handler with each tracking data
+            onTrackingDataReceivedMethod.Invoke(_orchestrator, 
+                new object[] { _vtubeStudioPhoneClientMock.Object, trackingData1 });
+                
+            // Small delay between events
+            await Task.Delay(50);
+            
+            onTrackingDataReceivedMethod.Invoke(_orchestrator, 
+                new object[] { _vtubeStudioPhoneClientMock.Object, trackingData2 });
+                
+            // Allow time for processing
+            await Task.Delay(100);
+            
+            // Assert
+            _transformationEngineMock.Verify(
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)), 
+                Times.Once);
+                
+            _transformationEngineMock.Verify(
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)), 
+                Times.Once);
+                
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
+                
+            Assert.Equal(2, sentParams.Count);
+            Assert.True(sentParams[0].FaceFound);
+            Assert.Equal(transformedParams1, sentParams[0].Parameters);
+            Assert.False(sentParams[1].FaceFound);
+            Assert.Equal(transformedParams2, sentParams[1].Parameters);
+        }
+        
+        // Test for RequestIntervalSeconds configuration
+        
+        [Fact]
+        public async Task RunAsync_RespectsRequestIntervalSeconds()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var requestTimes = new List<DateTime>();
+            
+            // Set up a short request interval for testing
+            _phoneConfig.RequestIntervalSeconds = 0.2; // 200ms
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            // Track request times
+            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                .Callback(() => requestTimes.Add(DateTime.UtcNow))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
+            
+            // Let it run for enough time to collect multiple requests
+            cts.CancelAfter(1000); // 1 second - should give us multiple requests
+            
+            // Act
+            await _orchestrator.RunAsync(cts.Token);
+            
+            // Assert
+            Assert.True(requestTimes.Count >= 2, $"Should have at least 2 requests, but got {requestTimes.Count}");
+            
+            // Verify we're respecting the request interval timing in general
+            if (requestTimes.Count >= 2)
+            {
+                // Get a more accurate measure by averaging multiple intervals
+                var totalInterval = (requestTimes[requestTimes.Count - 1] - requestTimes[0]).TotalSeconds;
+                var avgInterval = totalInterval / (requestTimes.Count - 1);
+                
+                // Allow for some flexibility in timing - the interval should be approximately the configured value
+                // but may vary due to thread scheduling, task delays, etc.
+                var minExpectedInterval = _phoneConfig.RequestIntervalSeconds * 0.5; // Allow 50% margin
+                Assert.True(avgInterval >= minExpectedInterval, 
+                    $"Average interval {avgInterval:F4}s should be close to configured interval {_phoneConfig.RequestIntervalSeconds}s");
+            }
+        }
+        
+        // Test for validation of transformed parameters
+        
+        [Fact]
+        public async Task OnTrackingDataReceived_PreservesParameterBoundaries()
+        {
+            // Arrange
+            var trackingData = new PhoneTrackingInfo { FaceFound = true, BlendShapes = new List<BlendShape>() };
+            var transformedParams = new List<TrackingParam> 
+            { 
+                new TrackingParam { 
+                    Id = "Test", 
+                    Value = 0.5,
+                    Min = -1.0,
+                    Max = 1.0,
+                    DefaultValue = 0.0
+                } 
+            };
+            
+            // Setup basic orchestrator requirements
+            SetupOrchestratorTest();
+            
+            // Configure the transformation engine to return test parameters
+            _transformationEngineMock.Setup(x => x.TransformData(trackingData))
+                .Returns(transformedParams);
+            
+            // Track parameters sent to VTube Studio
+            PCTrackingInfo sentInfo = null;
+            _vtubeStudioPCClientMock.Setup(x => 
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()))
+                .Callback<PCTrackingInfo, CancellationToken>((info, _) => sentInfo = info)
+                .Returns(Task.CompletedTask);
+            
+            // Act - Run the test with a 2 second timeout
+            bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
+                trackingData, 
+                TimeSpan.FromSeconds(2));
+            
+            // Assert
+            eventWasRaised.Should().BeTrue("The event should have been raised by the test");
+            _transformationEngineMock.Verify(x => x.TransformData(trackingData), Times.Once);
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
+                Times.Once);
+                
+            Assert.NotNull(sentInfo);
+            Assert.True(sentInfo.FaceFound);
+            Assert.NotNull(sentInfo.Parameters);
+            
+            var param = sentInfo.Parameters.First();
+            Assert.Equal("Test", param.Id);
+            Assert.Equal(0.5, param.Value);
+            Assert.Equal(-1.0, param.Min);
+            Assert.Equal(1.0, param.Max);
+            Assert.Equal(0.0, param.DefaultValue);
+        }
+
+        // Test for specific OperationCanceledException handling
+        
+        //[Fact]
+        public async Task RunAsync_WhenOperationCanceledExceptionIsThrown_HandlesGracefully()
+        {
+            // Arrange
+            // Use a short timeout
+            var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(1000));
+            
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            //// Important: Setup ReceiveResponseAsync to directly throw an OperationCanceledException 
+            //// when the token is canceled, not before
+            //_vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+            //    .Callback<CancellationToken>(token => {
+            //        if (token.IsCancellationRequested)
+            //            throw new OperationCanceledException(token);
+            //    })
+            //    .ReturnsAsync(false);
+                
+            await _orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            // Act & Assert - should not throw exception
+            await _orchestrator.RunAsync(cts.Token);
+            
+            // Verify cleanup was performed
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.CloseAsync(
+                    It.IsAny<WebSocketCloseStatus>(), 
+                    It.IsAny<string>(), 
+                    It.IsAny<CancellationToken>()), 
+                Times.Once);
+                
+            // Verify the proper log message was written
+            _loggerMock.Verify(x => x.Info("Operation was canceled, shutting down..."), Times.Once);
+        }
     }
 }
