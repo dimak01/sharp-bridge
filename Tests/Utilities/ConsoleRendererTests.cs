@@ -90,14 +90,6 @@ namespace SharpBridge.Tests.Utilities
                     return "Unknown entity";
                 });
                 
-            // The Format method with entity and verbosity parameters
-            _mockFormatter.Setup(f => f.Format(It.IsAny<IFormattableObject>(), It.IsAny<VerbosityLevel>()))
-                .Returns<IFormattableObject, VerbosityLevel>((entity, verbosity) => {
-                    if (entity is TestEntity testEntity)
-                        return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}, Verbosity: {verbosity}";
-                    return $"Unknown entity, Verbosity: {verbosity}";
-                });
-            
             // Create test entity and stats
             _testEntity = new TestEntity("Test", 42);
             
