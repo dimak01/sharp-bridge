@@ -93,21 +93,5 @@ namespace SharpBridge.Utilities
             
             return builder.ToString();
         }
-        
-        // Keep this method for compatibility with the IFormatter interface
-        string IFormatter.Format(IFormattableObject entity, VerbosityLevel verbosity)
-        {
-            // Temporarily use the provided verbosity if needed
-            var savedVerbosity = CurrentVerbosity;
-            try
-            {
-                CurrentVerbosity = verbosity;
-                return Format(entity);
-            }
-            finally
-            {
-                CurrentVerbosity = savedVerbosity;
-            }
-        }
     }
 } 

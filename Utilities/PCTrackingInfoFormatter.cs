@@ -40,7 +40,7 @@ namespace SharpBridge.Utilities
         {
             if (formattableEntity == null) return "No PC tracking data";
             if (!(formattableEntity is PCTrackingInfo pcTrackingInfo))
-                throw new ArgumentException(nameof(formattableEntity));
+                throw new ArgumentException("Entity must be of type PCTrackingInfo", nameof(formattableEntity));
             
             var builder = new StringBuilder();
             AppendHeader(builder, pcTrackingInfo);
@@ -111,18 +111,13 @@ namespace SharpBridge.Utilities
         /// </summary>
         private void AppendParameterInfo(StringBuilder builder, TrackingParam param, int maxIdLength)
         {
-            // Format the value with sign-aware padding for decimal point alignment
+            string id = param.Id ?? string.Empty;
             string formattedValue = FormatNumericValue(param.Value);
-            
-            // Create a progress bar visualization
             string progressBar = CreateProgressBar(param.Value, param.Min, param.Max);
-            
-            // Format the weight part and range information with commas for better readability
             string weightPart = FormatWeightPart(param);
             string rangeInfo = FormatRangeInfo(param);
             
-            // Combine all information in a single line
-            builder.AppendLine($"  {param.Id.PadRight(maxIdLength)}: {progressBar} {formattedValue} ({weightPart}, {rangeInfo})");
+            builder.AppendLine($"  {id.PadRight(maxIdLength)}: {progressBar} {formattedValue} ({(string.IsNullOrEmpty(weightPart) ? "" : $"{weightPart}, ")}{rangeInfo})");
         }
         
         /// <summary>
@@ -184,22 +179,6 @@ namespace SharpBridge.Utilities
             string defaultStr = $"default: {FormatNumericValue(param.DefaultValue)}";
             
             return $"{minStr}, {maxStr}, {defaultStr}";
-        }
-        
-        // Keep this method for compatibility with the IFormatter interface
-        string IFormatter.Format(IFormattableObject entity, VerbosityLevel verbosity)
-        {
-            // Temporarily use the provided verbosity if needed
-            var savedVerbosity = CurrentVerbosity;
-            try
-            {
-                CurrentVerbosity = verbosity;
-                return Format(entity);
-            }
-            finally
-            {
-                CurrentVerbosity = savedVerbosity;
-            }
         }
     }
 } 
