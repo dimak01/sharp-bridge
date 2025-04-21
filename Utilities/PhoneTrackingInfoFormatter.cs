@@ -39,7 +39,7 @@ namespace SharpBridge.Utilities
         {
             if (formattableEntity == null) return "No tracking data";
             if (!(formattableEntity is PhoneTrackingInfo phoneTrackingInfo))
-                throw new ArgumentException(nameof(formattableEntity));
+                throw new ArgumentException("Entity must be of type PhoneTrackingInfo", nameof(formattableEntity));
             
             var builder = new StringBuilder();
             builder.AppendLine("=== iPhone Tracking Data === [Alt+O]");
@@ -86,6 +86,11 @@ namespace SharpBridge.Utilities
                         var bar = new string('█', barLength) + new string('░', 20 - barLength);
                         builder.AppendLine($"{shape.Key.PadRight(maxKeyLength)}: {bar} {shape.Value:F2}");
                     }
+                }
+
+                if (CurrentVerbosity == VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes.Count > PARAM_DISPLAY_COUNT_NORMAL)
+                {
+                    builder.AppendLine($"  ... and {phoneTrackingInfo.BlendShapes.Count - PARAM_DISPLAY_COUNT_NORMAL} more");
                 }
                 
                 builder.AppendLine($"\nTotal Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
