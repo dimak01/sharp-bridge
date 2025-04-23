@@ -7,6 +7,8 @@ using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
 using Xunit;
+using FluentAssertions;
+using System.Threading.Tasks;
 
 namespace SharpBridge.Tests.Services
 {
@@ -109,6 +111,69 @@ namespace SharpBridge.Tests.Services
             client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None)
                 .GetAwaiter().GetResult();
             client.Dispose();
+        }
+
+        [Fact]
+        public void State_ReturnsCorrectState_AfterConstruction()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object);
+            
+            // Act & Assert
+            client.State.Should().Be(WebSocketState.None);
+        }
+        
+        [Fact]
+        public async Task State_TransitionsCorrectly_ThroughConnectionLifecycle()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object);
+            
+            // Act - Connect
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Assert - Should be Open
+            client.State.Should().Be(WebSocketState.Open);
+            
+            // Act - Close
+            await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
+            
+            // Assert - Should be Closed
+            client.State.Should().Be(WebSocketState.Closed);
+        }
+        
+        [Fact]
+        public async Task AuthenticateAsync_ReturnsTrue_AndLogsExpectedMessages()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object);
+            
+            // Act
+            var result = await client.AuthenticateAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeTrue();
+            
+            // Verify logging
+            _mockLogger.Verify(l => l.Info("Dummy VTubeStudioPCClient - Authenticating"), Times.Once);
+            _mockLogger.Verify(l => l.Info("PC Authentication: Success"), Times.Once);
+        }
+        
+        [Fact]
+        public async Task DiscoverPortAsync_ReturnsExpectedPort_AndLogsExpectedMessages()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object);
+            
+            // Act
+            var port = await client.DiscoverPortAsync(CancellationToken.None);
+            
+            // Assert
+            port.Should().Be(8001);
+            
+            // Verify logging
+            _mockLogger.Verify(l => l.Info("Dummy VTubeStudioPCClient - Discovering port"), Times.Once);
+            _mockLogger.Verify(l => l.Info("PC Port Discovery: Found port 8001"), Times.Once);
         }
     }
 } 
