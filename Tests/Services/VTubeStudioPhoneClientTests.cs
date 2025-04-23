@@ -503,5 +503,112 @@ namespace SharpBridge.Tests.Services
             // Should rethrow the exception
             await Assert.ThrowsAsync<SocketException>(() => client.SendTrackingRequestAsync());
         }
+        
+        [Fact]
+        public void GetServiceStats_ReturnsCorrectStats_WhenNoTrackingData()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act
+            var stats = client.GetServiceStats();
+            
+            // Assert
+            stats.Should().NotBeNull();
+            stats.ServiceName.Should().Be("Phone Client");
+            stats.Status.Should().Be("Initializing");
+            stats.CurrentEntity.Should().BeNull();
+            stats.Counters.Should().ContainKey("Total Frames").WhoseValue.Should().Be(0);
+            stats.Counters.Should().ContainKey("Failed Frames").WhoseValue.Should().Be(0);
+            stats.Counters.Should().ContainKey("Uptime (seconds)").WhoseValue.Should().BeGreaterOrEqualTo(0);
+            stats.Counters.Should().NotContainKey("FPS");
+        }
+        
+        [Fact]
+        public async Task GetServiceStats_ReturnsCorrectStats_WithTrackingData()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Setup tracking data
+            var trackingData = new PhoneTrackingInfo { FaceFound = true };
+            var json = JsonSerializer.Serialize(trackingData);
+            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Receive some data to populate stats
+            await client.ReceiveResponseAsync(CancellationToken.None);
+            
+            // Act
+            var stats = client.GetServiceStats();
+            
+            // Assert
+            stats.Should().NotBeNull();
+            stats.ServiceName.Should().Be("Phone Client");
+            stats.Status.Should().Be("Initializing");
+            stats.CurrentEntity.Should().NotBeNull();
+            (stats.CurrentEntity as PhoneTrackingInfo).FaceFound.Should().BeTrue();
+            stats.Counters.Should().ContainKey("Total Frames").WhoseValue.Should().Be(1);
+            stats.Counters.Should().ContainKey("Failed Frames").WhoseValue.Should().Be(0);
+            stats.Counters.Should().ContainKey("Uptime (seconds)").WhoseValue.Should().BeGreaterOrEqualTo(0);
+            stats.Counters.Should().ContainKey("FPS").WhoseValue.Should().BeGreaterOrEqualTo(0);
+        }
+        
+        [Fact]
+        public async Task GetServiceStats_ReturnsCorrectStatus_AfterError()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Setup to throw an error
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Test error"));
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act - trigger an error
+            await client.ReceiveResponseAsync(CancellationToken.None);
+            
+            // Assert
+            var stats = client.GetServiceStats();
+            stats.Status.Should().StartWith("Error:");
+            stats.Counters.Should().ContainKey("Failed Frames").WhoseValue.Should().Be(1);
+        }
+        
+        [Fact]
+        public async Task GetServiceStats_ReturnsCorrectStatus_AfterSendingRequest()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            mockUdpClient
+                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ReturnsAsync(100);
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act - send a request
+            await client.SendTrackingRequestAsync();
+            
+            // Assert
+            var stats = client.GetServiceStats();
+            stats.Status.Should().Be("Sending Requests");
+        }
     }
 } 
