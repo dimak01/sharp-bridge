@@ -33,7 +33,7 @@ namespace SharpBridge.Utilities
         
         /// <summary>
         /// Gets or sets the PC configuration filename
-        /// </summary>
+        /// </summary>EnsureConfigDirectoryExists
         public string PCConfigFilename { get; set; }
         
         /// <summary>
@@ -55,6 +55,25 @@ namespace SharpBridge.Utilities
         /// Gets the full path to the phone configuration file
         /// </summary>
         public string PhoneConfigPath => Path.Combine(ConfigDirectory, PhoneConfigFilename);
+
+        /// <summary>
+        /// Validates the options
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown when options are invalid</exception>
+        public void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(ConfigDirectory))
+                throw new ArgumentException("Configuration directory cannot be empty", nameof(ConfigDirectory));
+                
+            if (string.IsNullOrWhiteSpace(TransformConfigFilename))
+                throw new ArgumentException("Transform configuration filename cannot be empty", nameof(TransformConfigFilename));
+                
+            if (string.IsNullOrWhiteSpace(PCConfigFilename))
+                throw new ArgumentException("PC configuration filename cannot be empty", nameof(PCConfigFilename));
+                
+            if (string.IsNullOrWhiteSpace(PhoneConfigFilename))
+                throw new ArgumentException("Phone configuration filename cannot be empty", nameof(PhoneConfigFilename));
+        }
     }
 
     /// <summary>
@@ -97,7 +116,7 @@ namespace SharpBridge.Utilities
             rootCommand.AddOption(pcConfigOption);
             rootCommand.AddOption(phoneConfigOption);
 
-            CommandLineOptions options = new CommandLineOptions();
+            var options = new CommandLineOptions();
 
             rootCommand.SetHandler((string configDir, string transform, string pcConfig, string phoneConfig) =>
             {
@@ -109,6 +128,10 @@ namespace SharpBridge.Utilities
             configDirOption, transformOption, pcConfigOption, phoneConfigOption);
 
             await rootCommand.InvokeAsync(args);
+            
+            // Validate the options
+            options.Validate();
+
             return options;
         }
     }
