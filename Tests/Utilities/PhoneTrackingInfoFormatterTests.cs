@@ -442,9 +442,9 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().Contain("Full   : ████████████████████ 1.00");
-            lines.Should().Contain("Half   : ██████████░░░░░░░░░░ 0.50");
-            lines.Should().Contain("Empty  : ░░░░░░░░░░░░░░░░░░░░ 0.00");
+            lines.Should().Contain("Full  : ████████████████████ 1.00");
+            lines.Should().Contain("Half  : ██████████░░░░░░░░░░ 0.50");
+            lines.Should().Contain("Empty : ░░░░░░░░░░░░░░░░░░░░ 0.00");
         }
 
         private List<BlendShape> CreateBlendShapes(int count)

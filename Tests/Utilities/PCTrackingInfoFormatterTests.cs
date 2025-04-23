@@ -60,7 +60,7 @@ namespace SharpBridge.Tests.Utilities
             
             if (expectedCount > 0)
             {
-                lines.Should().Contain("\nTop Parameters:");
+                lines.Should().Contain("Top Parameters:");
                 var parameterLines = lines.Where(l => l.Contains(TrackingParamName)).ToList();
                 var linesToCheck = shouldShowAll ? parameterLines : parameterLines.Take(10);
                 
@@ -408,7 +408,7 @@ namespace SharpBridge.Tests.Utilities
                              parameterCount: 3);
             
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().Contain("\nTop Parameters:");
+            lines.Should().Contain("Top Parameters:");
             var parameterLines = lines.Where(l => l.StartsWith("  ") && l.Contains("█")).ToList();
             parameterLines.Should().HaveCount(3);
             
