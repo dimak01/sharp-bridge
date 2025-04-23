@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using SharpBridge.Models;
 using Xunit;
 using FluentAssertions;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Tests.Models
 {

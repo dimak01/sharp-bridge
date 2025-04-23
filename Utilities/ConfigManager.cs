@@ -2,8 +2,9 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using SharpBridge.Models;
 
-namespace SharpBridge.Models
+namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Manages configuration file loading and saving.
