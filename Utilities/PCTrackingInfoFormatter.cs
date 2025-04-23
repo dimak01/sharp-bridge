@@ -73,7 +73,8 @@ namespace SharpBridge.Utilities
         /// </summary>
         private void AppendParameters(StringBuilder builder, List<TrackingParam> parameters)
         {
-            builder.AppendLine("\nTop Parameters:");
+            builder.AppendLine();
+            builder.AppendLine("Top Parameters:");
             int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? parameters.Count : PARAM_DISPLAY_COUNT_NORMAL;
             
             // Calculate the length of the longest parameter ID for proper alignment

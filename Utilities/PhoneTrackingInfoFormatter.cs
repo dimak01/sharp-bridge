@@ -66,7 +66,8 @@ namespace SharpBridge.Utilities
             if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes != null && phoneTrackingInfo.BlendShapes.Count > 0)
             {
                 var expressions = new[] { "JawOpen", "EyeBlinkLeft", "EyeBlinkRight", "BrowInnerUp", "MouthSmile" };
-                builder.AppendLine("\nKey Expressions:");
+                builder.AppendLine();
+                builder.AppendLine("Key Expressions:");
                 int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? phoneTrackingInfo.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
 
                 // Calculate the length of the longest blend shape key for proper alignment
@@ -92,8 +93,10 @@ namespace SharpBridge.Utilities
                 {
                     builder.AppendLine($"  ... and {phoneTrackingInfo.BlendShapes.Count - PARAM_DISPLAY_COUNT_NORMAL} more");
                 }
-                
-                builder.AppendLine($"\nTotal Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
+
+
+                builder.AppendLine();
+                builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
             }
             
             return builder.ToString();

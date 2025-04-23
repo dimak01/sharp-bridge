@@ -102,11 +102,11 @@ namespace SharpBridge.Services
             // Throw an exception if any rules failed validation
             if (invalidRules > 0)
             {
-                string errorDetails = string.Join("\n- ", validationErrors);
-                _logger.Error($"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.\nErrors:\n- {errorDetails}");
+                string errorDetails = string.Join($"{Environment.NewLine}- ", validationErrors);
+                _logger.Error($"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.{Environment.NewLine}Errors:{Environment.NewLine}- {errorDetails}");
                 throw new InvalidOperationException(
-                    $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.\n" +
-                    $"Errors:\n- {errorDetails}");
+                    $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.{Environment.NewLine}" +
+                    $"Errors:{Environment.NewLine}- {errorDetails}");
             }
             
             // Check if we have at least one valid rule
