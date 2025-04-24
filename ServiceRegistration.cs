@@ -65,10 +65,13 @@ namespace SharpBridge
             });
             
             // Register core services
-            services.AddTransient<IVTubeStudioPCClient, VTubeStudioPCClient>();
             services.AddTransient<IVTubeStudioPhoneClient, VTubeStudioPhoneClient>();
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
+            // Register VTubeStudioPCClient as a singleton and resolve IAuthTokenProvider to the same instance
+            services.AddSingleton<VTubeStudioPCClient>();
+            services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
+            services.AddSingleton<IAuthTokenProvider>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
             
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();

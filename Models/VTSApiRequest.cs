@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Generic VTube Studio API request
+    /// Base request to VTube Studio API
     /// </summary>
     public class VTSApiRequest<T>
     {

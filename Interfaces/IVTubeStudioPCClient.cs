@@ -8,9 +8,9 @@ using SharpBridge.Models;
 namespace SharpBridge.Interfaces
 {
     /// <summary>
-    /// Client for communicating with VTube Studio on PC via WebSocket
+    /// Client for communicating with VTube Studio on PC
     /// </summary>
-    public interface IVTubeStudioPCClient : IDisposable, IServiceStatsProvider
+    public interface IVTubeStudioPCClient : IDisposable
     {
         /// <summary>
         /// Gets the current state of the WebSocket connection
@@ -18,41 +18,36 @@ namespace SharpBridge.Interfaces
         WebSocketState State { get; }
         
         /// <summary>
-        /// Connects to VTube Studio using the configured host and port
+        /// Connects to VTube Studio
         /// </summary>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Task representing the asynchronous operation</returns>
         Task ConnectAsync(CancellationToken cancellationToken);
         
         /// <summary>
-        /// Closes the WebSocket connection gracefully
+        /// Closes the connection to VTube Studio
         /// </summary>
-        /// <param name="closeStatus">The close status to use</param>
-        /// <param name="statusDescription">Description of why the connection is closing</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Task representing the asynchronous operation</returns>
         Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken);
         
         /// <summary>
-        /// Authenticates with VTube Studio, using stored token if available or requesting a new one
+        /// Authenticates with VTube Studio using the provided token
         /// </summary>
+        /// <param name="token">The authentication token to use</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>True if authentication was successful, otherwise false</returns>
-        Task<bool> AuthenticateAsync(CancellationToken cancellationToken);
+        /// <returns>True if authentication was successful</returns>
+        Task<bool> AuthenticateAsync(string token, CancellationToken cancellationToken);
         
         /// <summary>
-        /// Discovers the port VTube Studio is running on via UDP broadcast
+        /// Discovers the port VTube Studio is running on
         /// </summary>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>The discovered port, or -1 if discovery failed</returns>
         Task<int> DiscoverPortAsync(CancellationToken cancellationToken);
         
         /// <summary>
         /// Sends tracking data to VTube Studio
         /// </summary>
-        /// <param name="trackingData">The tracking data to send</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Task representing the asynchronous operation</returns>
         Task SendTrackingAsync(PCTrackingInfo trackingData, CancellationToken cancellationToken);
+        
+        /// <summary>
+        /// Gets the current service statistics
+        /// </summary>
+        IServiceStats GetServiceStats();
     }
 } 

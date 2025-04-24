@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Generic VTube Studio API response
+    /// Base response from VTube Studio API
     /// </summary>
     public class VTSApiResponse<T>
     {
@@ -18,7 +18,7 @@ namespace SharpBridge.Models
         
         /// <summary>Timestamp of the response</summary>
         [JsonPropertyName("timestamp")]
-        public ulong Timestamp { get; set; }
+        public long Timestamp { get; set; }
         
         /// <summary>Message type identifier</summary>
         [JsonPropertyName("messageType")]

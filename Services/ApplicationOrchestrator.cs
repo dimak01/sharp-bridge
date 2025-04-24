@@ -19,6 +19,8 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPhoneClient _vtubeStudioPhoneClient;
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
+        private readonly VTubeStudioPCConfig _pcConfig;
+        private readonly IAuthTokenProvider _authTokenProvider;
         private readonly IAppLogger _logger;
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
@@ -35,6 +37,8 @@ namespace SharpBridge.Services
         /// <param name="vtubeStudioPhoneClient">The VTube Studio phone client</param>
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
+        /// <param name="pcConfig">Configuration for the PC client</param>
+        /// <param name="authTokenProvider">Authentication token provider</param>
         /// <param name="logger">Application logger</param>
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
@@ -43,6 +47,8 @@ namespace SharpBridge.Services
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
+            VTubeStudioPCConfig pcConfig,
+            IAuthTokenProvider authTokenProvider,
             IAppLogger logger,
             IConsoleRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler)
@@ -51,6 +57,8 @@ namespace SharpBridge.Services
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
+            _pcConfig = pcConfig ?? throw new ArgumentNullException(nameof(pcConfig));
+            _authTokenProvider = authTokenProvider ?? throw new ArgumentNullException(nameof(authTokenProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
@@ -152,12 +160,35 @@ namespace SharpBridge.Services
         
         private async Task AuthenticateWithVTubeStudio(CancellationToken cancellationToken)
         {
-            _logger.Info("Authenticating with VTube Studio...");
-            bool authenticated = await _vtubeStudioPCClient.AuthenticateAsync(cancellationToken);
+            _logger.Info("Starting VTube Studio authentication process...");
+            
+            // Try to get existing token
+            string token = null;
+            if (File.Exists(_pcConfig.TokenFilePath))
+            {
+                token = File.ReadAllText(_pcConfig.TokenFilePath);
+            }
+            
+            // If no token or authentication fails, get a new one
+            bool authenticated = false;
+            if (!string.IsNullOrEmpty(token))
+            {
+                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(token, cancellationToken);
+            }
+            
             if (!authenticated)
             {
-                throw new InvalidOperationException("Could not authenticate with VTube Studio. Check if authentication was approved.");
+                _logger.Info("No valid token found, requesting new token...");
+                await _authTokenProvider.ClearTokenAsync();
+                token = await _authTokenProvider.GetTokenAsync(cancellationToken);
+                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(token, cancellationToken);
             }
+            
+            if (!authenticated)
+            {
+                throw new InvalidOperationException("Failed to authenticate with VTube Studio");
+            }
+            
             _logger.Info("Successfully authenticated with VTube Studio");
         }
         
