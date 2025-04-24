@@ -19,6 +19,7 @@ namespace SharpBridge.Services
         private readonly IAppLogger _logger;
         private readonly VTubeStudioPCConfig _config;
         private readonly IWebSocketWrapper _webSocket;
+        private readonly IPortDiscoveryService _portDiscoveryService;
         private bool _isDisposed;
         private DateTime _startTime;
         private int _messagesSent;
@@ -50,11 +51,17 @@ namespace SharpBridge.Services
         /// <param name="logger">Application logger</param>
         /// <param name="config">VTube Studio PC configuration</param>
         /// <param name="webSocket">WebSocket wrapper for communication</param>
-        public VTubeStudioPCClient(IAppLogger logger, VTubeStudioPCConfig config, IWebSocketWrapper webSocket)
+        /// <param name="portDiscoveryService">Service for discovering VTube Studio's port</param>
+        public VTubeStudioPCClient(
+            IAppLogger logger, 
+            VTubeStudioPCConfig config, 
+            IWebSocketWrapper webSocket,
+            IPortDiscoveryService portDiscoveryService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
+            _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
             _startTime = DateTime.Now;
             
             // Try to load existing auth token
@@ -177,9 +184,12 @@ namespace SharpBridge.Services
             
             _logger.Info("Discovering VTube Studio port");
             
-            // TODO: Implement UDP discovery
-            // For now, return the configured port
-            _logger.Info("Found port {0}", _config.Port);
+            var response = await _portDiscoveryService.DiscoverAsync(_config.ConnectionTimeoutMs, cancellationToken);
+            if (response != null)
+            {
+                return response.Port;
+            }
+            
             return _config.Port;
         }
         
