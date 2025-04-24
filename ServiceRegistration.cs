@@ -57,21 +57,37 @@ namespace SharpBridge
             
             // Register clients
             services.AddTransient<IWebSocketWrapper, WebSocketWrapper>();
-            services.AddTransient<IUdpClientWrapper>(provider => 
-            {
-                // Use a factory method to allow configuration of the UDP client port
-                var config = provider.GetRequiredService<VTubeStudioPhoneClientConfig>();
-                return new UdpClientWrapper(new System.Net.Sockets.UdpClient(config.LocalPort));
-            });
+            
+            // Register UDP client factory
+            services.AddSingleton<IUdpClientWrapperFactory, UdpClientWrapperFactory>();
             
             // Register core services
-            services.AddTransient<IVTubeStudioPhoneClient, VTubeStudioPhoneClient>();
+            services.AddTransient<IVTubeStudioPhoneClient>(provider => 
+            {
+                var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
+                return new VTubeStudioPhoneClient(
+                    factory.CreateForPhoneClient(),
+                    provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
+                    provider.GetRequiredService<IAppLogger>()
+                );
+            });
+            
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
             // Register VTubeStudioPCClient as a singleton and resolve IAuthTokenProvider to the same instance
             services.AddSingleton<VTubeStudioPCClient>();
             services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
             services.AddSingleton<IAuthTokenProvider>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
+            
+            // Register port discovery service
+            services.AddTransient<IPortDiscoveryService>(provider => 
+            {
+                var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
+                return new PortDiscoveryService(
+                    provider.GetRequiredService<IAppLogger>(),
+                    factory.CreateForPortDiscovery()
+                );
+            });
             
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();
