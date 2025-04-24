@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Parameter injection request
+    /// Request to inject parameter values into VTube Studio
     /// </summary>
     public class InjectParamsRequest
     {
@@ -19,6 +19,6 @@ namespace SharpBridge.Models
         
         /// <summary>Parameter values to inject</summary>
         [JsonPropertyName("parameterValues")]
-        public List<TrackingParam> ParameterValues { get; set; }
+        public IEnumerable<TrackingParam> ParameterValues { get; set; }
     }
 } 

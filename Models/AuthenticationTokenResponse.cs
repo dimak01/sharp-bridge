@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Authentication token response
+    /// Response containing authentication token
     /// </summary>
     public class AuthenticationTokenResponse
     {
