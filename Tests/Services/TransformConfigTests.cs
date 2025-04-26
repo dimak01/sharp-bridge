@@ -41,10 +41,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var faceAngleY = result.FirstOrDefault(p => p.Id == "FaceAngleY");
+            var faceAngleY = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleY");
             faceAngleY.Should().NotBeNull();
             
             // Expected: -HeadRotY * 1 = -0.5
@@ -68,10 +68,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var faceAngleX = result.FirstOrDefault(p => p.Id == "FaceAngleX");
+            var faceAngleX = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleX");
             faceAngleX.Should().NotBeNull();
             
             // Expected: (((HeadRotX * ((90 - Abs(HeadRotY)) / 90)) + (HeadRotZ * (HeadRotY / 45))))
@@ -97,10 +97,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var facePositionX = result.FirstOrDefault(p => p.Id == "FacePositionX");
+            var facePositionX = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionX");
             facePositionX.Should().NotBeNull();
             
             // Expected: HeadPosX * -1 = -0.5
@@ -131,10 +131,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthOpen = result.FirstOrDefault(p => p.Id == "MouthOpen");
+            var mouthOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthOpen");
             mouthOpen.Should().NotBeNull();
             
             // Expected: (((JawOpen - MouthClose) - ((MouthRollUpper + MouthRollLower) * 0.2) + (MouthFunnel * 0.2)))
@@ -164,10 +164,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var eyeRightX = result.FirstOrDefault(p => p.Id == "EyeRightX");
+            var eyeRightX = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightX");
             eyeRightX.Should().NotBeNull();
             
             // Expected: (EyeLookInLeft - 0.1) - EyeLookOutLeft = (0.4 - 0.1) - 0.2 = 0.1
@@ -199,21 +199,21 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
             // FaceAngleX max is 40
-            var faceAngleX = result.FirstOrDefault(p => p.Id == "FaceAngleX");
+            var faceAngleX = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleX");
             faceAngleX.Should().NotBeNull();
             faceAngleX.Value.Should().BeLessThanOrEqualTo(40);
             
             // FacePositionX max is 15
-            var facePositionX = result.FirstOrDefault(p => p.Id == "FacePositionX");
+            var facePositionX = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionX");
             facePositionX.Should().NotBeNull();
             facePositionX.Value.Should().BeLessThanOrEqualTo(15);
             
             // EyeOpenLeft max is 1
-            var eyeOpenLeft = result.FirstOrDefault(p => p.Id == "EyeOpenLeft");
+            var eyeOpenLeft = result.Parameters.FirstOrDefault(p => p.Id == "EyeOpenLeft");
             if (eyeOpenLeft != null)
             {
                 eyeOpenLeft.Value.Should().BeLessThanOrEqualTo(1);
@@ -244,21 +244,21 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
             // FaceAngleX min is -40
-            var faceAngleX = result.FirstOrDefault(p => p.Id == "FaceAngleX");
+            var faceAngleX = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleX");
             faceAngleX.Should().NotBeNull();
             faceAngleX.Value.Should().BeGreaterThanOrEqualTo(-40);
             
             // FacePositionX min is -15
-            var facePositionX = result.FirstOrDefault(p => p.Id == "FacePositionX");
+            var facePositionX = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionX");
             facePositionX.Should().NotBeNull();
             facePositionX.Value.Should().BeGreaterThanOrEqualTo(-15);
             
             // MouthOpen min is 0
-            var mouthOpen = result.FirstOrDefault(p => p.Id == "MouthOpen");
+            var mouthOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthOpen");
             if (mouthOpen != null)
             {
                 mouthOpen.Value.Should().BeGreaterThanOrEqualTo(0);
@@ -284,25 +284,25 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
             // Check default values for various parameters
             
             // FaceAngleY should use default value 0
-            var faceAngleY = result.FirstOrDefault(p => p.Id == "FaceAngleY");
+            var faceAngleY = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleY");
             faceAngleY.Should().NotBeNull();
             faceAngleY.Value.Should().Be(0); // Default value
             
             // MouthOpen should use default value 0
-            var mouthOpen = result.FirstOrDefault(p => p.Id == "MouthOpen");
+            var mouthOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthOpen");
             if (mouthOpen != null)
             {
                 mouthOpen.Value.Should().Be(0); // Default value
             }
             
             // Brows should use default value 0.5
-            var brows = result.FirstOrDefault(p => p.Id == "Brows");
+            var brows = result.Parameters.FirstOrDefault(p => p.Id == "Brows");
             if (brows != null)
             {
                 brows.Value.Should().Be(0.5); // Default value
@@ -326,10 +326,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var faceAngleZ = result.FirstOrDefault(p => p.Id == "FaceAngleZ");
+            var faceAngleZ = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleZ");
             faceAngleZ.Should().NotBeNull();
             
             // Expected: ((HeadRotZ * ((90 - Abs(HeadRotY)) / 90)) - (HeadRotX * (HeadRotY / 45)))
@@ -355,10 +355,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var facePositionY = result.FirstOrDefault(p => p.Id == "FacePositionY");
+            var facePositionY = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionY");
             facePositionY.Should().NotBeNull();
             
             // Expected: HeadPosY = 0.5
@@ -382,10 +382,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var facePositionZ = result.FirstOrDefault(p => p.Id == "FacePositionZ");
+            var facePositionZ = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionZ");
             facePositionZ.Should().NotBeNull();
             
             // Expected: HeadPosZ = 0.5
@@ -415,10 +415,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var eyeRightY = result.FirstOrDefault(p => p.Id == "EyeRightY");
+            var eyeRightY = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightY");
             eyeRightY.Should().NotBeNull();
             
             // Expected: (EyeLookUpLeft - EyeLookDownLeft) + (BrowOuterUpLeft * 0.15) + (HeadRotX / 30)
@@ -448,10 +448,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var eyeOpenLeft = result.FirstOrDefault(p => p.Id == "EyeOpenLeft");
+            var eyeOpenLeft = result.Parameters.FirstOrDefault(p => p.Id == "EyeOpenLeft");
             eyeOpenLeft.Should().NotBeNull();
             
             // Expected: 0.5 + ((EyeBlinkLeft * -0.8) + (EyeWideLeft * 0.8))
@@ -481,10 +481,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var eyeOpenRight = result.FirstOrDefault(p => p.Id == "EyeOpenRight");
+            var eyeOpenRight = result.Parameters.FirstOrDefault(p => p.Id == "EyeOpenRight");
             eyeOpenRight.Should().NotBeNull();
             
             // Expected: 0.5 + ((EyeBlinkRight * -0.8) + (EyeWideRight * 0.8))
@@ -519,10 +519,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthSmile = result.FirstOrDefault(p => p.Id == "MouthSmile");
+            var mouthSmile = result.Parameters.FirstOrDefault(p => p.Id == "MouthSmile");
             mouthSmile.Should().NotBeNull();
             
             // Expected: (2 - ((MouthFrownLeft + MouthFrownRight + MouthPucker) / 1) + ((MouthSmileRight + MouthSmileLeft + ((MouthDimpleLeft + MouthDimpleRight) / 2)) / 1)) / 4
@@ -550,10 +550,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var eyeSquintL = result.FirstOrDefault(p => p.Id == "EyeSquintL");
+            var eyeSquintL = result.Parameters.FirstOrDefault(p => p.Id == "EyeSquintL");
             eyeSquintL.Should().NotBeNull();
             
             // Expected: EyeSquintLeft = 0.7
@@ -580,10 +580,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var eyeSquintR = result.FirstOrDefault(p => p.Id == "EyeSquintR");
+            var eyeSquintR = result.Parameters.FirstOrDefault(p => p.Id == "EyeSquintR");
             eyeSquintR.Should().NotBeNull();
             
             // Expected: EyeSquintRight = 0.6
@@ -614,10 +614,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthX = result.FirstOrDefault(p => p.Id == "MouthX");
+            var mouthX = result.Parameters.FirstOrDefault(p => p.Id == "MouthX");
             mouthX.Should().NotBeNull();
             
             // Expected: (((MouthLeft - MouthRight) + (MouthSmileLeft - MouthSmileRight)) * (1 - TongueOut))
@@ -646,10 +646,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var cheekPuff = result.FirstOrDefault(p => p.Id == "CheekPuff");
+            var cheekPuff = result.Parameters.FirstOrDefault(p => p.Id == "CheekPuff");
             cheekPuff.Should().NotBeNull();
             
             // Expected: CheekPuff = 0.8
@@ -676,10 +676,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var tongueOut = result.FirstOrDefault(p => p.Id == "TongueOut");
+            var tongueOut = result.Parameters.FirstOrDefault(p => p.Id == "TongueOut");
             tongueOut.Should().NotBeNull();
             
             // Expected: TongueOut = 0.9
@@ -709,10 +709,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthPucker = result.FirstOrDefault(p => p.Id == "MouthPucker");
+            var mouthPucker = result.Parameters.FirstOrDefault(p => p.Id == "MouthPucker");
             mouthPucker.Should().NotBeNull();
             
             // Expected: (((MouthDimpleRight + MouthDimpleLeft) * 2) - MouthPucker) * (1 - TongueOut)
@@ -743,10 +743,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthFunnel = result.FirstOrDefault(p => p.Id == "MouthFunnel");
+            var mouthFunnel = result.Parameters.FirstOrDefault(p => p.Id == "MouthFunnel");
             mouthFunnel.Should().NotBeNull();
             
             // Expected: (MouthFunnel * (1 - TongueOut)) - (JawOpen * 0.2)
@@ -775,10 +775,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var jawOpen = result.FirstOrDefault(p => p.Id == "JawOpen");
+            var jawOpen = result.Parameters.FirstOrDefault(p => p.Id == "JawOpen");
             jawOpen.Should().NotBeNull();
             
             // Expected: JawOpen = 0.6
@@ -811,10 +811,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthPressLipOpen = result.FirstOrDefault(p => p.Id == "MouthPressLipOpen");
+            var mouthPressLipOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthPressLipOpen");
             mouthPressLipOpen.Should().NotBeNull();
             
             // Expected: (((MouthUpperUpRight + MouthUpperUpLeft + MouthLowerDownRight + MouthLowerDownLeft) / 1.8) - (MouthRollLower + MouthRollUpper)) * (1 - TongueOut)
@@ -847,10 +847,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var mouthShrug = result.FirstOrDefault(p => p.Id == "MouthShrug");
+            var mouthShrug = result.Parameters.FirstOrDefault(p => p.Id == "MouthShrug");
             mouthShrug.Should().NotBeNull();
             
             // Expected: ((MouthShrugUpper + MouthShrugLower + MouthPressRight + MouthPressLeft) / 4) * (1 - TongueOut)
@@ -879,10 +879,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var browInnerUp = result.FirstOrDefault(p => p.Id == "BrowInnerUp");
+            var browInnerUp = result.Parameters.FirstOrDefault(p => p.Id == "BrowInnerUp");
             browInnerUp.Should().NotBeNull();
             
             // Expected: BrowInnerUp = 0.7
@@ -912,10 +912,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var browLeftY = result.FirstOrDefault(p => p.Id == "BrowLeftY");
+            var browLeftY = result.Parameters.FirstOrDefault(p => p.Id == "BrowLeftY");
             browLeftY.Should().NotBeNull();
             
             // Expected: 0.5 + (BrowOuterUpLeft - BrowDownLeft) + ((MouthRight - MouthLeft) / 8)
@@ -947,10 +947,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var browRightY = result.FirstOrDefault(p => p.Id == "BrowRightY");
+            var browRightY = result.Parameters.FirstOrDefault(p => p.Id == "BrowRightY");
             browRightY.Should().NotBeNull();
             
             // Expected: 0.5 + (BrowOuterUpRight - BrowDownRight) + ((MouthLeft - MouthRight) / 8)
@@ -982,10 +982,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var brows = result.FirstOrDefault(p => p.Id == "Brows");
+            var brows = result.Parameters.FirstOrDefault(p => p.Id == "Brows");
             brows.Should().NotBeNull();
             
             // Expected: 0.5 + (BrowOuterUpRight + BrowOuterUpLeft - BrowDownLeft - BrowDownRight) / 4
@@ -1020,16 +1020,16 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var voiceFrequency = result.FirstOrDefault(p => p.Id == "VoiceFrequencyPlusMouthSmile");
-            voiceFrequency.Should().NotBeNull();
+            var voiceFrequencyPlusMouthSmile = result.Parameters.FirstOrDefault(p => p.Id == "VoiceFrequencyPlusMouthSmile");
+            voiceFrequencyPlusMouthSmile.Should().NotBeNull();
             
             // This has the same formula as MouthSmile:
             // Expected: (2 - ((MouthFrownLeft + MouthFrownRight + MouthPucker) / 1) + ((MouthSmileRight + MouthSmileLeft + ((MouthDimpleLeft + MouthDimpleRight) / 2)) / 1)) / 4
             var expected = (2 - ((0.1 + 0.1 + 0.2) / 1) + ((0.3 + 0.4 + ((0.5 + 0.6) / 2)) / 1)) / 4;
-            voiceFrequency.Value.Should().BeApproximately(expected, 0.001);
+            voiceFrequencyPlusMouthSmile.Value.Should().BeApproximately(expected, 0.001);
         }
         
         [Fact]
@@ -1049,10 +1049,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var bodyAngleX = result.FirstOrDefault(p => p.Id == "BodyAngleX");
+            var bodyAngleX = result.Parameters.FirstOrDefault(p => p.Id == "BodyAngleX");
             bodyAngleX.Should().NotBeNull();
             
             // Expected: -HeadRotY * 1.5 = -0.4 * 1.5 = -0.6
@@ -1082,10 +1082,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var bodyAngleY = result.FirstOrDefault(p => p.Id == "BodyAngleY");
+            var bodyAngleY = result.Parameters.FirstOrDefault(p => p.Id == "BodyAngleY");
             bodyAngleY.Should().NotBeNull();
             
             // Expected: (-HeadRotX * 1.5) + ((EyeBlinkLeft + EyeBlinkRight) * -1)
@@ -1111,10 +1111,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var bodyAngleZ = result.FirstOrDefault(p => p.Id == "BodyAngleZ");
+            var bodyAngleZ = result.Parameters.FirstOrDefault(p => p.Id == "BodyAngleZ");
             bodyAngleZ.Should().NotBeNull();
             
             // Expected: HeadRotZ * 1.5 = 0.2 * 1.5 = 0.3
@@ -1139,10 +1139,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var bodyPositionX = result.FirstOrDefault(p => p.Id == "BodyPositionX");
+            var bodyPositionX = result.Parameters.FirstOrDefault(p => p.Id == "BodyPositionX");
             bodyPositionX.Should().NotBeNull();
             
             // Expected: HeadPosX * -1 = 0.3 * -1 = -0.3
@@ -1167,10 +1167,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var bodyPositionY = result.FirstOrDefault(p => p.Id == "BodyPositionY");
+            var bodyPositionY = result.Parameters.FirstOrDefault(p => p.Id == "BodyPositionY");
             bodyPositionY.Should().NotBeNull();
             
             // Expected: HeadPosY * 1 = 0.4 * 1 = 0.4
@@ -1195,10 +1195,10 @@ namespace SharpBridge.Tests.Services
             };
             
             // Act
-            var result = engine.TransformData(trackingData).ToList();
+            var result = engine.TransformData(trackingData);
             
             // Assert
-            var bodyPositionZ = result.FirstOrDefault(p => p.Id == "BodyPositionZ");
+            var bodyPositionZ = result.Parameters.FirstOrDefault(p => p.Id == "BodyPositionZ");
             bodyPositionZ.Should().NotBeNull();
             
             // Expected: HeadPosZ * -0.5 = 0.5 * -0.5 = -0.25

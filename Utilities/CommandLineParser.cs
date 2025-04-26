@@ -11,7 +11,7 @@ namespace SharpBridge.Utilities
     public static class CommandLineDefaults
     {
         public const string ConfigDirectory = "Configs";
-        public const string TransformConfigFilename = "default_transform.json";
+        public const string TransformConfigFilename = "vts_transforms_ja.json";
         public const string PCConfigFilename = "VTubeStudioPCConfig.json";
         public const string PhoneConfigFilename = "VTubeStudioPhoneConfig.json";
     }

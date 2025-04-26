@@ -122,15 +122,16 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="trackingData">The tracking data to transform</param>
         /// <returns>Collection of transformed parameters</returns>
-        public IEnumerable<TrackingParam> TransformData(PhoneTrackingInfo trackingData)
+        public PCTrackingInfo TransformData(PhoneTrackingInfo trackingData)
         {
             if (_rules.Count == 0 || !trackingData.FaceFound)
             {
-                return Enumerable.Empty<TrackingParam>();
+                return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
             }
             
-            var results = new List<TrackingParam>();
-            
+            var paramValues = new List<TrackingParam>();
+            var paramDefinitions = new List<VTSParameter>();
+
             foreach (var (name, expression, min, max, defaultValue) in _rules)
             {
                 try
@@ -142,15 +143,13 @@ namespace SharpBridge.Services
                     var value = Convert.ToDouble(expression.Evaluate());
                     value = Math.Clamp(value, min, max);
                     
-                    results.Add(new TrackingParam
+                    paramValues.Add(new TrackingParam
                     {
                         Id = name,
-                        Value = value,
-                        Weight = 1.0, // Default weight
-                        Min = min,
-                        Max = max,
-                        DefaultValue = defaultValue
+                        Value = value
                     });
+
+                    paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
                 }
                 catch (Exception ex)
                 {
@@ -163,7 +162,12 @@ namespace SharpBridge.Services
                 }
             }
             
-            return results;
+            return new PCTrackingInfo
+            {
+                FaceFound = trackingData.FaceFound,
+                Parameters = paramValues,
+                ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p)
+            };
         }
         
         /// <summary>

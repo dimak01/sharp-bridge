@@ -49,7 +49,7 @@ namespace SharpBridge.Utilities
             
             if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
             {
-                AppendParameters(builder, parameters);
+                AppendParameters(builder, pcTrackingInfo);
             }
             
             return builder.ToString();
@@ -71,19 +71,22 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends the parameter information to the string builder
         /// </summary>
-        private void AppendParameters(StringBuilder builder, List<TrackingParam> parameters)
+        private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo)
         {
             builder.AppendLine();
             builder.AppendLine("Top Parameters:");
+            var parameters = trackingInfo.Parameters.ToList();
             int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? parameters.Count : PARAM_DISPLAY_COUNT_NORMAL;
             
-            // Calculate the length of the longest parameter ID for proper alignment
+            // Calculate the length of the longest parameter ID for proper alignmentDispose_WhenCalled_ClosesWebSocketDispose_WhenCalled_ClosesWebSocket
             int maxIdLength = CalculateMaxIdLength(parameters, displayCount);
             
             // Display parameters
             for (int i = 0; i < Math.Min(displayCount, parameters.Count); i++)
             {
-                AppendParameterInfo(builder, parameters[i], maxIdLength);
+                var param = parameters[i];
+                trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition);
+                AppendParameterInfo(builder, param, maxIdLength, definition);
             }
             
             // Show count of additional parameters if not all are displayed
@@ -110,13 +113,17 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends a single parameter's information to the string builder
         /// </summary>
-        private void AppendParameterInfo(StringBuilder builder, TrackingParam param, int maxIdLength)
+        private void AppendParameterInfo(StringBuilder builder, TrackingParam param, int maxIdLength, VTSParameter definition)
         {
             string id = param.Id ?? string.Empty;
             string formattedValue = FormatNumericValue(param.Value);
-            string progressBar = CreateProgressBar(param.Value, param.Min, param.Max);
+            
+            string progressBar = definition != null 
+                ? CreateProgressBar(param.Value, definition.Min, definition.Max)
+                : CreateProgressBar(param.Value, -1, 1); // Fallback to default range
+                
             string weightPart = FormatWeightPart(param);
-            string rangeInfo = FormatRangeInfo(param);
+            string rangeInfo = FormatRangeInfo(definition);
             
             builder.AppendLine($"  {id.PadRight(maxIdLength)}: {progressBar} {formattedValue} ({(string.IsNullOrEmpty(weightPart) ? "" : $"{weightPart}, ")}{rangeInfo})");
         }
@@ -165,19 +172,19 @@ namespace SharpBridge.Utilities
         private string FormatWeightPart(TrackingParam param)
         {
             if (!param.Weight.HasValue) return "";
-            
-            // Format with sign-aware padding
             return $"weight: {FormatNumericValue(param.Weight.Value)}";
         }
         
         /// <summary>
         /// Formats the range information of a parameter
         /// </summary>
-        private string FormatRangeInfo(TrackingParam param)
+        private string FormatRangeInfo(VTSParameter definition)
         {
-            string minStr = $"min: {FormatNumericValue(param.Min)}";
-            string maxStr = $"max: {FormatNumericValue(param.Max)}";
-            string defaultStr = $"default: {FormatNumericValue(param.DefaultValue)}";
+            if (definition == null) return "no definition";
+            
+            string minStr = $"min: {FormatNumericValue(definition.Min)}";
+            string maxStr = $"max: {FormatNumericValue(definition.Max)}";
+            string defaultStr = $"default: {FormatNumericValue(definition.DefaultValue)}";
             
             return $"{minStr}, {maxStr}, {defaultStr}";
         }

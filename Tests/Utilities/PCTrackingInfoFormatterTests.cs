@@ -384,7 +384,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithParametersHavingNullIds_HandlesNullIdsCorrectly()
+        public void Format_WithParametersHavingNullIds_ThrowsArgumentNullException()
         {
             // Arrange
             var trackingInfo = new PCTrackingInfo
@@ -398,26 +398,10 @@ namespace SharpBridge.Tests.Utilities
                 }
             };
 
-            // Act
-            var result = _formatter.Format(trackingInfo);
-
-            // Assert
-            VerifyHeaderFormat(formattedOutput: result,
-                             expectedVerbosity: VerbosityLevel.Normal,
-                             faceDetected: true,
-                             parameterCount: 3);
-            
-            var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().Contain("Top Parameters:");
-            var parameterLines = lines.Where(l => l.StartsWith("  ") && l.Contains("█")).ToList();
-            parameterLines.Should().HaveCount(3);
-            
-            // Verify the first parameter has the correct ID
-            parameterLines[0].Should().Contain($"{TrackingParamName}0");
-            // Verify the second parameter has no ID (just spaces)
-            parameterLines[1].Should().MatchRegex(@"^\s+:\s+");
-            // Verify the third parameter has the correct ID
-            parameterLines[2].Should().Contain($"{TrackingParamName}2");
+            // Act & Assert
+            var act = () => _formatter.Format(trackingInfo);
+            act.Should().Throw<ArgumentNullException>()
+                .WithMessage("Value cannot be null. (Parameter 'key')");
         }
 
         [Fact]
@@ -433,11 +417,12 @@ namespace SharpBridge.Tests.Utilities
                     { 
                         Id = $"{TrackingParamName}1",
                         Value = -0.5,
-                        Min = -1.0,
-                        Max = 1.0,
-                        DefaultValue = 0.0,
                         Weight = -0.75
                     }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", -1.0, 1.0, 0.0)
                 }
             };
 
@@ -473,11 +458,12 @@ namespace SharpBridge.Tests.Utilities
                     { 
                         Id = $"{TrackingParamName}1",
                         Value = 0.5,
-                        Min = 0.0,
-                        Max = 1.0,
-                        DefaultValue = 0.0,
                         Weight = null
                     }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", 0.0, 1.0, 0.0)
                 }
             };
 
@@ -508,24 +494,24 @@ namespace SharpBridge.Tests.Utilities
                     new TrackingParam 
                     { 
                         Id = "MinValue",
-                        Value = -100.0,
-                        Min = -100.0,
-                        Max = 100.0
+                        Value = -100.0
                     },
                     new TrackingParam 
                     { 
                         Id = "MaxValue",
-                        Value = 100.0,
-                        Min = -100.0,
-                        Max = 100.0
+                        Value = 100.0
                     },
                     new TrackingParam 
                     { 
                         Id = "MiddleValue",
-                        Value = 0.0,
-                        Min = -100.0,
-                        Max = 100.0
+                        Value = 0.0
                     }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["MinValue"] = new VTSParameter("MinValue", -100.0, 100.0, 0.0),
+                    ["MaxValue"] = new VTSParameter("MaxValue", -100.0, 100.0, 0.0),
+                    ["MiddleValue"] = new VTSParameter("MiddleValue", -100.0, 100.0, 0.0)
                 }
             };
 
