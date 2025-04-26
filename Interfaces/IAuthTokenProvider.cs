@@ -30,5 +30,10 @@ namespace SharpBridge.Interfaces
         /// Clears the current authentication token
         /// </summary>
         Task ClearTokenAsync();
+
+        /// <summary>
+        /// Loads the authentication token from the configured file path
+        /// </summary>
+        void LoadAuthToken();
     }
 } 

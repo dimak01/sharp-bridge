@@ -63,9 +63,6 @@ namespace SharpBridge.Services
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
             _startTime = DateTime.Now;
-            
-            // Try to load existing auth token
-            LoadAuthToken();
         }
         
         /// <summary>
@@ -314,7 +311,10 @@ namespace SharpBridge.Services
             throw new InvalidOperationException($"Unexpected message type: {result.MessageType}");
         }
         
-        private void LoadAuthToken()
+        /// <summary>
+        /// Loads the authentication token from the configured file path
+        /// </summary>
+        public void LoadAuthToken()
         {
             try
             {

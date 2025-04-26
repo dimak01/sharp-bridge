@@ -209,7 +209,8 @@ namespace SharpBridge.Tests.Services
             var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
             await client.ConnectAsync(CancellationToken.None);
             
-            // Queue authentication responses
+            // Queue token acquisition and authentication responses
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
             _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
             
             // Act
@@ -395,6 +396,7 @@ namespace SharpBridge.Tests.Services
             _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
             
             // Act
+            client.LoadAuthToken(); // Load the token before authentication
             var result = await client.AuthenticateAsync(CancellationToken.None);
             
             // Assert
