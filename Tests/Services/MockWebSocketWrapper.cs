@@ -137,6 +137,7 @@ namespace SharpBridge.Tests.Services
                 if (disposing)
                 {
                     _responseQueue.Clear();
+                    State = WebSocketState.Closed;
                 }
                 
                 _disposed = true;

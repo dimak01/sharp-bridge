@@ -395,7 +395,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock
                 .Setup(client => client.AuthenticateAsync(testToken, cancellationToken))
                 .ReturnsAsync(true);
-                
+            
             _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
             _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
                 .ReturnsAsync(testToken);
@@ -417,9 +417,9 @@ namespace SharpBridge.Tests.Services
             // Assert
             _vtubeStudioPCClientMock.Verify(
                 client => client.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure,
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()),
+                    WebSocketCloseStatus.NormalClosure, 
+                    It.IsAny<string>(), 
+                    It.IsAny<CancellationToken>()), 
                 Times.Once);
         }
         
@@ -434,15 +434,28 @@ namespace SharpBridge.Tests.Services
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
             };
-            var transformedParams = new List<TrackingParam> 
+            
+            var transformedParams = new PCTrackingInfo 
             { 
-                new TrackingParam { 
-                    Id = "Test", 
-                    Value = 0.5,
-                    Min = -0.75,
-                    Max = 1.25,
-                    DefaultValue = 0.33
-                } 
+                FaceFound = true,
+                Parameters = new List<TrackingParam> 
+                { 
+                    new TrackingParam 
+                    { 
+                        Id = "Test", 
+                        Value = 0.5,
+                        Weight = 1.0
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test"] = new VTSParameter(
+                        "Test",
+                        -0.75,
+                        1.25,
+                        0.33
+                    )
+                }
             };
             
             // Setup basic orchestrator requirements
@@ -457,10 +470,11 @@ namespace SharpBridge.Tests.Services
                 x.SendTrackingAsync(
                     It.Is<PCTrackingInfo>(pc => 
                         pc.FaceFound == trackingResponse.FaceFound && 
-                        pc.Parameters == transformedParams &&
-                        pc.Parameters.First().Min == -0.75 &&
-                        pc.Parameters.First().Max == 1.25 &&
-                        pc.Parameters.First().DefaultValue == 0.33),
+                        pc.Parameters.First().Id == "Test" &&
+                        pc.Parameters.First().Value == 0.5 &&
+                        pc.ParameterDefinitions["Test"].Min == -0.75 &&
+                        pc.ParameterDefinitions["Test"].Max == 1.25 &&
+                        pc.ParameterDefinitions["Test"].DefaultValue == 0.33),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             
@@ -476,10 +490,11 @@ namespace SharpBridge.Tests.Services
                 x.SendTrackingAsync(
                     It.Is<PCTrackingInfo>(pc => 
                         pc.FaceFound == trackingResponse.FaceFound && 
-                        pc.Parameters == transformedParams &&
-                        pc.Parameters.First().Min == -0.75 &&
-                        pc.Parameters.First().Max == 1.25 &&
-                        pc.Parameters.First().DefaultValue == 0.33),
+                        pc.Parameters.First().Id == "Test" &&
+                        pc.Parameters.First().Value == 0.5 &&
+                        pc.ParameterDefinitions["Test"].Min == -0.75 &&
+                        pc.ParameterDefinitions["Test"].Max == 1.25 &&
+                        pc.ParameterDefinitions["Test"].DefaultValue == 0.33),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
@@ -515,15 +530,27 @@ namespace SharpBridge.Tests.Services
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
             };
-            var transformedParams = new List<TrackingParam> 
+            var transformedParams = new PCTrackingInfo 
             { 
-                new TrackingParam { 
-                    Id = "Test", 
-                    Value = 0.5,
-                    Min = -0.75,
-                    Max = 1.25,
-                    DefaultValue = 0.33
-                } 
+                FaceFound = true,
+                Parameters = new List<TrackingParam> 
+                { 
+                    new TrackingParam 
+                    { 
+                        Id = "Test", 
+                        Value = 0.5,
+                        Weight = 1.0
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test"] = new VTSParameter(
+                        "Test",
+                        -0.75,
+                        1.25,
+                        0.33
+                    )
+                }
             };
             
             // Setup basic orchestrator requirements with closed connection state
@@ -544,6 +571,103 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Verify(x => 
                 x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+        
+        [Fact]
+        public async Task OnTrackingDataReceived_WithMultipleEvents_ProcessesAllEvents()
+        {
+            // Arrange
+            var trackingData1 = new PhoneTrackingInfo { FaceFound = true, BlendShapes = new List<BlendShape>() };
+            var trackingData2 = new PhoneTrackingInfo { FaceFound = false, BlendShapes = new List<BlendShape>() };
+            
+            var transformedParams1 = new PCTrackingInfo 
+            { 
+                FaceFound = true,
+                Parameters = new List<TrackingParam> { new TrackingParam { Id = "Test1", Value = 0.5 } },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test1"] = new VTSParameter("Test1", -1.0, 1.0, 0.0)
+                }
+            };
+            
+            var transformedParams2 = new PCTrackingInfo 
+            { 
+                FaceFound = false,
+                Parameters = new List<TrackingParam> { new TrackingParam { Id = "Test2", Value = 0.7 } },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test2"] = new VTSParameter("Test2", -1.0, 1.0, 0.0)
+                }
+            };
+            
+            // Setup basic orchestrator requirements
+            SetupOrchestratorTest();
+            
+            // Configure transformation for both events
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)))
+                .Returns(transformedParams1);
+                
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)))
+                .Returns(transformedParams2);
+            
+            // Configure PC client to track sends
+            var sentParams = new List<PCTrackingInfo>();
+            _vtubeStudioPCClientMock.Setup(x => 
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()))
+                .Callback<PCTrackingInfo, CancellationToken>((info, _) => sentParams.Add(info))
+                .Returns(Task.CompletedTask);
+            
+            // Initialize orchestrator to subscribe to events
+            var cancellationToken = CancellationToken.None;
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Get the event handler method via reflection
+            var onTrackingDataReceivedMethod = typeof(ApplicationOrchestrator)
+                .GetMethod("OnTrackingDataReceived", 
+                    System.Reflection.BindingFlags.NonPublic | 
+                    System.Reflection.BindingFlags.Instance);
+            
+            // Act
+            // Directly invoke the event handler with each tracking data
+            onTrackingDataReceivedMethod.Invoke(_orchestrator, 
+                new object[] { _vtubeStudioPhoneClientMock.Object, trackingData1 });
+                
+            // Small delay between events
+            await Task.Delay(50);
+            
+            onTrackingDataReceivedMethod.Invoke(_orchestrator, 
+                new object[] { _vtubeStudioPhoneClientMock.Object, trackingData2 });
+                
+            // Allow time for processing
+            await Task.Delay(100);
+            
+            // Assert
+            _transformationEngineMock.Verify(
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)), 
+                Times.Once);
+                
+            _transformationEngineMock.Verify(
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)), 
+                Times.Once);
+                
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
+                
+            Assert.Equal(2, sentParams.Count);
+            Assert.True(sentParams[0].FaceFound);
+            Assert.Equal("Test1", sentParams[0].Parameters.First().Id);
+            Assert.Equal(0.5, sentParams[0].Parameters.First().Value);
+            Assert.Equal(-1.0, sentParams[0].ParameterDefinitions["Test1"].Min);
+            Assert.Equal(1.0, sentParams[0].ParameterDefinitions["Test1"].Max);
+            Assert.Equal(0.0, sentParams[0].ParameterDefinitions["Test1"].DefaultValue);
+            
+            Assert.False(sentParams[1].FaceFound);
+            Assert.Equal("Test2", sentParams[1].Parameters.First().Id);
+            Assert.Equal(0.7, sentParams[1].Parameters.First().Value);
+            Assert.Equal(-1.0, sentParams[1].ParameterDefinitions["Test2"].Min);
+            Assert.Equal(1.0, sentParams[1].ParameterDefinitions["Test2"].Max);
+            Assert.Equal(0.0, sentParams[1].ParameterDefinitions["Test2"].DefaultValue);
         }
         
         // Disposal Tests
@@ -830,15 +954,26 @@ namespace SharpBridge.Tests.Services
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
             };
-            var transformedParams = new List<TrackingParam> 
+            var transformedParams = new PCTrackingInfo 
             { 
-                new TrackingParam { 
-                    Id = "Test", 
-                    Value = 0.5,
-                    Min = -0.75,
-                    Max = 1.25,
-                    DefaultValue = 0.33
-                } 
+                FaceFound = true,
+                Parameters = new List<TrackingParam> 
+                { 
+                    new TrackingParam { 
+                        Id = "Test", 
+                        Value = 0.5,
+                        Weight = 1.0
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test"] = new VTSParameter(
+                        "Test",
+                        -0.75,
+                        1.25,
+                        0.33
+                    )
+                }
             };
             
             // Setup basic orchestrator requirements
@@ -1337,78 +1472,6 @@ namespace SharpBridge.Tests.Services
             _loggerMock.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error in application loop")), It.IsAny<object[]>()), Times.Once);
         }
         
-        // Tests for multiple consecutive tracking data events
-        
-        [Fact]
-        public async Task OnTrackingDataReceived_WithMultipleEvents_ProcessesAllEvents()
-        {
-            // Arrange
-            var trackingData1 = new PhoneTrackingInfo { FaceFound = true, BlendShapes = new List<BlendShape>() };
-            var trackingData2 = new PhoneTrackingInfo { FaceFound = false, BlendShapes = new List<BlendShape>() };
-            var transformedParams1 = new List<TrackingParam> { new TrackingParam { Id = "Test1", Value = 0.5 } };
-            var transformedParams2 = new List<TrackingParam> { new TrackingParam { Id = "Test2", Value = 0.7 } };
-            
-            // Setup basic orchestrator requirements
-            SetupOrchestratorTest();
-            
-            // Configure transformation for both events
-            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)))
-                .Returns(transformedParams1);
-                
-            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)))
-                .Returns(transformedParams2);
-            
-            // Configure PC client to track sends
-            var sentParams = new List<PCTrackingInfo>();
-            _vtubeStudioPCClientMock.Setup(x => 
-                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()))
-                .Callback<PCTrackingInfo, CancellationToken>((info, _) => sentParams.Add(info))
-                .Returns(Task.CompletedTask);
-            
-            // Initialize orchestrator to subscribe to events
-            var cancellationToken = CancellationToken.None;
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
-            
-            // Get the event handler method via reflection
-            var onTrackingDataReceivedMethod = typeof(ApplicationOrchestrator)
-                .GetMethod("OnTrackingDataReceived", 
-                    System.Reflection.BindingFlags.NonPublic | 
-                    System.Reflection.BindingFlags.Instance);
-            
-            // Act
-            // Directly invoke the event handler with each tracking data
-            onTrackingDataReceivedMethod.Invoke(_orchestrator, 
-                new object[] { _vtubeStudioPhoneClientMock.Object, trackingData1 });
-                
-            // Small delay between events
-            await Task.Delay(50);
-            
-            onTrackingDataReceivedMethod.Invoke(_orchestrator, 
-                new object[] { _vtubeStudioPhoneClientMock.Object, trackingData2 });
-                
-            // Allow time for processing
-            await Task.Delay(100);
-            
-            // Assert
-            _transformationEngineMock.Verify(
-                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)), 
-                Times.Once);
-                
-            _transformationEngineMock.Verify(
-                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)), 
-                Times.Once);
-                
-            _vtubeStudioPCClientMock.Verify(x => 
-                x.SendTrackingAsync(It.IsAny<PCTrackingInfo>(), It.IsAny<CancellationToken>()),
-                Times.Exactly(2));
-                
-            Assert.Equal(2, sentParams.Count);
-            Assert.True(sentParams[0].FaceFound);
-            Assert.Equal(transformedParams1, sentParams[0].Parameters);
-            Assert.False(sentParams[1].FaceFound);
-            Assert.Equal(transformedParams2, sentParams[1].Parameters);
-        }
-        
         // Test for RequestIntervalSeconds configuration
         
         [Fact]
@@ -1471,15 +1534,26 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var trackingData = new PhoneTrackingInfo { FaceFound = true, BlendShapes = new List<BlendShape>() };
-            var transformedParams = new List<TrackingParam> 
+            var transformedParams = new PCTrackingInfo 
             { 
-                new TrackingParam { 
-                    Id = "Test", 
-                    Value = 0.5,
-                    Min = -1.0,
-                    Max = 1.0,
-                    DefaultValue = 0.0
-                } 
+                FaceFound = true,
+                Parameters = new List<TrackingParam> 
+                { 
+                    new TrackingParam { 
+                        Id = "Test", 
+                        Value = 0.5,
+                        Weight = 1.0
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test"] = new VTSParameter(
+                        "Test",
+                        -0.75,
+                        1.25,
+                        0.33
+                    )
+                }
             };
             
             // Setup basic orchestrator requirements
@@ -1515,9 +1589,9 @@ namespace SharpBridge.Tests.Services
             var param = sentInfo.Parameters.First();
             Assert.Equal("Test", param.Id);
             Assert.Equal(0.5, param.Value);
-            Assert.Equal(-1.0, param.Min);
-            Assert.Equal(1.0, param.Max);
-            Assert.Equal(0.0, param.DefaultValue);
+            Assert.Equal(-0.75, sentInfo.ParameterDefinitions["Test"].Min);
+            Assert.Equal(1.25, sentInfo.ParameterDefinitions["Test"].Max);
+            Assert.Equal(0.33, sentInfo.ParameterDefinitions["Test"].DefaultValue);
         }
 
         // Test for specific OperationCanceledException handling

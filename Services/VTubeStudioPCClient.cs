@@ -85,7 +85,7 @@ namespace SharpBridge.Services
             {
                 var uri = new Uri($"ws://{_config.Host}:{_config.Port}");
                 await _webSocket.ConnectAsync(uri, cancellationToken);
-                _lastSuccessfulConnection = Environment.TickCount;
+            _lastSuccessfulConnection = Environment.TickCount;
                 _logger.Info("Connected to VTube Studio");
             }
             catch (Exception ex)
@@ -215,9 +215,9 @@ namespace SharpBridge.Services
                 await SendRequestAsync<InjectParamsRequest, object>(
                     "InjectParameterDataRequest", request, cancellationToken);
                 
-                _messagesSent++;
-                _lastSuccessfulSend = Environment.TickCount;
-                _lastTrackingData = trackingData;
+            _messagesSent++;
+            _lastSuccessfulSend = Environment.TickCount;
+            _lastTrackingData = trackingData;
             }
             catch (Exception ex)
             {

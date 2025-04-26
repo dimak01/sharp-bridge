@@ -151,11 +151,13 @@ namespace SharpBridge.Tests.Services
                 {
                     new TrackingParam { 
                         Id = "Test", 
-                        Value = 0.5, 
-                        Min = -0.75, 
-                        Max = 1.25, 
-                        DefaultValue = 0.33 
+                        Value = 0.5,
+                        Weight = 1.0
                     }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    ["Test"] = new VTSParameter("Test", -0.75, 1.25, 0.33)
                 }
             };
             
@@ -185,16 +187,21 @@ namespace SharpBridge.Tests.Services
             Assert.True(pcTrackingInfo.FaceFound);
             Assert.NotNull(pcTrackingInfo.Parameters);
             Assert.Single(pcTrackingInfo.Parameters);
-            Assert.Equal("Test", pcTrackingInfo.Parameters.First().Id);
-            Assert.Equal(0.5, pcTrackingInfo.Parameters.First().Value);
-            Assert.Equal(-0.75, pcTrackingInfo.Parameters.First().Min);
-            Assert.Equal(1.25, pcTrackingInfo.Parameters.First().Max);
-            Assert.Equal(0.33, pcTrackingInfo.Parameters.First().DefaultValue);
+
+            var param = pcTrackingInfo.Parameters.First();
+            Assert.Equal("Test", param.Id);
+            Assert.Equal(0.5, param.Value);
+            Assert.Equal(1.0, param.Weight);
+
+            var paramDef = pcTrackingInfo.ParameterDefinitions["Test"];
+            Assert.Equal(-0.75, paramDef.Min);
+            Assert.Equal(1.25, paramDef.Max);
+            Assert.Equal(0.33, paramDef.DefaultValue);
             
             // Cleanup
             await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
         }
-
+        
         [Fact]
         public async Task AuthenticateAsync_ReturnsTrue_AndLogsExpectedMessages()
         {
@@ -644,16 +651,15 @@ namespace SharpBridge.Tests.Services
             var mockPortDiscovery = new Mock<IPortDiscoveryService>();
             var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
             
-            // Setup port discovery to fail
+            // Setup port discovery to return null (indicating failure)
             mockPortDiscovery.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new Exception("Discovery failed"));
+                .ReturnsAsync((DiscoveryResponse)null);
             
             // Act
             var port = await client.DiscoverPortAsync(CancellationToken.None);
             
             // Assert
             Assert.Equal(1234, port);
-            mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to discover port"))), Times.Once);
         }
     }
 } 

@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using FluentAssertions;
+using FluentAssertions.Collections;
 using Moq;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
@@ -62,13 +63,20 @@ namespace SharpBridge.Tests.Services
                     }
                 };
                 
-                var result = engine.TransformData(trackingData).ToList();
+                var result = engine.TransformData(trackingData);
                 
                 // Assert
-                result.Should().NotBeEmpty();
-                result.Should().ContainSingle();
-                result.First().Id.Should().Be("TestParam");
-                result.First().Value.Should().Be(50); // 0.5 * 100
+                result.Should().NotBeNull();
+                result.Parameters.Should().NotBeNullOrEmpty();
+                result.Parameters.Should().ContainSingle();
+                result.Parameters.First().Id.Should().Be("TestParam");
+                result.Parameters.First().Value.Should().Be(50); // 0.5 * 100
+                
+                // Verify parameter definition
+                result.ParameterDefinitions.Should().ContainKey("TestParam");
+                result.ParameterDefinitions["TestParam"].Min.Should().Be(0);
+                result.ParameterDefinitions["TestParam"].Max.Should().Be(100);
+                result.ParameterDefinitions["TestParam"].DefaultValue.Should().Be(0);
             }
             finally
             {
@@ -128,7 +136,8 @@ namespace SharpBridge.Tests.Services
             var result = engine.TransformData(trackingData);
             
             // Assert
-            result.Should().BeEmpty();
+            result.Should().NotBeNull();
+            result.Parameters.Should().BeNullOrEmpty();
         }
         
         [Fact]
@@ -164,7 +173,8 @@ namespace SharpBridge.Tests.Services
                 var result = engine.TransformData(trackingData);
                 
                 // Assert
-                result.Should().BeEmpty();
+                result.Should().NotBeNull();
+                result.Parameters.Should().BeNullOrEmpty();
             }
             finally
             {
@@ -213,18 +223,30 @@ namespace SharpBridge.Tests.Services
                 };
                 
                 // Act
-                var result = engine.TransformData(trackingData).ToList();
+                var result = engine.TransformData(trackingData);
                 
                 // Assert
-                result.Should().HaveCount(2);
+                result.Should().NotBeNull();
+                result.Parameters.Should().HaveCount(2);
                 
-                var headMovement = result.FirstOrDefault(p => p.Id == "HeadMovement");
+                var headMovement = result.Parameters.FirstOrDefault(p => p.Id == "HeadMovement");
                 headMovement.Should().NotBeNull();
                 headMovement.Value.Should().BeApproximately(20, 0.001); // 0.1 * 100 + 0.2 * 50 = 20
                 
-                var eyeBlink = result.FirstOrDefault(p => p.Id == "EyeBlink");
+                var eyeBlink = result.Parameters.FirstOrDefault(p => p.Id == "EyeBlink");
                 eyeBlink.Should().NotBeNull();
                 eyeBlink.Value.Should().BeApproximately(40, 0.001); // (0.3 + 0.5) * 50 = 40
+                
+                // Verify parameter definitions
+                result.ParameterDefinitions.Should().ContainKey("HeadMovement");
+                result.ParameterDefinitions["HeadMovement"].Min.Should().Be(-1000);
+                result.ParameterDefinitions["HeadMovement"].Max.Should().Be(1000);
+                result.ParameterDefinitions["HeadMovement"].DefaultValue.Should().Be(0);
+                
+                result.ParameterDefinitions.Should().ContainKey("EyeBlink");
+                result.ParameterDefinitions["EyeBlink"].Min.Should().Be(0);
+                result.ParameterDefinitions["EyeBlink"].Max.Should().Be(100);
+                result.ParameterDefinitions["EyeBlink"].DefaultValue.Should().Be(0);
             }
             finally
             {
@@ -263,11 +285,18 @@ namespace SharpBridge.Tests.Services
                 };
                 
                 // Act
-                var result = engine.TransformData(trackingData).ToList();
+                var result = engine.TransformData(trackingData);
                 
                 // Assert
-                result.Should().ContainSingle();
-                result.First().Value.Should().Be(100); // Clamped to max
+                result.Should().NotBeNull();
+                result.Parameters.Should().ContainSingle();
+                result.Parameters.First().Value.Should().Be(100); // Clamped to max
+                
+                // Verify parameter definition
+                result.ParameterDefinitions.Should().ContainKey("LimitedValue");
+                result.ParameterDefinitions["LimitedValue"].Min.Should().Be(0);
+                result.ParameterDefinitions["LimitedValue"].Max.Should().Be(100);
+                result.ParameterDefinitions["LimitedValue"].DefaultValue.Should().Be(0);
             }
             finally
             {
@@ -315,7 +344,7 @@ namespace SharpBridge.Tests.Services
                 // Act & Assert
                 // With our new "fail fast" approach, we should expect an exception
                 var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData).ToList());
+                    engine.TransformData(trackingData));
                 
                 // Verify that the exception message mentions the parameter name
                 exception.Message.Should().Contain("InvalidParam");
@@ -363,18 +392,30 @@ namespace SharpBridge.Tests.Services
                 };
                 
                 // Act
-                var result = engine.TransformData(trackingData).ToList();
+                var result = engine.TransformData(trackingData);
                 
                 // Assert
-                result.Should().HaveCount(2);
+                result.Should().NotBeNull();
+                result.Parameters.Should().HaveCount(2);
                 
-                var eyeLeftParam = result.FirstOrDefault(p => p.Id == "EyeLeftParam");
+                var eyeLeftParam = result.Parameters.FirstOrDefault(p => p.Id == "EyeLeftParam");
                 eyeLeftParam.Should().NotBeNull();
                 eyeLeftParam.Value.Should().BeApproximately(0.1 + 0.2 + 0.3, 0.001); // 0.6
                 
-                var eyeRightParam = result.FirstOrDefault(p => p.Id == "EyeRightParam");
+                var eyeRightParam = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightParam");
                 eyeRightParam.Should().NotBeNull();
                 eyeRightParam.Value.Should().BeApproximately(0.4 + 0.5 + 0.6, 0.001); // 1.5
+                
+                // Verify parameter definitions
+                result.ParameterDefinitions.Should().ContainKey("EyeLeftParam");
+                result.ParameterDefinitions["EyeLeftParam"].Min.Should().Be(-10);
+                result.ParameterDefinitions["EyeLeftParam"].Max.Should().Be(10);
+                result.ParameterDefinitions["EyeLeftParam"].DefaultValue.Should().Be(0);
+                
+                result.ParameterDefinitions.Should().ContainKey("EyeRightParam");
+                result.ParameterDefinitions["EyeRightParam"].Min.Should().Be(-10);
+                result.ParameterDefinitions["EyeRightParam"].Max.Should().Be(10);
+                result.ParameterDefinitions["EyeRightParam"].DefaultValue.Should().Be(0);
             }
             finally
             {
@@ -420,7 +461,7 @@ namespace SharpBridge.Tests.Services
                 // Act & Assert
                 // With our new behavior, we should expect an exception when trying to access EyeLeftX
                 var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData).ToList());
+                    engine.TransformData(trackingData));
                 
                 // Verify that the exception message mentions the parameter
                 exception.Message.Should().Contain("EyeLeftParam");
@@ -470,7 +511,7 @@ namespace SharpBridge.Tests.Services
                 // Act & Assert
                 // With our new behavior, we should expect an exception when trying to access EyeLeftX
                 var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData).ToList());
+                    engine.TransformData(trackingData));
                 
                 // Verify that the exception message mentions the parameter
                 exception.Message.Should().Contain("EyeLeftParam");
@@ -646,7 +687,7 @@ namespace SharpBridge.Tests.Services
                 
                 // Act & Assert - this should throw when the expression is evaluated
                 var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData).ToList());
+                    engine.TransformData(trackingData));
                 
                 // Verify the exception details
                 exception.Message.Should().Contain("BadRule");

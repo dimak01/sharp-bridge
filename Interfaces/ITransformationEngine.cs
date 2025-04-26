@@ -22,6 +22,6 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <param name="trackingData">The tracking data to transform</param>
         /// <returns>Collection of transformed parameters</returns>
-        IEnumerable<TrackingParam> TransformData(PhoneTrackingInfo trackingData);
+        PCTrackingInfo TransformData(PhoneTrackingInfo trackingData);
     }
 } 

@@ -370,12 +370,13 @@ namespace SharpBridge.Services
                 }
                 
                 // Transform tracking data
-                IEnumerable<TrackingParam> parameters = _transformationEngine.TransformData(trackingData);
+                PCTrackingInfo trackingInfo = _transformationEngine.TransformData(trackingData);
                 
                 // Create PCTrackingInfo to encapsulate the transformed data
                 var pcTrackingInfo = new PCTrackingInfo
                 {
-                    Parameters = parameters,
+                    Parameters = trackingInfo.Parameters,
+                    ParameterDefinitions = trackingInfo.ParameterDefinitions,
                     FaceFound = trackingData.FaceFound
                 };
                 
