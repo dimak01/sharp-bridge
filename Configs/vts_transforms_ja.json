@@ -1,0 +1,331 @@
+[
+  {
+    "name": "FaceAngleY",
+    "func": "( - HeadRotX * 1)  + ( (EyeBlinkLeft + EyeBlinkRight) * - 1)",
+    "min": -30.0,
+    "max": 30.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "FaceAngleX",
+    "func": "- HeadRotY * 1",
+    "min": -30.0,
+    "max": 30.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "FaceAngleZ",
+    "func": "HeadRotZ * 1",
+    "min": -30.0,
+    "max": 30.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "FacePositionX",
+    "func": "HeadPosX",
+    "min": -15.0,
+    "max": 15.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "FacePositionY",
+    "func": "HeadPosY",
+    "min": -15.0,
+    "max": 15.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "FacePositionZ",
+    "func": "HeadPosZ",
+    "min": -15.0,
+    "max": 15.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "MouthOpen",
+    "func": "((JawOpen - MouthClose) - ((MouthRollUpper + MouthRollLower) * .2))",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeRightX",
+    "func": "(EyeLookInLeft - .1) - EyeLookOutLeft",
+    "min": -1.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeRightY",
+    "func": "(EyeLookUpLeft - EyeLookDownLeft) + (BrowOuterUpLeft * .15)",
+    "min": -1.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeOpenLeft",
+    "func": ".5 + ((EyeBlinkLeft * - .8) + (EyeWideLeft * .8))",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeOpenRight",
+    "func": ".5 + ((EyeBlinkRight * - .8) + (EyeWideRight * .8))",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeSquintL",
+    "func": "(EyeSquintLeft)",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeSquintR",
+    "func": "(EyeSquintRight)",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "MouthX",
+    "func": "(MouthLeft - MouthRight)",
+    "min": -1.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "CheekPuff",
+    "func": "CheekPuff",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "TongueOut",
+    "func": "TongueOut",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "MouthPucker",
+    "func": "MouthPucker",
+    "min": -1.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "MouthFunnel",
+    "func": "MouthFunnel",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "JawOpen",
+    "func": "JawOpen",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "MouthShrugLower",
+    "func": "MouthShrugLower",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+   {
+    "name": "MouthShrugUpper",
+    "func": "MouthShrugUpper",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BrowInnerUp",
+    "func": "BrowInnerUp",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BrowLeftY",
+    "func": ".5 + (BrowOuterUpLeft - BrowDownLeft) + ((MouthRight - MouthLeft) / 8)",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BrowRightY",
+    "func": ".5 + (BrowOuterUpRight - BrowDownRight) + ((MouthLeft - MouthRight) / 8)",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "Brows",
+    "func": ".5 + (BrowOuterUpRight + BrowOuterUpLeft - BrowDownLeft - BrowDownRight) / 4",
+    "min": 0.0,
+    "max": 1.0,
+    "defaultValue": 0.5
+  },
+  {
+    "name": "BodyAngleX",
+    "func": "- HeadRotY * 1.5",
+    "min": -40.0,
+    "max": 40.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BodyAngleY",
+    "func": "( - HeadRotX * 1.5)  + ( (EyeBlinkLeft + EyeBlinkRight) * - 1)",
+    "min": -40.0,
+    "max": 40.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BodyAngleZ",
+    "func": "HeadRotZ * 1.5",
+    "min": -40.0,
+    "max": 40.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BodyPositionX",
+    "func": "HeadPosX * - 1",
+    "min": -15.0,
+    "max": 15.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BodyPositionY",
+    "func": "HeadPosY * 1",
+    "min": -15.0,
+    "max": 15.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "BodyPositionZ",
+    "func": "HeadPosZ * - .5",
+    "min": -15.0,
+    "max": 15.0,
+    "defaultValue": 0
+  },
+    {
+    "name": "MouthDimpleL",
+    "func": "MouthDimpleLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+      {
+    "name": "MouthDimpleR",
+    "func": "MouthDimpleRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+        {
+    "name": "MouthFrownL",
+    "func": "MouthFrownLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+          {
+    "name": "MouthFrownR",
+    "func": "MouthFrownRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+            {
+    "name": "MouthLowerDownL",
+    "func": "MouthLowerDownLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+              {
+    "name": "MouthLowerDownR",
+    "func": "MouthLowerDownRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                {
+    "name": "MouthPressL",
+    "func": "MouthPressLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                  {
+    "name": "MouthPressR",
+    "func": "MouthPressRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                    {
+    "name": "MouthRollLower",
+    "func": "MouthRollLower",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                      {
+    "name": "MouthRollUpper",
+    "func": "MouthRollUpper",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                        {
+    "name": "MouthSmileL",
+    "func": "MouthSmileLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                          {
+    "name": "MouthSmileR",
+    "func": "MouthSmileRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                            {
+    "name": "MouthStretchL",
+    "func": "MouthStretchLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                              {
+    "name": "MouthStretchR",
+    "func": "MouthStretchRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                                {
+    "name": "MouthUpperUpL",
+    "func": "MouthUpperUpLeft",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+                                  {
+    "name": "MouthUpperUpR",
+    "func": "MouthUpperUpRight",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  }
+]
