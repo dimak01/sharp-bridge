@@ -162,25 +162,22 @@ namespace SharpBridge.Services
         {
             _logger.Info("Starting VTube Studio authentication process...");
             
-            // Try to get existing token
-            string token = null;
-            if (File.Exists(_pcConfig.TokenFilePath))
+            // Load any existing token
+            _authTokenProvider.LoadAuthToken();
+            
+            // Try to authenticate with existing token if present
+            bool authenticated = false;
+            if (!string.IsNullOrEmpty(_authTokenProvider.Token))
             {
-                token = File.ReadAllText(_pcConfig.TokenFilePath);
+                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(_authTokenProvider.Token, cancellationToken);
             }
             
             // If no token or authentication fails, get a new one
-            bool authenticated = false;
-            if (!string.IsNullOrEmpty(token))
-            {
-                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(token, cancellationToken);
-            }
-            
             if (!authenticated)
             {
                 _logger.Info("No valid token found, requesting new token...");
                 await _authTokenProvider.ClearTokenAsync();
-                token = await _authTokenProvider.GetTokenAsync(cancellationToken);
+                var token = await _authTokenProvider.GetTokenAsync(cancellationToken);
                 authenticated = await _vtubeStudioPCClient.AuthenticateAsync(token, cancellationToken);
             }
             
