@@ -218,5 +218,14 @@ namespace SharpBridge.Services
                 }
             }
         }
+
+        /// <summary>
+        /// Gets all parameters defined in the loaded transformation rules
+        /// </summary>
+        /// <returns>Collection of parameter definitions</returns>
+        public IEnumerable<VTSParameter> GetParameterDefinitions()
+        {
+            return _rules.Select(rule => new VTSParameter(rule.Name, rule.Min, rule.Max, rule.DefaultValue));
+        }
     }
 } 
