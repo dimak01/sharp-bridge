@@ -760,5 +760,68 @@ namespace SharpBridge.Tests.Services
                 File.Delete(filePath);
             }
         }
+        
+        [Fact]
+        public async Task GetParameterDefinitions_ReturnsAllLoadedRules()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""TestParam1"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""TestParam2"",
+                    ""func"": ""eyeBlinkRight * 50"",
+                    ""min"": -50,
+                    ""max"": 50,
+                    ""defaultValue"": 25
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
+                await engine.LoadRulesAsync(filePath);
+                
+                // Act
+                var parameters = engine.GetParameterDefinitions().ToList();
+                
+                // Assert
+                parameters.Should().HaveCount(2);
+                
+                var param1 = parameters.First(p => p.Name == "TestParam1");
+                param1.Min.Should().Be(0);
+                param1.Max.Should().Be(100);
+                param1.DefaultValue.Should().Be(0);
+                
+                var param2 = parameters.First(p => p.Name == "TestParam2");
+                param2.Min.Should().Be(-50);
+                param2.Max.Should().Be(50);
+                param2.DefaultValue.Should().Be(25);
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+
+        [Fact]
+        public void GetParameterDefinitions_NoRules_ReturnsEmptyCollection()
+        {
+            // Arrange
+            var engine = new TransformationEngine(_mockLogger.Object);
+            
+            // Act
+            var parameters = engine.GetParameterDefinitions();
+            
+            // Assert
+            parameters.Should().BeEmpty();
+        }
     }
 } 

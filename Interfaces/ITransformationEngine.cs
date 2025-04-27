@@ -23,5 +23,11 @@ namespace SharpBridge.Interfaces
         /// <param name="trackingData">The tracking data to transform</param>
         /// <returns>Collection of transformed parameters</returns>
         PCTrackingInfo TransformData(PhoneTrackingInfo trackingData);
+
+        /// <summary>
+        /// Gets all parameters defined in the loaded transformation rules
+        /// </summary>
+        /// <returns>Collection of parameter definitions</returns>
+        IEnumerable<VTSParameter> GetParameterDefinitions();
     }
 } 
