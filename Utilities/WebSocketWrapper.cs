@@ -1,8 +1,11 @@
 using System;
 using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
+using SharpBridge.Models;
 
 namespace SharpBridge.Utilities
 {
@@ -32,21 +35,55 @@ namespace SharpBridge.Utilities
         }
         
         /// <inheritdoc/>
-        public Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
-        {
-            return _webSocket.SendAsync(buffer, messageType, endOfMessage, cancellationToken);
-        }
-        
-        /// <inheritdoc/>
-        public Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
-        {
-            return _webSocket.ReceiveAsync(buffer, cancellationToken);
-        }
-        
-        /// <inheritdoc/>
         public Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
         {
             return _webSocket.CloseAsync(closeStatus, statusDescription, cancellationToken);
+        }
+        
+        /// <inheritdoc/>
+        public async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
+            string messageType,
+            TRequest requestData,
+            CancellationToken cancellationToken)
+            where TRequest : class
+            where TResponse : class
+        {
+            var request = new VTSApiRequest<TRequest>
+            {
+                ApiName = "VTubeStudioPublicAPI",
+                ApiVersion = "1.0",
+                RequestId = Guid.NewGuid().ToString(),
+                MessageType = messageType,
+                Data = requestData
+            };
+            
+            var json = JsonSerializer.Serialize(request);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            
+            await _webSocket.SendAsync(
+                new ArraySegment<byte>(bytes),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+            
+            // Receive response
+            var buffer = new byte[4096];
+            var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+            
+            if (result.MessageType == WebSocketMessageType.Text)
+            {
+                var responseJson = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
+                
+                if (response.Data == null)
+                {
+                    throw new InvalidOperationException($"Response data was null for message type {messageType}");
+                }
+                
+                return response.Data;
+            }
+            
+            throw new InvalidOperationException($"Unexpected message type: {result.MessageType}");
         }
         
         /// <inheritdoc/>

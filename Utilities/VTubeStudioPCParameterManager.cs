@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Text.Json;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
@@ -34,17 +34,50 @@ namespace SharpBridge.Utilities
         /// <returns>Collection of existing parameters</returns>
         public async Task<IEnumerable<VTSParameter>> GetParametersAsync(CancellationToken cancellationToken)
         {
-            var request = new
+            try
             {
-                apiName = "VTubeStudioPublicAPI",
-                apiVersion = "1.0",
-                requestID = Guid.NewGuid().ToString(),
-                messageType = "ParameterListRequest"
-            };
+                var response = await _webSocket.SendRequestAsync<object, ParameterListResponse>(
+                    "ParameterListRequest", null, cancellationToken);
+                return response.Parameters;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to get parameters: {0}", ex.Message);
+                throw;
+            }
+        }
 
-            var response = await SendRequestAsync(request, cancellationToken);
-            // TODO: Parse response and return parameters
-            return Array.Empty<VTSParameter>();
+        /// <summary>
+        /// Creates or updates a parameter in VTube Studio
+        /// </summary>
+        /// <param name="parameter">Parameter to create or update</param>
+        /// <param name="isUpdate">Whether this is an update operation</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>True if operation was successful</returns>
+        private async Task<bool> CreateOrUpdateParameterAsync(VTSParameter parameter, bool isUpdate, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var request = new ParameterCreationRequest
+                {
+                    ParameterName = parameter.Name,
+                    Explanation = "Custom parameter created by SharpBridge",
+                    Min = parameter.Min,
+                    Max = parameter.Max,
+                    DefaultValue = parameter.DefaultValue
+                };
+
+                var response = await _webSocket.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                    "ParameterCreationRequest", request, cancellationToken);
+                
+                return response.ParameterName == parameter.Name;
+            }
+            catch (Exception ex)
+            {
+                var operation = isUpdate ? "update" : "create";
+                _logger.Error("Failed to {0} parameter {1}: {2}", operation, parameter.Name, ex.Message);
+                throw;
+            }
         }
 
         /// <summary>
@@ -55,25 +88,7 @@ namespace SharpBridge.Utilities
         /// <returns>True if parameter was created successfully</returns>
         public async Task<bool> CreateParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
         {
-            var request = new
-            {
-                apiName = "VTubeStudioPublicAPI",
-                apiVersion = "1.0",
-                requestID = Guid.NewGuid().ToString(),
-                messageType = "ParameterCreationRequest",
-                data = new
-                {
-                    parameterName = parameter.Name,
-                    explanation = "Custom parameter created by SharpBridge",
-                    min = parameter.Min,
-                    max = parameter.Max,
-                    default_value = parameter.DefaultValue
-                }
-            };
-
-            var response = await SendRequestAsync(request, cancellationToken);
-            // TODO: Parse response and return success status
-            return true;
+            return await CreateOrUpdateParameterAsync(parameter, isUpdate: false, cancellationToken);
         }
 
         /// <summary>
@@ -84,22 +99,7 @@ namespace SharpBridge.Utilities
         /// <returns>True if parameter was updated successfully</returns>
         public async Task<bool> UpdateParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
         {
-            var request = new
-            {
-                apiName = "VTubeStudioPublicAPI",
-                apiVersion = "1.0",
-                requestID = Guid.NewGuid().ToString(),
-                messageType = "ParameterValueRequest",
-                data = new
-                {
-                    name = parameter.Name,
-                    value = parameter.DefaultValue
-                }
-            };
-
-            var response = await SendRequestAsync(request, cancellationToken);
-            // TODO: Parse response and return success status
-            return true;
+            return await CreateOrUpdateParameterAsync(parameter, isUpdate: true, cancellationToken);
         }
 
         /// <summary>
@@ -110,21 +110,23 @@ namespace SharpBridge.Utilities
         /// <returns>True if parameter was deleted successfully</returns>
         public async Task<bool> DeleteParameterAsync(string parameterName, CancellationToken cancellationToken)
         {
-            var request = new
+            try
             {
-                apiName = "VTubeStudioPublicAPI",
-                apiVersion = "1.0",
-                requestID = Guid.NewGuid().ToString(),
-                messageType = "ParameterDeletionRequest",
-                data = new
+                var request = new ParameterDeletionRequest
                 {
-                    parameterName = parameterName
-                }
-            };
+                    ParameterName = parameterName
+                };
 
-            var response = await SendRequestAsync(request, cancellationToken);
-            // TODO: Parse response and return success status
-            return true;
+                await _webSocket.SendRequestAsync<ParameterDeletionRequest, object>(
+                    "ParameterDeletionRequest", request, cancellationToken);
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to delete parameter {0}: {1}", parameterName, ex.Message);
+                throw;
+            }
         }
 
         /// <summary>
@@ -135,19 +137,30 @@ namespace SharpBridge.Utilities
         /// <returns>True if synchronization was successful</returns>
         public async Task<bool> SynchronizeParametersAsync(IEnumerable<VTSParameter> desiredParameters, CancellationToken cancellationToken)
         {
-            var existingParameters = await GetParametersAsync(cancellationToken);
-            // TODO: Compare existing and desired parameters, create/update/delete as needed
-            return true;
-        }
+            try
+            {
+                var existingParameters = await GetParametersAsync(cancellationToken);
+                var existingParameterNames = new HashSet<string>(existingParameters.Select(p => p.Name));
 
-        private async Task<string> SendRequestAsync(object request, CancellationToken cancellationToken)
-        {
-            var json = JsonSerializer.Serialize(request);
-            var buffer = System.Text.Encoding.UTF8.GetBytes(json);
-            await _webSocket.SendAsync(new ArraySegment<byte>(buffer), System.Net.WebSockets.WebSocketMessageType.Text, true, cancellationToken);
+                foreach (var parameter in desiredParameters)
+                {
+                    if (existingParameterNames.Contains(parameter.Name))
+                    {
+                        await UpdateParameterAsync(parameter, cancellationToken);
+                    }
+                    else
+                    {
+                        await CreateParameterAsync(parameter, cancellationToken);
+                    }
+                }
 
-            // TODO: Implement response handling
-            return string.Empty;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to synchronize parameters: {0}", ex.Message);
+                throw;
+            }
         }
     }
 } 

@@ -28,11 +28,9 @@ namespace SharpBridge.Tests.Utilities
         public async Task GetParametersAsync_ReturnsEmptyCollection_WhenNoParametersExist()
         {
             // Arrange
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
+                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterListResponse { Parameters = new List<VTSParameter>() });
 
             // Act
             var result = await _parameterManager.GetParametersAsync(CancellationToken.None);
@@ -51,11 +49,9 @@ namespace SharpBridge.Tests.Utilities
                 new VTSParameter("Param2", -1.0, 1.0, 0.0)
             };
 
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
+                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterListResponse { Parameters = expectedParameters });
 
             // Act
             var result = await _parameterManager.GetParametersAsync(CancellationToken.None);
@@ -69,11 +65,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = parameter.Name });
 
             // Act
             var result = await _parameterManager.CreateParameterAsync(parameter, CancellationToken.None);
@@ -87,10 +81,8 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter already exists"));
 
             // Act & Assert
@@ -103,11 +95,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = parameter.Name });
 
             // Act
             var result = await _parameterManager.UpdateParameterAsync(parameter, CancellationToken.None);
@@ -121,10 +111,8 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter not found"));
 
             // Act & Assert
@@ -137,11 +125,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var parameterName = "TestParam";
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
+                "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new object());
 
             // Act
             var result = await _parameterManager.DeleteParameterAsync(parameterName, CancellationToken.None);
@@ -155,10 +141,8 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var parameterName = "TestParam";
-            _mockWebSocket.Setup(x => x.SendAsync(It.IsAny<ArraySegment<byte>>(), 
-                It.IsAny<System.Net.WebSockets.WebSocketMessageType>(), 
-                It.IsAny<bool>(), 
-                It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
+                "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter not found"));
 
             // Act & Assert
