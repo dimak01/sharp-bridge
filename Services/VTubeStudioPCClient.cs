@@ -82,7 +82,7 @@ namespace SharpBridge.Services
             {
                 var uri = new Uri($"ws://{_config.Host}:{_config.Port}");
                 await _webSocket.ConnectAsync(uri, cancellationToken);
-            _lastSuccessfulConnection = Environment.TickCount;
+                _lastSuccessfulConnection = Environment.TickCount;
                 _logger.Info("Connected to VTube Studio");
             }
             catch (Exception ex)
@@ -145,7 +145,7 @@ namespace SharpBridge.Services
                     AuthenticationToken = _authToken
                 };
                 
-                var authResponse = await SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                var authResponse = await _webSocket.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                     "AuthenticationRequest", authRequest, cancellationToken);
                 
                 if (!authResponse.Authenticated)
@@ -155,7 +155,7 @@ namespace SharpBridge.Services
                     
                     // Try authenticating again with new token
                     authRequest.AuthenticationToken = _authToken;
-                    authResponse = await SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                    authResponse = await _webSocket.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                         "AuthenticationRequest", authRequest, cancellationToken);
                 }
                 
@@ -209,12 +209,12 @@ namespace SharpBridge.Services
                     ParameterValues = trackingData.Parameters
                 };
                 
-                await SendRequestAsync<InjectParamsRequest, object>(
+                await _webSocket.SendRequestAsync<InjectParamsRequest, object>(
                     "InjectParameterDataRequest", request, cancellationToken);
                 
-            _messagesSent++;
-            _lastSuccessfulSend = Environment.TickCount;
-            _lastTrackingData = trackingData;
+                _messagesSent++;
+                _lastSuccessfulSend = Environment.TickCount;
+                _lastTrackingData = trackingData;
             }
             catch (Exception ex)
             {
@@ -270,50 +270,8 @@ namespace SharpBridge.Services
             }
         }
         
-        private async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
-            string messageType, TRequest requestData, CancellationToken cancellationToken)
-        {
-            var request = new VTSApiRequest<TRequest>
-            {
-                ApiName = "VTubeStudioPublicAPI",
-                ApiVersion = "1.0",
-                RequestId = Guid.NewGuid().ToString(),
-                MessageType = messageType,
-                Data = requestData
-            };
-            
-            var json = JsonSerializer.Serialize(request);
-            var bytes = Encoding.UTF8.GetBytes(json);
-            
-            await _webSocket.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
-            
-            // Receive response
-            var buffer = new byte[4096];
-            var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-            
-            if (result.MessageType == WebSocketMessageType.Text)
-            {
-                var responseJson = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
-                
-                if (response.Data == null)
-                {
-                    throw new InvalidOperationException($"Response data was null for message type {messageType}");
-                }
-                
-                return response.Data;
-            }
-            
-            throw new InvalidOperationException($"Unexpected message type: {result.MessageType}");
-        }
-        
-        /// <summary>
-        /// Loads the authentication token from the configured file path
-        /// </summary>
+        #region Token Management
+        /// <inheritdoc />
         public void LoadAuthToken()
         {
             try
@@ -329,21 +287,7 @@ namespace SharpBridge.Services
                 _logger.Warning("Failed to load authentication token: {0}", ex.Message);
             }
         }
-        
-        private void SaveAuthToken()
-        {
-            try
-            {
-                File.WriteAllText(_config.TokenFilePath, _authToken);
-                _logger.Debug("Saved authentication token to {0}", _config.TokenFilePath);
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning("Failed to save authentication token: {0}", ex.Message);
-            }
-        }
-        
-        #region Token Management
+
         /// <inheritdoc />
         public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
         {
@@ -362,7 +306,7 @@ namespace SharpBridge.Services
                     PluginDeveloper = _config.PluginDeveloper
                 };
                 
-                var response = await SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                var response = await _webSocket.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
                     "AuthenticationTokenRequest", tokenRequest, cancellationToken);
                 
                 _authToken = response.AuthenticationToken;
@@ -430,7 +374,7 @@ namespace SharpBridge.Services
                     AuthenticationToken = token
                 };
                 
-                var response = await SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                var response = await _webSocket.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                     "AuthenticationRequest", authRequest, cancellationToken);
                 
                 _logger.Info("Authentication result: {0}", response.Authenticated);

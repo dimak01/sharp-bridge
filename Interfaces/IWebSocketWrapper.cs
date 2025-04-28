@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace SharpBridge.Interfaces
 {
     /// <summary>
-    /// Wrapper for WebSocket client to enable easier testing
+    /// Wrapper for WebSocket client to enable easier testing and standardized VTS API communication
     /// </summary>
     public interface IWebSocketWrapper : IDisposable
     {
@@ -24,24 +24,6 @@ namespace SharpBridge.Interfaces
         Task ConnectAsync(Uri uri, CancellationToken cancellationToken);
         
         /// <summary>
-        /// Sends data over the WebSocket connection
-        /// </summary>
-        /// <param name="buffer">The buffer containing data to send</param>
-        /// <param name="messageType">Type of message being sent</param>
-        /// <param name="endOfMessage">Whether this is the end of the message</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Task representing the asynchronous operation</returns>
-        Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken);
-        
-        /// <summary>
-        /// Receives data from the WebSocket connection
-        /// </summary>
-        /// <param name="buffer">The buffer to receive data into</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Result of the receive operation</returns>
-        Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken);
-        
-        /// <summary>
         /// Closes the WebSocket connection
         /// </summary>
         /// <param name="closeStatus">The close status to use</param>
@@ -49,5 +31,21 @@ namespace SharpBridge.Interfaces
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Task representing the asynchronous operation</returns>
         Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken);
+        
+        /// <summary>
+        /// Sends a request to the VTube Studio API and receives the response
+        /// </summary>
+        /// <typeparam name="TRequest">Type of the request data</typeparam>
+        /// <typeparam name="TResponse">Type of the response data</typeparam>
+        /// <param name="messageType">The type of message being sent</param>
+        /// <param name="requestData">The request data to send</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>Task containing the response data</returns>
+        Task<TResponse> SendRequestAsync<TRequest, TResponse>(
+            string messageType,
+            TRequest requestData,
+            CancellationToken cancellationToken)
+            where TRequest : class
+            where TResponse : class;
     }
 } 

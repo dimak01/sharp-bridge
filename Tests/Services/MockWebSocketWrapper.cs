@@ -29,7 +29,7 @@ namespace SharpBridge.Tests.Services
         }
         
         /// <summary>
-        /// Enqueues a response to be returned on the next ReceiveAsync call
+        /// Enqueues a response to be returned on the next SendRequestAsync call
         /// </summary>
         /// <param name="response">The response object to serialize and enqueue</param>
         public void EnqueueResponse<T>(T response)
@@ -50,7 +50,7 @@ namespace SharpBridge.Tests.Services
         }
         
         /// <summary>
-        /// Enqueues a raw response to be returned on the next ReceiveAsync call
+        /// Enqueues a raw response to be returned on the next SendRequestAsync call
         /// </summary>
         /// <param name="bytes">The raw bytes to enqueue</param>
         public void EnqueueRawResponse(byte[] bytes)
@@ -73,26 +73,18 @@ namespace SharpBridge.Tests.Services
         }
         
         /// <summary>
-        /// Sends data over the WebSocket connection
+        /// Sends a request and receives a response
         /// </summary>
-        public Task SendAsync(ArraySegment<byte> buffer, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        public async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
+            string messageType,
+            TRequest requestData,
+            CancellationToken cancellationToken)
+            where TRequest : class
+            where TResponse : class
         {
             if (State != WebSocketState.Open)
             {
                 throw new InvalidOperationException($"Cannot send in state {State}");
-            }
-            
-            return Task.CompletedTask;
-        }
-        
-        /// <summary>
-        /// Receives data from the WebSocket connection
-        /// </summary>
-        public Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken)
-        {
-            if (State != WebSocketState.Open)
-            {
-                throw new InvalidOperationException($"Cannot receive in state {State}");
             }
             
             if (!_responseQueue.TryDequeue(out var responseBytes))
@@ -100,8 +92,15 @@ namespace SharpBridge.Tests.Services
                 throw new InvalidOperationException("No response queued");
             }
             
-            Array.Copy(responseBytes, 0, buffer.Array, buffer.Offset, responseBytes.Length);
-            return Task.FromResult(new WebSocketReceiveResult(responseBytes.Length, WebSocketMessageType.Text, true));
+            var responseJson = Encoding.UTF8.GetString(responseBytes);
+            var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
+            
+            if (response.Data == null)
+            {
+                throw new InvalidOperationException($"Response data was null for message type {messageType}");
+            }
+            
+            return response.Data;
         }
         
         /// <summary>
