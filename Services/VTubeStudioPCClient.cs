@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services
 {

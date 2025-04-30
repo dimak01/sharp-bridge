@@ -56,7 +56,7 @@ namespace SharpBridge
             });
             
             // Register clients
-            services.AddTransient<IWebSocketWrapper, WebSocketWrapper>();
+            services.AddSingleton<IWebSocketWrapper, WebSocketWrapper>();
             
             // Register UDP client factory
             services.AddSingleton<IUdpClientWrapperFactory, UdpClientWrapperFactory>();
@@ -78,6 +78,9 @@ namespace SharpBridge
             services.AddSingleton<VTubeStudioPCClient>();
             services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
             services.AddSingleton<IAuthTokenProvider>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
+            
+            // Register VTubeStudioPCParameterManager
+            services.AddSingleton<IVTubeStudioPCParameterManager, VTubeStudioPCParameterManager>();
             
             // Register port discovery service
             services.AddTransient<IPortDiscoveryService>(provider => 

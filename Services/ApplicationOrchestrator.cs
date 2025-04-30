@@ -24,6 +24,7 @@ namespace SharpBridge.Services
         private readonly IAppLogger _logger;
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
+        private readonly IVTubeStudioPCParameterManager _parameterManager;
         
         private bool _isInitialized;
         private bool _isDisposed;
@@ -42,6 +43,7 @@ namespace SharpBridge.Services
         /// <param name="logger">Application logger</param>
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
+        /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -51,7 +53,8 @@ namespace SharpBridge.Services
             IAuthTokenProvider authTokenProvider,
             IAppLogger logger,
             IConsoleRenderer consoleRenderer,
-            IKeyboardInputHandler keyboardInputHandler)
+            IKeyboardInputHandler keyboardInputHandler,
+            IVTubeStudioPCParameterManager parameterManager)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -62,6 +65,7 @@ namespace SharpBridge.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
+            _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
         }
 
         /// <summary>
@@ -82,6 +86,7 @@ namespace SharpBridge.Services
             await InitializeTransformationEngine(transformConfigPath);
             await DiscoverAndConnectToVTubeStudio(cancellationToken);
             await AuthenticateWithVTubeStudio(cancellationToken);
+            await SynchronizeParametersAsync(cancellationToken);
             
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
@@ -187,6 +192,32 @@ namespace SharpBridge.Services
             }
             
             _logger.Info("Successfully authenticated with VTube Studio");
+        }
+
+        private async Task SynchronizeParametersAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _logger.Info("Starting parameter synchronization...");
+                
+                // Get desired parameters from transformation engine
+                var desiredParameters = _transformationEngine.GetParameterDefinitions();
+                
+                // Use the parameter manager to sync
+                var success = await _parameterManager.SynchronizeParametersAsync(desiredParameters, cancellationToken);
+                
+                if (!success)
+                {
+                    throw new InvalidOperationException("Failed to synchronize parameters");
+                }
+                
+                _logger.Info("Parameter synchronization completed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to synchronize parameters: {0}", ex.Message);
+                throw;
+            }
         }
         
         private void SubscribeToEvents()
