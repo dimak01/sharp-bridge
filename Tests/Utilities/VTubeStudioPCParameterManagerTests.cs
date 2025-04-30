@@ -149,5 +149,109 @@ namespace SharpBridge.Tests.Utilities
             await Assert.ThrowsAsync<InvalidOperationException>(() => 
                 _parameterManager.DeleteParameterAsync(parameterName, CancellationToken.None));
         }
+
+        [Fact]
+        public async Task SynchronizeParametersAsync_SuccessfullySynchronizesParameters()
+        {
+            // Arrange
+            var existingParameters = new List<VTSParameter>
+            {
+                new VTSParameter("ExistingParam", -1.0, 1.0, 0.0)
+            };
+
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("ExistingParam", -1.0, 1.0, 0.5), // Update existing
+                new VTSParameter("NewParam", -1.0, 1.0, 0.0)      // Create new
+            };
+
+            // Setup GetParametersAsync to return existing parameters
+            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
+                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterListResponse { Parameters = existingParameters });
+
+            // Setup UpdateParameterAsync to succeed
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "ExistingParam"), 
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "ExistingParam" });
+
+            // Setup CreateParameterAsync to succeed
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "NewParam"), 
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "NewParam" });
+
+            // Act
+            var result = await _parameterManager.SynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeTrue();
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "ExistingParam"), 
+                It.IsAny<CancellationToken>()), Times.Once);
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "NewParam"), 
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SynchronizeParametersAsync_HandlesErrorsDuringSynchronization()
+        {
+            // Arrange
+            var existingParameters = new List<VTSParameter>
+            {
+                new VTSParameter("ExistingParam", -1.0, 1.0, 0.0)
+            };
+
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("ExistingParam", -1.0, 1.0, 0.5)
+            };
+
+            // Setup GetParametersAsync to return existing parameters
+            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
+                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterListResponse { Parameters = existingParameters });
+
+            // Setup UpdateParameterAsync to fail
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Update failed"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => 
+                _parameterManager.SynchronizeParametersAsync(desiredParameters, CancellationToken.None));
+            
+            // Verify error was logged
+            _mockLogger.Verify(x => x.Error("Failed to synchronize parameters: {0}", "Update failed"), Times.Once);
+        }
+
+        [Fact]
+        public async Task SynchronizeParametersAsync_LogsErrorsAppropriately()
+        {
+            // Arrange
+            var existingParameters = new List<VTSParameter>
+            {
+                new VTSParameter("ExistingParam", -1.0, 1.0, 0.0)
+            };
+
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("ExistingParam", -1.0, 1.0, 0.5)
+            };
+
+            // Setup GetParametersAsync to fail
+            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
+                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Get parameters failed"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => 
+                _parameterManager.SynchronizeParametersAsync(desiredParameters, CancellationToken.None));
+            
+            // Verify error was logged
+            _mockLogger.Verify(x => x.Error("Failed to synchronize parameters: {0}", "Get parameters failed"), Times.Once);
+        }
     }
 } 
