@@ -14,9 +14,9 @@ namespace SharpBridge.Models
         /// <summary>Parameter value</summary>
         [JsonPropertyName("value")]
         public double Value { get; set; }
-        
+
         /// <summary>Optional parameter weight</summary>
         [JsonPropertyName("weight")]
-        public double? Weight { get; set; }
+        public double? Weight { get; set; } = 1;
     }
 } 

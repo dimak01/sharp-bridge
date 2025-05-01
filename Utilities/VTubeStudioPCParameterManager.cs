@@ -16,6 +16,32 @@ namespace SharpBridge.Utilities
         private readonly IWebSocketWrapper _webSocket;
         private readonly IAppLogger _logger;
 
+        private static readonly HashSet<string> DefaultVTSParameters = new()
+        {
+            "FacePositionX",
+            "FacePositionY",
+            "FacePositionZ",
+            "FaceAngleX",
+            "FaceAngleY",
+            "FaceAngleZ",
+            "MouthSmile",
+            "MouthOpen",
+            "Brows",
+            "TongueOut",
+            "EyeOpenLeft",
+            "EyeOpenRight",
+            "EyeLeftX",
+            "EyeLeftY",
+            "EyeRightX",
+            "EyeRightY",
+            "CheekPuff",
+            "FaceAngry",
+            "BrowLeftY",
+            "BrowRightY",
+            "MouthX",
+            "VoiceFrequencyPlusMouthSmile"
+        };
+
         /// <summary>
         /// Creates a new instance of the VTubeStudioPCParameterManager
         /// </summary>
@@ -36,9 +62,9 @@ namespace SharpBridge.Utilities
         {
             try
             {
-                var response = await _webSocket.SendRequestAsync<object, ParameterListResponse>(
-                    "ParameterListRequest", null, cancellationToken);
-                return response.Parameters;
+                var response = await _webSocket.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                    "InputParameterListRequest", new InputParameterListRequest(), cancellationToken);
+                return response.CustomParameters;
             }
             catch (Exception ex)
             {
@@ -58,6 +84,12 @@ namespace SharpBridge.Utilities
         {
             try
             {
+                if (DefaultVTSParameters.Contains(parameter.Name))
+                {
+                    _logger.Warning("Cannot create or update default VTS parameter: {0}", parameter.Name);
+                    return false;
+                }
+
                 var request = new ParameterCreationRequest
                 {
                     ParameterName = parameter.Name,
@@ -112,6 +144,12 @@ namespace SharpBridge.Utilities
         {
             try
             {
+                if (DefaultVTSParameters.Contains(parameterName))
+                {
+                    _logger.Warning("Cannot delete default VTS parameter: {0}", parameterName);
+                    return false;
+                }
+
                 var request = new ParameterDeletionRequest
                 {
                     ParameterName = parameterName
@@ -144,6 +182,11 @@ namespace SharpBridge.Utilities
 
                 foreach (var parameter in desiredParameters)
                 {
+                    if (DefaultVTSParameters.Contains(parameter.Name))
+                    {
+                        continue;
+                    }
+
                     if (existingParameterNames.Contains(parameter.Name))
                     {
                         await UpdateParameterAsync(parameter, cancellationToken);

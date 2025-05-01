@@ -28,9 +28,16 @@ namespace SharpBridge.Tests.Utilities
         public async Task GetParametersAsync_ReturnsEmptyCollection_WhenNoParametersExist()
         {
             // Arrange
-            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
-                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ParameterListResponse { Parameters = new List<VTSParameter>() });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse 
+                    { 
+                        ModelLoaded = true,
+                        ModelName = "TestModel",
+                        ModelId = "TestId",
+                        CustomParameters = new List<VTSParameter>(),
+                        DefaultParameters = new List<VTSParameter>()
+                    });
 
             // Act
             var result = await _parameterManager.GetParametersAsync(CancellationToken.None);
@@ -49,9 +56,16 @@ namespace SharpBridge.Tests.Utilities
                 new VTSParameter("Param2", -1.0, 1.0, 0.0)
             };
 
-            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
-                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ParameterListResponse { Parameters = expectedParameters });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse 
+                    { 
+                        ModelLoaded = true,
+                        ModelName = "TestModel",
+                        ModelId = "TestId",
+                        CustomParameters = expectedParameters,
+                        DefaultParameters = new List<VTSParameter>()
+                    });
 
             // Act
             var result = await _parameterManager.GetParametersAsync(CancellationToken.None);
@@ -166,9 +180,16 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup GetParametersAsync to return existing parameters
-            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
-                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ParameterListResponse { Parameters = existingParameters });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse 
+                    { 
+                        ModelLoaded = true,
+                        ModelName = "TestModel",
+                        ModelId = "TestId",
+                        CustomParameters = existingParameters,
+                        DefaultParameters = new List<VTSParameter>()
+                    });
 
             // Setup UpdateParameterAsync to succeed
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
@@ -210,9 +231,16 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup GetParametersAsync to return existing parameters
-            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
-                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ParameterListResponse { Parameters = existingParameters });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse 
+                    { 
+                        ModelLoaded = true,
+                        ModelName = "TestModel",
+                        ModelId = "TestId",
+                        CustomParameters = existingParameters,
+                        DefaultParameters = new List<VTSParameter>()
+                    });
 
             // Setup UpdateParameterAsync to fail
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
@@ -242,8 +270,8 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup GetParametersAsync to fail
-            _mockWebSocket.Setup(x => x.SendRequestAsync<object, ParameterListResponse>(
-                "ParameterListRequest", null, It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Get parameters failed"));
 
             // Act & Assert
