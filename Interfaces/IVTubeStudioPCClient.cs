@@ -12,8 +12,6 @@ namespace SharpBridge.Interfaces
     /// </summary>
     public interface IVTubeStudioPCClient : IDisposable
     {
-        VTubeStudioPCConfig Config { get; }
-        string Token { get; }
         /// <summary>
         /// Gets the current state of the WebSocket connection
         /// </summary>

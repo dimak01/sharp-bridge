@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -40,15 +41,40 @@ namespace SharpBridge.Utilities
             return _webSocket.CloseAsync(closeStatus, statusDescription, cancellationToken);
         }
         
-        /// <inheritdoc/>
-        public async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
-            string messageType,
-            TRequest requestData,
-            CancellationToken cancellationToken)
-            where TRequest : class
-            where TResponse : class
+        private async Task SendMessageAsync(string json, CancellationToken cancellationToken)
         {
-            var request = new VTSApiRequest<TRequest>
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await _webSocket.SendAsync(
+                new ArraySegment<byte>(bytes),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+        }
+
+        private async Task<string> ReceiveMessageAsync(CancellationToken cancellationToken)
+        {
+            var buffer = new byte[16384];
+            var messageBuffer = new List<byte>();
+            WebSocketReceiveResult result;
+            
+            do
+            {
+                result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                messageBuffer.AddRange(new ArraySegment<byte>(buffer, 0, result.Count));
+            } while (!result.EndOfMessage);
+
+            if (result.MessageType != WebSocketMessageType.Text)
+            {
+                throw new InvalidOperationException($"Unexpected message type: {result.MessageType}");
+            }
+
+            return Encoding.UTF8.GetString(messageBuffer.ToArray());
+        }
+
+        private VTSApiRequest<TRequest> CreateRequest<TRequest>(string messageType, TRequest requestData)
+            where TRequest : class
+        {
+            return new VTSApiRequest<TRequest>
             {
                 ApiName = "VTubeStudioPublicAPI",
                 ApiVersion = "1.0",
@@ -56,34 +82,28 @@ namespace SharpBridge.Utilities
                 MessageType = messageType,
                 Data = requestData
             };
-            
+        }
+
+        public async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
+            string messageType,
+            TRequest requestData,
+            CancellationToken cancellationToken)
+            where TRequest : class
+            where TResponse : class
+        {
+            var request = CreateRequest(messageType, requestData);
             var json = JsonSerializer.Serialize(request);
-            var bytes = Encoding.UTF8.GetBytes(json);
             
-            await _webSocket.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
+            await SendMessageAsync(json, cancellationToken);
+            var responseJson = await ReceiveMessageAsync(cancellationToken);
             
-            // Receive response
-            var buffer = new byte[4096];
-            var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-            
-            if (result.MessageType == WebSocketMessageType.Text)
+            var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
+            if (response.Data == null)
             {
-                var responseJson = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
-                
-                if (response.Data == null)
-                {
-                    throw new InvalidOperationException($"Response data was null for message type {messageType}");
-                }
-                
-                return response.Data;
+                throw new InvalidOperationException($"Response data was null for message type {messageType}");
             }
             
-            throw new InvalidOperationException($"Unexpected message type: {result.MessageType}");
+            return response.Data;
         }
         
         /// <inheritdoc/>
