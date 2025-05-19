@@ -263,8 +263,15 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    _webSocket?.Dispose();
-                    _logger.Debug("VTubeStudioPCClient disposed");
+                    try
+                    {
+                        _webSocket?.Dispose();
+                        _logger.Debug("VTubeStudioPCClient disposed");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error("Error disposing WebSocket: {0}", ex.Message);
+                    }
                 }
                 
                 _isDisposed = true;
