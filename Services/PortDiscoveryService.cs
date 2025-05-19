@@ -55,7 +55,7 @@ namespace SharpBridge.Services
                     // Verify this is actually VTube Studio
                     if (string.IsNullOrEmpty(response.Data.InstanceId) || 
                         string.IsNullOrEmpty(response.Data.WindowTitle) ||
-                        !response.Data.WindowTitle.Contains("VTube Studio", StringComparison.OrdinalIgnoreCase))
+                        !response.Data.WindowTitle.StartsWith("VTube Studio", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.Warning("Found service but it doesn't appear to be VTube Studio");
                         return null;
