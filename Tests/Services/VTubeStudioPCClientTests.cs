@@ -908,5 +908,47 @@ namespace SharpBridge.Tests.Services
             // Cleanup
             File.Delete(_config.TokenFilePath);
         }
+
+        [Fact]
+        public async Task GetTokenAsync_WhenNotConnected_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            // Do not connect
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetTokenAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WithToken_WhenNotConnected_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            // Do not connect
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.AuthenticateAsync("token", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WithToken_WhenWebSocketThrows_ReturnsFalseAndLogsError()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("WebSocket error"));
+            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            
+            // Act
+            var result = await client.AuthenticateAsync("token", CancellationToken.None);
+            
+            // Assert
+            result.Should().BeFalse();
+            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
+        }
     }
 } 
