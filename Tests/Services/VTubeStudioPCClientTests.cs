@@ -806,5 +806,107 @@ namespace SharpBridge.Tests.Services
             // Assert
             mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error disposing")), It.IsAny<object[]>()), Times.Once);
         }
+
+        [Fact]
+        public async Task GetTokenAsync_WhenTokenFileEmpty_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create empty token file
+            File.WriteAllText(_config.TokenFilePath, string.Empty);
+            
+            // Queue token acquisition response
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            
+            // Act
+            var result = await client.GetTokenAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().Be("new-token");
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_WhenTokenFileInvalid_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create invalid token file
+            File.WriteAllText(_config.TokenFilePath, "invalid-token-data");
+            
+            // Queue token acquisition response
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            
+            // Act
+            var result = await client.GetTokenAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().Be("new-token");
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WhenTokenFileCorrupted_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create corrupted token file
+            File.WriteAllText(_config.TokenFilePath, "corrupted-token-data");
+            
+            // Queue token acquisition and authentication responses
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true });
+            
+            // Act
+            var result = await client.AuthenticateAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WhenTokenExpired_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create token file with expired token
+            File.WriteAllText(_config.TokenFilePath, "expired-token");
+            
+            // Load the expired token
+            client.LoadAuthToken();
+            
+            // Queue authentication failure, then token acquisition and successful authentication
+            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = false, Reason = "Token expired" });
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true });
+            
+            // Act
+            var result = await client.AuthenticateAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
     }
 } 
