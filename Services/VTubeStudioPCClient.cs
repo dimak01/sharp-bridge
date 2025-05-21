@@ -285,8 +285,7 @@ namespace SharpBridge.Services
                 ["UptimeSeconds"] = (int)(DateTime.Now - _startTime).TotalSeconds
             };
             
-            var isHealthy = _webSocket.State == WebSocketState.Open && 
-                           (Environment.TickCount - _lastSuccessfulSend) < 5000; // Consider unhealthy if no successful send in 5 seconds
+            var isHealthy = _webSocket.State == WebSocketState.Open;
             
             return new ServiceStats(
                 serviceName: "VTubeStudioPCClient",

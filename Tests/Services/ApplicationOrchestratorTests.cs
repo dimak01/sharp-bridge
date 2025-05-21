@@ -107,6 +107,19 @@ namespace SharpBridge.Tests.Services
                 
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
+
+            // Setup PC client service stats
+            var pcStats = new ServiceStats(
+                serviceName: "VTubeStudioPCClient",
+                status: "Connected",
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+            _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
+                .Returns(pcStats);
                 
             // Configure auth token provider
             _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
@@ -136,6 +149,19 @@ namespace SharpBridge.Tests.Services
                 
             _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
+
+            // Setup Phone client service stats
+            var phoneStats = new ServiceStats(
+                serviceName: "PhoneClient",
+                status: "Connected",
+                currentEntity: new PhoneTrackingInfo(),
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+            _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
+                .Returns(phoneStats);
         }
 
         // Helper method to set up basic orchestrator requirements for event-based tests
