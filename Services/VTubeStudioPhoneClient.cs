@@ -15,7 +15,7 @@ namespace SharpBridge.Services;
 /// <summary>
 /// Client for receiving tracking data from VTube Studio on iPhone via UDP.
 /// </summary>
-public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProvider, IDisposable
+public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProvider, IDisposable, IInitializable
 {
     private readonly IUdpClientWrapper _udpClient;
     private readonly VTubeStudioPhoneClientConfig _config;
@@ -27,6 +27,8 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private DateTime _startTime;
     private PhoneTrackingInfo _lastTrackingData;
     private string _status = "Initializing";
+    private string _lastInitializationError;
+    private DateTime _lastSuccessfulOperation;
     
     /// <summary>
     /// Event triggered when new tracking data is received.
@@ -66,6 +68,46 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     }
 
     /// <summary>
+    /// Gets the last error that occurred during initialization
+    /// </summary>
+    public string LastInitializationError => _lastInitializationError;
+
+    /// <summary>
+    /// Attempts to initialize the client
+    /// </summary>
+    public async Task<bool> TryInitializeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _lastInitializationError = null;
+            _status = "Initializing";
+            
+            // Send initial tracking request
+            await SendTrackingRequestAsync();
+            
+            // Wait for first response
+            var received = await ReceiveResponseAsync(cancellationToken);
+            if (!received)
+            {
+                _lastInitializationError = "Failed to receive initial response from iPhone";
+                _status = "Initialization Failed";
+                return false;
+            }
+            
+            _lastSuccessfulOperation = DateTime.UtcNow;
+            _status = "Initialized";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _lastInitializationError = ex.Message;
+            _status = "Initialization Failed";
+            _logger.Error("Initialization failed: {0}", ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets the current service statistics
     /// </summary>
     public IServiceStats GetServiceStats()
@@ -86,11 +128,17 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             }
         }
         
+        var isHealthy = _totalFramesReceived > 0 && 
+                       (DateTime.UtcNow - _lastSuccessfulOperation).TotalSeconds < 5; // Consider unhealthy if no successful operation in 5 seconds
+        
         return new ServiceStats(
             "Phone Client", 
             _status,
             _lastTrackingData,
-            counters);
+            isHealthy: isHealthy,
+            lastSuccessfulOperation: _lastSuccessfulOperation,
+            lastError: _lastInitializationError,
+            counters: counters);
     }
 
     /// <summary>
@@ -138,6 +186,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             {
                 _totalFramesReceived++;
                 _lastTrackingData = response;
+                _lastSuccessfulOperation = DateTime.UtcNow;
                 TrackingDataReceived?.Invoke(this, response);
             }
         }

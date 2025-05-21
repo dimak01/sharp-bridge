@@ -3,27 +3,27 @@
 This checklist outlines the step-by-step implementation plan for the resiliency improvements. Each item should be completed in order to ensure proper integration of the new features.
 
 ## 1. Interface Updates
-- [ ] Create `IInitializable` interface
-  - [ ] Add `TryInitializeAsync` method
-  - [ ] Add `LastInitializationError` property
-- [ ] Enhance `IServiceStats` interface
-  - [ ] Add `IsHealthy` property
-  - [ ] Add `LastSuccessfulOperation` property
-  - [ ] Add `LastError` property
-- [ ] Update `ServiceStats` implementation
-  - [ ] Implement new properties
-  - [ ] Update constructor
-  - [ ] Add property documentation
+- [x] Create `IInitializable` interface
+  - [x] Add `TryInitializeAsync` method
+  - [x] Add `LastInitializationError` property
+- [x] Enhance `IServiceStats` interface
+  - [x] Add `IsHealthy` property
+  - [x] Add `LastSuccessfulOperation` property
+  - [x] Add `LastError` property
+- [x] Update `ServiceStats` implementation
+  - [x] Implement new properties
+  - [x] Update constructor
+  - [x] Add property documentation
 
 ## 2. Client Updates
-- [ ] Update `VTubeStudioPCClient`
-  - [ ] Implement `IInitializable`
-  - [ ] Enhance `GetServiceStats` implementation
-  - [ ] Add health tracking
-- [ ] Update `VTubeStudioPhoneClient`
-  - [ ] Implement `IInitializable`
-  - [ ] Enhance `GetServiceStats` implementation
-  - [ ] Add health tracking
+- [x] Update `VTubeStudioPCClient`
+  - [x] Implement `IInitializable`
+  - [x] Enhance `GetServiceStats` implementation
+  - [x] Add health tracking
+- [x] Update `VTubeStudioPhoneClient`
+  - [x] Implement `IInitializable`
+  - [x] Enhance `GetServiceStats` implementation
+  - [x] Add health tracking
 
 ## 3. Recovery Implementation
 - [ ] Create `SimpleRecoveryPolicy` class

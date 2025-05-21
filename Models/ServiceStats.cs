@@ -1,34 +1,9 @@
+using System;
 using System.Collections.Generic;
 using SharpBridge.Interfaces;
 
 namespace SharpBridge.Models
 {
-    /// <summary>
-    /// Interface for service statistics with covariance support
-    /// </summary>
-    public interface IServiceStats
-    {
-        /// <summary>
-        /// The name of the service
-        /// </summary>
-        string ServiceName { get; }
-        
-        /// <summary>
-        /// The current status of the service
-        /// </summary>
-        string Status { get; }
-        
-        /// <summary>
-        /// Service-specific counters and metrics
-        /// </summary>
-        Dictionary<string, long> Counters { get; }
-        
-        /// <summary>
-        /// The current entity being processed by the service
-        /// </summary>
-        IFormattableObject CurrentEntity { get; }
-    }
-
     /// <summary>
     /// Container for service statistics
     /// </summary>
@@ -53,15 +28,40 @@ namespace SharpBridge.Models
         /// The current entity being processed by the service
         /// </summary>
         public IFormattableObject CurrentEntity { get; }
+
+        /// <summary>
+        /// Gets whether the service is currently healthy
+        /// </summary>
+        public bool IsHealthy { get; }
+
+        /// <summary>
+        /// Gets the timestamp of the last successful operation
+        /// </summary>
+        public DateTime LastSuccessfulOperation { get; }
+
+        /// <summary>
+        /// Gets the last error that occurred in the service
+        /// </summary>
+        public string LastError { get; }
         
         /// <summary>
         /// Creates a new instance of ServiceStats
         /// </summary>
-        public ServiceStats(string serviceName, string status, IFormattableObject currentEntity, Dictionary<string, long> counters = null)
+        public ServiceStats(
+            string serviceName, 
+            string status, 
+            IFormattableObject currentEntity, 
+            bool isHealthy = true,
+            DateTime? lastSuccessfulOperation = null,
+            string lastError = null,
+            Dictionary<string, long> counters = null)
         {
             ServiceName = serviceName;
             Status = status;
             CurrentEntity = currentEntity;
+            IsHealthy = isHealthy;
+            LastSuccessfulOperation = lastSuccessfulOperation ?? DateTime.UtcNow;
+            LastError = lastError;
             Counters = counters ?? new Dictionary<string, long>();
         }
     }
