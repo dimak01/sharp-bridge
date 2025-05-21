@@ -26,14 +26,14 @@ This checklist outlines the step-by-step implementation plan for the resiliency 
   - [x] Add health tracking
 
 ## 3. Recovery Implementation
-- [ ] Create `SimpleRecoveryPolicy` class
-  - [ ] Implement consistent 2-second interval
-  - [ ] Add configuration options
-- [ ] Update `ApplicationOrchestrator`
-  - [ ] Add recovery policy
-  - [ ] Implement `AttemptRecoveryAsync`
-  - [ ] Update main loop timing
-  - [ ] Add recovery status tracking
+- [x] Create `SimpleRecoveryPolicy` class
+  - [x] Implement consistent 2-second interval
+  - [x] Add configuration options
+- [x] Update `ApplicationOrchestrator`
+  - [x] Add recovery policy
+  - [x] Implement `AttemptRecoveryAsync`
+  - [x] Update main loop timing
+  - [x] Add recovery status tracking
 
 ## 4. Initialization Flow
 - [ ] Update `InitializeAsync` in `ApplicationOrchestrator`

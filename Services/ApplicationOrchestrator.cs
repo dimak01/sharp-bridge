@@ -25,11 +25,13 @@ namespace SharpBridge.Services
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
+        private readonly SimpleRecoveryPolicy _recoveryPolicy;
         
         private bool _isInitialized;
         private bool _isDisposed;
         private string _status = "Initializing";
         private string _transformConfigPath; // Store the config path for reloading
+        private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -66,6 +68,9 @@ namespace SharpBridge.Services
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
+            
+            // Create recovery policy with 2-second interval
+            _recoveryPolicy = new SimpleRecoveryPolicy(TimeSpan.FromSeconds(2));
         }
 
         /// <summary>
@@ -250,6 +255,17 @@ namespace SharpBridge.Services
                 {
                     try
                     {
+                        // Check if it's time to attempt recovery
+                        if (DateTime.UtcNow >= _nextRecoveryAttempt)
+                        {
+                            var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
+                            if (needsRecovery)
+                            {
+                                _logger.Info("Recovery attempt completed");
+                            }
+                            _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+                        }
+
                         // Check if it's time to send another tracking request
                         if (DateTime.UtcNow >= nextRequestTime)
                         {
@@ -262,7 +278,6 @@ namespace SharpBridge.Services
                         
                         // Try to receive tracking data
                         bool dataReceived = await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
-                        
                         
                         // Check for keyboard input every tick of the loop
                         CheckForKeyboardInput();
@@ -462,6 +477,34 @@ namespace SharpBridge.Services
                 () => ReloadTransformationConfig(),
                 "Reload transformation configuration"
             );
+        }
+
+        /// <summary>
+        /// Attempts to recover unhealthy components
+        /// </summary>
+        private async Task<bool> AttemptRecoveryAsync(CancellationToken cancellationToken)
+        {
+            bool needsRecovery = false;
+            
+            // Check PC client health
+            var pcStats = _vtubeStudioPCClient.GetServiceStats();
+            if (!pcStats.IsHealthy)
+            {
+                _logger.Info("Attempting to recover PC client...");
+                await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
+                needsRecovery = true;
+            }
+            
+            // Check Phone client health
+            var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+            if (!phoneStats.IsHealthy)
+            {
+                _logger.Info("Attempting to recover Phone client...");
+                await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
+                needsRecovery = true;
+            }
+            
+            return needsRecovery;
         }
 
         /// <summary>

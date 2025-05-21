@@ -127,9 +127,8 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
                 counters["FPS"] = (long)(_totalFramesReceived / timeSinceStart);
             }
         }
-        
-        var isHealthy = _totalFramesReceived > 0 && 
-                       (DateTime.UtcNow - _lastSuccessfulOperation).TotalSeconds < 5; // Consider unhealthy if no successful operation in 5 seconds
+
+        var isHealthy = _totalFramesReceived > 0;
         
         return new ServiceStats(
             "Phone Client", 
