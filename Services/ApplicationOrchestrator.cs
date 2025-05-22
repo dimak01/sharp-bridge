@@ -25,7 +25,7 @@ namespace SharpBridge.Services
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
-        private readonly SimpleRecoveryPolicy _recoveryPolicy;
+        private readonly IRecoveryPolicy _recoveryPolicy;
         
         private bool _isInitialized;
         private bool _isDisposed;
@@ -46,6 +46,7 @@ namespace SharpBridge.Services
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
+        /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -56,7 +57,8 @@ namespace SharpBridge.Services
             IAppLogger logger,
             IConsoleRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler,
-            IVTubeStudioPCParameterManager parameterManager)
+            IVTubeStudioPCParameterManager parameterManager,
+            IRecoveryPolicy recoveryPolicy)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -68,9 +70,7 @@ namespace SharpBridge.Services
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
-            
-            // Create recovery policy with 2-second interval
-            _recoveryPolicy = new SimpleRecoveryPolicy(TimeSpan.FromSeconds(2));
+            _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
         }
 
         /// <summary>
@@ -300,7 +300,7 @@ namespace SharpBridge.Services
                     {
                         _status = $"Error: {ex.Message}";
                         _logger.Error("Error in application loop: {0}", ex.Message);
-                        await Task.Delay(1000, cancellationToken); // Add delay on error before retrying
+                        await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken); // Add delay on error before retrying
                     }
                 }
             }

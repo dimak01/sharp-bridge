@@ -107,6 +107,13 @@ namespace SharpBridge
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
             
+            // Register recovery policy
+            services.AddSingleton<IRecoveryPolicy>(provider => 
+            {
+                var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
+                return new SimpleRecoveryPolicy(TimeSpan.FromSeconds(pcConfig.RecoveryIntervalSeconds));
+            });
+            
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
             

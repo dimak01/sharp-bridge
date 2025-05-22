@@ -24,11 +24,14 @@ namespace SharpBridge.Tests.Services
         private Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
         private Mock<IAuthTokenProvider> _authTokenProviderMock;
         private Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
+        private Mock<IRecoveryPolicy> _recoveryPolicyMock;
         private ApplicationOrchestrator _orchestrator;
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
         private VTubeStudioPCConfig _pcConfig;
         private CancellationTokenSource _defaultCts;
+        private TimeSpan _longTimeout; 
+        private CancellationTokenSource _longTimeoutCts;
         
         public ApplicationOrchestratorTests()
         {
@@ -41,9 +44,15 @@ namespace SharpBridge.Tests.Services
             _keyboardInputHandlerMock = new Mock<IKeyboardInputHandler>();
             _authTokenProviderMock = new Mock<IAuthTokenProvider>();
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
+            _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
             
-            // Create default cancellation token source with 2 second timeout
-            _defaultCts = new CancellationTokenSource(TimeSpan.FromSeconds(0.2));
+            // Configure recovery policy to return 2 second delay
+            _recoveryPolicyMock.Setup(x => x.GetNextDelay())
+                .Returns(TimeSpan.FromMilliseconds(50));
+            
+            _defaultCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+            _longTimeout = TimeSpan.FromMilliseconds(500);
+            _longTimeoutCts = new CancellationTokenSource(_longTimeout);
             
             // Create a simple phone config for testing
             _phoneConfig = new VTubeStudioPhoneClientConfig
@@ -53,7 +62,8 @@ namespace SharpBridge.Tests.Services
                 LocalPort = 5678,
                 RequestIntervalSeconds = 1.0,
                 ReceiveTimeoutMs = 100,
-                SendForSeconds = 5
+                SendForSeconds = 5,
+                ErrorDelayMs = 10 // Fast error retry for tests
             };
             
             // Create a simple PC config for testing
@@ -75,7 +85,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object
             );
                 
             // Create temp config file for tests
@@ -94,7 +105,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object
             );
         }
         
@@ -501,7 +513,7 @@ namespace SharpBridge.Tests.Services
             // Act - Run the test with a 2 second timeout
             bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
                 trackingResponse, 
-                TimeSpan.FromSeconds(2));
+                _longTimeout);
             
             // Assert
             eventWasRaised.Should().BeTrue("The event should have been raised by the test");
@@ -531,7 +543,7 @@ namespace SharpBridge.Tests.Services
             // Act - Run the test with a 2 second timeout, passing null tracking data
             bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
                 nullTrackingData, 
-                TimeSpan.FromSeconds(2));
+                _longTimeout);
             
             // Assert
             eventWasRaised.Should().BeTrue("The event should have been raised by the test");
@@ -583,7 +595,7 @@ namespace SharpBridge.Tests.Services
             // Act - Run the test with a 2 second timeout
             bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
                 trackingResponse, 
-                TimeSpan.FromSeconds(2));
+                _longTimeout);
             
             // Assert
             eventWasRaised.Should().BeTrue("The event should have been raised by the test");
@@ -759,7 +771,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -776,7 +789,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -793,7 +807,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -810,7 +825,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -827,7 +843,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -844,7 +861,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -861,7 +879,8 @@ namespace SharpBridge.Tests.Services
                 null,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -878,7 +897,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 null,
                 _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -894,7 +914,8 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 null,
-                _parameterManagerMock.Object));
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object));
         }
 
         [Fact]
@@ -910,6 +931,24 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
+                null,
+                _recoveryPolicyMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullRecoveryPolicy_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                _pcConfig,
+                _authTokenProviderMock.Object,
+                _loggerMock.Object,
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object,
+                _parameterManagerMock.Object,
                 null));
         }
 
@@ -964,8 +1003,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             
-            var twoSecondsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-
             var exceptionThrown = false;
             
             // Setup to throw exception on first call, then succeed on second call, then cancel
@@ -985,13 +1022,13 @@ namespace SharpBridge.Tests.Services
                     return Task.FromResult(false);
                 });
             
-            await _orchestrator.InitializeAsync(_tempConfigPath, twoSecondsCts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
             
-            // Act
-            await RunWithDefaultTimeout(async () => 
+            // Act - Use a longer timeout to ensure we get multiple calls
+            await RunWithCustomTimeout(async () => 
             {
-                await _orchestrator.RunAsync(twoSecondsCts.Token);
-            });
+                await _orchestrator.RunAsync(_longTimeoutCts.Token);
+            }, _longTimeout);
             
             // Assert
             Assert.True(exceptionThrown, "Exception should have been thrown");
@@ -1052,7 +1089,7 @@ namespace SharpBridge.Tests.Services
             // Act - Run the test with a 2 second timeout
             bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
                 trackingResponse, 
-                TimeSpan.FromSeconds(2));
+                _longTimeout);
             
             // Assert - No exception should be thrown and no tracking data should be sent
             eventWasRaised.Should().BeTrue("The event should have been raised by the test");
@@ -1110,7 +1147,7 @@ namespace SharpBridge.Tests.Services
             // Act - Run the test with a 2 second timeout
             bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
                 trackingResponse, 
-                TimeSpan.FromSeconds(2));
+                _longTimeout);
             
             // Assert - Verify that the transform was called but exception was handled
             eventWasRaised.Should().BeTrue("The event should have been raised by the test");
@@ -1276,7 +1313,15 @@ namespace SharpBridge.Tests.Services
                 .Returns((ServiceStats)null);
                 
             _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
-                .Returns(new ServiceStats("PCClient", "Connected", new PCTrackingInfo()));
+                .Returns(new ServiceStats(
+                    serviceName: "PCClient",
+                    status: "Disconnected",
+                    currentEntity: new PCTrackingInfo(),
+                    isHealthy: false,
+                    lastSuccessfulOperation: DateTime.UtcNow.AddMinutes(-5),
+                    lastError: "Connection lost",
+                    counters: new Dictionary<string, long>()
+                ));
             
             // Get the private method via reflection
             var updateConsoleStatusMethod = typeof(ApplicationOrchestrator)
@@ -1303,7 +1348,15 @@ namespace SharpBridge.Tests.Services
                 .Returns(phoneStats);
                 
             _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
-                .Returns(pcStats);
+                .Returns(new ServiceStats(
+                    serviceName: "PCClient",
+                    status: "Disconnected",
+                    currentEntity: new PCTrackingInfo(),
+                    isHealthy: false,
+                    lastSuccessfulOperation: DateTime.UtcNow.AddMinutes(-5),
+                    lastError: "Connection lost",
+                    counters: new Dictionary<string, long>()
+                ));
                 
             _consoleRendererMock.Setup(x => x.Update(It.IsAny<List<IServiceStats>>()))
                 .Throws(expectedException);
@@ -1402,7 +1455,6 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             SetupBasicMocks();
-            var twoSecondsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             var requestTimes = new List<DateTime>();
             
             // Set up a short request interval for testing
@@ -1413,12 +1465,12 @@ namespace SharpBridge.Tests.Services
                 .Callback(() => requestTimes.Add(DateTime.UtcNow))
                 .Returns(Task.CompletedTask);
                 
-            await _orchestrator.InitializeAsync(_tempConfigPath, twoSecondsCts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
             
             // Act - Run with default timeout
             await RunWithDefaultTimeout(async () => 
             {
-                await _orchestrator.RunAsync(twoSecondsCts.Token);
+                await _orchestrator.RunAsync(_longTimeoutCts.Token);
             });
             
             // Assert
@@ -1485,7 +1537,7 @@ namespace SharpBridge.Tests.Services
             // Act - Run the test with a 2 second timeout
             bool eventWasRaised = await RunWithTimeoutAndEventTrigger(
                 trackingData, 
-                TimeSpan.FromSeconds(2));
+                _longTimeout);
             
             // Assert
             eventWasRaised.Should().BeTrue("The event should have been raised by the test");
@@ -1571,14 +1623,13 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPhoneClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
             
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
             
             // Act - Use a longer timeout to allow for recovery attempts
-            using var longTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await RunWithCustomTimeout(async () => 
             {
-                await _orchestrator.RunAsync(longTimeoutCts.Token);
-            }, TimeSpan.FromSeconds(5));
+                await _orchestrator.RunAsync(_longTimeoutCts.Token);
+            }, _longTimeout);
             
             // Assert
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
