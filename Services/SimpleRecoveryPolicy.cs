@@ -1,30 +1,28 @@
+using SharpBridge.Interfaces;
 using System;
 
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Simple recovery policy that uses a consistent retry interval
+    /// A simple recovery policy that uses a fixed delay between recovery attempts
     /// </summary>
-    public class SimpleRecoveryPolicy
+    public class SimpleRecoveryPolicy : IRecoveryPolicy
     {
-        private readonly TimeSpan _retryInterval;
-        
+        private readonly TimeSpan _delay;
+
         /// <summary>
         /// Creates a new instance of SimpleRecoveryPolicy
         /// </summary>
-        /// <param name="retryInterval">The interval between recovery attempts</param>
-        public SimpleRecoveryPolicy(TimeSpan retryInterval)
+        /// <param name="delay">The fixed delay between recovery attempts</param>
+        public SimpleRecoveryPolicy(TimeSpan delay)
         {
-            _retryInterval = retryInterval;
+            _delay = delay;
         }
-        
-        /// <summary>
-        /// Gets the delay until the next recovery attempt
-        /// </summary>
-        /// <returns>The time to wait before the next recovery attempt</returns>
+
+        /// <inheritdoc/>
         public TimeSpan GetNextDelay()
         {
-            return _retryInterval;
+            return _delay;
         }
     }
 } 

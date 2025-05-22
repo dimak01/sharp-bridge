@@ -46,5 +46,10 @@ namespace SharpBridge.Models
         /// Use port discovery if the specified port doesn't connect
         /// </summary>
         public bool UsePortDiscovery { get; set; } = true;
+        
+        /// <summary>
+        /// The interval in seconds between recovery attempts when services are unhealthy
+        /// </summary>
+        public double RecoveryIntervalSeconds { get; set; } = 2.0;
     }
 } 

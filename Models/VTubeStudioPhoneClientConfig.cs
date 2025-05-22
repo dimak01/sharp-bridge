@@ -33,4 +33,9 @@ public class VTubeStudioPhoneClientConfig
     /// Timeout for receiving data (in milliseconds)
     /// </summary>
     public int ReceiveTimeoutMs { get; set; } = 100;
+
+    /// <summary>
+    /// The delay in milliseconds after an error in the main loop before retrying (default: 1000)
+    /// </summary>
+    public int ErrorDelayMs { get; set; } = 1000;
 } 
