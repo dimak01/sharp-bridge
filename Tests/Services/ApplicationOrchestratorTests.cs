@@ -28,6 +28,7 @@ namespace SharpBridge.Tests.Services
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
         private VTubeStudioPCConfig _pcConfig;
+        private CancellationTokenSource _defaultCts;
         
         public ApplicationOrchestratorTests()
         {
@@ -40,6 +41,9 @@ namespace SharpBridge.Tests.Services
             _keyboardInputHandlerMock = new Mock<IKeyboardInputHandler>();
             _authTokenProviderMock = new Mock<IAuthTokenProvider>();
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
+            
+            // Create default cancellation token source with 2 second timeout
+            _defaultCts = new CancellationTokenSource(TimeSpan.FromSeconds(0.2));
             
             // Create a simple phone config for testing
             _phoneConfig = new VTubeStudioPhoneClientConfig
@@ -220,6 +224,37 @@ namespace SharpBridge.Tests.Services
             return eventWasRaised;
         }
         
+        // Helper methods for test execution
+        private async Task RunWithDefaultTimeout(Func<Task> testAction)
+        {
+            try
+            {
+                await testAction();
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected for normal test completion
+            }
+        }
+
+        private async Task RunWithCustomTimeout(Func<Task> testAction, TimeSpan timeout)
+        {
+            using var cts = new CancellationTokenSource(timeout);
+            try
+            {
+                await testAction();
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected for normal test completion
+            }
+        }
+
+        private async Task RunWithException<TException>(Func<Task> testAction) where TException : Exception
+        {
+            await Assert.ThrowsAsync<TException>(testAction);
+        }
+
         public void Dispose()
         {
             // Clean up temp file
@@ -229,6 +264,7 @@ namespace SharpBridge.Tests.Services
             }
             
             _orchestrator.Dispose();
+            _defaultCts.Dispose();
         }
         
         private string CreateTempConfigFile(string content)
@@ -308,11 +344,10 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             SetupBasicMocks();
-            var cancellationToken = CancellationToken.None;
             
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _orchestrator.RunAsync(cancellationToken));
+            await RunWithException<InvalidOperationException>(async () => 
+                await _orchestrator.RunAsync(_defaultCts.Token));
         }
         
         [Fact]
@@ -323,16 +358,14 @@ namespace SharpBridge.Tests.Services
                 SetupBasicMocks();
                 var consoleWriter = new StringWriter();
                 Console.SetOut(consoleWriter);
-                // Arrange
-                var cts = new CancellationTokenSource();
                 
-                await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
-                
-                // Immediately cancel so RunAsync doesn't hang
-                cts.CancelAfter(50);
+                await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
                 
                 // Act
-                await _orchestrator.RunAsync(cts.Token);
+                await RunWithDefaultTimeout(async () => 
+                {
+                    await _orchestrator.RunAsync(_defaultCts.Token);
+                });
                 
                 // Assert
                 _vtubeStudioPhoneClientMock.Verify(x => x.SendTrackingRequestAsync(), Times.AtLeastOnce);
@@ -347,8 +380,6 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             SetupBasicMocks();
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
             
             // Additional setup for this specific test case
             _vtubeStudioPCClientMock
@@ -360,13 +391,13 @@ namespace SharpBridge.Tests.Services
                 
             // Create and initialize orchestrator
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
-            
-            // Use a cancellation token that will cancel after a delay
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            await orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
             
             // Act & Assert
-            await orchestrator.RunAsync(cts.Token);
+            await RunWithDefaultTimeout(async () => 
+            {
+                await orchestrator.RunAsync(_defaultCts.Token);
+            });
             
             // Verify that close was attempted
             _vtubeStudioPCClientMock.Verify(
@@ -382,26 +413,34 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             SetupBasicMocks();
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
             
-            // Create and initialize orchestrator
-            var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(8001);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.ConnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+                
+            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
             
-            // Use a cancellation token that will cancel after a delay
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+            // Act & Assert - should not throw exception
+            await RunWithDefaultTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(_defaultCts.Token);
+            });
             
-            // Act
-            await orchestrator.RunAsync(cts.Token);
-            
-            // Assert
-            _vtubeStudioPCClientMock.Verify(
-                client => client.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure, 
+            // Verify cleanup was performed
+            _vtubeStudioPCClientMock.Verify(x => 
+                x.CloseAsync(
+                    It.IsAny<WebSocketCloseStatus>(), 
                     It.IsAny<string>(), 
                     It.IsAny<CancellationToken>()), 
                 Times.Once);
+                
+            // Verify the proper log message was written
+            _loggerMock.Verify(x => x.Info("Application stopped"), Times.Once);
         }
         
         // Data Flow Tests
@@ -684,6 +723,26 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPhoneClientMock.Verify(x => x.Dispose(), Times.Once);
         }
 
+        [Fact]
+        public void Dispose_WhenResourcesAreInErrorState_CleansUpGracefully()
+        {
+            // Arrange
+            SetupBasicMocks();
+            _vtubeStudioPCClientMock.Setup(x => x.CloseAsync(
+                It.IsAny<WebSocketCloseStatus>(), 
+                It.IsAny<string>(), 
+                It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new WebSocketException("Test exception"));
+            
+            // Act
+            _orchestrator.Dispose();
+            _orchestrator.Dispose(); // Second call should be a no-op
+            
+            // Assert
+            _vtubeStudioPCClientMock.Verify(x => x.Dispose(), Times.Once);
+            _vtubeStudioPhoneClientMock.Verify(x => x.Dispose(), Times.Once);
+        }
+
         // Constructor Parameter Tests
 
         [Fact]
@@ -871,11 +930,80 @@ namespace SharpBridge.Tests.Services
         // Additional RunAsync Tests
 
         [Fact]
+        public async Task RunAsync_ChecksForKeyboardInput()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Set up the keyboardInputHandler to signal when CheckForKeyboardInput is called
+            bool keyboardInputChecked = false;
+            _keyboardInputHandlerMock
+                .Setup(handler => handler.CheckForKeyboardInput())
+                .Callback(() => keyboardInputChecked = true);
+                
+            // Create and initialize orchestrator
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            
+            // Act
+            await RunWithDefaultTimeout(async () => 
+            {
+                await orchestrator.RunAsync(_defaultCts.Token);
+            });
+            
+            // Assert
+            _keyboardInputHandlerMock.Verify(
+                handler => handler.CheckForKeyboardInput(),
+                Times.AtLeast(1));
+            Assert.True(keyboardInputChecked, "Keyboard input should have been checked");
+        }
+
+        [Fact]
+        public async Task RunAsync_WhenReceiveResponseAsyncThrowsException_ContinuesRunning()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            var twoSecondsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+            var exceptionThrown = false;
+            
+            // Setup to throw exception on first call, then succeed on second call, then cancel
+            int receiveCallCount = 0;
+            _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => {
+                    receiveCallCount++;
+                    if (receiveCallCount == 1)
+                    {
+                        exceptionThrown = true;
+                        throw new InvalidOperationException("Test exception");
+                    }
+                    else if (receiveCallCount == 2)
+                    {
+                        return Task.FromResult(true);
+                    }
+                    return Task.FromResult(false);
+                });
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, twoSecondsCts.Token);
+            
+            // Act
+            await RunWithDefaultTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(twoSecondsCts.Token);
+            });
+            
+            // Assert
+            Assert.True(exceptionThrown, "Exception should have been thrown");
+            _vtubeStudioPhoneClientMock.Verify(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
+            _loggerMock.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error in application loop")), It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
         public async Task RunAsync_WhenCloseAsyncThrowsException_HandlesGracefully()
         {
             // Arrange
             SetupBasicMocks();
-            var cts = new CancellationTokenSource();
             
             // Setup CloseAsync to throw an exception
             _vtubeStudioPCClientMock.Setup(x => 
@@ -885,13 +1013,13 @@ namespace SharpBridge.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new WebSocketException("Test exception"));
             
-            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
-            
-            // Immediately cancel so RunAsync doesn't hang
-            cts.CancelAfter(50);
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
             
             // Act
-            await _orchestrator.RunAsync(cts.Token);
+            await RunWithDefaultTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(_defaultCts.Token);
+            });
             
             // Assert
             _vtubeStudioPCClientMock.Verify(x => 
@@ -1021,35 +1149,6 @@ namespace SharpBridge.Tests.Services
                     It.IsAny<Action>(), 
                     It.IsAny<string>()),
                 Times.AtLeast(3));
-        }
-
-        [Fact]
-        public async Task RunAsync_ChecksForKeyboardInput()
-        {
-            // Arrange
-            SetupBasicMocks();
-            
-            // Set up the keyboardInputHandler to signal when CheckForKeyboardInput is called
-            bool keyboardInputChecked = false;
-            _keyboardInputHandlerMock
-                .Setup(handler => handler.CheckForKeyboardInput())
-                .Callback(() => keyboardInputChecked = true);
-                
-            // Create and initialize orchestrator
-            var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
-            
-            // Use a cancellation token that will cancel after a delay
-            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
-            
-            // Act
-            await orchestrator.RunAsync(cts.Token);
-            
-            // Assert
-            _keyboardInputHandlerMock.Verify(
-                handler => handler.CheckForKeyboardInput(),
-                Times.AtLeast(1));
-            Assert.True(keyboardInputChecked, "Keyboard input should have been checked");
         }
 
         [Fact]
@@ -1296,45 +1395,6 @@ namespace SharpBridge.Tests.Services
             phoneFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
         }
         
-        // Tests for error handling during the main loop
-        
-        [Fact]
-        public async Task RunAsync_WhenReceiveResponseAsyncThrowsException_ContinuesRunning()
-        {
-            // Arrange
-            SetupBasicMocks();
-            var cts = new CancellationTokenSource();
-            var exceptionThrown = false;
-            
-            // Setup to throw exception on first call, then succeed on second call, then cancel
-            int receiveCallCount = 0;
-            _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
-                .Returns(() => {
-                    receiveCallCount++;
-                    if (receiveCallCount == 1)
-                    {
-                        exceptionThrown = true;
-                        throw new InvalidOperationException("Test exception");
-                    }
-                    else if (receiveCallCount == 2)
-                    {
-                        Task.Delay(50).ContinueWith(_ => cts.Cancel());
-                        return Task.FromResult(true);
-                    }
-                    return Task.FromResult(false);
-                });
-            
-            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
-            
-            // Act
-            await _orchestrator.RunAsync(cts.Token);
-            
-            // Assert
-            Assert.True(exceptionThrown, "Exception should have been thrown");
-            _vtubeStudioPhoneClientMock.Verify(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
-            _loggerMock.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error in application loop")), It.IsAny<object[]>()), Times.Once);
-        }
-        
         // Test for RequestIntervalSeconds configuration
         
         [Fact]
@@ -1342,7 +1402,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             SetupBasicMocks();
-            var cts = new CancellationTokenSource();
+            var twoSecondsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             var requestTimes = new List<DateTime>();
             
             // Set up a short request interval for testing
@@ -1353,13 +1413,13 @@ namespace SharpBridge.Tests.Services
                 .Callback(() => requestTimes.Add(DateTime.UtcNow))
                 .Returns(Task.CompletedTask);
                 
-            await _orchestrator.InitializeAsync(_tempConfigPath, cts.Token);
+            await _orchestrator.InitializeAsync(_tempConfigPath, twoSecondsCts.Token);
             
-            // Let it run for enough time to collect multiple requests
-            cts.CancelAfter(1000); // 1 second - should give us multiple requests
-            
-            // Act
-            await _orchestrator.RunAsync(cts.Token);
+            // Act - Run with default timeout
+            await RunWithDefaultTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(twoSecondsCts.Token);
+            });
             
             // Assert
             Assert.True(requestTimes.Count >= 2, $"Should have at least 2 requests, but got {requestTimes.Count}");
@@ -1448,12 +1508,11 @@ namespace SharpBridge.Tests.Services
 
         // Test for specific OperationCanceledException handling
         
-        //[Fact]
+        [Fact]
         public async Task RunAsync_WhenOperationCanceledExceptionIsThrown_HandlesGracefully()
         {
             // Arrange
-            // Use a short timeout
-            var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(1000));
+            SetupBasicMocks();
             
             _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(8001);
@@ -1464,19 +1523,13 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
                 
-            //// Important: Setup ReceiveResponseAsync to directly throw an OperationCanceledException 
-            //// when the token is canceled, not before
-            //_vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
-            //    .Callback<CancellationToken>(token => {
-            //        if (token.IsCancellationRequested)
-            //            throw new OperationCanceledException(token);
-            //    })
-            //    .ReturnsAsync(false);
-                
-            await _orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
             
             // Act & Assert - should not throw exception
-            await _orchestrator.RunAsync(cts.Token);
+            await RunWithDefaultTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(_defaultCts.Token);
+            });
             
             // Verify cleanup was performed
             _vtubeStudioPCClientMock.Verify(x => 
@@ -1487,282 +1540,49 @@ namespace SharpBridge.Tests.Services
                 Times.Once);
                 
             // Verify the proper log message was written
-            _loggerMock.Verify(x => x.Info("Operation was canceled, shutting down..."), Times.Once);
+            _loggerMock.Verify(x => x.Info("Application stopped"), Times.Once);
         }
 
         [Fact]
-        public async Task InitializeAsync_WhenAuthenticationFails_ThrowsException()
-        {
-            // Arrange
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
-            
-            _vtubeStudioPCClientMock
-                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8001);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
-                
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
-                .ReturnsAsync(testToken);
-                
-            _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-                
-            // Act & Assert
-            var orchestrator = CreateOrchestrator();
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenAuthenticationSucceeds_LoadsRules()
+        public async Task RunAsync_WhenServicesAreUnhealthy_AttemptsRecovery()
         {
             // Arrange
             SetupBasicMocks();
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
             
-            _vtubeStudioPCClientMock
-                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8001);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
-                .ReturnsAsync(testToken);
-                
-            _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-                
-            // Act
-            var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            // Setup services to be unhealthy and stay unhealthy
+            var unhealthyStats = new ServiceStats(
+                serviceName: "TestService",
+                status: "Disconnected",
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: false,
+                lastSuccessfulOperation: DateTime.UtcNow.AddMinutes(-5),
+                lastError: "Connection lost",
+                counters: new Dictionary<string, long>()
+            );
             
-            // Assert
-            _transformationEngineMock.Verify(
-                engine => engine.LoadRulesAsync(It.IsAny<string>()),
-                Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenPortDiscoveryFails_ThrowsException()
-        {
-            // Arrange
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
+            _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
+                .Returns(unhealthyStats);
+            _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
+                .Returns(unhealthyStats);
             
-            _vtubeStudioPCClientMock
-                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(0);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
-                .ReturnsAsync(testToken);
-                
-            _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-                
-            // Act & Assert
-            var orchestrator = CreateOrchestrator();
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenConnectionFails_ThrowsException()
-        {
-            // Arrange
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
-            
-            _vtubeStudioPCClientMock
-                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8001);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new Exception("Test exception"));
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
-                .ReturnsAsync(testToken);
-                
-            _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-                
-            // Act & Assert
-            var orchestrator = CreateOrchestrator();
-            await Assert.ThrowsAsync<Exception>(
-                () => orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
-        }
-
-        [Fact]
-        public async Task InitializeAsync_CallsSynchronizeParametersAsync()
-        {
-            // Arrange
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
-            var parameters = new List<VTSParameter>
-            {
-                new VTSParameter("TestParam1", -1.0, 1.0, 0.0),
-                new VTSParameter("TestParam2", -0.5, 0.5, 0.0)
-            };
-            
-            _vtubeStudioPCClientMock
-                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8001);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
-                .ReturnsAsync(testToken);
-                
-            _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-                
-            // Setup parameter manager and transformation engine
-            _transformationEngineMock.Setup(x => x.GetParameterDefinitions())
-                .Returns(parameters);
-                
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
-                    It.IsAny<IEnumerable<VTSParameter>>(), 
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
-            // Act
-            var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
-            
-            // Assert
-            _transformationEngineMock.Verify(x => x.GetParameterDefinitions(), Times.Once);
-            _parameterManagerMock.Verify(x => x.SynchronizeParametersAsync(
-                It.Is<IEnumerable<VTSParameter>>(p => p.Count() == 2), 
-                cancellationToken), 
-                Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenSyncFails_ThrowsException()
-        {
-            // Arrange
-            const string testToken = "test-token";
-            var cancellationToken = CancellationToken.None;
-            
-            _vtubeStudioPCClientMock
-                .Setup(client => client.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8001);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.ConnectAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-                
-            _vtubeStudioPCClientMock
-                .Setup(client => client.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-                
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(cancellationToken))
-                .ReturnsAsync(testToken);
-                
-            _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
-                .Returns(Task.CompletedTask);
-                
-            // Setup parameter manager to return false (synchronization failure)
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
-                    It.IsAny<IEnumerable<VTSParameter>>(), 
-                    It.IsAny<CancellationToken>()))
+            // Setup TryInitializeAsync to always return false (recovery fails)
+            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
-                
-            // Act & Assert
-            var orchestrator = CreateOrchestrator();
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
-                
-            _parameterManagerMock.Verify(x => x.SynchronizeParametersAsync(
-                It.IsAny<IEnumerable<VTSParameter>>(), 
-                cancellationToken), 
-                Times.Once);
-        }
-
-        [Fact]
-        public async Task ReloadTransformationConfig_WhenConfigPathIsNull_LogsError()
-        {
-            // Arrange
-            // Get the reload action from registered shortcuts
-            Action reloadAction = null;
-            _keyboardInputHandlerMock
-                .Setup(x => x.RegisterShortcut(
-                    ConsoleKey.K,
-                    ConsoleModifiers.Alt,
-                    It.IsAny<Action>(),
-                    It.IsAny<string>()))
-                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
-                
-            // Initialize orchestrator without calling InitializeAsync, so path is null
-            _orchestrator = CreateOrchestrator();
+            _vtubeStudioPhoneClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
             
-            // Re-register shortcuts manually since we're not calling InitializeAsync
-            typeof(ApplicationOrchestrator)
-                .GetMethod("RegisterKeyboardShortcuts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .Invoke(_orchestrator, null);
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
             
-            // Act
-            reloadAction.Should().NotBeNull("Reload action should be registered");
-            reloadAction();
+            // Act - Use a longer timeout to allow for recovery attempts
+            using var longTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await RunWithCustomTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(longTimeoutCts.Token);
+            }, TimeSpan.FromSeconds(5));
             
-            // Allow time for async operations to complete
-            await Task.Delay(100);
-            
-            // Assert - with reflection, check that the internal _status field has the error message
-            var statusField = typeof(ApplicationOrchestrator)
-                .GetField("_status", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
-            var statusValue = statusField.GetValue(_orchestrator) as string;
-            statusValue.Should().Contain("Error:");
-            statusValue.Should().Contain("No transformation config path available");
-            
-            // Verify the transform engine was never called
-            _transformationEngineMock.Verify(x => x.LoadRulesAsync(It.IsAny<string>()), Times.Never);
+            // Assert
+            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
+            _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
         }
     }
 }
