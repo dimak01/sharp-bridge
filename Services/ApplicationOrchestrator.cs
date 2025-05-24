@@ -118,7 +118,7 @@ namespace SharpBridge.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("Operation was canceled, shutting down...");
+                _logger.Info("Operation was canceled, shutting down gracefully...");
             }
             finally
             {
@@ -213,7 +213,7 @@ namespace SharpBridge.Services
                 
                 if (!success)
                 {
-                    throw new InvalidOperationException("Failed to synchronize parameters");
+                    throw new InvalidOperationException("Failed to synchronize parameters with VTube Studio");
                 }
                 
                 _logger.Info("Parameter synchronization completed successfully");
@@ -272,7 +272,7 @@ namespace SharpBridge.Services
                             await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
                             
                             // Set the next request time based on phone configuration
-                            double requestIntervalSeconds = _phoneConfig?.RequestIntervalSeconds ?? 5.0;
+                            double requestIntervalSeconds = _phoneConfig.RequestIntervalSeconds;
                             nextRequestTime = DateTime.UtcNow.AddSeconds(requestIntervalSeconds);
                         }
                         
@@ -303,11 +303,6 @@ namespace SharpBridge.Services
                         await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken); // Add delay on error before retrying
                     }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                _status = "Cancellation requested";
-                _logger.Info("Operation was canceled, shutting down...");
             }
             finally
             {
@@ -377,13 +372,7 @@ namespace SharpBridge.Services
         private async void ReloadTransformationConfig()
         {
             try
-            {
-                if (string.IsNullOrEmpty(_transformConfigPath))
-                {
-                    _status = "Error: No transformation config path available for reload";
-                    return;
-                }
-                
+            {      
                 _status = "Reloading transformation config...";
                 _logger.Info("Reloading transformation config...");
                 
@@ -526,8 +515,8 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    _vtubeStudioPCClient?.Dispose();
-                    _vtubeStudioPhoneClient?.Dispose();
+                    _vtubeStudioPCClient.Dispose();
+                    _vtubeStudioPhoneClient.Dispose();
                 }
                 
                 _isDisposed = true;
