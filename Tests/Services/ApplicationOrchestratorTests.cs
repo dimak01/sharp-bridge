@@ -1596,6 +1596,25 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
+        public async Task RunAsync_WhenOperationCanceledExceptionIsThrownDirectly_LogsGracefulShutdown()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Setup phone client to throw OperationCanceledException specifically
+            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                .Throws(new OperationCanceledException("Test cancellation"));
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            // Act
+            await _orchestrator.RunAsync(CancellationToken.None);
+            
+            // Assert - verify the specific message for OperationCanceledException
+            _loggerMock.Verify(x => x.Info("Operation was canceled, shutting down gracefully..."), Times.Once);
+        }
+
+        [Fact]
         public async Task RunAsync_WhenServicesAreUnhealthy_AttemptsRecovery()
         {
             // Arrange
@@ -1634,6 +1653,57 @@ namespace SharpBridge.Tests.Services
             // Assert
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
             _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
+        }
+
+        [Fact]
+        public async Task InitializeAsync_WhenParameterSyncFails_ThrowsException()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Make the parameter sync fail by returning false
+            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
+                It.IsAny<IEnumerable<VTSParameter>>(), 
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
+            {
+                await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            });
+            
+            // Verify the exception message
+            Assert.Contains("Failed to synchronize parameters", exception.Message);
+            
+            // Verify log messages
+            _loggerMock.Verify(x => x.Info("Starting parameter synchronization..."), Times.Once);
+        }
+        
+        [Fact]
+        public async Task InitializeAsync_WhenParameterSyncThrows_PropagatesException()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Make the parameter sync throw an exception
+            var testException = new InvalidOperationException("Test parameter sync exception");
+            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
+                It.IsAny<IEnumerable<VTSParameter>>(), 
+                It.IsAny<CancellationToken>()))
+                .ThrowsAsync(testException);
+            
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
+            {
+                await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            });
+            
+            // Verify the exception is propagated
+            Assert.Same(testException, exception);
+            
+            // Verify log messages
+            _loggerMock.Verify(x => x.Error("Failed to synchronize parameters: {0}", testException.Message), Times.Once);
         }
     }
 }
