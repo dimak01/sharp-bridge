@@ -264,7 +264,7 @@ namespace SharpBridge.Tests.Services
         {
             await Assert.ThrowsAsync<TException>(testAction);
         }
-
+        
         public void Dispose()
         {
             // Clean up temp file
@@ -1581,7 +1581,7 @@ namespace SharpBridge.Tests.Services
                 .Throws(new OperationCanceledException("Test cancellation"));
             
             await _orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
-            
+                
             // Act
             await _orchestrator.RunAsync(CancellationToken.None);
             
@@ -1610,7 +1610,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(unhealthyStats);
             _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
                 .Returns(unhealthyStats);
-            
+                
             // Setup TryInitializeAsync to always return false (recovery fails)
             _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
@@ -1618,7 +1618,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(false);
             
             await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
-            
+                
             // Act - Use a longer timeout to allow for recovery attempts
             await RunWithCustomTimeout(async () => 
             {

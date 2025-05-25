@@ -165,9 +165,7 @@ namespace SharpBridge.Services
             {
                 _consoleRenderer.ClearConsole();
 
-                // Send initial tracking request
-                await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
-                
+                // Send initial tracking request                
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
@@ -186,7 +184,12 @@ namespace SharpBridge.Services
                         // Check if it's time to send another tracking request
                         if (DateTime.UtcNow >= nextRequestTime)
                         {
-                            await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                            // Only send requests if the phone client is healthy
+                            var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+                            if (phoneStats.IsHealthy)
+                            {
+                                await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                            }
                             
                             // Set the next request time based on phone configuration
                             double requestIntervalSeconds = _phoneConfig.RequestIntervalSeconds;
@@ -319,18 +322,14 @@ namespace SharpBridge.Services
                 }
                 
                 // Transform tracking data
-                PCTrackingInfo trackingInfo = _transformationEngine.TransformData(trackingData);
+                PCTrackingInfo pcTrackingInfo = _transformationEngine.TransformData(trackingData);
                 
-                // Create PCTrackingInfo to encapsulate the transformed data
-                var pcTrackingInfo = new PCTrackingInfo
-                {
-                    Parameters = trackingInfo.Parameters,
-                    ParameterDefinitions = trackingInfo.ParameterDefinitions,
-                    FaceFound = trackingData.FaceFound
-                };
+                // Copy the FaceFound property from the original data
+                pcTrackingInfo.FaceFound = trackingData.FaceFound;
                 
-                // Send to VTube Studio if connection is open
-                if (_vtubeStudioPCClient.State == System.Net.WebSockets.WebSocketState.Open)
+                // Send to VTube Studio if PC client is healthy
+                var pcStats = _vtubeStudioPCClient.GetServiceStats();
+                if (pcStats.IsHealthy)
                 {
                     await _vtubeStudioPCClient.SendTrackingAsync(pcTrackingInfo, CancellationToken.None);
                 }
