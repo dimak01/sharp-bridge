@@ -26,7 +26,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private long _failedFrames = 0;
     private DateTime _startTime;
     private PhoneTrackingInfo _lastTrackingData;
-    private string _status = "Initializing";
+    private PhoneClientStatus _status = PhoneClientStatus.Initializing;
     private string _lastInitializationError;
     private DateTime _lastSuccessfulOperation;
     
@@ -80,7 +80,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         try
         {
             _lastInitializationError = null;
-            _status = "Initializing";
+            _status = PhoneClientStatus.Initializing;
             
             // Send initial tracking request
             await SendTrackingRequestAsync();
@@ -90,18 +90,18 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             if (!received)
             {
                 _lastInitializationError = "Failed to receive initial response from iPhone";
-                _status = "Initialization Failed";
+                _status = PhoneClientStatus.InitializationFailed;
                 return false;
             }
             
             _lastSuccessfulOperation = DateTime.UtcNow;
-            _status = "Initialized";
+            _status = PhoneClientStatus.Connected;
             return true;
         }
         catch (Exception ex)
         {
             _lastInitializationError = ex.Message;
-            _status = "Initialization Failed";
+            _status = PhoneClientStatus.InitializationFailed;
             _logger.Error("Initialization failed: {0}", ex.Message);
             return false;
         }
@@ -132,7 +132,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         
         return new ServiceStats(
             "Phone Client", 
-            _status,
+            _status.ToString(),
             _lastTrackingData,
             isHealthy: isHealthy,
             lastSuccessfulOperation: _lastSuccessfulOperation,
@@ -148,7 +148,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     {
         try
         {
-            _status = "Sending Requests";
+            _status = PhoneClientStatus.SendingRequests;
             var request = new
             {
                 messageType = "iOSTrackingDataRequest",
@@ -164,7 +164,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         catch (Exception ex)
         {
             _failedFrames++;
-            _status = $"Error sending request: {ex.Message}";
+            _status = PhoneClientStatus.SendError;
             _logger.Error("Error sending tracking request: {0}", ex.Message);
             throw; // Let the orchestrator handle this error
         }
@@ -186,13 +186,14 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
                 _totalFramesReceived++;
                 _lastTrackingData = response;
                 _lastSuccessfulOperation = DateTime.UtcNow;
+                _status = PhoneClientStatus.ReceivingData;
                 TrackingDataReceived?.Invoke(this, response);
             }
         }
         catch (Exception ex)
         {
             _failedFrames++;
-            _status = $"Error processing data: {ex.Message}";
+            _status = PhoneClientStatus.ProcessingError;
             _logger.Error("Error processing received data: {0}", ex.Message);
         }
     }
@@ -222,7 +223,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         catch (Exception ex)
         {
             _failedFrames++;
-            _status = $"Error: {ex.Message}";
+            _status = PhoneClientStatus.ReceiveError;
             _logger.Error("Error receiving data: {0}", ex.Message);
             return false;
         }
