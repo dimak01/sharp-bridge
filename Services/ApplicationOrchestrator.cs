@@ -20,7 +20,6 @@ namespace SharpBridge.Services
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly VTubeStudioPCConfig _pcConfig;
-        private readonly IAuthTokenProvider _authTokenProvider;
         private readonly IAppLogger _logger;
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
@@ -41,7 +40,6 @@ namespace SharpBridge.Services
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
         /// <param name="pcConfig">Configuration for the PC client</param>
-        /// <param name="authTokenProvider">Authentication token provider</param>
         /// <param name="logger">Application logger</param>
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
@@ -53,7 +51,6 @@ namespace SharpBridge.Services
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
             VTubeStudioPCConfig pcConfig,
-            IAuthTokenProvider authTokenProvider,
             IAppLogger logger,
             IConsoleRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler,
@@ -65,7 +62,6 @@ namespace SharpBridge.Services
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
             _pcConfig = pcConfig ?? throw new ArgumentNullException(nameof(pcConfig));
-            _authTokenProvider = authTokenProvider ?? throw new ArgumentNullException(nameof(authTokenProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
@@ -89,9 +85,11 @@ namespace SharpBridge.Services
             _transformConfigPath = transformConfigPath;
             
             await InitializeTransformationEngine(transformConfigPath);
-            await DiscoverAndConnectToVTubeStudio(cancellationToken);
-            await AuthenticateWithVTubeStudio(cancellationToken);
-            await SynchronizeParametersAsync(cancellationToken);
+            
+            // Initialize clients directly during startup
+            _logger.Info("Attempting initial client connections...");
+            await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
+            await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
             
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
@@ -107,8 +105,6 @@ namespace SharpBridge.Services
         /// <returns>A task that completes when the orchestrator is stopped</returns>
         public async Task RunAsync(CancellationToken cancellationToken)
         {
-            EnsureInitialized();
-            
             _logger.Info("Starting application...");
             
             try
@@ -128,14 +124,6 @@ namespace SharpBridge.Services
             _logger.Info("Application stopped");
         }
 
-        private void EnsureInitialized()
-        {
-            if (!_isInitialized)
-            {
-                throw new InvalidOperationException("ApplicationOrchestrator must be initialized before running");
-            }
-        }
-        
         private void ValidateInitializationParameters(string transformConfigPath)
         {
             if (string.IsNullOrWhiteSpace(transformConfigPath))
@@ -152,77 +140,6 @@ namespace SharpBridge.Services
         private async Task InitializeTransformationEngine(string transformConfigPath)
         {
             await _transformationEngine.LoadRulesAsync(transformConfigPath);
-        }
-        
-        private async Task DiscoverAndConnectToVTubeStudio(CancellationToken cancellationToken)
-        {
-            _logger.Info("Discovering VTube Studio port...");
-            int port = await _vtubeStudioPCClient.DiscoverPortAsync(cancellationToken);
-            if (port <= 0)
-            {
-                throw new InvalidOperationException("Could not discover VTube Studio port. Is VTube Studio running?");
-            }
-            _logger.Info("Discovered VTube Studio on port {0}", port);
-            
-            _logger.Info("Connecting to VTube Studio...");
-            await _vtubeStudioPCClient.ConnectAsync(cancellationToken);
-        }
-        
-        private async Task AuthenticateWithVTubeStudio(CancellationToken cancellationToken)
-        {
-            _logger.Info("Starting VTube Studio authentication process...");
-            
-            // Load any existing token
-            _authTokenProvider.LoadAuthToken();
-            
-            // Try to authenticate with existing token if present
-            bool authenticated = false;
-            if (!string.IsNullOrEmpty(_authTokenProvider.Token))
-            {
-                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(_authTokenProvider.Token, cancellationToken);
-            }
-            
-            // If no token or authentication fails, get a new one
-            if (!authenticated)
-            {
-                _logger.Info("No valid token found, requesting new token...");
-                await _authTokenProvider.ClearTokenAsync();
-                var token = await _authTokenProvider.GetTokenAsync(cancellationToken);
-                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(token, cancellationToken);
-            }
-            
-            if (!authenticated)
-            {
-                throw new InvalidOperationException("Failed to authenticate with VTube Studio");
-            }
-            
-            _logger.Info("Successfully authenticated with VTube Studio");
-        }
-
-        private async Task SynchronizeParametersAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                _logger.Info("Starting parameter synchronization...");
-                
-                // Get desired parameters from transformation engine
-                var desiredParameters = _transformationEngine.GetParameterDefinitions();
-                
-                // Use the parameter manager to sync
-                var success = await _parameterManager.SynchronizeParametersAsync(desiredParameters, cancellationToken);
-                
-                if (!success)
-                {
-                    throw new InvalidOperationException("Failed to synchronize parameters with VTube Studio");
-                }
-                
-                _logger.Info("Parameter synchronization completed successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Failed to synchronize parameters: {0}", ex.Message);
-                throw;
-            }
         }
         
         private void SubscribeToEvents()

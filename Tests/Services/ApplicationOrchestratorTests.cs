@@ -22,7 +22,6 @@ namespace SharpBridge.Tests.Services
         private Mock<IAppLogger> _loggerMock;
         private Mock<IConsoleRenderer> _consoleRendererMock;
         private Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
-        private Mock<IAuthTokenProvider> _authTokenProviderMock;
         private Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
         private Mock<IRecoveryPolicy> _recoveryPolicyMock;
         private ApplicationOrchestrator _orchestrator;
@@ -42,7 +41,6 @@ namespace SharpBridge.Tests.Services
             _loggerMock = new Mock<IAppLogger>();
             _consoleRendererMock = new Mock<IConsoleRenderer>();
             _keyboardInputHandlerMock = new Mock<IKeyboardInputHandler>();
-            _authTokenProviderMock = new Mock<IAuthTokenProvider>();
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
             _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
             
@@ -81,7 +79,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -101,7 +98,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -123,6 +119,13 @@ namespace SharpBridge.Tests.Services
                 
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
+                
+            // Configure TryInitializeAsync for both clients
+            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            _vtubeStudioPhoneClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
 
             // Setup PC client service stats
             var pcStats = new ServiceStats(
@@ -136,11 +139,6 @@ namespace SharpBridge.Tests.Services
             );
             _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
                 .Returns(pcStats);
-                
-            // Configure auth token provider
-            _authTokenProviderMock.SetupGet(x => x.Token).Returns(testToken);
-            _authTokenProviderMock.Setup(x => x.GetTokenAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(testToken);
                 
             // Configure parameter manager
             _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
@@ -300,9 +298,8 @@ namespace SharpBridge.Tests.Services
             
             // Assert
             _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.Once);
-            _vtubeStudioPCClientMock.Verify(x => x.DiscoverPortAsync(cancellationToken), Times.Once);
-            _vtubeStudioPCClientMock.Verify(x => x.ConnectAsync(cancellationToken), Times.Once);
-            _vtubeStudioPCClientMock.Verify(x => x.AuthenticateAsync(It.IsAny<string>(), cancellationToken), Times.Once);
+            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
+            _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
         }
         
         [Fact]
@@ -319,47 +316,53 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task InitializeAsync_WhenPortDiscoveryFails_ThrowsInvalidOperationException()
+        public async Task InitializeAsync_WhenPortDiscoveryFails_CompletesGracefully()
         {
             // Arrange
             SetupBasicMocks();
             var cancellationToken = CancellationToken.None;
             
-            _vtubeStudioPCClientMock.Setup(x => x.DiscoverPortAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(0); // Return invalid port
+            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false); // Initialization fails
             
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
+            // Act - should not throw
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Assert - verify that initialization was attempted
+            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
         
         [Fact]
-        public async Task InitializeAsync_WhenAuthenticationFails_ThrowsInvalidOperationException()
+        public async Task InitializeAsync_WhenAuthenticationFails_CompletesGracefully()
         {
             // Arrange
             SetupBasicMocks();
             var cancellationToken = CancellationToken.None;
-            const string testToken = "test-token";
             
-            _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(testToken, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false); // Authentication fails
+            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false); // Initialization (including authentication) fails
             
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
+            // Act - should not throw
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            
+            // Assert - verify that initialization was attempted
+            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
         
         // Connection and Lifecycle Tests
         
         [Fact]
-        public async Task RunAsync_WithoutInitialization_ThrowsInvalidOperationException()
+        public async Task RunAsync_WithoutInitialization_RunsGracefully()
         {
             // Arrange
             SetupBasicMocks();
             
-            // Act & Assert
-            await RunWithException<InvalidOperationException>(async () => 
+            // Act - should not throw exception
+            await RunWithDefaultTimeout(async () => 
                 await _orchestrator.RunAsync(_defaultCts.Token));
+            
+            // Assert - verify that the application attempted to run
+            _vtubeStudioPhoneClientMock.Verify(x => x.SendTrackingRequestAsync(), Times.AtLeastOnce);
         }
         
         [Fact]
@@ -767,7 +770,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -785,7 +787,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -803,7 +804,6 @@ namespace SharpBridge.Tests.Services
                 null,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -821,7 +821,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 null,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -838,25 +837,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                null,
-                _authTokenProviderMock.Object,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
-        }
-
-        [Fact]
-        public void Constructor_WithNullAuthTokenProvider_ThrowsArgumentNullException()
-        {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _pcConfig,
                 null,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
@@ -875,7 +855,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 null,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -893,7 +872,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 null,
                 _keyboardInputHandlerMock.Object,
@@ -910,7 +888,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 null,
@@ -927,7 +904,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -944,7 +920,6 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _pcConfig,
-                _authTokenProviderMock.Object,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -1653,57 +1628,6 @@ namespace SharpBridge.Tests.Services
             // Assert
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
             _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeast(2));
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenParameterSyncFails_ThrowsException()
-        {
-            // Arrange
-            SetupBasicMocks();
-            
-            // Make the parameter sync fail by returning false
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
-                It.IsAny<IEnumerable<VTSParameter>>(), 
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
-            
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-            {
-                await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
-            });
-            
-            // Verify the exception message
-            Assert.Contains("Failed to synchronize parameters", exception.Message);
-            
-            // Verify log messages
-            _loggerMock.Verify(x => x.Info("Starting parameter synchronization..."), Times.Once);
-        }
-        
-        [Fact]
-        public async Task InitializeAsync_WhenParameterSyncThrows_PropagatesException()
-        {
-            // Arrange
-            SetupBasicMocks();
-            
-            // Make the parameter sync throw an exception
-            var testException = new InvalidOperationException("Test parameter sync exception");
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
-                It.IsAny<IEnumerable<VTSParameter>>(), 
-                It.IsAny<CancellationToken>()))
-                .ThrowsAsync(testException);
-            
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-            {
-                await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
-            });
-            
-            // Verify the exception is propagated
-            Assert.Same(testException, exception);
-            
-            // Verify log messages
-            _loggerMock.Verify(x => x.Error("Failed to synchronize parameters: {0}", testException.Message), Times.Once);
         }
     }
 }
