@@ -74,10 +74,9 @@ namespace SharpBridge
             
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
-            // Register VTubeStudioPCClient as a singleton and resolve IAuthTokenProvider to the same instance
+            // Register VTubeStudioPCClient as a singleton
             services.AddSingleton<VTubeStudioPCClient>();
             services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
-            services.AddSingleton<IAuthTokenProvider>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
             
             // Register VTubeStudioPCParameterManager
             services.AddSingleton<IVTubeStudioPCParameterManager, VTubeStudioPCParameterManager>();

@@ -240,6 +240,9 @@ namespace SharpBridge.Services
             {
                 _logger.Info("Attempting to initialize VTube Studio PC Client...");
                 
+                // Load existing auth token first
+                LoadAuthToken();
+                
                 // Recreate WebSocket if it's in a closed or aborted state
                 if (_webSocket.State == WebSocketState.Closed || _webSocket.State == WebSocketState.Aborted)
                 {
