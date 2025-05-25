@@ -128,11 +128,9 @@ namespace SharpBridge
             string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
             Directory.CreateDirectory(logDirectory);
             
-            // Configure Serilog with basic settings
-            // This is a temporary configuration, will be replaced with a proper configuration file
+            // Configure Serilog with file-only output to avoid interfering with console GUI
             return new LoggerConfiguration()
                 .MinimumLevel.Debug()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .WriteTo.File(
                     path: Path.Combine(logDirectory, "sharp-bridge-.log"),
                     rollingInterval: RollingInterval.Day,
