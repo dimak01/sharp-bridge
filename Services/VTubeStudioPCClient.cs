@@ -238,36 +238,45 @@ namespace SharpBridge.Services
         {
             try
             {
-                _lastInitializationError = null;
+                _logger.Info("Attempting to initialize VTube Studio PC Client...");
                 
-                // Discover port if needed
+                // Recreate WebSocket if it's in a closed or aborted state
+                if (_webSocket.State == WebSocketState.Closed || _webSocket.State == WebSocketState.Aborted)
+                {
+                    _logger.Info("WebSocket is in closed/aborted state, recreating...");
+                    _webSocket.RecreateWebSocket();
+                }
+                
+                // Discover port
                 var port = await DiscoverPortAsync(cancellationToken);
-                if (port != _config.Port)
+                if (port == 0)
                 {
-                    _config.Port = port;
+                    _logger.Error("Failed to discover VTube Studio port");
+                    _lastInitializationError = "Failed to discover VTube Studio port";
+                    return false;
                 }
                 
-                // Connect if not already connected
-                if (_webSocket.State != WebSocketState.Open)
-                {
-                    await ConnectAsync(cancellationToken);
-                }
+                // Connect
+                await ConnectAsync(cancellationToken);
                 
                 // Authenticate
-                var authenticated = await AuthenticateAsync(cancellationToken);
-                if (!authenticated)
+                var authSuccess = await AuthenticateAsync(cancellationToken);
+                if (!authSuccess)
                 {
+                    _logger.Error("Failed to authenticate with VTube Studio");
                     _lastInitializationError = "Failed to authenticate with VTube Studio";
                     return false;
                 }
                 
+                _logger.Info("VTube Studio PC Client initialized successfully");
+                _lastInitializationError = null;
                 _lastSuccessfulOperation = DateTime.UtcNow;
                 return true;
             }
             catch (Exception ex)
             {
+                _logger.Error($"Failed to initialize VTube Studio PC Client: {ex.Message}");
                 _lastInitializationError = ex.Message;
-                _logger.Error("Initialization failed: {0}", ex.Message);
                 return false;
             }
         }

@@ -29,6 +29,18 @@ namespace SharpBridge.Tests.Services
         }
         
         /// <summary>
+        /// Recreates the internal WebSocket instance to allow reconnection
+        /// </summary>
+        public void RecreateWebSocket()
+        {
+            if (!_disposed)
+            {
+                State = WebSocketState.None;
+                _responseQueue.Clear();
+            }
+        }
+        
+        /// <summary>
         /// Enqueues a response to be returned on the next SendRequestAsync call
         /// </summary>
         /// <param name="response">The response object to serialize and enqueue</param>
