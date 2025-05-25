@@ -57,13 +57,6 @@ namespace SharpBridge.Tests.Services
             var responseJson = JsonSerializer.Serialize(response);
             var responseBytes = Encoding.UTF8.GetBytes(responseJson);
 
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
-
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(responseBytes, new IPEndPoint(IPAddress.Any, VTubeStudioDiscoveryPort)));
 
@@ -79,7 +72,7 @@ namespace SharpBridge.Tests.Services
             result.InstanceId.Should().Be("test-instance");
             result.WindowTitle.Should().Be("VTube Studio - Test Instance");
 
-            _mockLogger.Verify(x => x.Debug(It.Is<string>(s => s.Contains("Sent VTube Studio discovery request")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Debug(It.Is<string>(s => s.Contains("Listening for VTube Studio broadcast")), It.IsAny<object[]>()), Times.Once);
             _mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Found VTube Studio")), It.IsAny<object[]>()), Times.Once);
         }
 
@@ -87,13 +80,6 @@ namespace SharpBridge.Tests.Services
         public async Task DiscoverAsync_WhenTimeout_ReturnsNull()
         {
             // Arrange
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
-
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.Delay(3000).ContinueWith(_ => new UdpReceiveResult(new byte[0], new IPEndPoint(IPAddress.Any, 0))));
 
@@ -113,13 +99,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var invalidJson = "invalid json";
             var responseBytes = Encoding.UTF8.GetBytes(invalidJson);
-
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
 
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(responseBytes, new IPEndPoint(IPAddress.Any, VTubeStudioDiscoveryPort)));
@@ -151,13 +130,6 @@ namespace SharpBridge.Tests.Services
             var responseJson = JsonSerializer.Serialize(response);
             var responseBytes = Encoding.UTF8.GetBytes(responseJson);
 
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
-
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(responseBytes, new IPEndPoint(IPAddress.Any, VTubeStudioDiscoveryPort)));
 
@@ -172,37 +144,9 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
-        public async Task DiscoverAsync_WhenSendFails_ReturnsNull()
-        {
-            // Arrange
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ThrowsAsync(new SocketException());
-
-            var service = new PortDiscoveryService(_mockLogger.Object, _mockUdpClient.Object);
-
-            // Act
-            var result = await service.DiscoverAsync(2000, CancellationToken.None);
-
-            // Assert
-            result.Should().BeNull();
-            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error during port discovery")), It.IsAny<object[]>()), Times.Once);
-        }
-
-        [Fact]
         public async Task DiscoverAsync_WhenReceiveFails_ReturnsNull()
         {
             // Arrange
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
-
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new SocketException());
 
@@ -232,13 +176,6 @@ namespace SharpBridge.Tests.Services
             };
             var responseJson = JsonSerializer.Serialize(response);
             var responseBytes = Encoding.UTF8.GetBytes(responseJson);
-
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
 
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(responseBytes, new IPEndPoint(IPAddress.Any, VTubeStudioDiscoveryPort)));
@@ -270,13 +207,6 @@ namespace SharpBridge.Tests.Services
             var responseJson = JsonSerializer.Serialize(response);
             var responseBytes = Encoding.UTF8.GetBytes(responseJson);
 
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
-
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(responseBytes, new IPEndPoint(IPAddress.Any, VTubeStudioDiscoveryPort)));
 
@@ -306,13 +236,6 @@ namespace SharpBridge.Tests.Services
             };
             var responseJson = JsonSerializer.Serialize(response);
             var responseBytes = Encoding.UTF8.GetBytes(responseJson);
-
-            _mockUdpClient.Setup(x => x.SendAsync(
-                It.IsAny<byte[]>(), 
-                It.IsAny<int>(), 
-                It.IsAny<string>(), 
-                It.IsAny<int>()))
-                .ReturnsAsync(1);
 
             _mockUdpClient.Setup(x => x.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(responseBytes, new IPEndPoint(IPAddress.Any, VTubeStudioDiscoveryPort)));
