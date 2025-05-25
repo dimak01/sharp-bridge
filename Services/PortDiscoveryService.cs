@@ -10,15 +10,13 @@ using SharpBridge.Models;
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Implementation of port discovery service using UDP broadcast
+    /// Implementation of port discovery service using UDP broadcast listening
     /// </summary>
     public class PortDiscoveryService : IPortDiscoveryService
     {
         private readonly IAppLogger _logger;
         private readonly IUdpClientWrapper _udpClient;
         private const int VTubeStudioDiscoveryPort = 47779;
-        private const string BroadcastAddress = "255.255.255.255";
-        private static readonly byte[] DiscoveryRequest = Encoding.UTF8.GetBytes("VTubeStudioDiscovery");
 
         public PortDiscoveryService(IAppLogger logger, IUdpClientWrapper udpClient)
         {
@@ -30,11 +28,9 @@ namespace SharpBridge.Services
         {
             try
             {
-                // Send discovery request
-                await _udpClient.SendAsync(DiscoveryRequest, DiscoveryRequest.Length, BroadcastAddress, VTubeStudioDiscoveryPort);
-                _logger.Debug("Sent VTube Studio discovery request");
+                _logger.Debug("Listening for VTube Studio broadcast on port {0}", VTubeStudioDiscoveryPort);
 
-                // Listen for broadcast response
+                // Listen for broadcast response (VTube Studio broadcasts every 2 seconds)
                 var receiveTask = _udpClient.ReceiveAsync(cancellationToken);
                 var timeoutTask = Task.Delay(timeoutMs, cancellationToken);
                 
@@ -48,6 +44,9 @@ namespace SharpBridge.Services
                 
                 var result = await receiveTask;
                 var json = Encoding.UTF8.GetString(result.Buffer);
+                
+                _logger.Debug("Received broadcast data: {0}", json);
+                
                 var response = JsonSerializer.Deserialize<VTSApiResponse<DiscoveryResponse>>(json);
                 
                 if (response?.Data != null && response.Data.Active)
@@ -74,6 +73,11 @@ namespace SharpBridge.Services
                 _logger.Error("Error during port discovery: {0}", ex.Message);
                 return null;
             }
+        }
+        
+        public void Dispose()
+        {
+            _udpClient?.Dispose();
         }
     }
 } 
