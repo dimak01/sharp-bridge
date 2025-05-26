@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using Moq;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Utilities;
@@ -12,10 +13,13 @@ namespace SharpBridge.Tests.Utilities
     public class PhoneTrackingInfoFormatterTests
     {
         private readonly PhoneTrackingInfoFormatter _formatter;
+        private readonly Mock<IConsole> _mockConsole;
 
         public PhoneTrackingInfoFormatterTests()
         {
-            _formatter = new PhoneTrackingInfoFormatter();
+            _mockConsole = new Mock<IConsole>();
+            _mockConsole.Setup(c => c.WindowWidth).Returns(80); // Default console width for tests
+            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object);
         }
 
         // Test implementation of IFormattableObject for testing invalid type scenarios
