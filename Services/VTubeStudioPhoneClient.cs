@@ -30,6 +30,9 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private string _lastInitializationError;
     private DateTime _lastSuccessfulOperation;
     
+    // Health check timeout - consider unhealthy if no successful operation in this many seconds
+    private const int HEALTH_TIMEOUT_SECONDS = 3;
+    
     /// <summary>
     /// Event triggered when new tracking data is received.
     /// </summary>
@@ -128,7 +131,9 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             }
         }
 
-        var isHealthy = _totalFramesReceived > 0;
+        var isHealthy = _totalFramesReceived > 0 && 
+                        _lastSuccessfulOperation != default(DateTime) &&
+                        (DateTime.UtcNow - _lastSuccessfulOperation).TotalSeconds < HEALTH_TIMEOUT_SECONDS;
         
         return new ServiceStats(
             "Phone Client", 

@@ -73,25 +73,27 @@ namespace SharpBridge.Utilities
                 
                 foreach (var stat in stats.Where(s => s != null))
                 {
-                    lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                    
-                    // Show counters for normal and detailed verbosity
-                    if (stat.Counters.Any())
-                    {
-                        lines.Add("Metrics:");
-                        foreach (var counter in stat.Counters)
-                        {
-                            lines.Add($"  {counter.Key}: {counter.Value}");
-                        }
-                        lines.Add(string.Empty);
-                    }
-                    
                     if (stat.CurrentEntity != null)
                     {
                         var entityType = stat.CurrentEntity.GetType();
                         if (_formatters.TryGetValue(entityType, out var typedFormatter))
                         {
-                            var formattedOutput = typedFormatter.Format(stat.CurrentEntity);
+                            string formattedOutput;
+                            
+                            // Check if formatter supports enhanced format with service stats
+                            if (typedFormatter is PhoneTrackingInfoFormatter phoneFormatter)
+                            {
+                                formattedOutput = phoneFormatter.Format(stat);
+                            }
+                            else if (typedFormatter is PCTrackingInfoFormatter pcFormatter)
+                            {
+                                // TODO: Update PCTrackingInfoFormatter to support service stats
+                                formattedOutput = pcFormatter.Format(stat.CurrentEntity);
+                            }
+                            else
+                            {
+                                formattedOutput = typedFormatter.Format(stat.CurrentEntity);
+                            }
                             
                             // Split formatted output into lines and add each one
                             foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
@@ -102,6 +104,35 @@ namespace SharpBridge.Utilities
                         else
                         {
                             lines.Add($"[No formatter registered for {entityType.Name}]");
+                        }
+                    }
+                    else
+                    {
+                        // No current entity, but we can still show service status
+                        if (_formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) && 
+                            phoneFormatter is PhoneTrackingInfoFormatter enhancedPhoneFormatter &&
+                            stat.ServiceName.Contains("Phone"))
+                        {
+                            var formattedOutput = enhancedPhoneFormatter.Format(stat);
+                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+                            {
+                                lines.Add(line);
+                            }
+                        }
+                        else if (_formatters.TryGetValue(typeof(PCTrackingInfo), out var pcFormatter) && 
+                                 stat.ServiceName.Contains("PC"))
+                        {
+                            // For now, show basic service info for PC client
+                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
+                            if (!string.IsNullOrEmpty(stat.LastError))
+                            {
+                                lines.Add($"Error: {stat.LastError}");
+                            }
+                        }
+                        else
+                        {
+                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
+                            lines.Add("No current data available");
                         }
                     }
                     

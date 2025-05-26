@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using SharpBridge.Interfaces;
@@ -7,7 +8,7 @@ using SharpBridge.Models;
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Formatter for PhoneTrackingInfo objects
+    /// Formatter for PhoneTrackingInfo objects with service statistics
     /// </summary>
     public class PhoneTrackingInfoFormatter : IFormatter
     {
@@ -33,18 +34,89 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Formats a PhoneTrackingInfo object into a display string
+        /// Formats a PhoneTrackingInfo object with service statistics into a display string
+        /// </summary>
+        public string Format(IServiceStats serviceStats)
+        {
+            if (serviceStats == null) 
+                return "No service data available";
+            
+            var builder = new StringBuilder();
+            
+            // Header with service status
+            builder.AppendLine(MetricsFormatter.FormatServiceHeader("iPhone Tracking Data", serviceStats.Status, "Alt+O"));
+            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
+            builder.AppendLine();
+            
+            // Health status
+            builder.AppendLine(MetricsFormatter.FormatHealthStatus(
+                serviceStats.IsHealthy, 
+                serviceStats.LastSuccessfulOperation, 
+                serviceStats.LastError));
+            
+            // Metrics with proper padding
+            if (serviceStats.Counters.ContainsKey("Total Frames") && 
+                serviceStats.Counters.ContainsKey("Failed Frames"))
+            {
+                var totalFrames = serviceStats.Counters["Total Frames"];
+                var failedFrames = serviceStats.Counters["Failed Frames"];
+                var fps = serviceStats.Counters.ContainsKey("FPS") ? serviceStats.Counters["FPS"] : 0;
+                
+                builder.AppendLine(MetricsFormatter.FormatMetrics(totalFrames, failedFrames, fps));
+            }
+            
+            // Tracking data details
+            if (serviceStats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
+            {
+                builder.AppendLine();
+                AppendTrackingDetails(builder, phoneTrackingInfo);
+            }
+            else if (serviceStats.CurrentEntity != null)
+            {
+                throw new ArgumentException("CurrentEntity must be of type PhoneTrackingInfo or null");
+            }
+            else
+            {
+                builder.AppendLine();
+                builder.AppendLine("No current tracking data available");
+            }
+            
+            return builder.ToString();
+        }
+        
+        /// <summary>
+        /// Legacy Format method for IFormatter interface compatibility
         /// </summary>
         public string Format(IFormattableObject formattableEntity)
         {
+            // For legacy compatibility, create a minimal service stats object
             if (formattableEntity == null) return "No tracking data";
-            if (!(formattableEntity is PhoneTrackingInfo phoneTrackingInfo))
+            if (!(formattableEntity is PhoneTrackingInfo))
                 throw new ArgumentException("Entity must be of type PhoneTrackingInfo", nameof(formattableEntity));
             
-            var builder = new StringBuilder();
-            builder.AppendLine("=== iPhone Tracking Data === [Alt+O]");
-            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
-            builder.AppendLine($"Face Detected: {phoneTrackingInfo.FaceFound}");
+            // Create a basic service stats for legacy calls
+            var basicStats = new ServiceStats(
+                serviceName: "iPhone Tracking Data",
+                status: "Unknown",
+                currentEntity: formattableEntity,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+            
+            return Format(basicStats);
+        }
+        
+        /// <summary>
+        /// Appends tracking data details to the string builder
+        /// </summary>
+        private void AppendTrackingDetails(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        {
+            // Face detection status with ASCII icon
+            var faceIcon = phoneTrackingInfo.FaceFound ? "√" : "X";
+            var faceColor = phoneTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
+            builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(phoneTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
             
             if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.Rotation != null)
             {
@@ -65,7 +137,6 @@ namespace SharpBridge.Utilities
             // Show blend shapes data in detailed mode
             if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes != null && phoneTrackingInfo.BlendShapes.Count > 0)
             {
-                var expressions = new[] { "JawOpen", "EyeBlinkLeft", "EyeBlinkRight", "BrowInnerUp", "MouthSmile" };
                 builder.AppendLine();
                 builder.AppendLine("Key Expressions:");
                 int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? phoneTrackingInfo.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
@@ -94,12 +165,9 @@ namespace SharpBridge.Utilities
                     builder.AppendLine($"  ... and {phoneTrackingInfo.BlendShapes.Count - PARAM_DISPLAY_COUNT_NORMAL} more");
                 }
 
-
                 builder.AppendLine();
                 builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
             }
-            
-            return builder.ToString();
         }
     }
 } 
