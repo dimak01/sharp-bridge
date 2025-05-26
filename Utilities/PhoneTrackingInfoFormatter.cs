@@ -12,7 +12,8 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class PhoneTrackingInfoFormatter : IFormatter
     {
-        private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
+        private const int TARGET_COLUMN_COUNT = 4;
+        private const int TARGET_ROWS_NORMAL = 13;
         
         /// <summary>
         /// Current verbosity level for this formatter
@@ -151,13 +152,16 @@ namespace SharpBridge.Utilities
             {
                 builder.AppendLine();
                 
-                int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? phoneTrackingInfo.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
+                // Calculate initial display count based on target rows and columns for normal mode
+                int maxDisplayCount = CurrentVerbosity == VerbosityLevel.Detailed 
+                    ? phoneTrackingInfo.BlendShapes.Count 
+                    : TARGET_ROWS_NORMAL * TARGET_COLUMN_COUNT;
 
                 // Sort blend shapes by name and prepare table data
                 var sortedShapes = phoneTrackingInfo.BlendShapes
                     .Where(s => s != null)
                     .OrderBy(s => s.Key)
-                    .Take(displayCount)
+                    .Take(maxDisplayCount)
                     .ToList();
 
                 var tableRows = sortedShapes.Select(s => (
@@ -168,15 +172,17 @@ namespace SharpBridge.Utilities
 
                 var originalValues = sortedShapes.Select(s => (double)s.Value);
 
-                // Use target column count of 4, with fallback to single column if content won't fit
-                var targetColumnCount = 4;
+                // Use TableFormatter to create the table and get layout mode
+                var layoutMode = TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, TARGET_COLUMN_COUNT, consoleWidth, originalValues);
 
-                // Use TableFormatter to create the table
-                TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, targetColumnCount, consoleWidth, originalValues);
+                // Adjust display count based on actual layout mode used
+                int actualDisplayCount = layoutMode == TableLayoutMode.MultiColumn 
+                    ? maxDisplayCount 
+                    : Math.Min(TARGET_ROWS_NORMAL, maxDisplayCount);
 
-                if (CurrentVerbosity == VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes.Count > PARAM_DISPLAY_COUNT_NORMAL)
+                if (CurrentVerbosity == VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes.Count > actualDisplayCount)
                 {
-                    builder.AppendLine($"  ... and {phoneTrackingInfo.BlendShapes.Count - PARAM_DISPLAY_COUNT_NORMAL} more");
+                    builder.AppendLine($"  ... and {phoneTrackingInfo.BlendShapes.Count - actualDisplayCount} more");
                 }
 
                 builder.AppendLine();
