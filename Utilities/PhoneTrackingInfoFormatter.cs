@@ -130,19 +130,19 @@ namespace SharpBridge.Utilities
             if (phoneTrackingInfo.FaceFound && CurrentVerbosity >= VerbosityLevel.Normal)
             {
                 if (phoneTrackingInfo.Rotation != null)
-                {
-                    builder.AppendLine($"Head Rotation (X,Y,Z): " +
-                        $"{phoneTrackingInfo.Rotation.X:F1}°, " +
-                        $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
-                        $"{phoneTrackingInfo.Rotation.Z:F1}°");
-                }
-                
+            {
+                builder.AppendLine($"Head Rotation (X,Y,Z): " +
+                    $"{phoneTrackingInfo.Rotation.X:F1}°, " +
+                    $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
+                    $"{phoneTrackingInfo.Rotation.Z:F1}°");
+            }
+            
                 if (phoneTrackingInfo.Position != null)
-                {
-                    builder.AppendLine($"Head Position (X,Y,Z): " +
-                        $"{phoneTrackingInfo.Position.X:F1}, " +
-                        $"{phoneTrackingInfo.Position.Y:F1}, " +
-                        $"{phoneTrackingInfo.Position.Z:F1}");
+            {
+                builder.AppendLine($"Head Position (X,Y,Z): " +
+                    $"{phoneTrackingInfo.Position.X:F1}, " +
+                    $"{phoneTrackingInfo.Position.Y:F1}, " +
+                    $"{phoneTrackingInfo.Position.Z:F1}");
                 }
             }
             
@@ -168,13 +168,11 @@ namespace SharpBridge.Utilities
 
                 var originalValues = sortedShapes.Select(s => (double)s.Value);
 
-                // Calculate optimal number of columns based on console width
-                // Estimate: each column needs about 35 characters (name + bar + value + padding)
-                var estimatedColumnWidth = 35;
-                var columnCount = Math.Max(1, Math.Min(4, consoleWidth / estimatedColumnWidth));
+                // Use target column count of 4, with fallback to single column if content won't fit
+                var targetColumnCount = 4;
 
                 // Use TableFormatter to create the table
-                TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, columnCount, consoleWidth, originalValues);
+                TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, targetColumnCount, consoleWidth, originalValues);
 
                 if (CurrentVerbosity == VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes.Count > PARAM_DISPLAY_COUNT_NORMAL)
                 {
