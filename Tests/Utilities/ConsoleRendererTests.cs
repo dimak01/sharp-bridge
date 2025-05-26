@@ -44,6 +44,9 @@ namespace SharpBridge.Tests.Utilities
             
             public void CycleVerbosity() { }
             
+            public string Format(IServiceStats stats) => 
+                stats?.CurrentEntity is TestEntity testEntity ? $"Test: {testEntity.Name}" : "Unknown entity";
+            
             public string Format(IFormattableObject entity) => 
                 entity is TestEntity testEntity ? $"Test: {testEntity.Name}" : "Unknown entity";
             
@@ -82,7 +85,15 @@ namespace SharpBridge.Tests.Utilities
             _mockFormatter.Setup(f => f.CycleVerbosity())
                 .Verifiable();
             
-            // The Format method with just the entity parameter
+            // The Format method with service stats parameter (primary method)
+            _mockFormatter.Setup(f => f.Format(It.IsAny<IServiceStats>()))
+                .Returns<IServiceStats>(stats => {
+                    if (stats?.CurrentEntity is TestEntity testEntity)
+                        return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}";
+                    return "Unknown entity";
+                });
+                
+            // The legacy Format method with just the entity parameter (for backward compatibility)
             _mockFormatter.Setup(f => f.Format(It.IsAny<IFormattableObject>()))
                 .Returns<IFormattableObject>(entity => {
                     if (entity is TestEntity testEntity)
@@ -166,7 +177,7 @@ namespace SharpBridge.Tests.Utilities
         }
         
         [Fact]
-        public void Update_WithValidStats_CallsFormatterWithCorrectEntity()
+        public void Update_WithValidStats_CallsFormatterWithCorrectStats()
         {
             // Arrange
             var stats = new List<IServiceStats> { _testStats };
@@ -175,7 +186,7 @@ namespace SharpBridge.Tests.Utilities
             _renderer.Update(stats);
             
             // Assert
-            _mockFormatter.Verify(f => f.Format(_testEntity), Times.Once);
+            _mockFormatter.Verify(f => f.Format(_testStats), Times.Once);
         }
         
         [Fact]
@@ -206,7 +217,7 @@ namespace SharpBridge.Tests.Utilities
             _renderer.Update(stats); // This should be throttled
             
             // Assert - Formatting should only happen once due to throttling
-            _mockFormatter.Verify(f => f.Format(_testEntity), Times.Once);
+            _mockFormatter.Verify(f => f.Format(_testStats), Times.Once);
         }
         
         [Fact]
