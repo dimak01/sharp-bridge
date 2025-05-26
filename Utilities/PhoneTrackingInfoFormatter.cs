@@ -38,6 +38,14 @@ namespace SharpBridge.Utilities
         /// </summary>
         public string Format(IServiceStats serviceStats)
         {
+            return Format(serviceStats, 80); // Default console width
+        }
+        
+        /// <summary>
+        /// Formats a PhoneTrackingInfo object with service statistics into a display string with console width
+        /// </summary>
+        public string Format(IServiceStats serviceStats, int consoleWidth)
+        {
             if (serviceStats == null) 
                 return "No service data available";
             
@@ -69,7 +77,7 @@ namespace SharpBridge.Utilities
             if (serviceStats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
             {
                 builder.AppendLine();
-                AppendTrackingDetails(builder, phoneTrackingInfo);
+                AppendTrackingDetails(builder, phoneTrackingInfo, consoleWidth);
             }
             else if (serviceStats.CurrentEntity != null)
             {
@@ -111,7 +119,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends tracking data details to the string builder
         /// </summary>
-        private void AppendTrackingDetails(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        private void AppendTrackingDetails(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo, int consoleWidth)
         {
             // Face detection status with ASCII icon
             var faceIcon = phoneTrackingInfo.FaceFound ? "√" : "X";
@@ -142,27 +150,31 @@ namespace SharpBridge.Utilities
             if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes != null && phoneTrackingInfo.BlendShapes.Count > 0)
             {
                 builder.AppendLine();
-                builder.AppendLine("Key Expressions:");
+                
                 int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? phoneTrackingInfo.BlendShapes.Count : PARAM_DISPLAY_COUNT_NORMAL;
 
-                // Calculate the length of the longest blend shape key for proper alignment
-                int maxKeyLength = phoneTrackingInfo.BlendShapes.Take(displayCount)
-                    .Select(s => s?.Key?.Length ?? 0)
-                    .DefaultIfEmpty(0)
-                    .Max();
-                
-                // Add 1 for extra spacing
-                maxKeyLength += 1;
+                // Sort blend shapes by name and prepare table data
+                var sortedShapes = phoneTrackingInfo.BlendShapes
+                    .Where(s => s != null)
+                    .OrderBy(s => s.Key)
+                    .Take(displayCount)
+                    .ToList();
 
-                foreach (var shape in phoneTrackingInfo.BlendShapes.Take(displayCount))
-                {
-                    if (shape != null)
-                    {
-                        var barLength = (int)(shape.Value * 20); // Scale to 0-20 characters
-                        var bar = new string('█', barLength) + new string('░', 20 - barLength);
-                        builder.AppendLine($"{shape.Key.PadRight(maxKeyLength)}: {bar} {shape.Value:F2}");
-                    }
-                }
+                var tableRows = sortedShapes.Select(s => (
+                    Name: s.Key,
+                    Bar: TableFormatter.CreateProgressBar(s.Value),
+                    Value: $"{s.Value:F2}"
+                ));
+
+                var originalValues = sortedShapes.Select(s => (double)s.Value);
+
+                // Calculate optimal number of columns based on console width
+                // Estimate: each column needs about 35 characters (name + bar + value + padding)
+                var estimatedColumnWidth = 35;
+                var columnCount = Math.Max(1, Math.Min(4, consoleWidth / estimatedColumnWidth));
+
+                // Use TableFormatter to create the table
+                TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, columnCount, consoleWidth, originalValues);
 
                 if (CurrentVerbosity == VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes.Count > PARAM_DISPLAY_COUNT_NORMAL)
                 {

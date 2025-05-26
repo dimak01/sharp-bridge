@@ -83,7 +83,7 @@ namespace SharpBridge.Utilities
                             // Check if formatter supports enhanced format with service stats
                             if (typedFormatter is PhoneTrackingInfoFormatter phoneFormatter)
                             {
-                                formattedOutput = phoneFormatter.Format(stat);
+                                formattedOutput = phoneFormatter.Format(stat, _console.WindowWidth);
                             }
                             else if (typedFormatter is PCTrackingInfoFormatter pcFormatter)
                             {
@@ -113,7 +113,7 @@ namespace SharpBridge.Utilities
                             phoneFormatter is PhoneTrackingInfoFormatter enhancedPhoneFormatter &&
                             stat.ServiceName.Contains("Phone"))
                         {
-                            var formattedOutput = enhancedPhoneFormatter.Format(stat);
+                            var formattedOutput = enhancedPhoneFormatter.Format(stat, _console.WindowWidth);
                             foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
                             {
                                 lines.Add(line);
