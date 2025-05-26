@@ -118,20 +118,24 @@ namespace SharpBridge.Utilities
             var faceColor = phoneTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
             builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(phoneTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
             
-            if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.Rotation != null)
+            // Only show head rotation and position if face is detected
+            if (phoneTrackingInfo.FaceFound && CurrentVerbosity >= VerbosityLevel.Normal)
             {
-                builder.AppendLine($"Head Rotation (X,Y,Z): " +
-                    $"{phoneTrackingInfo.Rotation.X:F1}°, " +
-                    $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
-                    $"{phoneTrackingInfo.Rotation.Z:F1}°");
-            }
-            
-            if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.Position != null)
-            {
-                builder.AppendLine($"Head Position (X,Y,Z): " +
-                    $"{phoneTrackingInfo.Position.X:F1}, " +
-                    $"{phoneTrackingInfo.Position.Y:F1}, " +
-                    $"{phoneTrackingInfo.Position.Z:F1}");
+                if (phoneTrackingInfo.Rotation != null)
+                {
+                    builder.AppendLine($"Head Rotation (X,Y,Z): " +
+                        $"{phoneTrackingInfo.Rotation.X:F1}°, " +
+                        $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
+                        $"{phoneTrackingInfo.Rotation.Z:F1}°");
+                }
+                
+                if (phoneTrackingInfo.Position != null)
+                {
+                    builder.AppendLine($"Head Position (X,Y,Z): " +
+                        $"{phoneTrackingInfo.Position.X:F1}, " +
+                        $"{phoneTrackingInfo.Position.Y:F1}, " +
+                        $"{phoneTrackingInfo.Position.Z:F1}");
+                }
             }
             
             // Show blend shapes data in detailed mode
