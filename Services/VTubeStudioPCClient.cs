@@ -230,6 +230,7 @@ namespace SharpBridge.Services
                 _lastSuccessfulSend = Environment.TickCount;
                 _lastTrackingData = trackingData;
                 _lastSuccessfulOperation = DateTime.UtcNow;
+                _status = PCClientStatus.Connected; // Reset status back to Connected after successful send
             }
             catch (Exception ex)
             {

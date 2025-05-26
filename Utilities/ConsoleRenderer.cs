@@ -92,6 +92,8 @@ namespace SharpBridge.Utilities
                             }
                             else
                             {
+                                // For basic formatters, add service header and then formatted content
+                                lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
                                 formattedOutput = typedFormatter.Format(stat.CurrentEntity);
                             }
                             
@@ -103,6 +105,7 @@ namespace SharpBridge.Utilities
                         }
                         else
                         {
+                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
                             lines.Add($"[No formatter registered for {entityType.Name}]");
                         }
                     }
