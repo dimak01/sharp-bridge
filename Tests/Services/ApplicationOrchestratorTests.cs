@@ -196,6 +196,22 @@ namespace SharpBridge.Tests.Services
             // Override WebSocket state if needed
             _vtubeStudioPCClientMock.SetupGet(x => x.State)
                 .Returns(pcClientState);
+                
+            // Update PC client service stats to reflect the WebSocket state
+            var isHealthy = pcClientState == WebSocketState.Open;
+            var status = pcClientState == WebSocketState.Open ? "Connected" : "Disconnected";
+            
+            var pcStats = new ServiceStats(
+                serviceName: "VTubeStudioPCClient",
+                status: status,
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: isHealthy,
+                lastSuccessfulOperation: isHealthy ? DateTime.UtcNow : DateTime.UtcNow.AddMinutes(-5),
+                lastError: isHealthy ? null : "Connection closed",
+                counters: new Dictionary<string, long>()
+            );
+            _vtubeStudioPCClientMock.Setup(x => x.GetServiceStats())
+                .Returns(pcStats);
         }
 
         // Helper method to run an event-triggered test with timeout protection

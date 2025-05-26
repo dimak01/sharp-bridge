@@ -172,7 +172,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             Assert.NotNull(stats);
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
-            Assert.Equal(WebSocketState.Open.ToString(), stats.Status);
+            Assert.Equal("Connected", stats.Status);
             
             // Check the counters
             Assert.Equal(1, stats.Counters["MessagesSent"]);
