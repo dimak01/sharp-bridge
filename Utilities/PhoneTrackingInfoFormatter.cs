@@ -166,14 +166,15 @@ namespace SharpBridge.Utilities
 
                 var tableRows = sortedShapes.Select(s => (
                     Name: s.Key,
-                    Bar: TableFormatter.CreateProgressBar(s.Value),
-                    Value: $"{s.Value:F2}"
+                    ProgressValue: (double)s.Value,
+                    DisplayValue: $"{s.Value:F2}"
                 ));
 
-                var originalValues = sortedShapes.Select(s => (double)s.Value);
-
                 // Use TableFormatter to create the table and get layout mode
-                var layoutMode = TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, TARGET_COLUMN_COUNT, consoleWidth, originalValues);
+                // In single-column mode, limit to TARGET_ROWS_NORMAL for normal verbosity, or show all for detailed
+                var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
+                var layoutMode = TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, TARGET_COLUMN_COUNT, consoleWidth, 
+                    singleColumnBarWidth: 20, singleColumnMaxItems: singleColumnLimit);
 
                 // Adjust display count based on actual layout mode used
                 int actualDisplayCount = layoutMode == TableLayoutMode.MultiColumn 
