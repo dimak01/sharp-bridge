@@ -13,6 +13,8 @@ namespace SharpBridge.Tests.Utilities
         private readonly StringBuilder _outputBuilder = new StringBuilder();
         private int _cursorLeft = 0;
         private int _cursorTop = 0;
+        private int? _savedWindowWidth;
+        private int? _savedWindowHeight;
         
         /// <summary>
         /// Gets the captured console output as a string
@@ -69,6 +71,44 @@ namespace SharpBridge.Tests.Utilities
         {
             // No-op in test environment
             ClearOutput();
+        }
+        
+        /// <summary>
+        /// Simulates setting the console window size
+        /// </summary>
+        /// <param name="width">Width in characters</param>
+        /// <param name="height">Height in characters</param>
+        /// <returns>True if the operation was successful</returns>
+        public bool TrySetWindowSize(int width, int height)
+        {
+            if (width <= 0 || height <= 0)
+                return false;
+                
+            WindowWidth = width;
+            WindowHeight = height;
+            return true;
+        }
+        
+        /// <summary>
+        /// Saves the current simulated console window size
+        /// </summary>
+        public void SaveCurrentWindowSize()
+        {
+            _savedWindowWidth = WindowWidth;
+            _savedWindowHeight = WindowHeight;
+        }
+        
+        /// <summary>
+        /// Restores previously saved simulated console window size
+        /// </summary>
+        /// <returns>True if settings were restored successfully</returns>
+        public bool TryRestoreWindowSize()
+        {
+            if (_savedWindowWidth.HasValue && _savedWindowHeight.HasValue)
+            {
+                return TrySetWindowSize(_savedWindowWidth.Value, _savedWindowHeight.Value);
+            }
+            return false;
         }
     }
 } 

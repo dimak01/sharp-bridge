@@ -40,5 +40,24 @@ namespace SharpBridge.Interfaces
         /// Clears the console screen
         /// </summary>
         void Clear();
+        
+        /// <summary>
+        /// Temporarily sets the console window size (in characters)
+        /// </summary>
+        /// <param name="width">Width in characters</param>
+        /// <param name="height">Height in characters</param>
+        /// <returns>True if the operation was successful</returns>
+        bool TrySetWindowSize(int width, int height);
+        
+        /// <summary>
+        /// Saves the current console window size for later restoration
+        /// </summary>
+        void SaveCurrentWindowSize();
+        
+        /// <summary>
+        /// Restores previously saved console window size
+        /// </summary>
+        /// <returns>True if settings were restored successfully</returns>
+        bool TryRestoreWindowSize();
     }
 } 

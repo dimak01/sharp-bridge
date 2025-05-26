@@ -25,6 +25,12 @@ namespace SharpBridge.Services
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IRecoveryPolicy _recoveryPolicy;
+        private readonly IConsole _console;
+        private readonly ConsoleWindowManager _consoleWindowManager;
+        
+        // Preferred console dimensions
+        private const int PREFERRED_CONSOLE_WIDTH = 150;
+        private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
         private bool _isInitialized;
         private bool _isDisposed;
@@ -45,6 +51,7 @@ namespace SharpBridge.Services
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
+        /// <param name="console">Console abstraction for window management</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -55,7 +62,8 @@ namespace SharpBridge.Services
             IConsoleRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler,
             IVTubeStudioPCParameterManager parameterManager,
-            IRecoveryPolicy recoveryPolicy)
+            IRecoveryPolicy recoveryPolicy,
+            IConsole console)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -67,6 +75,10 @@ namespace SharpBridge.Services
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
+            _console = console ?? throw new ArgumentNullException(nameof(console));
+            
+            // Initialize console window manager
+            _consoleWindowManager = new ConsoleWindowManager(_console);
         }
 
         /// <summary>
@@ -78,6 +90,9 @@ namespace SharpBridge.Services
         public async Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken)
         {
             ValidateInitializationParameters(transformConfigPath);
+            
+            // Set preferred console window size
+            SetupConsoleWindow();
             
             _logger.Info("Using transformation config: {0}", transformConfigPath);
             
@@ -96,6 +111,33 @@ namespace SharpBridge.Services
             
             _logger.Info("Application initialized successfully");
             _isInitialized = true;
+        }
+
+        /// <summary>
+        /// Sets up the console window with preferred dimensions
+        /// </summary>
+        private void SetupConsoleWindow()
+        {
+            try
+            {
+                var currentSize = _consoleWindowManager.GetCurrentSize();
+                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
+                
+                bool success = _consoleWindowManager.SetTemporarySize(PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                if (success)
+                {
+                    _logger.Info("Console window resized to preferred size: {0}x{1}", PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                }
+                else
+                {
+                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}", 
+                        currentSize.width, currentSize.height);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error setting up console window", ex);
+            }
         }
 
         /// <summary>
@@ -234,6 +276,17 @@ namespace SharpBridge.Services
         {
             UnsubscribeFromEvents();
             await CloseVTubeStudioConnection();
+            
+            // Restore original console window size
+            try
+            {
+                _consoleWindowManager?.RestoreOriginalSize();
+                _logger.Info("Console window size restored to original dimensions");
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error restoring console window size", ex);
+            }
         }
         
         private async Task CloseVTubeStudioConnection()
@@ -431,6 +484,9 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
+                    // Dispose console window manager first to restore window size
+                    _consoleWindowManager?.Dispose();
+                    
                     _vtubeStudioPCClient.Dispose();
                     _vtubeStudioPhoneClient.Dispose();
                 }

@@ -6,6 +6,15 @@ using System.Text;
 namespace SharpBridge.Utilities
 {
     /// <summary>
+    /// Indicates the layout mode used by TableFormatter
+    /// </summary>
+    public enum TableLayoutMode
+    {
+        SingleColumn,
+        MultiColumn
+    }
+
+    /// <summary>
     /// Static helper for formatting tabular data consistently across formatters
     /// LEGACY VERSION - kept for reference during refactoring
     /// </summary>
@@ -271,10 +280,11 @@ namespace SharpBridge.Utilities
         /// <param name="builder">StringBuilder to append to</param>
         /// <param name="title">Table title/header</param>
         /// <param name="rows">Table rows as (Name, Bar, Value) tuples</param>
-        public static void AppendTable(StringBuilder builder, string title, 
+        /// <returns>The layout mode used (SingleColumn or MultiColumn)</returns>
+        public static TableLayoutMode AppendTable(StringBuilder builder, string title, 
             IEnumerable<(string Name, string Bar, string Value)> rows)
         {
-            AppendTable(builder, title, rows, 1, 80);
+            return AppendTable(builder, title, rows, 1, 80);
         }
         
         /// <summary>
@@ -285,10 +295,11 @@ namespace SharpBridge.Utilities
         /// <param name="rows">Table rows as (Name, Bar, Value) tuples</param>
         /// <param name="columnCount">Number of side-by-side columns to create</param>
         /// <param name="consoleWidth">Available console width</param>
-        public static void AppendTable(StringBuilder builder, string title, 
+        /// <returns>The layout mode used (SingleColumn or MultiColumn)</returns>
+        public static TableLayoutMode AppendTable(StringBuilder builder, string title, 
             IEnumerable<(string Name, string Bar, string Value)> rows, int columnCount, int consoleWidth)
         {
-            AppendTable(builder, title, rows, columnCount, consoleWidth, null);
+            return AppendTable(builder, title, rows, columnCount, consoleWidth, null);
         }
         
         /// <summary>
@@ -300,12 +311,13 @@ namespace SharpBridge.Utilities
         /// <param name="columnCount">Number of side-by-side columns to create</param>
         /// <param name="consoleWidth">Available console width</param>
         /// <param name="originalValues">Original numeric values for recreating progress bars</param>
-        public static void AppendTable(StringBuilder builder, string title, 
+        /// <returns>The layout mode used (SingleColumn or MultiColumn)</returns>
+        public static TableLayoutMode AppendTable(StringBuilder builder, string title, 
             IEnumerable<(string Name, string Bar, string Value)> rows, int columnCount, int consoleWidth,
             IEnumerable<double> originalValues)
         {
             var rowList = rows.ToList();
-            if (!rowList.Any()) return;
+            if (!rowList.Any()) return TableLayoutMode.SingleColumn;
             
             // Add title
             builder.AppendLine(title);
@@ -314,17 +326,19 @@ namespace SharpBridge.Utilities
             if (columnCount <= 1)
             {
                 AppendSingleColumnTable(builder, rowList);
-                return;
+                return TableLayoutMode.SingleColumn;
             }
             
             // Try multi-column layout
             if (TryAppendMultiColumnTable(builder, rowList, columnCount, consoleWidth, originalValues?.ToList()))
             {
-                return; // Success!
+                return TableLayoutMode.MultiColumn; // Success!
             }
-            
+
             // Fallback to single column
-            AppendSingleColumnTable(builder, rowList);
+            var singleColumnHeight = (int)Math.Ceiling((double)rowList.Count / columnCount);
+            AppendSingleColumnTable(builder, rowList.Take(singleColumnHeight).ToList());
+            return TableLayoutMode.SingleColumn;
         }
         
         /// <summary>

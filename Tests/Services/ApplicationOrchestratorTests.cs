@@ -24,6 +24,7 @@ namespace SharpBridge.Tests.Services
         private Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
         private Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
         private Mock<IRecoveryPolicy> _recoveryPolicyMock;
+        private Mock<IConsole> _consoleMock;
         private ApplicationOrchestrator _orchestrator;
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
@@ -43,6 +44,7 @@ namespace SharpBridge.Tests.Services
             _keyboardInputHandlerMock = new Mock<IKeyboardInputHandler>();
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
             _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
+            _consoleMock = new Mock<IConsole>();
             
             // Configure recovery policy to return 2 second delay
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
@@ -72,6 +74,11 @@ namespace SharpBridge.Tests.Services
                 TokenFilePath = "test_token.txt"
             };
             
+            // Set up console mock with default behavior
+            _consoleMock.Setup(x => x.WindowWidth).Returns(80);
+            _consoleMock.Setup(x => x.WindowHeight).Returns(25);
+            _consoleMock.Setup(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>())).Returns(true);
+            
             // Create orchestrator with mocked dependencies
             _orchestrator = new ApplicationOrchestrator(
                 _vtubeStudioPCClientMock.Object,
@@ -83,7 +90,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object
             );
                 
             // Create temp config file for tests
@@ -102,7 +110,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object
             );
         }
         
