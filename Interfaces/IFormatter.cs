@@ -39,6 +39,6 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Formats an entity into a display string using the formatter's current verbosity level
         /// </summary>
-        string Format(IFormattableObject entity);
+        string Format(IServiceStats stats);
     }
 } 

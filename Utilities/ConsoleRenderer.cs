@@ -87,14 +87,13 @@ namespace SharpBridge.Utilities
                             }
                             else if (typedFormatter is PCTrackingInfoFormatter pcFormatter)
                             {
-                                // TODO: Update PCTrackingInfoFormatter to support service stats
-                                formattedOutput = pcFormatter.Format(stat.CurrentEntity);
+                                formattedOutput = pcFormatter.Format(stat);
                             }
                             else
                             {
                                 // For basic formatters, add service header and then formatted content
                                 lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                                formattedOutput = typedFormatter.Format(stat.CurrentEntity);
+                                formattedOutput = typedFormatter.Format(stat);
                             }
                             
                             // Split formatted output into lines and add each one
@@ -125,11 +124,10 @@ namespace SharpBridge.Utilities
                         else if (_formatters.TryGetValue(typeof(PCTrackingInfo), out var pcFormatter) && 
                                  stat.ServiceName.Contains("PC"))
                         {
-                            // For now, show basic service info for PC client
-                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                            if (!string.IsNullOrEmpty(stat.LastError))
+                            var formattedOutput = pcFormatter.Format(stat);
+                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
                             {
-                                lines.Add($"Error: {stat.LastError}");
+                                lines.Add(line);
                             }
                         }
                         else

@@ -34,38 +34,98 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Formats a PCTrackingInfo object into a display string
+        /// Formats a PCTrackingInfo object with service statistics into a display string
         /// </summary>
-        public string Format(IFormattableObject formattableEntity)
+        public string Format(IServiceStats serviceStats)
         {
-            if (formattableEntity == null) return "No PC tracking data";
-            if (!(formattableEntity is PCTrackingInfo pcTrackingInfo))
-                throw new ArgumentException("Entity must be of type PCTrackingInfo", nameof(formattableEntity));
+            if (serviceStats == null) 
+                return "No service data available";
             
             var builder = new StringBuilder();
-            AppendHeader(builder, pcTrackingInfo);
             
-            var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
+            // Header with service status
+            AppendServiceHeader(builder, serviceStats);
             
-            if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
+            // Tracking data details
+            if (serviceStats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
             {
-                AppendParameters(builder, pcTrackingInfo);
+                var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
+                
+                if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
+                {
+                    AppendParameters(builder, pcTrackingInfo);
+                }
+            }
+            else if (serviceStats.CurrentEntity != null)
+            {
+                throw new ArgumentException("CurrentEntity must be of type PCTrackingInfo or null");
+            }
+            else
+            {
+                builder.AppendLine();
+                builder.AppendLine("No current tracking data available");
             }
             
             return builder.ToString();
         }
         
         /// <summary>
-        /// Appends the header information to the string builder
+        /// Legacy Format method for IFormatter interface compatibility
         /// </summary>
-        private void AppendHeader(StringBuilder builder, PCTrackingInfo entity)
+        public string Format(IFormattableObject formattableEntity)
         {
-            builder.AppendLine("=== VTube Studio Parameters === [Alt+P]");
-            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
-            builder.AppendLine($"Face Detected: {entity.FaceFound}");
+            // For legacy compatibility, create a minimal service stats object
+            if (formattableEntity == null) return "No PC tracking data";
+            if (!(formattableEntity is PCTrackingInfo))
+                throw new ArgumentException("Entity must be of type PCTrackingInfo", nameof(formattableEntity));
             
-            var parameterCount = entity.Parameters?.Count() ?? 0;
-            builder.AppendLine($"Parameter Count: {parameterCount}");
+            // Create a basic service stats for legacy calls
+            var basicStats = new ServiceStats(
+                serviceName: "VTube Studio Parameters",
+                status: "Unknown",
+                currentEntity: formattableEntity,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+            
+            return Format(basicStats);
+        }
+        
+        /// <summary>
+        /// Appends the service header information to the string builder
+        /// </summary>
+        private void AppendServiceHeader(StringBuilder builder, IServiceStats serviceStats)
+        {
+            builder.AppendLine($"=== {serviceStats.ServiceName} ({serviceStats.Status}) === [Alt+P]");
+            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
+            
+            // Health status
+            if (!serviceStats.IsHealthy && !string.IsNullOrEmpty(serviceStats.LastError))
+            {
+                builder.AppendLine($"Error: {serviceStats.LastError}");
+            }
+            
+            // Show connection metrics if available
+            if (serviceStats.Counters.ContainsKey("MessagesSent"))
+            {
+                var messagesSent = serviceStats.Counters["MessagesSent"];
+                var connectionAttempts = serviceStats.Counters.ContainsKey("ConnectionAttempts") ? serviceStats.Counters["ConnectionAttempts"] : 0;
+                var uptimeSeconds = serviceStats.Counters.ContainsKey("UptimeSeconds") ? serviceStats.Counters["UptimeSeconds"] : 0;
+                
+                builder.AppendLine($"Messages Sent: {messagesSent} | Connections: {connectionAttempts} | Uptime: {uptimeSeconds}s");
+            }
+            
+            // Show tracking data info if available
+            if (serviceStats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
+            {
+                builder.AppendLine($"Face Detected: {pcTrackingInfo.FaceFound}");
+                var parameterCount = pcTrackingInfo.Parameters?.Count() ?? 0;
+                builder.AppendLine($"Parameter Count: {parameterCount}");
+            }
+            
+            builder.AppendLine();
         }
         
         /// <summary>
