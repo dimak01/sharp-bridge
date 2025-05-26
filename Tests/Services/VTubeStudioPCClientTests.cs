@@ -68,7 +68,7 @@ namespace SharpBridge.Tests.Services
             var stats = client.GetServiceStats();
 
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
-            Assert.Equal("None", stats.Status);
+            Assert.Equal("Initializing", stats.Status);
             Assert.Null(stats.CurrentEntity);
             Assert.NotNull(stats.Counters);
         }
@@ -85,7 +85,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             Assert.NotNull(stats);
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
-            Assert.Equal(WebSocketState.None.ToString(), stats.Status);
+            Assert.Equal("Initializing", stats.Status);
             Assert.NotNull(stats.Counters);
             
             // Check the counters

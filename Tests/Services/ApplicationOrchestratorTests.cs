@@ -783,7 +783,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -800,7 +801,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -817,7 +819,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -834,7 +837,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -851,7 +855,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -868,7 +873,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -885,7 +891,8 @@ namespace SharpBridge.Tests.Services
                 null,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -901,7 +908,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 null,
                 _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -917,7 +925,8 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 null,
-                _recoveryPolicyMock.Object));
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object));
         }
 
         [Fact]
@@ -933,6 +942,24 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
+                null,
+                _consoleMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullConsole_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                _pcConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object,
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object,
                 null));
         }
 
