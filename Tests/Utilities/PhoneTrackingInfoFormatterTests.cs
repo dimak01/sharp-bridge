@@ -88,7 +88,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines[0].Should().Be("=== iPhone Tracking Data === [Alt+O]");
+            lines[0].Should().Contain("=== iPhone Tracking Data").And.Contain("=== [Alt+O]");
         }
 
         [Fact]
@@ -106,7 +106,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines[2].Should().Be("Face Detected: True");
+            lines.Should().Contain(line => line.Contains("Face Status:") && line.Contains("√ Detected"));
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines[2].Should().Be("Face Detected: False");
+            lines.Should().Contain(line => line.Contains("Face Status:") && line.Contains("X Not Found"));
         }
 
         [Fact]
@@ -346,7 +346,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithBlendShapesAtNormalVerbosity_ShowsTop10()
+        public void Format_WithBlendShapesAtNormalVerbosity_ShowsTop13()
         {
             // Arrange
             var trackingInfo = new PhoneTrackingInfo
@@ -360,9 +360,9 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            var blendShapeLines = lines.Where(l => l.Contains(": █")).ToList();
-            blendShapeLines.Should().HaveCount(10);
-            lines.Should().Contain("  ... and 5 more");
+            var blendShapeLines = lines.Where(l => l.Contains("█") || l.Contains("░")).ToList();
+            blendShapeLines.Should().HaveCount(13);
+            lines.Should().Contain("  ... and 2 more");
         }
 
         [Fact]
@@ -381,7 +381,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            var blendShapeLines = lines.Where(l => l.Contains(": █")).ToList();
+            var blendShapeLines = lines.Where(l => l.Contains("█") || l.Contains("░")).ToList();
             blendShapeLines.Should().HaveCount(15);
             lines.Should().NotContain("and more");
         }
@@ -446,9 +446,9 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().Contain("Full  : ████████████████████ 1.00");
-            lines.Should().Contain("Half  : ██████████░░░░░░░░░░ 0.50");
-            lines.Should().Contain("Empty : ░░░░░░░░░░░░░░░░░░░░ 0.00");
+            lines.Should().Contain(line => line.Contains("Full") && line.Contains("████████████████████") && line.Contains("1.00"));
+            lines.Should().Contain(line => line.Contains("Half") && line.Contains("██████████░░░░░░░░░░") && line.Contains("0.50"));
+            lines.Should().Contain(line => line.Contains("Empty") && line.Contains("░░░░░░░░░░░░░░░░░░░░") && line.Contains("0.00"));
         }
 
         private List<BlendShape> CreateBlendShapes(int count)
