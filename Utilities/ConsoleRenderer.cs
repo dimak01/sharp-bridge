@@ -29,7 +29,7 @@ namespace SharpBridge.Utilities
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Register formatters for known types
-            RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter());
+            RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter(_console));
             RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter());
         }
         
@@ -83,7 +83,7 @@ namespace SharpBridge.Utilities
                             // Check if formatter supports enhanced format with service stats
                             if (typedFormatter is PhoneTrackingInfoFormatter phoneFormatter)
                             {
-                                formattedOutput = phoneFormatter.Format(stat, _console.WindowWidth);
+                                formattedOutput = phoneFormatter.Format(stat);
                             }
                             else if (typedFormatter is PCTrackingInfoFormatter pcFormatter)
                             {
@@ -113,7 +113,7 @@ namespace SharpBridge.Utilities
                             phoneFormatter is PhoneTrackingInfoFormatter enhancedPhoneFormatter &&
                             stat.ServiceName.Contains("Phone"))
                         {
-                            var formattedOutput = enhancedPhoneFormatter.Format(stat, _console.WindowWidth);
+                            var formattedOutput = enhancedPhoneFormatter.Format(stat);
                             foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
                             {
                                 lines.Add(line);

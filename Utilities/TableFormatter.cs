@@ -74,7 +74,7 @@ namespace SharpBridge.Utilities
             var valueWidth = Math.Max(rows.Max(r => r.DisplayValue.Length), "Value".Length);
             
             // Add header row
-            builder.AppendLine($"{"Expression".PadRight(nameWidth)} {"Progress".PadRight(barWidth)} {"Value".PadRight(valueWidth)}");
+            builder.AppendLine($"{"Expression".PadRight(nameWidth)} {string.Empty.PadRight(barWidth)} {"Value".PadRight(valueWidth)}");
             
             // Add separator line
             var separatorLength = nameWidth + barWidth + valueWidth + 2; // +2 for spaces
@@ -152,7 +152,7 @@ namespace SharpBridge.Utilities
             for (int col = 0; col < columnCount; col++)
             {
                 if (col > 0) headerBuilder.Append(new string(' ', columnPadding));
-                headerBuilder.Append($"{"Expression".PadRight(nameWidth)} {"Progress".PadRight(barWidth)} {"Value".PadRight(valueWidth)}");
+                headerBuilder.Append($"{"Expression".PadRight(nameWidth)} {string.Empty.PadRight(barWidth)} {"Value".PadRight(valueWidth)}");
             }
             builder.AppendLine(headerBuilder.ToString());
             

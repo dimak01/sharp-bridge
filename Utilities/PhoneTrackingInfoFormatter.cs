@@ -15,6 +15,17 @@ namespace SharpBridge.Utilities
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
         
+        private readonly IConsole _console;
+        
+        /// <summary>
+        /// Initializes a new instance of the PhoneTrackingInfoFormatter
+        /// </summary>
+        /// <param name="console">Console abstraction for getting window dimensions</param>
+        public PhoneTrackingInfoFormatter(IConsole console)
+        {
+            _console = console ?? throw new ArgumentNullException(nameof(console));
+        }
+        
         /// <summary>
         /// Current verbosity level for this formatter
         /// </summary>
@@ -38,14 +49,6 @@ namespace SharpBridge.Utilities
         /// Formats a PhoneTrackingInfo object with service statistics into a display string
         /// </summary>
         public string Format(IServiceStats serviceStats)
-        {
-            return Format(serviceStats, 80); // Default console width
-        }
-        
-        /// <summary>
-        /// Formats a PhoneTrackingInfo object with service statistics into a display string with console width
-        /// </summary>
-        public string Format(IServiceStats serviceStats, int consoleWidth)
         {
             if (serviceStats == null) 
                 return "No service data available";
@@ -78,7 +81,7 @@ namespace SharpBridge.Utilities
             if (serviceStats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
             {
                 builder.AppendLine();
-                AppendTrackingDetails(builder, phoneTrackingInfo, consoleWidth);
+                AppendTrackingDetails(builder, phoneTrackingInfo);
             }
             else if (serviceStats.CurrentEntity != null)
             {
@@ -120,7 +123,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends tracking data details to the string builder
         /// </summary>
-        private void AppendTrackingDetails(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo, int consoleWidth)
+        private void AppendTrackingDetails(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
         {
             // Face detection status with ASCII icon
             var faceIcon = phoneTrackingInfo.FaceFound ? "√" : "X";
@@ -173,7 +176,7 @@ namespace SharpBridge.Utilities
                 // Use TableFormatter to create the table and get layout mode
                 // In single-column mode, limit to TARGET_ROWS_NORMAL for normal verbosity, or show all for detailed
                 var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
-                var layoutMode = TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, TARGET_COLUMN_COUNT, consoleWidth, 
+                var layoutMode = TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, TARGET_COLUMN_COUNT, _console.WindowWidth, 
                     singleColumnBarWidth: 20, singleColumnMaxItems: singleColumnLimit);
 
                 // Adjust display count based on actual layout mode used
