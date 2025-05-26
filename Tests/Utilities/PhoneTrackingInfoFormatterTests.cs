@@ -28,7 +28,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullInput_ReturnsNoTrackingDataMessage()
         {
             // Act
-            var result = _formatter.Format(null);
+            var result = _formatter.Format((IFormattableObject)null);
 
             // Assert
             result.Should().Be("No tracking data");

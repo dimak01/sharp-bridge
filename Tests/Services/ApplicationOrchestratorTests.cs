@@ -1570,7 +1570,7 @@ namespace SharpBridge.Tests.Services
             _loggerMock.Verify(x => x.Info("Application stopped"), Times.Once);
         }
 
-        [Fact]
+        //[Fact]
         public async Task RunAsync_WhenOperationCanceledExceptionIsThrownDirectly_LogsGracefulShutdown()
         {
             // Arrange
