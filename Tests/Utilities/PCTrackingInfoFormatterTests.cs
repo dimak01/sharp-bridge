@@ -18,7 +18,7 @@ namespace SharpBridge.Tests.Utilities
         {
             _formatter = new PCTrackingInfoFormatter();
         }
-        
+
         /// <summary>
         /// Helper method to create ServiceStats for testing
         /// </summary>
