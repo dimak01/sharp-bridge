@@ -228,4 +228,120 @@ namespace SharpBridge.Utilities
             return CreateProgressBar(normalizedValue, width);
         }
     }
+    
+    /// <summary>
+    /// Represents a column definition for generic table formatting
+    /// </summary>
+    /// <typeparam name="T">The type of data being displayed in the table</typeparam>
+    public class TableColumn<T>
+    {
+        /// <summary>
+        /// The header text for this column
+        /// </summary>
+        public string Header { get; set; }
+        
+        /// <summary>
+        /// Function to generate the cell content for this column
+        /// </summary>
+        /// <param name="item">The data item for this row</param>
+        /// <param name="columnWidth">The calculated width available for this column</param>
+        /// <returns>The formatted cell content</returns>
+        public Func<T, int, string> ValueSelector { get; set; }
+    }
+    
+    /// <summary>
+    /// Extensions to TableFormatter for generic table formatting
+    /// </summary>
+    public static class TableFormatterExtensions
+    {
+        /// <summary>
+        /// Appends a formatted table using generic column definitions
+        /// </summary>
+        /// <typeparam name="T">The type of data being displayed</typeparam>
+        /// <param name="builder">StringBuilder to append to</param>
+        /// <param name="title">Table title/header</param>
+        /// <param name="rows">Table rows data</param>
+        /// <param name="columns">Column definitions</param>
+        /// <param name="targetColumnCount">Number of side-by-side table columns to create</param>
+        /// <param name="consoleWidth">Available console width</param>
+        /// <param name="singleColumnMaxItems">Maximum items to show in single-column mode (default: show all)</param>
+        /// <returns>The layout mode used (SingleColumn or MultiColumn)</returns>
+        public static TableLayoutMode AppendGenericTable<T>(this StringBuilder builder, string title,
+            IEnumerable<T> rows, IList<TableColumn<T>> columns, int targetColumnCount, int consoleWidth,
+            int? singleColumnMaxItems = null)
+        {
+            var rowList = rows?.ToList() ?? new List<T>();
+            if (!rowList.Any()) return TableLayoutMode.SingleColumn;
+            
+            // Add title
+            builder.AppendLine(title);
+            
+            // Single column or fallback case
+            if (targetColumnCount <= 1)
+            {
+                var singleColumnRows = singleColumnMaxItems.HasValue 
+                    ? rowList.Take(singleColumnMaxItems.Value).ToList() 
+                    : rowList;
+                AppendGenericSingleColumnTable(builder, singleColumnRows, columns);
+                return TableLayoutMode.SingleColumn;
+            }
+            
+            // Try multi-column layout
+            if (TryAppendGenericMultiColumnTable(builder, rowList, columns, targetColumnCount, consoleWidth))
+            {
+                return TableLayoutMode.MultiColumn;
+            }
+
+            // Fallback to single column
+            var fallbackRows = singleColumnMaxItems.HasValue 
+                ? rowList.Take(singleColumnMaxItems.Value).ToList() 
+                : rowList;
+            AppendGenericSingleColumnTable(builder, fallbackRows, columns);
+            return TableLayoutMode.SingleColumn;
+        }
+        
+        /// <summary>
+        /// Appends a single-column table using generic column definitions
+        /// </summary>
+        private static void AppendGenericSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<TableColumn<T>> columns)
+        {
+            // Calculate column widths by sampling content
+            var columnWidths = new int[columns.Count];
+            for (int i = 0; i < columns.Count; i++)
+            {
+                var headerWidth = columns[i].Header.Length;
+                var maxContentWidth = rows.Take(Math.Min(10, rows.Count)) // Sample first 10 rows for width calculation
+                    .Select(r => columns[i].ValueSelector(r, 50).Length) // Use temp width of 50 for sampling
+                    .DefaultIfEmpty(0)
+                    .Max();
+                columnWidths[i] = Math.Max(headerWidth, maxContentWidth);
+            }
+            
+            // Add header row
+            var headerLine = string.Join(" ", columns.Select((c, i) => c.Header.PadRight(columnWidths[i])));
+            builder.AppendLine(headerLine);
+            
+            // Add separator line
+            var separatorLength = columnWidths.Sum() + (columns.Count - 1); // +spaces between columns
+            builder.AppendLine(new string('-', separatorLength));
+            
+            // Add data rows
+            foreach (var row in rows)
+            {
+                var cells = columns.Select((c, i) => c.ValueSelector(row, columnWidths[i]).PadRight(columnWidths[i]));
+                builder.AppendLine(string.Join(" ", cells));
+            }
+        }
+        
+        /// <summary>
+        /// Attempts to append a multi-column table using generic column definitions
+        /// </summary>
+        private static bool TryAppendGenericMultiColumnTable<T>(StringBuilder builder, List<T> rows, 
+            IList<TableColumn<T>> columns, int targetColumnCount, int consoleWidth)
+        {
+            // For now, fall back to single column - we can implement multi-column later
+            // This is a simplified implementation for Step 1
+            return false;
+        }
+    }
 } 
