@@ -47,11 +47,6 @@ namespace SharpBridge.Tests.Utilities
             public string Format(IServiceStats stats) => 
                 stats?.CurrentEntity is TestEntity testEntity ? $"Test: {testEntity.Name}" : "Unknown entity";
             
-            public string Format(IFormattableObject entity) => 
-                entity is TestEntity testEntity ? $"Test: {testEntity.Name}" : "Unknown entity";
-            
-            public string Format(IFormattableObject entity, VerbosityLevel verbosity) => Format(entity);
-            
             public void Dispose() { }
         }
         
@@ -85,18 +80,10 @@ namespace SharpBridge.Tests.Utilities
             _mockFormatter.Setup(f => f.CycleVerbosity())
                 .Verifiable();
             
-            // The Format method with service stats parameter (primary method)
+            // The Format method with service stats parameter
             _mockFormatter.Setup(f => f.Format(It.IsAny<IServiceStats>()))
                 .Returns<IServiceStats>(stats => {
                     if (stats?.CurrentEntity is TestEntity testEntity)
-                        return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}";
-                    return "Unknown entity";
-                });
-                
-            // The legacy Format method with just the entity parameter (for backward compatibility)
-            _mockFormatter.Setup(f => f.Format(It.IsAny<IFormattableObject>()))
-                .Returns<IFormattableObject>(entity => {
-                    if (entity is TestEntity testEntity)
                         return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}";
                     return "Unknown entity";
                 });

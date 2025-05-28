@@ -21,6 +21,27 @@ namespace SharpBridge.Tests.Utilities
             _mockConsole.Setup(c => c.WindowWidth).Returns(80); // Default console width for tests
             _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object);
         }
+        
+        /// <summary>
+        /// Helper method to create ServiceStats for testing
+        /// </summary>
+        private ServiceStats CreateServiceStats(PhoneTrackingInfo trackingInfo = null, string status = "Connected")
+        {
+            return new ServiceStats(
+                serviceName: "iPhone Tracking Data",
+                status: status,
+                currentEntity: trackingInfo,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>
+                {
+                    ["Total Frames"] = 100,
+                    ["Failed Frames"] = 5,
+                    ["FPS"] = 30
+                }
+            );
+        }
 
         // Test implementation of IFormattableObject for testing invalid type scenarios
         private class InvalidFormattableObject : IFormattableObject
@@ -29,25 +50,35 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithNullInput_ReturnsNoTrackingDataMessage()
+        public void Format_WithNullInput_ReturnsNoServiceDataMessage()
         {
             // Act
-            var result = _formatter.Format((IFormattableObject)null);
+            var result = _formatter.Format((IServiceStats)null);
 
             // Assert
-            result.Should().Be("No tracking data");
+            result.Should().Be("No service data available");
         }
 
         [Fact]
-        public void Format_WithInvalidType_ThrowsArgumentException()
+        public void Format_WithInvalidEntityType_ThrowsArgumentException()
         {
             // Arrange
             var invalidEntity = new InvalidFormattableObject();
+            var serviceStats = CreateServiceStats();
+            serviceStats = new ServiceStats(
+                serviceName: "Test Service",
+                status: "Connected",
+                currentEntity: invalidEntity,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
 
             // Act & Assert
-            Action act = () => _formatter.Format(invalidEntity);
+            Action act = () => _formatter.Format(serviceStats);
             act.Should().Throw<ArgumentException>()
-                .WithMessage("Entity must be of type PhoneTrackingInfo (Parameter 'formattableEntity')");
+                .WithMessage("CurrentEntity must be of type PhoneTrackingInfo or null");
         }
 
         [Fact]
@@ -82,9 +113,10 @@ namespace SharpBridge.Tests.Utilities
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
             };
+            var serviceStats = CreateServiceStats(trackingInfo);
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -95,14 +127,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithFaceDetected_ShowsFaceDetectedTrue()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -113,14 +145,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithoutFaceDetected_ShowsFaceDetectedFalse()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = false,
                 BlendShapes = new List<BlendShape>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -131,7 +163,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithBlendShapes_ShowsCorrectCount()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -140,10 +172,10 @@ namespace SharpBridge.Tests.Utilities
                     new BlendShape { Key = "EyeBlinkLeft", Value = 0.3f },
                     new BlendShape { Key = "EyeBlinkRight", Value = 0.3f }
                 }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -155,14 +187,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullBlendShapes_HandlesNullCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = null
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -174,15 +206,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithRotationAtNormalVerbosity_ShowsRotation()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Rotation = new Coordinates { X = 10.5f, Y = 20.5f, Z = 30.5f }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -193,17 +225,17 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithRotationAtBasicVerbosity_HidesRotation()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Rotation = new Coordinates { X = 10.5f, Y = 20.5f, Z = 30.5f }
-            };
+            });
 
             // Act
             _formatter.CycleVerbosity(); // Normal -> Detailed
             _formatter.CycleVerbosity(); // Detailed -> Basic
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -214,15 +246,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullRotation_HandlesNullCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Rotation = null
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -233,15 +265,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithExtremeRotationValues_FormatsCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Rotation = new Coordinates { X = -180.0f, Y = 180.0f, Z = 0.0f }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -252,15 +284,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithZeroRotationValues_FormatsCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Rotation = new Coordinates { X = 0.0f, Y = 0.0f, Z = 0.0f }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -271,15 +303,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithPositionValues_FormatsCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Position = new Coordinates { X = 10.5f, Y = 0.0f, Z = 30.5f }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -290,17 +322,17 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithPositionAtBasicVerbosity_HidesPosition()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Position = new Coordinates { X = 10.5f, Y = 20.5f, Z = 30.5f }
-            };
+            });
 
             // Act
             _formatter.CycleVerbosity(); // Normal -> Detailed
             _formatter.CycleVerbosity(); // Detailed -> Basic
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -311,15 +343,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullPosition_HandlesNullCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Position = null
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -330,15 +362,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithExtremePositionValues_FormatsCorrectly()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>(),
                 Position = new Coordinates { X = -1000.0f, Y = 1000.0f, Z = 0.0f }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -349,14 +381,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithBlendShapesAtNormalVerbosity_ShowsTop13()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = CreateBlendShapes(15) // Create 15 blend shapes
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -369,15 +401,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithBlendShapesAtDetailedVerbosity_ShowsAll()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = CreateBlendShapes(15) // Create 15 blend shapes
-            };
+            });
 
             // Act
             _formatter.CycleVerbosity(); // Normal -> Detailed
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -390,16 +422,16 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithBlendShapesAtBasicVerbosity_HidesBlendShapes()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = CreateBlendShapes(5)
-            };
+            });
 
             // Act
             _formatter.CycleVerbosity(); // Normal -> Detailed
             _formatter.CycleVerbosity(); // Detailed -> Basic
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -411,14 +443,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithEmptyBlendShapes_HandlesEmptyList()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -430,7 +462,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithBlendShapes_ShowsProgressBars()
         {
             // Arrange
-            var trackingInfo = new PhoneTrackingInfo
+            var serviceStats = CreateServiceStats(new PhoneTrackingInfo
             {
                 FaceFound = true,
                 BlendShapes = new List<BlendShape>
@@ -439,10 +471,10 @@ namespace SharpBridge.Tests.Utilities
                     new BlendShape { Key = "Half", Value = 0.5f },
                     new BlendShape { Key = "Empty", Value = 0.0f }
                 }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);

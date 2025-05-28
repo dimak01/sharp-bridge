@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace SharpBridge.Utilities
 {
@@ -11,7 +12,7 @@ namespace SharpBridge.Utilities
         private const int FAILED_COUNT_WIDTH = 4;   // Up to 9,999 failed
         private const int FPS_WIDTH = 3;            // Up to 999 FPS
         private const int TIME_WIDTH = 6;           // "999.9s" format
-        private const int CONTENT_WIDTH = 15;       // Width for content before the | character
+        private const int FRAMES_WIDTH = 6;       // Up to 999999 frames
         
         /// <summary>
         /// Formats service metrics with consistent padding
@@ -27,7 +28,7 @@ namespace SharpBridge.Utilities
             
             var framesContent = $"{totalFrames:N0} frames";
             
-            return $"Metrics: {framesContent.PadLeft(CONTENT_WIDTH)} | {failedStr} failed | {fpsStr} FPS";
+            return $"Metrics: {framesContent.PadLeft(FRAMES_WIDTH)} | {failedStr} failed | {fpsStr} FPS";
         }
         
         /// <summary>
@@ -50,9 +51,11 @@ namespace SharpBridge.Utilities
             
             var healthContent = $"{healthIcon} {healthText}";
             var colorizedHealth = ConsoleColors.Colorize(healthContent, healthColor);
-            
+
             // Note: We need to account for the invisible color codes when padding
-            var result = $"Health:  {healthContent.PadLeft(CONTENT_WIDTH)} | Last Success: {timeAgo}";
+            var result = $"Health: {healthContent}";
+            result += Environment.NewLine;
+            result += $"Last Success: {timeAgo}";
             
             // Apply color to the health content after padding calculation
             result = result.Replace(healthContent, colorizedHealth);
@@ -61,7 +64,8 @@ namespace SharpBridge.Utilities
             if (!isHealthy && !string.IsNullOrEmpty(lastError))
             {
                 var errorText = lastError.Length > 50 ? lastError.Substring(0, 47) + "..." : lastError;
-                result += $"\nError: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}";
+                result += Environment.NewLine;
+                result += $"Error: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}";
             }
             
             return result;

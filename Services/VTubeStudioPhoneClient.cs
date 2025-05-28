@@ -135,10 +135,14 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
                         _lastSuccessfulOperation != default(DateTime) &&
                         (DateTime.UtcNow - _lastSuccessfulOperation).TotalSeconds < HEALTH_TIMEOUT_SECONDS;
         
+        // Only provide current entity if the client is in a healthy/operational state
+        var currentEntity = isHealthy ? _lastTrackingData 
+                           : null;
+        
         return new ServiceStats(
             "Phone Client", 
             _status.ToString(),
-            _lastTrackingData,
+            currentEntity,
             isHealthy: isHealthy,
             lastSuccessfulOperation: _lastSuccessfulOperation,
             lastError: _lastInitializationError,
