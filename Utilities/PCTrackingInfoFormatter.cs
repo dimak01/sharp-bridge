@@ -69,29 +69,7 @@ namespace SharpBridge.Utilities
             return builder.ToString();
         }
         
-        /// <summary>
-        /// Legacy Format method for IFormatter interface compatibility
-        /// </summary>
-        public string Format(IFormattableObject formattableEntity)
-        {
-            // For legacy compatibility, create a minimal service stats object
-            if (formattableEntity == null) return "No PC tracking data";
-            if (!(formattableEntity is PCTrackingInfo))
-                throw new ArgumentException("Entity must be of type PCTrackingInfo", nameof(formattableEntity));
-            
-            // Create a basic service stats for legacy calls
-            var basicStats = new ServiceStats(
-                serviceName: "VTube Studio Parameters",
-                status: "Unknown",
-                currentEntity: formattableEntity,
-                isHealthy: true,
-                lastSuccessfulOperation: DateTime.UtcNow,
-                lastError: null,
-                counters: new Dictionary<string, long>()
-            );
-            
-            return Format(basicStats);
-        }
+
         
         /// <summary>
         /// Appends the service header information to the string builder

@@ -18,6 +18,27 @@ namespace SharpBridge.Tests.Utilities
         {
             _formatter = new PCTrackingInfoFormatter();
         }
+        
+        /// <summary>
+        /// Helper method to create ServiceStats for testing
+        /// </summary>
+        private ServiceStats CreateServiceStats(PCTrackingInfo trackingInfo = null, string status = "Connected")
+        {
+            return new ServiceStats(
+                serviceName: "VTube Studio PC Client",
+                status: status,
+                currentEntity: trackingInfo,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>
+                {
+                    ["Total Frames"] = 100,
+                    ["Failed Frames"] = 5,
+                    ["FPS"] = 30
+                }
+            );
+        }
 
         // Test implementation of IFormattableObject for testing invalid type scenarios
         private class InvalidFormattableObject : IFormattableObject
@@ -32,7 +53,7 @@ namespace SharpBridge.Tests.Utilities
         {
             var lines = formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             lines.Should().HaveCountGreaterThan(4); // At least header lines
-            lines[0].Should().Be("=== VTube Studio Parameters === [Alt+P]");
+            lines[0].Should().Be("=== VTube Studio PC Client (Connected) === [Alt+P]");
             lines[1].Should().Be($"Verbosity: {expectedVerbosity}");
             lines[2].Should().Be($"Face Detected: {faceDetected}");
             lines[3].Should().Be($"Parameter Count: {parameterCount}");
@@ -93,7 +114,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(null);
 
             // Assert
-            result.Should().Be("No PC tracking data");
+            result.Should().Be("No service data available");
         }
 
         [Fact]
@@ -101,25 +122,35 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var invalidEntity = new InvalidFormattableObject();
+            var serviceStats = CreateServiceStats();
+            serviceStats = new ServiceStats(
+                serviceName: "Test Service",
+                status: "Connected",
+                currentEntity: invalidEntity,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
 
             // Act & Assert
-            Action act = () => _formatter.Format(invalidEntity);
+            Action act = () => _formatter.Format(serviceStats);
             act.Should().Throw<ArgumentException>()
-                .WithMessage("Entity must be of type PCTrackingInfo (Parameter 'formattableEntity')");
+                .WithMessage("CurrentEntity must be of type PCTrackingInfo or null");
         }
 
         [Fact]
         public void Format_WithValidPCTrackingInfo_ReturnsFormattedString()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             result.Should().NotBeNullOrEmpty();
@@ -153,14 +184,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithFaceDetected_ShowsFaceDetectedTrue()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(result, VerbosityLevel.Normal, true, 0);
@@ -170,14 +201,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithoutFaceDetected_ShowsFaceDetectedFalse()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = false,
                 Parameters = new List<TrackingParam>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(result, VerbosityLevel.Normal, false, 0);
@@ -187,7 +218,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithParameters_ShowsCorrectParameterCount()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>
@@ -196,10 +227,10 @@ namespace SharpBridge.Tests.Utilities
                     new TrackingParam { Id = "Param2" },
                     new TrackingParam { Id = "Param3" }
                 }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(result, VerbosityLevel.Normal, true, 3);
@@ -209,14 +240,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullParameters_ShowsZeroParameterCount()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = null
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(result, VerbosityLevel.Normal, true, 0);
@@ -226,14 +257,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithEmptyParameters_ShowsZeroParameterCount()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(result, VerbosityLevel.Normal, true, 0);
@@ -243,15 +274,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithDifferentVerbosity_ShowsCorrectVerbosityLevel()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>()
-            };
+            });
 
             // Act - Set to Detailed verbosity
             _formatter.CycleVerbosity();
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(result, VerbosityLevel.Detailed, true, 0);
@@ -262,14 +293,14 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             const int parameterCount = 15;
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = CreateParameters(parameterCount)
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(formattedOutput: result,
@@ -287,15 +318,15 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             const int parameterCount = 15;
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = CreateParameters(parameterCount)
-            };
+            });
 
             // Act - Set to Detailed verbosity
             _formatter.CycleVerbosity();
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(formattedOutput: result,
@@ -313,16 +344,16 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             const int parameterCount = 5;
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = CreateParameters(parameterCount)
-            };
+            });
 
             // Act - Set to Basic verbosity
             _formatter.CycleVerbosity(); // Normal -> Detailed
             _formatter.CycleVerbosity(); // Detailed -> Basic
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(formattedOutput: result,
@@ -339,14 +370,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithEmptyParameters_ShowsNoParameters()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>()
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(formattedOutput: result,
@@ -363,14 +394,14 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullParameters_ShowsNoParameters()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = null
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             VerifyHeaderFormat(formattedOutput: result,
@@ -387,7 +418,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithParametersHavingNullIds_ThrowsArgumentNullException()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>
@@ -396,10 +427,10 @@ namespace SharpBridge.Tests.Utilities
                     new TrackingParam { Id = null, Value = 0.5 },
                     new TrackingParam { Id = $"{TrackingParamName}2", Value = 0.5 }
                 }
-            };
+            });
 
             // Act & Assert
-            var act = () => _formatter.Format(trackingInfo);
+            var act = () => _formatter.Format(serviceStats);
             act.Should().Throw<ArgumentNullException>()
                 .WithMessage("Value cannot be null. (Parameter 'key')");
         }
@@ -408,7 +439,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNegativeValues_FormatsCorrectly()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>
@@ -424,10 +455,10 @@ namespace SharpBridge.Tests.Utilities
                 {
                     [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", -1.0, 1.0, 0.0)
                 }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -449,7 +480,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullWeight_OmitsWeightPart()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>
@@ -465,10 +496,10 @@ namespace SharpBridge.Tests.Utilities
                 {
                     [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", 0.0, 1.0, 0.0)
                 }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
@@ -486,7 +517,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithExtremeValues_HandlesProgressBarCorrectly()
         {
             // Arrange
-            var trackingInfo = new PCTrackingInfo
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
             {
                 FaceFound = true,
                 Parameters = new List<TrackingParam>
@@ -513,10 +544,10 @@ namespace SharpBridge.Tests.Utilities
                     ["MaxValue"] = new VTSParameter("MaxValue", -100.0, 100.0, 0.0),
                     ["MiddleValue"] = new VTSParameter("MiddleValue", -100.0, 100.0, 0.0)
                 }
-            };
+            });
 
             // Act
-            var result = _formatter.Format(trackingInfo);
+            var result = _formatter.Format(serviceStats);
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);

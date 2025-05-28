@@ -96,29 +96,7 @@ namespace SharpBridge.Utilities
             return builder.ToString();
         }
         
-        /// <summary>
-        /// Legacy Format method for IFormatter interface compatibility
-        /// </summary>
-        public string Format(IFormattableObject formattableEntity)
-        {
-            // For legacy compatibility, create a minimal service stats object
-            if (formattableEntity == null) return "No tracking data";
-            if (!(formattableEntity is PhoneTrackingInfo))
-                throw new ArgumentException("Entity must be of type PhoneTrackingInfo", nameof(formattableEntity));
-            
-            // Create a basic service stats for legacy calls
-            var basicStats = new ServiceStats(
-                serviceName: "iPhone Tracking Data",
-                status: "Unknown",
-                currentEntity: formattableEntity,
-                isHealthy: true,
-                lastSuccessfulOperation: DateTime.UtcNow,
-                lastError: null,
-                counters: new Dictionary<string, long>()
-            );
-            
-            return Format(basicStats);
-        }
+
         
         /// <summary>
         /// Appends tracking data details to the string builder
