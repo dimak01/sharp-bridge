@@ -53,11 +53,13 @@ namespace SharpBridge.Utilities
         {
             return status.ToLowerInvariant() switch
             {
-                var s when s.Contains("connect") && !s.Contains("disconnect") => Connected,
-                var s when s.Contains("initializ") => Initializing,
-                var s when s.Contains("sending") || s.Contains("receiving") => Success,
+                // Check for failure states first (more specific patterns)
                 var s when s.Contains("error") || s.Contains("fail") => Error,
                 var s when s.Contains("disconnect") => Disconnected,
+                // Then check for positive states
+                var s when s.Contains("connect") && !s.Contains("disconnect") => Connected,
+                var s when s.Contains("sending") || s.Contains("receiving") => Success,
+                var s when s.Contains("initializ") => Initializing,
                 _ => Info
             };
         }
