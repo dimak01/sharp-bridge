@@ -401,9 +401,130 @@ namespace SharpBridge.Utilities
         private static bool TryAppendGenericMultiColumnTable<T>(StringBuilder builder, List<T> rows, 
             IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth)
         {
-            // For now, fall back to single column - we can implement multi-column later
-            // This is a simplified implementation for Step 1
-            return false;
+            if (!rows.Any() || !columns.Any()) return false;
+            
+            // Calculate column widths for all columns
+            var columnWidths = new int[columns.Count];
+            var totalContentWidth = 0;
+            
+            for (int i = 0; i < columns.Count; i++)
+            {
+                var column = columns[i];
+                var headerWidth = column.Header.Length;
+                
+                // For progress bar columns, use a reasonable default width for testing
+                var testWidth = 6;
+                var maxContentWidth = rows.Max(r => column.ValueFormatter(r, testWidth).Length);
+                columnWidths[i] = Math.Max(headerWidth, maxContentWidth);
+                totalContentWidth += columnWidths[i];
+            }
+            
+            // Add spaces between columns within each table column
+            var spacesPerTableColumn = columns.Count - 1;
+            var minWidthPerTableColumn = totalContentWidth + spacesPerTableColumn;
+            
+            // Calculate available width per table column
+            var columnPadding = 3; // Space between table columns
+            var totalPadding = columnPadding * (targetColumnCount - 1);
+            var availableWidth = consoleWidth - totalPadding;
+            var widthPerTableColumn = availableWidth / targetColumnCount;
+            
+            // Check if content can fit
+            if (minWidthPerTableColumn > widthPerTableColumn)
+            {
+                return false; // Cannot fit, need fallback
+            }
+            
+            // Build headers using adapted logic
+            AppendGenericMultiColumnHeaders(builder, targetColumnCount, columns, columnWidths, columnPadding);
+            
+            // Split rows into table columns
+            var rowsPerTableColumn = (int)Math.Ceiling((double)rows.Count / targetColumnCount);
+            var tableColumnData = new List<List<T>>();
+            
+            for (int col = 0; col < targetColumnCount; col++)
+            {
+                var startIndex = col * rowsPerTableColumn;
+                var endIndex = Math.Min(startIndex + rowsPerTableColumn, rows.Count);
+                var tableColumnRows = rows.Skip(startIndex).Take(endIndex - startIndex).ToList();
+                tableColumnData.Add(tableColumnRows);
+            }
+            
+            // Build data rows using adapted logic
+            var maxRowsInAnyTableColumn = tableColumnData.Max(col => col.Count);
+            for (int rowIndex = 0; rowIndex < maxRowsInAnyTableColumn; rowIndex++)
+            {
+                AppendGenericMultiColumnDataRow(builder, tableColumnData, rowIndex, targetColumnCount, 
+                    columns, columnWidths, columnPadding);
+            }
+            
+            return true; // Success
+        }
+        
+        /// <summary>
+        /// Appends the header rows for generic multi-column layout
+        /// </summary>
+        private static void AppendGenericMultiColumnHeaders<T>(StringBuilder builder, int targetColumnCount, 
+            IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
+        {
+            // Header row
+            var headerBuilder = new StringBuilder();
+            for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
+            {
+                if (tableCol > 0) headerBuilder.Append(new string(' ', columnPadding));
+                
+                // Build header for this table column
+                var headerParts = columns.Select((c, i) => c.Header.PadRight(columnWidths[i]));
+                headerBuilder.Append(string.Join(" ", headerParts));
+            }
+            builder.AppendLine(headerBuilder.ToString());
+            
+            // Separator row
+            var separatorBuilder = new StringBuilder();
+            for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
+            {
+                if (tableCol > 0) separatorBuilder.Append(new string(' ', columnPadding));
+                
+                var separatorLength = columnWidths.Sum() + (columns.Count - 1);
+                separatorBuilder.Append(new string('-', separatorLength));
+            }
+            builder.AppendLine(separatorBuilder.ToString());
+        }
+        
+        /// <summary>
+        /// Appends a single data row across all table columns for generic tables
+        /// </summary>
+        private static void AppendGenericMultiColumnDataRow<T>(StringBuilder builder, 
+            List<List<T>> tableColumnData, int rowIndex, int targetColumnCount,
+            IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
+        {
+            var lineBuilder = new StringBuilder();
+            
+            for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
+            {
+                if (tableCol > 0) lineBuilder.Append(new string(' ', columnPadding));
+                
+                if (rowIndex < tableColumnData[tableCol].Count)
+                {
+                    var row = tableColumnData[tableCol][rowIndex];
+                    
+                    // Build content for this table column
+                    var cellParts = columns.Select((c, i) => 
+                    {
+                        var content = c.ValueFormatter(row, columnWidths[i]);
+                        return content.PadRight(columnWidths[i]);
+                    });
+                    lineBuilder.Append(string.Join(" ", cellParts));
+                }
+                else
+                {
+                    // Empty cell - pad to match table column width
+                    var emptyWidth = columnWidths.Sum() + (columns.Count - 1);
+                    lineBuilder.Append(new string(' ', emptyWidth));
+                }
+            }
+            
+            builder.AppendLine(lineBuilder.ToString());
         }
     }
 } 
