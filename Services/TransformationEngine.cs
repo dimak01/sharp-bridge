@@ -15,7 +15,7 @@ namespace SharpBridge.Services
     /// </summary>
     public class TransformationEngine : ITransformationEngine
     {
-        private readonly List<(string Name, Expression Expression, double Min, double Max, double DefaultValue)> _rules = new();
+        private readonly List<(string Name, Expression Expression, string ExpressionString, double Min, double Max, double DefaultValue)> _rules = new();
         private readonly IAppLogger _logger;
         
         public TransformationEngine(IAppLogger logger)
@@ -84,8 +84,8 @@ namespace SharpBridge.Services
                         invalidRules++;
                     }
                     
-                    // All validation passed, add the rule
-                    _rules.Add((rule.Name, expression, rule.Min, rule.Max, rule.DefaultValue));
+                    // All validation passed, add the rule with the original expression string
+                    _rules.Add((rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue));
                     validRules++;
                 }
                 catch (Exception ex)
@@ -131,8 +131,9 @@ namespace SharpBridge.Services
             
             var paramValues = new List<TrackingParam>();
             var paramDefinitions = new List<VTSParameter>();
+            var paramExpressions = new Dictionary<string, string>();
 
-            foreach (var (name, expression, min, max, defaultValue) in _rules)
+            foreach (var (name, expression, expressionString, min, max, defaultValue) in _rules)
             {
                 try
                 {
@@ -150,6 +151,7 @@ namespace SharpBridge.Services
                     });
 
                     paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
+                    paramExpressions[name] = expressionString;
                 }
                 catch (Exception ex)
                 {
@@ -166,7 +168,8 @@ namespace SharpBridge.Services
             {
                 FaceFound = trackingData.FaceFound,
                 Parameters = paramValues,
-                ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p)
+                ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p),
+                ParameterCalculationExpressions = paramExpressions
             };
         }
         
