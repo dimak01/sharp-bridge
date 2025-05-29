@@ -6,6 +6,7 @@ using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Utilities;
 using Xunit;
+using Moq;
 
 namespace SharpBridge.Tests.Utilities
 {
@@ -13,10 +14,14 @@ namespace SharpBridge.Tests.Utilities
     {
         private const string TrackingParamName = "PCTrackingParam";
         private readonly PCTrackingInfoFormatter _formatter;
+        private readonly Mock<IConsole> _mockConsole;
 
         public PCTrackingInfoFormatterTests()
         {
-            _formatter = new PCTrackingInfoFormatter();
+            _mockConsole = new Mock<IConsole>();
+            _mockConsole.Setup(c => c.WindowWidth).Returns(120);
+            _mockConsole.Setup(c => c.WindowHeight).Returns(30);
+            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object);
         }
 
         /// <summary>

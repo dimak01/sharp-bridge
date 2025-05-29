@@ -14,6 +14,17 @@ namespace SharpBridge.Utilities
     {
         private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
         
+        private readonly IConsole _console;
+        
+        /// <summary>
+        /// Initializes a new instance of the PCTrackingInfoFormatter
+        /// </summary>
+        /// <param name="console">Console abstraction for getting window dimensions</param>
+        public PCTrackingInfoFormatter(IConsole console)
+        {
+            _console = console ?? throw new ArgumentNullException(nameof(console));
+        }
+        
         /// <summary>
         /// Current verbosity level for this formatter
         /// </summary>
@@ -128,13 +139,13 @@ namespace SharpBridge.Utilities
                 new TextColumn<TrackingParam>("Parameter", param => param.Id),
                 new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo)),
                 new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##"),
-                new TextColumn<TrackingParam>("W×Range", param => FormatCompactRange(param, trackingInfo))
+                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo))
             };
 
             // Use the new generic table formatter
-            // For PC tracking, we'll use single-column mode for now to match test expectations
+            // Use 2-column layout as intended
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
-            var layoutMode = builder.AppendGenericTable("Top Parameters:", parametersToShow, columns, 1, 80, 20, singleColumnLimit);
+            var layoutMode = builder.AppendGenericTable("Parameters", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
 
             // Show count of additional parameters if not all are displayed
             if (parameters.Count > displayCount)

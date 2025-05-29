@@ -30,7 +30,7 @@ namespace SharpBridge.Utilities
             
             // Register formatters for known types
             RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter(_console));
-            RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter());
+            RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter(_console));
         }
         
         /// <summary>
