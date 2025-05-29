@@ -426,10 +426,10 @@ namespace SharpBridge.Tests.Utilities
             var paramLine = lines.First(l => l.Contains($"{TrackingParamName}1"));
             
             // Check negative value formatting (should not have extra space)
-            paramLine.Should().Contain("-0.50");
+            paramLine.Should().Contain("-0.5");
             
             // Check negative weight formatting in compact range
-            paramLine.Should().Contain("-0.75 x [-1.00; 0.00; 1.00]");
+            paramLine.Should().Contain("-0.75 x [-1; 0; 1]");
         }
 
         [Fact]
@@ -461,11 +461,11 @@ namespace SharpBridge.Tests.Utilities
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             var paramLine = lines.First(l => l.Contains($"{TrackingParamName}1"));
             
-            // Should use default weight of 1.00
-            paramLine.Should().Contain("1.00 x [0.00; 0.00; 1.00]");
+            // Should use default weight of 1
+            paramLine.Should().Contain("1 x [0; 0; 1]");
             
             // Should contain the value
-            paramLine.Should().Contain("0.50");
+            paramLine.Should().Contain("0.5");
         }
 
         [Fact]
@@ -512,13 +512,13 @@ namespace SharpBridge.Tests.Utilities
             lines.Should().Contain(line => line.Contains("MaxValue"));
             lines.Should().Contain(line => line.Contains("MiddleValue"));
             
-            // Check values are formatted correctly
-            lines.Should().Contain(line => line.Contains("MinValue") && line.Contains("-100.00"));
-            lines.Should().Contain(line => line.Contains("MaxValue") && line.Contains("100.00"));
-            lines.Should().Contain(line => line.Contains("MiddleValue") && line.Contains("0.00"));
+            // Check values are formatted correctly (no unnecessary decimals)
+            lines.Should().Contain(line => line.Contains("MinValue") && line.Contains("-100"));
+            lines.Should().Contain(line => line.Contains("MaxValue") && line.Contains("100"));
+            lines.Should().Contain(line => line.Contains("MiddleValue") && line.Contains("0"));
             
-            // Check compact range format
-            lines.Should().Contain(line => line.Contains("1.00 x [-100.00; 0.00; 100.00]"));
+            // Check compact range format (no unnecessary decimals)
+            lines.Should().Contain(line => line.Contains("1 x [-100; 0; 100]"));
         }
     }
 } 
