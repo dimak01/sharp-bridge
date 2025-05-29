@@ -179,7 +179,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().Contain("Key Expressions:");
+            lines.Should().Contain("BlendShapes:");
             lines.Should().Contain("Total Blend Shapes: 3");
         }
 
@@ -198,7 +198,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().NotContain("Key Expressions:");
+            lines.Should().NotContain("BlendShapes:");
             lines.Should().NotContain("Total Blend Shapes:");
         }
 
@@ -435,7 +435,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().NotContain("Key Expressions:");
+            lines.Should().NotContain("BlendShapes:");
             lines.Should().NotContain("Total Blend Shapes:");
         }
 
@@ -454,7 +454,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().NotContain("Key Expressions:");
+            lines.Should().NotContain("BlendShapes:");
             lines.Should().NotContain("Total Blend Shapes:");
         }
 

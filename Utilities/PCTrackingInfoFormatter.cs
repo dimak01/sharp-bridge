@@ -49,11 +49,11 @@ namespace SharpBridge.Utilities
             // Tracking data details
             if (serviceStats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
             {
-                var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
-                
-                if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
-                {
-                    AppendParameters(builder, pcTrackingInfo);
+            var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
+            
+            if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
+            {
+                AppendParameters(builder, pcTrackingInfo);
                 }
             }
             else if (serviceStats.CurrentEntity != null)
@@ -103,9 +103,9 @@ namespace SharpBridge.Utilities
                 var faceIcon = pcTrackingInfo.FaceFound ? "√" : "X";
                 var faceColor = pcTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
                 builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(pcTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
-                
+            
                 var parameterCount = pcTrackingInfo.Parameters?.Count() ?? 0;
-                builder.AppendLine($"Parameter Count: {parameterCount}");
+            builder.AppendLine($"Parameter Count: {parameterCount}");
             }
             
             builder.AppendLine();
