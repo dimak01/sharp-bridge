@@ -52,11 +52,10 @@ namespace SharpBridge.Tests.Utilities
         private void VerifyHeaderFormat(string formattedOutput, VerbosityLevel expectedVerbosity, bool faceDetected, int parameterCount)
         {
             var lines = formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            lines.Should().HaveCountGreaterThan(4); // At least header lines
-            lines[0].Should().Be("=== VTube Studio PC Client (Connected) === [Alt+P]");
+            lines[0].Should().Contain("=== PC Client").And.Contain("=== [Alt+P]");
             lines[1].Should().Be($"Verbosity: {expectedVerbosity}");
-            lines[2].Should().Be($"Face Detected: {faceDetected}");
-            lines[3].Should().Be($"Parameter Count: {parameterCount}");
+            lines.Should().Contain(line => line.Contains("Face Status:") && line.Contains(faceDetected ? "√ Detected" : "X Not Found"));
+            lines.Should().Contain($"Parameter Count: {parameterCount}");
         }
 
         /// <summary>

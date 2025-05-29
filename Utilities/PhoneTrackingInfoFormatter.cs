@@ -144,24 +144,25 @@ namespace SharpBridge.Utilities
                     ? phoneTrackingInfo.BlendShapes.Count 
                     : TARGET_ROWS_NORMAL * TARGET_COLUMN_COUNT;
 
-                // Sort blend shapes by name and prepare table data
+                // Sort blend shapes by name and prepare for generic table
                 var sortedShapes = phoneTrackingInfo.BlendShapes
                     .Where(s => s != null)
                     .OrderBy(s => s.Key)
                     .Take(maxDisplayCount)
                     .ToList();
 
-                var tableRows = sortedShapes.Select(s => (
-                    Name: s.Key,
-                    ProgressValue: (double)s.Value,
-                    DisplayValue: $"{s.Value:F2}"
-                ));
+                // Define columns for the generic table
+                var columns = new List<ITableColumn<BlendShape>>
+                {
+                    new TextColumn<BlendShape>("Expression", shape => shape.Key),
+                    new ProgressBarColumn<BlendShape>("", shape => shape.Value),
+                    new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2")
+                };
 
-                // Use TableFormatter to create the table and get layout mode
+                // Use the new generic table formatter
                 // In single-column mode, limit to TARGET_ROWS_NORMAL for normal verbosity, or show all for detailed
                 var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
-                var layoutMode = TableFormatter.AppendTable(builder, "Key Expressions:", tableRows, TARGET_COLUMN_COUNT, _console.WindowWidth, 
-                    singleColumnBarWidth: 20, singleColumnMaxItems: singleColumnLimit);
+                var layoutMode = builder.AppendGenericTable("BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
 
                 // Adjust display count based on actual layout mode used
                 int actualDisplayCount = layoutMode == TableLayoutMode.MultiColumn 

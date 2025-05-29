@@ -230,23 +230,75 @@ namespace SharpBridge.Utilities
     }
     
     /// <summary>
-    /// Represents a column definition for generic table formatting
+    /// Base interface for all table column types
     /// </summary>
     /// <typeparam name="T">The type of data being displayed in the table</typeparam>
-    public class TableColumn<T>
+    public interface ITableColumn<T>
     {
         /// <summary>
         /// The header text for this column
         /// </summary>
-        public string Header { get; set; }
+        string Header { get; }
         
         /// <summary>
-        /// Function to generate the cell content for this column
+        /// Formats the cell content for this column using the actual calculated width
         /// </summary>
         /// <param name="item">The data item for this row</param>
-        /// <param name="columnWidth">The calculated width available for this column</param>
+        /// <param name="width">The actual calculated width for this column</param>
         /// <returns>The formatted cell content</returns>
-        public Func<T, int, string> ValueSelector { get; set; }
+        Func<T, int, string> ValueFormatter { get; }
+    }
+    
+    /// <summary>
+    /// A simple text column that displays string content
+    /// </summary>
+    /// <typeparam name="T">The type of data being displayed</typeparam>
+    public class TextColumn<T> : ITableColumn<T>
+    {
+        public string Header { get; }
+        public Func<T, int, string> ValueFormatter { get; }
+        
+        public TextColumn(string header, Func<T, string> valueSelector)
+        {
+            Header = header ?? throw new ArgumentNullException(nameof(header));
+            ValueFormatter = (item, width) => valueSelector(item);
+        }
+    }
+    
+    /// <summary>
+    /// A progress bar column that displays a visual progress bar
+    /// </summary>
+    /// <typeparam name="T">The type of data being displayed</typeparam>
+    public class ProgressBarColumn<T> : ITableColumn<T>
+    {
+        public string Header { get; }
+        public Func<T, int, string> ValueFormatter { get; }
+        
+        public ProgressBarColumn(string header, Func<T, double> valueSelector)
+        {
+            Header = header ?? throw new ArgumentNullException(nameof(header));
+            ValueFormatter = (item, width) => 
+            {
+                var value = valueSelector(item);
+                return TableFormatter.CreateProgressBar(value, width);
+            };
+        }
+    }
+    
+    /// <summary>
+    /// A numeric column that displays formatted numbers
+    /// </summary>
+    /// <typeparam name="T">The type of data being displayed</typeparam>
+    public class NumericColumn<T> : ITableColumn<T>
+    {
+        public string Header { get; }
+        public Func<T, int, string> ValueFormatter { get; }
+        
+        public NumericColumn(string header, Func<T, double> valueSelector, string format = "F2")
+        {
+            Header = header ?? throw new ArgumentNullException(nameof(header));
+            ValueFormatter = (item, width) => valueSelector(item).ToString(format);
+        }
     }
     
     /// <summary>
@@ -264,17 +316,18 @@ namespace SharpBridge.Utilities
         /// <param name="columns">Column definitions</param>
         /// <param name="targetColumnCount">Number of side-by-side table columns to create</param>
         /// <param name="consoleWidth">Available console width</param>
+        /// <param name="singleColumnBarWidth">Progress bar width for single-column mode (default 20)</param>
         /// <param name="singleColumnMaxItems">Maximum items to show in single-column mode (default: show all)</param>
         /// <returns>The layout mode used (SingleColumn or MultiColumn)</returns>
         public static TableLayoutMode AppendGenericTable<T>(this StringBuilder builder, string title,
-            IEnumerable<T> rows, IList<TableColumn<T>> columns, int targetColumnCount, int consoleWidth,
-            int? singleColumnMaxItems = null)
+            IEnumerable<T> rows, IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth,
+            int singleColumnBarWidth = 20, int? singleColumnMaxItems = null)
         {
+            // Add title first, regardless of whether we have rows
+            builder.AppendLine(title);
+            
             var rowList = rows?.ToList() ?? new List<T>();
             if (!rowList.Any()) return TableLayoutMode.SingleColumn;
-            
-            // Add title
-            builder.AppendLine(title);
             
             // Single column or fallback case
             if (targetColumnCount <= 1)
@@ -282,7 +335,7 @@ namespace SharpBridge.Utilities
                 var singleColumnRows = singleColumnMaxItems.HasValue 
                     ? rowList.Take(singleColumnMaxItems.Value).ToList() 
                     : rowList;
-                AppendGenericSingleColumnTable(builder, singleColumnRows, columns);
+                AppendGenericSingleColumnTable(builder, singleColumnRows, columns, singleColumnBarWidth);
                 return TableLayoutMode.SingleColumn;
             }
             
@@ -296,40 +349,49 @@ namespace SharpBridge.Utilities
             var fallbackRows = singleColumnMaxItems.HasValue 
                 ? rowList.Take(singleColumnMaxItems.Value).ToList() 
                 : rowList;
-            AppendGenericSingleColumnTable(builder, fallbackRows, columns);
+            AppendGenericSingleColumnTable(builder, fallbackRows, columns, singleColumnBarWidth);
             return TableLayoutMode.SingleColumn;
         }
         
         /// <summary>
-        /// Appends a single-column table using generic column definitions
+        /// Appends a single-column table using strongly-typed column definitions
         /// </summary>
-        private static void AppendGenericSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<TableColumn<T>> columns)
+        private static void AppendGenericSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumn<T>> columns, int barWidth)
         {
-            // Calculate column widths by sampling content
+            if (!rows.Any() || !columns.Any()) return;
+            
+            // Calculate column widths dynamically
             var columnWidths = new int[columns.Count];
+            
             for (int i = 0; i < columns.Count; i++)
             {
-                var headerWidth = columns[i].Header.Length;
-                var maxContentWidth = rows.Take(Math.Min(10, rows.Count)) // Sample first 10 rows for width calculation
-                    .Select(r => columns[i].ValueSelector(r, 50).Length) // Use temp width of 50 for sampling
-                    .DefaultIfEmpty(0)
-                    .Max();
+                var column = columns[i];
+                var headerWidth = column.Header.Length;
+                
+                // Calculate max content width by testing all rows with the bar width
+                // For progress bar columns, use the provided barWidth; for others, use a reasonable test width
+                var testWidth = barWidth;
+                var maxContentWidth = rows.Max(r => column.ValueFormatter(r, testWidth).Length);
                 columnWidths[i] = Math.Max(headerWidth, maxContentWidth);
             }
             
             // Add header row
-            var headerLine = string.Join(" ", columns.Select((c, i) => c.Header.PadRight(columnWidths[i])));
-            builder.AppendLine(headerLine);
+            var headerParts = columns.Select((c, i) => c.Header.PadRight(columnWidths[i]));
+            builder.AppendLine(string.Join(" ", headerParts));
             
             // Add separator line
-            var separatorLength = columnWidths.Sum() + (columns.Count - 1); // +spaces between columns
+            var separatorLength = columnWidths.Sum() + (columns.Count - 1);
             builder.AppendLine(new string('-', separatorLength));
             
             // Add data rows
             foreach (var row in rows)
             {
-                var cells = columns.Select((c, i) => c.ValueSelector(row, columnWidths[i]).PadRight(columnWidths[i]));
-                builder.AppendLine(string.Join(" ", cells));
+                var cellParts = columns.Select((c, i) => 
+                {
+                    var content = c.ValueFormatter(row, columnWidths[i]);
+                    return content.PadRight(columnWidths[i]);
+                });
+                builder.AppendLine(string.Join(" ", cellParts));
             }
         }
         
@@ -337,7 +399,7 @@ namespace SharpBridge.Utilities
         /// Attempts to append a multi-column table using generic column definitions
         /// </summary>
         private static bool TryAppendGenericMultiColumnTable<T>(StringBuilder builder, List<T> rows, 
-            IList<TableColumn<T>> columns, int targetColumnCount, int consoleWidth)
+            IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth)
         {
             // For now, fall back to single column - we can implement multi-column later
             // This is a simplified implementation for Step 1
