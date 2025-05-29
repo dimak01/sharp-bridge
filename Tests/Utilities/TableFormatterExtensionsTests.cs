@@ -163,13 +163,16 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void AppendGenericTable_WithMultipleColumns_FallsBackToSingleColumn()
+        public void AppendGenericTable_WithMultipleColumns_CreatesMultiColumnLayout()
         {
             // Arrange
             var builder = new StringBuilder();
             var rows = new List<TestItem>
             {
-                new TestItem { Name = "Test", Value = 1.0, Status = "OK" }
+                new TestItem { Name = "Test1", Value = 1.0, Status = "OK" },
+                new TestItem { Name = "Test2", Value = 2.0, Status = "Good" },
+                new TestItem { Name = "Test3", Value = 3.0, Status = "Great" },
+                new TestItem { Name = "Test4", Value = 4.0, Status = "Perfect" }
             };
             var columns = new List<ITableColumn<TestItem>>
             {
@@ -177,14 +180,47 @@ namespace SharpBridge.Tests.Utilities
                 new NumericColumn<TestItem>("Value", item => item.Value, "F2")
             };
 
-            // Act - Request 2 columns but should fall back to single column (multi-column not implemented yet)
-            var result = builder.AppendGenericTable("Multi-Column Test", rows, columns, 2, 80, 20);
+            // Act - Request 2 columns with sufficient width
+            var result = builder.AppendGenericTable("Multi-Column Test", rows, columns, 2, 120, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn); // Should fall back
+            result.Should().Be(TableLayoutMode.MultiColumn);
             var output = builder.ToString();
             output.Should().Contain("Multi-Column Test");
-            output.Should().Contain("Test");
+            output.Should().Contain("Test1");
+            output.Should().Contain("Test2");
+            output.Should().Contain("Test3");
+            output.Should().Contain("Test4");
+            
+            // Should have multiple table columns side by side
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            lines.Length.Should().BeGreaterThan(3); // Title, header, separator, data rows
+        }
+
+        [Fact]
+        public void AppendGenericTable_WithInsufficientWidth_FallsBackToSingleColumn()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "VeryLongTestName", Value = 1.0, Status = "VeryLongStatusText" }
+            };
+            var columns = new List<ITableColumn<TestItem>>
+            {
+                new TextColumn<TestItem>("Name", item => item.Name),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F2"),
+                new TextColumn<TestItem>("Status", item => item.Status)
+            };
+
+            // Act - Request 3 columns but with insufficient width
+            var result = builder.AppendGenericTable("Narrow Test", rows, columns, 3, 40, 20);
+
+            // Assert
+            result.Should().Be(TableLayoutMode.SingleColumn); // Should fall back due to width constraints
+            var output = builder.ToString();
+            output.Should().Contain("Narrow Test");
+            output.Should().Contain("VeryLongTestName");
         }
 
         [Fact]
