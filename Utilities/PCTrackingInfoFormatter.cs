@@ -127,8 +127,8 @@ namespace SharpBridge.Utilities
             {
                 new TextColumn<TrackingParam>("Parameter", param => param.Id),
                 new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo)),
-                new NumericColumn<TrackingParam>("Value", param => param.Value, "F2"),
-                new TextColumn<TrackingParam>("Weight x [Min; Default; Max]", param => FormatCompactRange(param, trackingInfo))
+                new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##"),
+                new TextColumn<TrackingParam>("W×Range", param => FormatCompactRange(param, trackingInfo))
             };
 
             // Use the new generic table formatter
@@ -166,13 +166,13 @@ namespace SharpBridge.Utilities
         /// </summary>
         private string FormatCompactRange(TrackingParam param, PCTrackingInfo trackingInfo)
         {
-            var weight = param.Weight?.ToString("F2") ?? "1.00";
+            var weight = param.Weight?.ToString("0.##") ?? "1";
             
             if (trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition))
             {
-                var min = definition.Min.ToString("F2");
-                var defaultVal = definition.DefaultValue.ToString("F2");
-                var max = definition.Max.ToString("F2");
+                var min = definition.Min.ToString("0.##");
+                var defaultVal = definition.DefaultValue.ToString("0.##");
+                var max = definition.Max.ToString("0.##");
                 return $"{weight} x [{min}; {defaultVal}; {max}]";
             }
             
