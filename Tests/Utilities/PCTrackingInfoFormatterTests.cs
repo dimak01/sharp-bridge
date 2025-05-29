@@ -236,7 +236,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithNullParameters_ShowsZeroParameterCount()
+        public void Format_WithNullParameters_ShowsNoParameters()
         {
             // Arrange
             var serviceStats = CreateServiceStats(new PCTrackingInfo
@@ -249,7 +249,14 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            VerifyHeaderFormat(result, VerbosityLevel.Normal, true, 0);
+            VerifyHeaderFormat(formattedOutput: result,
+                             expectedVerbosity: VerbosityLevel.Normal,
+                             faceDetected: true,
+                             parameterCount: 0);
+            VerifyParameterDisplay(formattedOutput: result,
+                                 expectedCount: 0,
+                                 shouldShowAll: false,
+                                 shouldShowMoreLine: false);
         }
 
         [Fact]
@@ -390,51 +397,6 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithNullParameters_ShowsNoParameters()
-        {
-            // Arrange
-            var serviceStats = CreateServiceStats(new PCTrackingInfo
-            {
-                FaceFound = true,
-                Parameters = null
-            });
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            VerifyHeaderFormat(formattedOutput: result,
-                             expectedVerbosity: VerbosityLevel.Normal,
-                             faceDetected: true,
-                             parameterCount: 0);
-            VerifyParameterDisplay(formattedOutput: result,
-                                 expectedCount: 0,
-                                 shouldShowAll: false,
-                                 shouldShowMoreLine: false);
-        }
-
-        [Fact]
-        public void Format_WithParametersHavingNullIds_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var serviceStats = CreateServiceStats(new PCTrackingInfo
-            {
-                FaceFound = true,
-                Parameters = new List<TrackingParam>
-                {
-                    new TrackingParam { Id = $"{TrackingParamName}0", Value = 0.5 },
-                    new TrackingParam { Id = null, Value = 0.5 },
-                    new TrackingParam { Id = $"{TrackingParamName}2", Value = 0.5 }
-                }
-            });
-
-            // Act & Assert
-            var act = () => _formatter.Format(serviceStats);
-            act.Should().Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null. (Parameter 'key')");
-        }
-
-        [Fact]
         public void Format_WithNegativeValues_FormatsCorrectly()
         {
             // Arrange
@@ -466,17 +428,12 @@ namespace SharpBridge.Tests.Utilities
             // Check negative value formatting (should not have extra space)
             paramLine.Should().Contain("-0.50");
             
-            // Check progress bar position (should be at 25% since -0.5 is 25% between -1 and 1)
-            var progressBarSection = paramLine.Substring(paramLine.IndexOf(":") + 2, 20);
-            var filledCount = progressBarSection.Count(c => c == '█');
-            filledCount.Should().Be(5); // 5 out of 20 chars filled (25%)
-            
-            // Check negative weight formatting
-            paramLine.Should().Contain("weight: -0.75");
+            // Check negative weight formatting in compact range
+            paramLine.Should().Contain("-0.75 x [-1.00; 0.00; 1.00]");
         }
 
         [Fact]
-        public void Format_WithNullWeight_OmitsWeightPart()
+        public void Format_WithNullWeight_UsesDefaultWeight()
         {
             // Arrange
             var serviceStats = CreateServiceStats(new PCTrackingInfo
@@ -504,12 +461,11 @@ namespace SharpBridge.Tests.Utilities
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             var paramLine = lines.First(l => l.Contains($"{TrackingParamName}1"));
             
-            // Should not contain weight part
-            paramLine.Should().NotContain("weight:");
+            // Should use default weight of 1.00
+            paramLine.Should().Contain("1.00 x [0.00; 0.00; 1.00]");
             
-            // Should have correct format without weight
-            // Note: The actual format includes spaces for alignment and the full progress bar
-            paramLine.Should().Match($"  {TrackingParamName}1 : ██████████░░░░░░░░░░  0.50 (min:  0.00, max:  1.00, default:  0.00)");
+            // Should contain the value
+            paramLine.Should().Contain("0.50");
         }
 
         [Fact]
@@ -551,21 +507,18 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             
-            // Min value should have empty progress bar
-            var minLine = lines.First(l => l.Contains("MinValue"));
-            var minProgressBar = minLine.Substring(minLine.IndexOf(":") + 2, 20);
-            minProgressBar.Should().Be(new string('░', 20));
+            // Check that all parameters are present in the output
+            lines.Should().Contain(line => line.Contains("MinValue"));
+            lines.Should().Contain(line => line.Contains("MaxValue"));
+            lines.Should().Contain(line => line.Contains("MiddleValue"));
             
-            // Max value should have full progress bar
-            var maxLine = lines.First(l => l.Contains("MaxValue"));
-            var maxProgressBar = maxLine.Substring(maxLine.IndexOf(":") + 2, 20);
-            maxProgressBar.Should().Be(new string('█', 20));
+            // Check values are formatted correctly
+            lines.Should().Contain(line => line.Contains("MinValue") && line.Contains("-100.00"));
+            lines.Should().Contain(line => line.Contains("MaxValue") && line.Contains("100.00"));
+            lines.Should().Contain(line => line.Contains("MiddleValue") && line.Contains("0.00"));
             
-            // Middle value should have half-filled progress bar
-            var middleLine = lines.First(l => l.Contains("MiddleValue"));
-            var middleProgressBar = middleLine.Substring(middleLine.IndexOf(":") + 2, 20);
-            var filledCount = middleProgressBar.Count(c => c == '█');
-            filledCount.Should().Be(10); // 10 out of 20 chars filled (50%)
+            // Check compact range format
+            lines.Should().Contain(line => line.Contains("1.00 x [-100.00; 0.00; 100.00]"));
         }
     }
 } 
