@@ -823,5 +823,69 @@ namespace SharpBridge.Tests.Services
             // Assert
             parameters.Should().BeEmpty();
         }
+
+        [Fact]
+        public async Task TransformData_PopulatesParameterCalculationExpressions()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""TestParam1"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""TestParam2"",
+                    ""func"": ""HeadPosX + HeadPosY"",
+                    ""min"": -10,
+                    ""max"": 10,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
+                await engine.LoadRulesAsync(filePath);
+                
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    Position = new Coordinates { X = 0.1, Y = 0.2, Z = 0 },
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                // Act
+                var result = engine.TransformData(trackingData);
+                
+                // Assert
+                result.Should().NotBeNull();
+                result.ParameterCalculationExpressions.Should().NotBeNull();
+                result.ParameterCalculationExpressions.Should().HaveCount(2);
+                
+                // Verify expressions are stored correctly
+                result.ParameterCalculationExpressions.Should().ContainKey("TestParam1");
+                result.ParameterCalculationExpressions["TestParam1"].Should().Be("eyeBlinkLeft * 100");
+                
+                result.ParameterCalculationExpressions.Should().ContainKey("TestParam2");
+                result.ParameterCalculationExpressions["TestParam2"].Should().Be("HeadPosX + HeadPosY");
+                
+                // Verify GetExpression helper method works
+                result.GetExpression("TestParam1").Should().Be("eyeBlinkLeft * 100");
+                result.GetExpression("TestParam2").Should().Be("HeadPosX + HeadPosY");
+                result.GetExpression("NonExistentParam").Should().BeNull();
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
     }
 } 

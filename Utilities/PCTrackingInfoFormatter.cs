@@ -142,7 +142,8 @@ namespace SharpBridge.Utilities
                 new TextColumn<TrackingParam>("Parameter", param => param.Id),
                 new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo)),
                 new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##"),
-                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo))
+                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo)),
+                new TextColumn<TrackingParam>("Expression", param => FormatExpression(param, trackingInfo))
             };
 
             // Use the new generic table formatter
@@ -192,6 +193,26 @@ namespace SharpBridge.Utilities
             
             // Fallback for parameters without definitions
             return $"{weight} x [no definition]";
+        }
+        
+        /// <summary>
+        /// Formats the transformation expression for a parameter
+        /// </summary>
+        private string FormatExpression(TrackingParam param, PCTrackingInfo trackingInfo)
+        {
+            if (trackingInfo.ParameterCalculationExpressions.TryGetValue(param.Id, out var expression))
+            {
+                // Truncate long expressions for display
+                const int maxLength = 90;
+                if (expression.Length > maxLength)
+                {
+                    return expression.Substring(0, maxLength - 3) + "...";
+                }
+                return expression;
+            }
+            
+            // Fallback for parameters without expressions
+            return "[no expression]";
         }
         
         /// <summary>

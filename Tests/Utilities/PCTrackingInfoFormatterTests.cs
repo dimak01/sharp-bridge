@@ -531,5 +531,115 @@ namespace SharpBridge.Tests.Utilities
             // Check compact range format (no unnecessary decimals)
             lines.Should().Contain(line => line.Contains("1 x [-100; 0; 100]"));
         }
+
+        [Fact]
+        public void Format_WithExpressions_ShowsExpressionColumn()
+        {
+            // Arrange
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
+            {
+                FaceFound = true,
+                Parameters = new List<TrackingParam>
+                {
+                    new TrackingParam 
+                    { 
+                        Id = $"{TrackingParamName}1",
+                        Value = 0.5,
+                        Weight = 1.0
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", 0.0, 1.0, 0.0)
+                },
+                ParameterCalculationExpressions = new Dictionary<string, string>
+                {
+                    [$"{TrackingParamName}1"] = "eyeBlinkLeft * 100"
+                }
+            });
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            
+            // Should contain the expression in the output
+            lines.Should().Contain(line => line.Contains("eyeBlinkLeft * 100"));
+            
+            // Should contain the parameter name
+            lines.Should().Contain(line => line.Contains($"{TrackingParamName}1"));
+        }
+
+        [Fact]
+        public void Format_WithLongExpression_TruncatesExpression()
+        {
+            // Arrange
+            var longExpression = "this_is_a_very_long_expression_that_should_be_truncated_for_display_purposes";
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
+            {
+                FaceFound = true,
+                Parameters = new List<TrackingParam>
+                {
+                    new TrackingParam 
+                    { 
+                        Id = $"{TrackingParamName}1",
+                        Value = 0.5
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", 0.0, 1.0, 0.0)
+                },
+                ParameterCalculationExpressions = new Dictionary<string, string>
+                {
+                    [$"{TrackingParamName}1"] = longExpression
+                }
+            });
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            
+            // Should contain truncated expression (27 chars + "...")
+            lines.Should().Contain(line => line.Contains("this_is_a_very_long_express..."));
+            
+            // Should not contain the full long expression
+            lines.Should().NotContain(line => line.Contains(longExpression));
+        }
+
+        [Fact]
+        public void Format_WithoutExpressions_ShowsNoExpressionFallback()
+        {
+            // Arrange
+            var serviceStats = CreateServiceStats(new PCTrackingInfo
+            {
+                FaceFound = true,
+                Parameters = new List<TrackingParam>
+                {
+                    new TrackingParam 
+                    { 
+                        Id = $"{TrackingParamName}1",
+                        Value = 0.5
+                    }
+                },
+                ParameterDefinitions = new Dictionary<string, VTSParameter>
+                {
+                    [$"{TrackingParamName}1"] = new VTSParameter($"{TrackingParamName}1", 0.0, 1.0, 0.0)
+                },
+                ParameterCalculationExpressions = new Dictionary<string, string>()
+            });
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            
+            // Should contain the fallback text for missing expressions
+            lines.Should().Contain(line => line.Contains("[no expression]"));
+        }
     }
 } 
