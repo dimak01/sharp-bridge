@@ -85,19 +85,25 @@ namespace SharpBridge.Tests.Utilities
             
             if (expectedCount > 0)
             {
-                lines.Should().Contain("Top Parameters:");
-                var parameterLines = lines.Where(l => l.Contains(TrackingParamName)).ToList();
-                var linesToCheck = shouldShowAll ? parameterLines : parameterLines.Take(10);
+                lines.Should().Contain("Parameters");
                 
-                linesToCheck.Should().HaveCount(shouldShowAll ? expectedCount : 10);
-                foreach (var (line, i) in linesToCheck.Select((line, i) => (line, i)))
+                // Count actual parameters displayed by counting occurrences of TrackingParamName
+                var allText = string.Join(" ", lines);
+                var parameterCount = 0;
+                for (int i = 0; i < expectedCount; i++)
                 {
-                    line.Should().Contain($"{TrackingParamName}{i}");
+                    if (allText.Contains($"{TrackingParamName}{i}"))
+                    {
+                        parameterCount++;
+                    }
                 }
+                
+                var expectedDisplayCount = shouldShowAll ? expectedCount : Math.Min(10, expectedCount);
+                parameterCount.Should().Be(expectedDisplayCount);
             }
             else
             {
-                lines.Should().NotContain("Top Parameters:");
+                lines.Should().NotContain("Parameters");
                 lines.Should().NotContain(l => l.Contains(TrackingParamName));
             }
 

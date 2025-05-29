@@ -130,8 +130,11 @@ namespace SharpBridge.Utilities
             var parameters = trackingInfo.Parameters.ToList();
             int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? parameters.Count : PARAM_DISPLAY_COUNT_NORMAL;
             
-            // Take only the parameters we want to display
-            var parametersToShow = parameters.Take(displayCount).ToList();
+            // Sort parameters by ID and take only the parameters we want to display
+            var parametersToShow = parameters
+                .OrderBy(p => p.Id)
+                .Take(displayCount)
+                .ToList();
             
             // Define columns for the generic table
             var columns = new List<ITableColumn<TrackingParam>>
