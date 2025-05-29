@@ -112,26 +112,30 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Appends the parameter information to the string builder
+        /// Appends the parameter information to the string builder using the new table format
         /// </summary>
         private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo)
         {
-            builder.AppendLine();
-            builder.AppendLine("Top Parameters:");
             var parameters = trackingInfo.Parameters.ToList();
             int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? parameters.Count : PARAM_DISPLAY_COUNT_NORMAL;
             
-            // Calculate the length of the longest parameter ID for proper alignmentDispose_WhenCalled_ClosesWebSocketDispose_WhenCalled_ClosesWebSocket
-            int maxIdLength = CalculateMaxIdLength(parameters, displayCount);
+            // Take only the parameters we want to display
+            var parametersToShow = parameters.Take(displayCount).ToList();
             
-            // Display parameters
-            for (int i = 0; i < Math.Min(displayCount, parameters.Count); i++)
+            // Define columns for the generic table
+            var columns = new List<ITableColumn<TrackingParam>>
             {
-                var param = parameters[i];
-                trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition);
-                AppendParameterInfo(builder, param, maxIdLength, definition);
-            }
-            
+                new TextColumn<TrackingParam>("Parameter", param => param.Id),
+                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo)),
+                new NumericColumn<TrackingParam>("Value", param => param.Value, "F2"),
+                new TextColumn<TrackingParam>("Weight x [Min; Default; Max]", param => FormatCompactRange(param, trackingInfo))
+            };
+
+            // Use the new generic table formatter
+            // For PC tracking, we'll use single-column mode for now to match test expectations
+            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
+            var layoutMode = builder.AppendGenericTable("Top Parameters:", parametersToShow, columns, 1, 80, 20, singleColumnLimit);
+
             // Show count of additional parameters if not all are displayed
             if (parameters.Count > displayCount)
             {
@@ -140,96 +144,40 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Calculates the maximum ID length for proper alignment
+        /// Calculates the normalized value (0.0 to 1.0) for a parameter based on its definition
         /// </summary>
-        private int CalculateMaxIdLength(List<TrackingParam> parameters, int displayCount)
+        private double CalculateNormalizedValue(TrackingParam param, PCTrackingInfo trackingInfo)
         {
-            int maxIdLength = parameters.Take(displayCount)
-                .Select(p => p.Id?.Length ?? 0)
-                .DefaultIfEmpty(0)
-                .Max();
-            
-            // Add 1 for extra spacing
-            return maxIdLength + 1;
-        }
-        
-        /// <summary>
-        /// Appends a single parameter's information to the string builder
-        /// </summary>
-        private void AppendParameterInfo(StringBuilder builder, TrackingParam param, int maxIdLength, VTSParameter definition)
-        {
-            string id = param.Id ?? string.Empty;
-            string formattedValue = FormatNumericValue(param.Value);
-            
-            string progressBar = definition != null 
-                ? CreateProgressBar(param.Value, definition.Min, definition.Max)
-                : CreateProgressBar(param.Value, -1, 1); // Fallback to default range
-                
-            string weightPart = FormatWeightPart(param);
-            string rangeInfo = FormatRangeInfo(definition);
-            
-            builder.AppendLine($"  {id.PadRight(maxIdLength)}: {progressBar} {formattedValue} ({(string.IsNullOrEmpty(weightPart) ? "" : $"{weightPart}, ")}{rangeInfo})");
-        }
-        
-        /// <summary>
-        /// Creates a progress bar visualization for a parameter value
-        /// </summary>
-        private string CreateProgressBar(double value, double min, double max)
-        {
-            const int barLength = 20;
-            const char fillChar = '█';
-            const char emptyChar = '░';
-            
-            // Calculate the normalized position (0.0 to 1.0)
-            double range = max - min;
-            double normalizedValue = range != 0 ? (value - min) / range : 0.5;
-            
-            // Clamp to valid range
-            normalizedValue = Math.Max(0, Math.Min(1, normalizedValue));
-            
-            // Calculate the number of filled positions
-            int fillCount = (int)Math.Round(normalizedValue * barLength);
-            
-            // Build the progress bar
-            var barBuilder = new StringBuilder(barLength);
-            for (int i = 0; i < barLength; i++)
+            if (trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition))
             {
-                barBuilder.Append(i < fillCount ? fillChar : emptyChar);
+                double range = definition.Max - definition.Min;
+                if (range != 0)
+                {
+                    return Math.Max(0, Math.Min(1, (param.Value - definition.Min) / range));
+                }
             }
             
-            return barBuilder.ToString();
+            // Fallback: assume range of -1 to 1
+            return Math.Max(0, Math.Min(1, (param.Value + 1) / 2));
         }
         
         /// <summary>
-        /// Formats a numeric value with sign-aware padding
+        /// Formats the compact range information for a parameter
         /// </summary>
-        private string FormatNumericValue(double value)
+        private string FormatCompactRange(TrackingParam param, PCTrackingInfo trackingInfo)
         {
-            // Add a space before positive numbers to align with negative numbers
-            return value >= 0 ? $" {value:F2}" : $"{value:F2}";
-        }
-        
-        /// <summary>
-        /// Formats the weight part of a parameter
-        /// </summary>
-        private string FormatWeightPart(TrackingParam param)
-        {
-            if (!param.Weight.HasValue) return "";
-            return $"weight: {FormatNumericValue(param.Weight.Value)}";
-        }
-        
-        /// <summary>
-        /// Formats the range information of a parameter
-        /// </summary>
-        private string FormatRangeInfo(VTSParameter definition)
-        {
-            if (definition == null) return "no definition";
+            var weight = param.Weight?.ToString("F2") ?? "1.00";
             
-            string minStr = $"min: {FormatNumericValue(definition.Min)}";
-            string maxStr = $"max: {FormatNumericValue(definition.Max)}";
-            string defaultStr = $"default: {FormatNumericValue(definition.DefaultValue)}";
+            if (trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition))
+            {
+                var min = definition.Min.ToString("F2");
+                var defaultVal = definition.DefaultValue.ToString("F2");
+                var max = definition.Max.ToString("F2");
+                return $"{weight} x [{min}; {defaultVal}; {max}]";
+            }
             
-            return $"{minStr}, {maxStr}, {defaultStr}";
+            // Fallback for parameters without definitions
+            return $"{weight} x [no definition]";
         }
         
         /// <summary>
