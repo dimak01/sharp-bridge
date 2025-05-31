@@ -241,12 +241,34 @@ namespace SharpBridge.Utilities
         string Header { get; }
         
         /// <summary>
-        /// Formats the cell content for this column using the actual calculated width
+        /// Minimum width this column requires (including header)
+        /// </summary>
+        int MinWidth { get; }
+        
+        /// <summary>
+        /// Maximum width this column should use (null = unlimited)
+        /// </summary>
+        int? MaxWidth { get; }
+        
+        /// <summary>
+        /// Formats the value without width constraints - used for measuring natural content size
+        /// </summary>
+        Func<T, string> ValueFormatter { get; }
+        
+        /// <summary>
+        /// Formats and pads the cell content for this column
         /// </summary>
         /// <param name="item">The data item for this row</param>
-        /// <param name="width">The actual calculated width for this column</param>
-        /// <returns>The formatted cell content</returns>
-        Func<T, int, string> ValueFormatter { get; }
+        /// <param name="width">The actual allocated width for this column</param>
+        /// <returns>The formatted and padded cell content</returns>
+        string FormatCell(T item, int width);
+        
+        /// <summary>
+        /// Formats and pads the header for this column
+        /// </summary>
+        /// <param name="width">The actual allocated width for this column</param>
+        /// <returns>The formatted and padded header</returns>
+        string FormatHeader(int width);
     }
     
     /// <summary>
@@ -256,12 +278,35 @@ namespace SharpBridge.Utilities
     public class TextColumn<T> : ITableColumn<T>
     {
         public string Header { get; }
-        public Func<T, int, string> ValueFormatter { get; }
+        public int MinWidth { get; }
+        public int? MaxWidth { get; }
+        public Func<T, string> ValueFormatter { get; }
         
-        public TextColumn(string header, Func<T, string> valueSelector)
+        private readonly bool _padLeft;
+        
+        public TextColumn(string header, Func<T, string> valueSelector, int minWidth = 0, int? maxWidth = null, bool padLeft = false)
         {
             Header = header ?? throw new ArgumentNullException(nameof(header));
-            ValueFormatter = (item, width) => valueSelector(item);
+            MinWidth = Math.Max(minWidth, header.Length);
+            MaxWidth = maxWidth;
+            ValueFormatter = valueSelector ?? throw new ArgumentNullException(nameof(valueSelector));
+            _padLeft = padLeft;
+        }
+        
+        public string FormatCell(T item, int width)
+        {
+            var content = ValueFormatter(item);
+            // Truncate if content exceeds width
+            if (content.Length > width)
+            {
+                content = content.Length > 3 ? content.Substring(0, width - 3) + "..." : content.Substring(0, width);
+            }
+            return _padLeft ? content.PadLeft(width) : content.PadRight(width);
+        }
+        
+        public string FormatHeader(int width)
+        {
+            return _padLeft ? Header.PadLeft(width) : Header.PadRight(width);
         }
     }
     
@@ -272,16 +317,31 @@ namespace SharpBridge.Utilities
     public class ProgressBarColumn<T> : ITableColumn<T>
     {
         public string Header { get; }
-        public Func<T, int, string> ValueFormatter { get; }
+        public int MinWidth { get; }
+        public int? MaxWidth { get; }
+        public Func<T, string> ValueFormatter { get; }
         
-        public ProgressBarColumn(string header, Func<T, double> valueSelector)
+        private readonly Func<T, double> _valueSelector;
+        
+        public ProgressBarColumn(string header, Func<T, double> valueSelector, int minWidth = 6, int? maxWidth = null)
         {
             Header = header ?? throw new ArgumentNullException(nameof(header));
-            ValueFormatter = (item, width) => 
-            {
-                var value = valueSelector(item);
-                return TableFormatter.CreateProgressBar(value, width);
-            };
+            MinWidth = Math.Max(minWidth, header.Length);
+            MaxWidth = maxWidth;
+            _valueSelector = valueSelector ?? throw new ArgumentNullException(nameof(valueSelector));
+            // ValueFormatter returns a sample bar for width calculation
+            ValueFormatter = item => new string('█', MinWidth);
+        }
+        
+        public string FormatCell(T item, int width)
+        {
+            var value = _valueSelector(item);
+            return TableFormatter.CreateProgressBar(value, width);
+        }
+        
+        public string FormatHeader(int width)
+        {
+            return Header.PadRight(width); // Progress bars typically left-align headers
         }
     }
     
@@ -292,12 +352,30 @@ namespace SharpBridge.Utilities
     public class NumericColumn<T> : ITableColumn<T>
     {
         public string Header { get; }
-        public Func<T, int, string> ValueFormatter { get; }
+        public int MinWidth { get; }
+        public int? MaxWidth { get; }
+        public Func<T, string> ValueFormatter { get; }
         
-        public NumericColumn(string header, Func<T, double> valueSelector, string format = "F2")
+        private readonly bool _padLeft;
+        
+        public NumericColumn(string header, Func<T, double> valueSelector, string format = "0.##", int minWidth = 0, int? maxWidth = null, bool padLeft = true)
         {
             Header = header ?? throw new ArgumentNullException(nameof(header));
-            ValueFormatter = (item, width) => valueSelector(item).ToString(format);
+            MinWidth = Math.Max(minWidth, header.Length);
+            MaxWidth = maxWidth;
+            ValueFormatter = item => valueSelector(item).ToString(format);
+            _padLeft = padLeft;
+        }
+        
+        public string FormatCell(T item, int width)
+        {
+            var content = ValueFormatter(item);
+            return _padLeft ? content.PadLeft(width) : content.PadRight(width);
+        }
+        
+        public string FormatHeader(int width)
+        {
+            return _padLeft ? Header.PadLeft(width) : Header.PadRight(width);
         }
     }
     
@@ -360,37 +438,40 @@ namespace SharpBridge.Utilities
         {
             if (!rows.Any() || !columns.Any()) return;
             
-            // Calculate column widths dynamically
+            // Calculate column widths using the new clean approach
             var columnWidths = new int[columns.Count];
             
             for (int i = 0; i < columns.Count; i++)
             {
                 var column = columns[i];
                 var headerWidth = column.Header.Length;
+                var minWidth = column.MinWidth;
                 
-                // Calculate max content width by testing all rows with the bar width
-                // For progress bar columns, use the provided barWidth; for others, use a reasonable test width
-                var testWidth = barWidth;
-                var maxContentWidth = rows.Max(r => column.ValueFormatter(r, testWidth).Length);
-                columnWidths[i] = Math.Max(headerWidth, maxContentWidth);
+                // Use ValueFormatter to get natural content width
+                var maxContentWidth = rows.Any() 
+                    ? rows.Max(r => column.ValueFormatter(r).Length) 
+                    : 0;
+                
+                var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
+                
+                // Apply MaxWidth if specified
+                columnWidths[i] = column.MaxWidth.HasValue 
+                    ? Math.Min(naturalWidth, column.MaxWidth.Value) 
+                    : naturalWidth;
             }
             
-            // Add header row
-            var headerParts = columns.Select((c, i) => c.Header.PadRight(columnWidths[i]));
+            // Add header row using column's FormatHeader method
+            var headerParts = columns.Select((c, i) => c.FormatHeader(columnWidths[i]));
             builder.AppendLine(string.Join(" ", headerParts));
             
             // Add separator line
             var separatorLength = columnWidths.Sum() + (columns.Count - 1);
             builder.AppendLine(new string('-', separatorLength));
             
-            // Add data rows
+            // Add data rows using column's FormatCell method
             foreach (var row in rows)
             {
-                var cellParts = columns.Select((c, i) => 
-                {
-                    var content = c.ValueFormatter(row, columnWidths[i]);
-                    return content.PadRight(columnWidths[i]);
-                });
+                var cellParts = columns.Select((c, i) => c.FormatCell(row, columnWidths[i]));
                 builder.AppendLine(string.Join(" ", cellParts));
             }
         }
@@ -403,7 +484,7 @@ namespace SharpBridge.Utilities
         {
             if (!rows.Any() || !columns.Any()) return false;
             
-            // Calculate column widths for all columns
+            // Calculate column widths using the new clean approach
             var columnWidths = new int[columns.Count];
             var totalContentWidth = 0;
             
@@ -411,11 +492,20 @@ namespace SharpBridge.Utilities
             {
                 var column = columns[i];
                 var headerWidth = column.Header.Length;
+                var minWidth = column.MinWidth;
                 
-                // For progress bar columns, use a reasonable default width for testing
-                var testWidth = 6;
-                var maxContentWidth = rows.Max(r => column.ValueFormatter(r, testWidth).Length);
-                columnWidths[i] = Math.Max(headerWidth, maxContentWidth);
+                // Use ValueFormatter to get natural content width
+                var maxContentWidth = rows.Any() 
+                    ? rows.Max(r => column.ValueFormatter(r).Length) 
+                    : 0;
+                
+                var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
+                
+                // Apply MaxWidth if specified
+                columnWidths[i] = column.MaxWidth.HasValue 
+                    ? Math.Min(naturalWidth, column.MaxWidth.Value) 
+                    : naturalWidth;
+                    
                 totalContentWidth += columnWidths[i];
             }
             
@@ -435,7 +525,7 @@ namespace SharpBridge.Utilities
                 return false; // Cannot fit, need fallback
             }
             
-            // Build headers using adapted logic
+            // Build headers using new FormatHeader method
             AppendGenericMultiColumnHeaders(builder, targetColumnCount, columns, columnWidths, columnPadding);
             
             // Split rows into table columns
@@ -450,7 +540,7 @@ namespace SharpBridge.Utilities
                 tableColumnData.Add(tableColumnRows);
             }
             
-            // Build data rows using adapted logic
+            // Build data rows using new FormatCell method
             var maxRowsInAnyTableColumn = tableColumnData.Max(col => col.Count);
             for (int rowIndex = 0; rowIndex < maxRowsInAnyTableColumn; rowIndex++)
             {
@@ -467,14 +557,14 @@ namespace SharpBridge.Utilities
         private static void AppendGenericMultiColumnHeaders<T>(StringBuilder builder, int targetColumnCount, 
             IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
         {
-            // Header row
+            // Header row using column's FormatHeader method
             var headerBuilder = new StringBuilder();
             for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
             {
                 if (tableCol > 0) headerBuilder.Append(new string(' ', columnPadding));
                 
                 // Build header for this table column
-                var headerParts = columns.Select((c, i) => c.Header.PadRight(columnWidths[i]));
+                var headerParts = columns.Select((c, i) => c.FormatHeader(columnWidths[i]));
                 headerBuilder.Append(string.Join(" ", headerParts));
             }
             builder.AppendLine(headerBuilder.ToString());
@@ -508,12 +598,8 @@ namespace SharpBridge.Utilities
                 {
                     var row = tableColumnData[tableCol][rowIndex];
                     
-                    // Build content for this table column
-                    var cellParts = columns.Select((c, i) => 
-                    {
-                        var content = c.ValueFormatter(row, columnWidths[i]);
-                        return content.PadRight(columnWidths[i]);
-                    });
+                    // Build content for this table column using FormatCell method
+                    var cellParts = columns.Select((c, i) => c.FormatCell(row, columnWidths[i]));
                     lineBuilder.Append(string.Join(" ", cellParts));
                 }
                 else

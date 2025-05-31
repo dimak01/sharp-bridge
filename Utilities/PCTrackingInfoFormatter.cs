@@ -12,7 +12,7 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class PCTrackingInfoFormatter : IFormatter
     {
-        private const int PARAM_DISPLAY_COUNT_NORMAL = 10;
+        private const int PARAM_DISPLAY_COUNT_NORMAL = 30;
         
         private readonly IConsole _console;
         
@@ -139,11 +139,11 @@ namespace SharpBridge.Utilities
             // Define columns for the generic table
             var columns = new List<ITableColumn<TrackingParam>>
             {
-                new TextColumn<TrackingParam>("Parameter", param => param.Id),
-                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo)),
-                new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##"),
-                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo)),
-                new TextColumn<TrackingParam>("Expression", param => FormatExpression(param, trackingInfo))
+                new TextColumn<TrackingParam>("Parameter", param => param.Id, minWidth: 8),
+                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20),
+                new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
+                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
+                new TextColumn<TrackingParam>("Expression", param => FormatExpression(param, trackingInfo), minWidth: 15, maxWidth: 90)
             };
 
             // Use the new generic table formatter

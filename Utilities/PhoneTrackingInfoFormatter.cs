@@ -154,9 +154,9 @@ namespace SharpBridge.Utilities
                 // Define columns for the generic table
                 var columns = new List<ITableColumn<BlendShape>>
                 {
-                    new TextColumn<BlendShape>("Expression", shape => shape.Key),
-                    new ProgressBarColumn<BlendShape>("", shape => shape.Value),
-                    new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2")
+                    new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
+                    new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15),
+                    new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
                 };
 
                 // Use the new generic table formatter
