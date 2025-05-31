@@ -106,6 +106,9 @@ namespace SharpBridge
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
             
+            // Register table formatter
+            services.AddSingleton<ITableFormatter, TableFormatter>();
+            
             // Register recovery policy
             services.AddSingleton<IRecoveryPolicy>(provider => 
             {

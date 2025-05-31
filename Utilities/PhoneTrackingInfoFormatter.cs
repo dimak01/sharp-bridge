@@ -22,14 +22,17 @@ namespace SharpBridge.Utilities
         private const int FRAMES_WIDTH = 6;         // Up to 999999 frames
         
         private readonly IConsole _console;
+        private readonly ITableFormatter _tableFormatter;
         
         /// <summary>
         /// Initializes a new instance of the PhoneTrackingInfoFormatter
         /// </summary>
         /// <param name="console">Console abstraction for getting window dimensions</param>
-        public PhoneTrackingInfoFormatter(IConsole console)
+        /// <param name="tableFormatter">Table formatter for generating tables</param>
+        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
+            _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
         }
         
         /// <summary>
@@ -149,13 +152,13 @@ namespace SharpBridge.Utilities
                 var columns = new List<ITableColumn<BlendShape>>
                 {
                     new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
-                    new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15),
+                    new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
                     new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
                 };
 
                 // Use the new generic table formatter - let it handle display limits
                 var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
-                var layoutMode = builder.AppendGenericTable("BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
+                _tableFormatter.AppendTable(builder, "BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
 
                 builder.AppendLine();
                 builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
