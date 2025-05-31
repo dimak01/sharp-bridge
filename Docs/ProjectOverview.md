@@ -8,13 +8,13 @@ This project is inspired by and references [rusty-bridge](https://github.com/ovR
 
 ## High-Level Architecture
 
-The application follows a **resilient, orchestrated data flow architecture** with automatic recovery capabilities:
+The application follows a **resilient, orchestrated data flow architecture** with automatic recovery capabilities and a sophisticated console-based user interface:
 
 1. **VTubeStudioPhoneClient** - Receives tracking data from iPhone VTube Studio via UDP
 2. **TransformationEngine** - Processes tracking data according to configuration rules
 3. **VTubeStudioPCClient** - Sends transformed data to PC VTube Studio via WebSocket
 4. **ApplicationOrchestrator** - Coordinates the flow between all components with recovery logic
-5. **ConsoleRenderer** - Provides real-time status display and handles user input
+5. **Console UI System** - Provides real-time status display, interactive controls, and user feedback
 6. **Recovery System** - Automatically detects and recovers from service failures
 
 ```
@@ -22,6 +22,7 @@ The application follows a **resilient, orchestrated data flow architecture** wit
                                         │                           │
                                         │  ApplicationOrchestrator  │
                                         │  + Recovery Policy        │
+                                        │  + Console Management     │
                                         └───────────────┬───────────┘
                                                     │ coordinates & monitors
                                                     ▼
@@ -40,10 +41,100 @@ The application follows a **resilient, orchestrated data flow architecture** wit
                                                                  
                                          ┌───────────────────────┐
                                          │                       │
-                                         │   ConsoleRenderer     │<─── User Input (Keyboard)
-                                         │   + Health Display    │
+                                         │   Console UI System   │<─── User Input (Keyboard)
+                                         │   + Real-time Display │
+                                         │   + Interactive Controls│
+                                         │   + Status Monitoring │
                                          └───────────────────────┘
 ```
+
+## Console UI & Display System
+
+The application features a **sophisticated console-based user interface** that provides real-time monitoring, interactive controls, and comprehensive status visualization:
+
+### Console UI Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              Console UI System                                      │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│  ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────────────────┐ │
+│  │ IConsole        │    │ ConsoleRenderer  │    │ KeyboardInputHandler            │ │
+│  │ Abstraction     │◄───┤ (Central Hub)    │◄───┤ + Shortcut Registration        │ │
+│  │ + SystemConsole │    │ + Formatter Mgmt │    │ + Real-time Input Processing   │ │
+│  │ + TestConsole   │    │ + Layout Control │    └─────────────────────────────────┘ │
+│  └─────────────────┘    └──────────────────┘                                        │
+│           │                       │                                                 │
+│           ▼                       ▼                                                 │
+│  ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────────────────┐ │
+│  │ConsoleWindow    │    │ IFormatter       │    │ TableFormatter                  │ │
+│  │Manager          │    │ Implementations  │    │ + Multi-column Layout          │ │
+│  │ + Size Control  │    │ + Verbosity      │    │ + Progress Bars                │ │
+│  │ + Auto-restore  │    │ + Color Support  │    │ + Responsive Design            │ │
+│  └─────────────────┘    └──────────────────┘    └─────────────────────────────────┘ │
+│                                   │                                                 │
+│                                   ▼                                                 │
+│                          ┌──────────────────┐    ┌─────────────────────────────────┐ │
+│                          │ ConsoleColors    │    │ Service-Specific Formatters     │ │
+│                          │ + ANSI Codes     │    │ + PhoneTrackingInfoFormatter   │ │
+│                          │ + Status Colors  │    │ + PCTrackingInfoFormatter      │ │
+│                          │ + Health Indicators│   │ + Dynamic Content Display      │ │
+│                          └──────────────────┘    └─────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Console UI Features
+
+1. **Real-time Status Display**
+   - Live service health monitoring with color-coded indicators
+   - Performance metrics (FPS, connection status, error counts)
+   - Tracking data visualization with progress bars and tables
+   - Automatic layout adaptation based on console window size
+
+2. **Interactive Controls**
+   - **Alt+P**: Cycle PC client display verbosity (Basic → Normal → Detailed)
+   - **Alt+O**: Cycle Phone client display verbosity (Basic → Normal → Detailed)
+   - **Alt+K**: Hot-reload transformation configuration
+   - **Ctrl+C**: Graceful application shutdown
+
+3. **Adaptive Formatting System**
+   - **Verbosity Levels**: Three levels of detail for different debugging needs
+   - **Multi-column Layout**: Automatically switches between single/multi-column based on available space
+   - **Progress Visualization**: Real-time progress bars for tracking parameters
+
+4. **Console Window Management**
+   - Automatic window resizing to optimal dimensions (150x60 characters)
+   - Original window size restoration on application exit
+   - Graceful handling of console size constraints
+
+5. **Testability & Abstraction**
+   - `IConsole` abstraction enables comprehensive unit testing
+   - `TestConsole` implementation captures output for test verification
+   - Mock-friendly design for isolated component testing
+
+### Console UI Components
+
+#### Core Interfaces
+- **IConsole** - Abstraction over console operations (cursor, writing, sizing)
+- **IConsoleRenderer** - Central rendering coordinator with formatter management
+- **IFormatter** - Pluggable formatters for different data types with verbosity support
+- **IKeyboardInputHandler** - Keyboard shortcut registration and processing
+
+#### Implementations
+- **ConsoleRenderer** - Central hub that coordinates all console output
+- **SystemConsole** - Production console wrapper with window management
+- **KeyboardInputHandler** - Real-time keyboard input processing
+- **ConsoleWindowManager** - Temporary window size management with restoration
+
+#### Specialized Formatters
+- **PhoneTrackingInfoFormatter** - Displays iPhone tracking data with multi-column parameter tables
+- **PCTrackingInfoFormatter** - Shows PC client status and outgoing parameter data
+- **TableFormatter** - Utility for complex tabular data with responsive layout
+
+#### Visual Enhancement
+- **ConsoleColors** - ANSI color codes for status indication and visual hierarchy
+- **TableFormatter** - Progress bars, multi-column layouts, and responsive design
 
 ## Resiliency & Recovery Architecture
 
@@ -123,64 +214,77 @@ The application implements a **comprehensive resiliency system** that ensures co
 
 ## Core Interfaces
 
+### Console UI Interfaces
+
+1. **IConsole** - Console abstraction for operations and window management
+   - `WindowWidth/WindowHeight` - Console dimensions for layout calculations
+   - `SetCursorPosition()` - Precise cursor control for real-time updates
+   - `TrySetWindowSize()` - Temporary window resizing with restoration support
+
+2. **IConsoleRenderer** - Central rendering coordinator
+   - `RegisterFormatter<T>()` - Pluggable formatter registration
+   - `Update()` - Coordinated display updates with service statistics
+   - `GetFormatter<T>()` - Runtime formatter access for verbosity control
+
+3. **IFormatter** - Pluggable display formatters with verbosity support
+   - `CurrentVerbosity` - Three-level verbosity system (Basic/Normal/Detailed)
+   - `CycleVerbosity()` - Runtime verbosity switching
+   - `Format()` - Service-aware formatting with health status integration
+
+4. **IKeyboardInputHandler** - Interactive keyboard control
+   - `RegisterShortcut()` - Dynamic shortcut registration with descriptions
+   - `CheckForKeyboardInput()` - Non-blocking input processing
+   - `GetRegisteredShortcuts()` - Runtime shortcut discovery
+
 ### Resiliency Interfaces
 
-1. **IInitializable** - Enables graceful initialization and recovery
+5. **IInitializable** - Enables graceful initialization and recovery
    - `TryInitializeAsync()` - Non-blocking initialization that returns success/failure
    - `LastInitializationError` - Provides detailed error information for diagnostics
 
-2. **IServiceStats** - Enhanced service monitoring
+6. **IServiceStats** - Enhanced service monitoring
    - `IsHealthy` - Real-time health status indicator
    - `LastSuccessfulOperation` - Timestamp of last successful operation
    - `LastError` - Most recent error message for troubleshooting
 
-3. **IRecoveryPolicy** - Defines recovery timing and behavior
+7. **IRecoveryPolicy** - Defines recovery timing and behavior
    - `GetNextDelay()` - Determines interval between recovery attempts
 
 ### Core Application Interfaces
 
-4. **IVTubeStudioPhoneClient** - Interface for receiving tracking data from the phone
+8. **IVTubeStudioPhoneClient** - Interface for receiving tracking data from the phone
    - Handles UDP socket communication with automatic recovery
    - Parses tracking data with error resilience
    - Provides events for new data
    - Implements health monitoring and status reporting
 
-5. **IUdpClientWrapper** - Abstraction over UDP client for testability
+9. **IUdpClientWrapper** - Abstraction over UDP client for testability
    - Wraps UDP operations for easier mocking
    - Enables thorough testing of network components
    - Provides clean separation of concerns
 
-6. **ITransformationEngine** - Interface for transforming tracking data
-   - Loads and parses transformation rules
-   - Applies expressions to track data
-   - Manages parameter boundaries
+10. **ITransformationEngine** - Interface for transforming tracking data
+    - Loads and parses transformation rules
+    - Applies expressions to track data
+    - Manages parameter boundaries
 
-7. **IVTubeStudioPCClient** - Interface for VTube Studio communication
-   - Manages WebSocket connections with automatic recovery
-   - Handles authentication with token persistence
-   - Supports port discovery and parameter sending
-   - Implements comprehensive health monitoring
+11. **IVTubeStudioPCClient** - Interface for VTube Studio communication
+    - Manages WebSocket connections with automatic recovery
+    - Handles authentication with token persistence
+    - Supports port discovery and parameter sending
+    - Implements comprehensive health monitoring
 
-8. **IApplicationOrchestrator** - Primary service that coordinates the flow
-   - Initializes and connects all components with graceful degradation
-   - Manages component lifecycle with automatic recovery
-   - Processes tracking data from phone to PC
-   - Handles keyboard input for runtime configuration changes
+12. **IApplicationOrchestrator** - Primary service that coordinates the flow
+    - Initializes and connects all components with graceful degradation
+    - Manages component lifecycle with automatic recovery
+    - Processes tracking data from phone to PC
+    - Handles keyboard input for runtime configuration changes
+    - Manages console window and user interface
 
-9. **IServiceStatsProvider** - Interface for components that provide statistics
-   - Returns structured statistics about component state and health
-   - Enables centralized monitoring of application health
-   - Supports console status display with health indicators
-
-10. **IConsoleRenderer** - Interface for rendering application status to console
-    - Provides methods for updating the display with service statistics
-    - Registers formatters for different types of data
-    - Manages console display and layout
-
-11. **IFormatter** - Interface for formatting specific types of data for display
-    - Converts domain objects to human-readable string representations
-    - Supports different verbosity levels that can be cycled at runtime
-    - Specializations exist for different tracking data types
+13. **IServiceStatsProvider** - Interface for components that provide statistics
+    - Returns structured statistics about component state and health
+    - Enables centralized monitoring of application health
+    - Supports console status display with health indicators
 
 ## Application Organization
 
@@ -218,25 +322,56 @@ The code follows clean architecture principles with resiliency built-in:
 
 ## Runtime Features
 
-1. **Real-time Status Display** - Console-based UI showing real-time statistics, health status, and recovery attempts
-2. **Keyboard Shortcuts**:
-   - Alt+P: Cycle PC client display verbosity
-   - Alt+O: Cycle Phone client display verbosity
-   - Alt+K: Reload transformation configuration
-   - Ctrl+C: Exit application gracefully
-3. **Performance Metrics** - FPS counting, error tracking, and request monitoring
-4. **Health Indicators** - Visual indicators of service health and recovery status
-5. **Automatic Recovery** - Silent recovery from network failures and service interruptions
-6. **Error Resilience** - Comprehensive error handling with detailed logging
+1. **Real-time Status Display** - Console-based UI showing real-time statistics, health status, and recovery attempts with:
+   - **Color-coded Health Indicators** - Green (healthy), Red (error), Yellow (warning), Cyan (info)
+   - **Multi-column Parameter Tables** - Responsive layout that adapts to console width
+   - **Progress Bars** - Visual representation of tracking parameter values
+   - **Service Status Sections** - Dedicated areas for Phone Client and PC Client status
+
+2. **Interactive Keyboard Shortcuts**:
+   - **Alt+P**: Cycle PC client display verbosity (Basic → Normal → Detailed)
+   - **Alt+O**: Cycle Phone client display verbosity (Basic → Normal → Detailed)  
+   - **Alt+K**: Hot-reload transformation configuration without restart
+   - **Ctrl+C**: Graceful application shutdown with cleanup
+
+3. **Adaptive Console Management**:
+   - **Automatic Window Sizing** - Resizes to optimal 150x60 character dimensions
+   - **Original Size Restoration** - Restores user's original console size on exit
+   - **Layout Responsiveness** - Switches between single/multi-column based on available space
+
+4. **Performance Metrics** - FPS counting, error tracking, and request monitoring with:
+   - **Real-time FPS Display** - Shows current tracking data frame rate
+   - **Error Counters** - Tracks failed operations and connection issues
+   - **Success Metrics** - Monitors successful data transmission rates
+
+5. **Health Indicators** - Visual indicators of service health and recovery status:
+   - **Connection Status** - Real-time WebSocket and UDP connection state
+   - **Service Health** - Component-level health monitoring with timestamps
+   - **Recovery Progress** - Visual feedback during automatic recovery attempts
+
+6. **Automatic Recovery** - Silent recovery from network failures and service interruptions
+7. **Error Resilience** - Comprehensive error handling with detailed logging
 
 ## Testing Strategy
 
 The project implements a comprehensive testing strategy:
-- Unit tests for all core components including resiliency features
+- Unit tests for all core components including resiliency features and console UI
 - Mock-based testing of network dependencies and recovery scenarios
+- **Console UI Testing** - Comprehensive test coverage for formatters, rendering, and keyboard input
 - Integration tests for recovery flows and health monitoring
 - High code coverage targets (271 tests currently passing)
 - Coverage tracking with automated reports
+
+## Console UI Benefits
+
+The sophisticated console UI system provides:
+
+1. **Enhanced User Experience** - Real-time visual feedback with intuitive color coding
+2. **Debugging Efficiency** - Multiple verbosity levels for different troubleshooting needs
+3. **Interactive Control** - Runtime configuration changes without application restart
+4. **Professional Appearance** - Clean, organized display with responsive layout
+5. **Accessibility** - Console-based interface works in various environments
+6. **Testability** - Full abstraction enables comprehensive automated testing
 
 ## Resiliency Benefits
 
@@ -248,15 +383,7 @@ The implemented resiliency system provides:
 4. **Enhanced Monitoring** - Real-time visibility into service health
 5. **Simplified Operations** - Self-healing architecture reduces maintenance overhead
 
-## Future Enhancements
 
-1. **Advanced Console UI** - Enhanced interactive console interface with more visualization options
-2. **Configuration UI** - Graphical interface for editing transformation rules
-3. **Profile Management** - Support for multiple configuration profiles
-4. **Performance Optimizations** - Benchmarking and optimizing critical paths
-5. **Extended Statistics** - More detailed performance and error metrics
-6. **Advanced Recovery Policies** - Configurable recovery strategies (exponential backoff, circuit breakers)
-7. **Health Dashboards** - Web-based monitoring interface
 
 ## Technology Stack
 
@@ -264,7 +391,8 @@ The implemented resiliency system provides:
 - **System.CommandLine** - For declarative command-line parsing
 - **System.Text.Json** - For JSON serialization/deserialization
 - **System.Net.WebSockets** - For WebSocket communication with recovery capabilities
-- **Moq & FluentAssertions** - For comprehensive unit testing including resiliency scenarios
+- **ANSI Color Support** - For rich console color output and status indication
+- **Moq & FluentAssertions** - For comprehensive unit testing including resiliency scenarios and console UI
 - **Serilog** - For structured logging with file and console output
 
 ## Logging Architecture
