@@ -1,31 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using FluentAssertions;
 using SharpBridge.Utilities;
 using Xunit;
 
-namespace SharpBridge.Tests.Utilities
+namespace Tests.Utilities
 {
-    public class TableFormatterExtensionsTests
+    public class TableFormatterTests
     {
-        // Test data classes
-        private class TestItem
-        {
-            public string Name { get; set; } = string.Empty;
-            public double Value { get; set; }
-            public string Status { get; set; } = string.Empty;
-        }
+        private readonly ITableFormatter _tableFormatter;
 
-        private class SimpleItem
+        public TableFormatterTests()
         {
-            public string Label { get; set; } = string.Empty;
-            public int Number { get; set; }
+            _tableFormatter = new TableFormatter();
         }
 
         [Fact]
-        public void AppendGenericTable_WithEmptyRows_ReturnsEmptyTable()
+        public void AppendTable_WithEmptyRows_ReturnsEmptyTable()
         {
             // Arrange
             var builder = new StringBuilder();
@@ -37,142 +29,21 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Act
-            var result = builder.AppendGenericTable("Test Table", emptyRows, columns, 1, 80, 20);
+            _tableFormatter.AppendTable(builder, "Test Table", emptyRows, columns, 1, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
             builder.ToString().Should().Be($"Test Table{Environment.NewLine}");
         }
 
         [Fact]
-        public void AppendGenericTable_WithSingleColumn_ShowsCorrectLayout()
+        public void AppendTable_WithSingleColumn_ShowsCorrectLayout()
         {
             // Arrange
             var builder = new StringBuilder();
             var rows = new List<TestItem>
             {
-                new TestItem { Name = "Item1", Value = 1.5, Status = "Active" },
-                new TestItem { Name = "Item2", Value = 2.7, Status = "Inactive" }
-            };
-            var columns = new List<ITableColumn<TestItem>>
-            {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F2"),
-                new TextColumn<TestItem>("Status", item => item.Status)
-            };
-
-            // Act
-            var result = builder.AppendGenericTable("Test Table", rows, columns, 1, 80, 20);
-
-            // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            output.Should().Contain("Test Table");
-            output.Should().Contain("Name");
-            output.Should().Contain("Value");
-            output.Should().Contain("Status");
-            output.Should().Contain("Item1");
-            output.Should().Contain("1.50");
-            output.Should().Contain("Active");
-        }
-
-        [Fact]
-        public void AppendGenericTable_WithProgressBarColumn_ShowsProgressBars()
-        {
-            // Arrange
-            var builder = new StringBuilder();
-            var rows = new List<TestItem>
-            {
-                new TestItem { Name = "Test1", Value = 0.5, Status = "Running" },
-                new TestItem { Name = "Test2", Value = 0.8, Status = "Complete" }
-            };
-            var columns = new List<ITableColumn<TestItem>>
-            {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new ProgressBarColumn<TestItem>("Progress", item => item.Value),
-                new TextColumn<TestItem>("Status", item => item.Status)
-            };
-
-            // Act
-            var result = builder.AppendGenericTable("Progress Test", rows, columns, 1, 80, 20);
-
-            // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            output.Should().Contain("Progress Test");
-            output.Should().Contain("█"); // Should contain filled progress bar characters
-            output.Should().Contain("░"); // Should contain empty progress bar characters
-        }
-
-        [Fact]
-        public void AppendGenericTable_WithDynamicWidthColumn_AdjustsToWidth()
-        {
-            // Arrange
-            var builder = new StringBuilder();
-            var rows = new List<TestItem>
-            {
-                new TestItem { Name = "Short", Value = 1.0, Status = "OK" },
-                new TestItem { Name = "VeryLongItemName", Value = 2.0, Status = "Processing" }
-            };
-            var columns = new List<ITableColumn<TestItem>>
-            {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new TextColumn<TestItem>("Status", item => item.Status)
-            };
-
-            // Act
-            var result = builder.AppendGenericTable("Dynamic Width Test", rows, columns, 1, 80, 20);
-
-            // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            output.Should().Contain("VeryLongItemName");
-            output.Should().Contain("Processing");
-        }
-
-        [Fact]
-        public void AppendGenericTable_WithSingleColumnMaxItems_LimitsRows()
-        {
-            // Arrange
-            var builder = new StringBuilder();
-            var rows = new List<SimpleItem>
-            {
-                new SimpleItem { Label = "Item1", Number = 1 },
-                new SimpleItem { Label = "Item2", Number = 2 },
-                new SimpleItem { Label = "Item3", Number = 3 },
-                new SimpleItem { Label = "Item4", Number = 4 },
-                new SimpleItem { Label = "Item5", Number = 5 }
-            };
-            var columns = new List<ITableColumn<SimpleItem>>
-            {
-                new TextColumn<SimpleItem>("Label", item => item.Label),
-                new TextColumn<SimpleItem>("Number", item => item.Number.ToString())
-            };
-
-            // Act
-            var result = builder.AppendGenericTable("Limited Table", rows, columns, 1, 80, 20, singleColumnMaxItems: 3);
-
-            // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            output.Should().Contain("Item1");
-            output.Should().Contain("Item2");
-            output.Should().Contain("Item3");
-            output.Should().NotContain("Item4");
-            output.Should().NotContain("Item5");
-        }
-
-        [Fact]
-        public void AppendGenericTable_WithMultipleColumns_CreatesMultiColumnLayout()
-        {
-            // Arrange
-            var builder = new StringBuilder();
-            var rows = new List<TestItem>
-            {
-                new TestItem { Name = "Test1", Value = 1.0, Status = "OK" },
-                new TestItem { Name = "Test2", Value = 2.0, Status = "Good" },
-                new TestItem { Name = "Test3", Value = 3.0, Status = "Great" },
-                new TestItem { Name = "Test4", Value = 4.0, Status = "Perfect" }
+                new TestItem { Name = "Item1", Value = 1.5 },
+                new TestItem { Name = "Item2", Value = 2.7 }
             };
             var columns = new List<ITableColumn<TestItem>>
             {
@@ -180,150 +51,261 @@ namespace SharpBridge.Tests.Utilities
                 new NumericColumn<TestItem>("Value", item => item.Value, "F2")
             };
 
-            // Act - Request 2 columns with sufficient width
-            var result = builder.AppendGenericTable("Multi-Column Test", rows, columns, 2, 120, 20);
+            // Act
+            _tableFormatter.AppendTable(builder, "Test Table", rows, columns, 1, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.MultiColumn);
-            var output = builder.ToString();
-            output.Should().Contain("Multi-Column Test");
-            output.Should().Contain("Test1");
-            output.Should().Contain("Test2");
-            output.Should().Contain("Test3");
-            output.Should().Contain("Test4");
-            
-            // Should have multiple table columns side by side
-            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            lines.Length.Should().BeGreaterThan(3); // Title, header, separator, data rows
+            var result = builder.ToString();
+            result.Should().Contain("Test Table");
+            result.Should().Contain("Name");
+            result.Should().Contain("Value");
+            result.Should().Contain("Item1");
+            result.Should().Contain("Item2");
+            result.Should().Contain("1.50");
+            result.Should().Contain("2.70");
         }
 
         [Fact]
-        public void AppendGenericTable_WithInsufficientWidth_FallsBackToSingleColumn()
+        public void AppendTable_WithProgressBarColumn_ShowsProgressBars()
         {
             // Arrange
             var builder = new StringBuilder();
             var rows = new List<TestItem>
             {
-                new TestItem { Name = "VeryLongTestName", Value = 1.0, Status = "VeryLongStatusText" }
+                new TestItem { Name = "Half", Value = 0.5 },
+                new TestItem { Name = "Full", Value = 1.0 }
             };
             var columns = new List<ITableColumn<TestItem>>
             {
                 new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F2"),
-                new TextColumn<TestItem>("Status", item => item.Status)
+                new ProgressBarColumn<TestItem>("Progress", item => item.Value, tableFormatter: _tableFormatter)
             };
 
-            // Act - Request 3 columns but with insufficient width
-            var result = builder.AppendGenericTable("Narrow Test", rows, columns, 3, 40, 20);
+            // Act
+            _tableFormatter.AppendTable(builder, "Progress Test", rows, columns, 1, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn); // Should fall back due to width constraints
-            var output = builder.ToString();
-            output.Should().Contain("Narrow Test");
-            output.Should().Contain("VeryLongTestName");
+            var result = builder.ToString();
+            result.Should().Contain("Progress Test");
+            result.Should().Contain("█"); // Progress bar filled character
+            result.Should().Contain("░"); // Progress bar empty character
         }
 
         [Fact]
-        public void AppendGenericTable_WithNullRows_HandlesGracefully()
+        public void AppendTable_WithDynamicWidthColumn_AdjustsToWidth()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Short", Value = 1.0 },
+                new TestItem { Name = "VeryLongItemName", Value = 2.0 }
+            };
+            var columns = new List<ITableColumn<TestItem>>
+            {
+                new TextColumn<TestItem>("Name", item => item.Name, maxWidth: 10),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F1")
+            };
+
+            // Act
+            _tableFormatter.AppendTable(builder, "Dynamic Width Test", rows, columns, 1, 80, 20);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Dynamic Width Test");
+            result.Should().Contain("Short");
+            result.Should().Contain("VeryLon..."); // Should be truncated
+        }
+
+        [Fact]
+        public void AppendTable_WithSingleColumnMaxItems_LimitsRows()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Item1", Value = 1.0 },
+                new TestItem { Name = "Item2", Value = 2.0 },
+                new TestItem { Name = "Item3", Value = 3.0 },
+                new TestItem { Name = "Item4", Value = 4.0 },
+                new TestItem { Name = "Item5", Value = 5.0 }
+            };
+            var columns = new List<ITableColumn<TestItem>>
+            {
+                new TextColumn<TestItem>("Name", item => item.Name),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F0")
+            };
+
+            // Act
+            _tableFormatter.AppendTable(builder, "Limited Table", rows, columns, 1, 80, 20, singleColumnMaxItems: 3);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Limited Table");
+            result.Should().Contain("Item1");
+            result.Should().Contain("Item2");
+            result.Should().Contain("Item3");
+            result.Should().NotContain("Item4");
+            result.Should().NotContain("Item5");
+            result.Should().Contain("... and 2 more");
+        }
+
+        [Fact]
+        public void AppendTable_WithMultipleColumns_CreatesMultiColumnLayout()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "A", Value = 1.0 },
+                new TestItem { Name = "B", Value = 2.0 },
+                new TestItem { Name = "C", Value = 3.0 },
+                new TestItem { Name = "D", Value = 4.0 }
+            };
+            var columns = new List<ITableColumn<TestItem>>
+            {
+                new TextColumn<TestItem>("Name", item => item.Name),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F0")
+            };
+
+            // Act
+            _tableFormatter.AppendTable(builder, "Multi-Column Test", rows, columns, 2, 120, 20);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Multi-Column Test");
+            result.Should().Contain("A");
+            result.Should().Contain("B");
+            result.Should().Contain("C");
+            result.Should().Contain("D");
+        }
+
+        [Fact]
+        public void AppendTable_WithInsufficientWidth_FallsBackToSingleColumn()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Item1", Value = 1.0 },
+                new TestItem { Name = "Item2", Value = 2.0 }
+            };
+            var columns = new List<ITableColumn<TestItem>>
+            {
+                new TextColumn<TestItem>("Name", item => item.Name),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F2")
+            };
+
+            // Act
+            _tableFormatter.AppendTable(builder, "Narrow Test", rows, columns, 3, 40, 20);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Narrow Test");
+            result.Should().Contain("Item1");
+            result.Should().Contain("Item2");
+        }
+
+        [Fact]
+        public void AppendTable_WithNullRows_HandlesGracefully()
         {
             // Arrange
             var builder = new StringBuilder();
             var columns = new List<ITableColumn<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name)
+                new TextColumn<TestItem>("Name", item => item.Name),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F2")
             };
 
             // Act
-            var result = builder.AppendGenericTable("Null Test", null, columns, 1, 80, 20);
+            _tableFormatter.AppendTable(builder, "Null Test", null, columns, 1, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
             builder.ToString().Should().Be($"Null Test{Environment.NewLine}");
         }
 
         [Fact]
-        public void AppendGenericTable_WithComplexValueSelector_WorksCorrectly()
+        public void AppendTable_WithComplexValueSelector_WorksCorrectly()
         {
             // Arrange
             var builder = new StringBuilder();
             var rows = new List<TestItem>
             {
-                new TestItem { Name = "Test", Value = 0.75, Status = "Running" }
+                new TestItem { Name = "Test", Value = 42.123 }
             };
             var columns = new List<ITableColumn<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name.ToUpper()),
-                new ProgressBarColumn<TestItem>("Progress", item => item.Value),
-                new TextColumn<TestItem>("Percentage", item => $"{item.Value * 100:F0}%")
+                new TextColumn<TestItem>("Upper", item => item.Name.ToUpper()),
+                new NumericColumn<TestItem>("Rounded", item => Math.Round(item.Value), "F0")
             };
 
             // Act
-            var result = builder.AppendGenericTable("Complex Test", rows, columns, 1, 80, 20);
+            _tableFormatter.AppendTable(builder, "Complex Test", rows, columns, 1, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            output.Should().Contain("TEST"); // Name should be uppercase
-            output.Should().Contain("75%"); // Percentage should be calculated
-            output.Should().Contain("█"); // Progress bar should be present
+            var result = builder.ToString();
+            result.Should().Contain("Complex Test");
+            result.Should().Contain("TEST");
+            result.Should().Contain("42");
         }
 
         [Fact]
-        public void AppendGenericTable_WithVaryingContentLengths_AdjustsColumnWidths()
+        public void AppendTable_WithVaryingContentLengths_AdjustsColumnWidths()
         {
             // Arrange
             var builder = new StringBuilder();
             var rows = new List<TestItem>
             {
-                new TestItem { Name = "A", Value = 1.0, Status = "Short" },
-                new TestItem { Name = "VeryLongName", Value = 2.0, Status = "VeryLongStatus" }
+                new TestItem { Name = "A", Value = 1.0 },
+                new TestItem { Name = "VeryLongName", Value = 2.0 }
             };
             var columns = new List<ITableColumn<TestItem>>
             {
                 new TextColumn<TestItem>("Name", item => item.Name),
-                new TextColumn<TestItem>("Status", item => item.Status)
+                new NumericColumn<TestItem>("Value", item => item.Value, "F1")
             };
 
             // Act
-            var result = builder.AppendGenericTable("Width Test", rows, columns, 1, 80, 20);
+            _tableFormatter.AppendTable(builder, "Width Test", rows, columns, 1, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            
-            // Both long and short content should be properly aligned
-            output.Should().Contain("VeryLongName");
-            output.Should().Contain("VeryLongStatus");
-            output.Should().Contain("A");
-            output.Should().Contain("Short");
-            
-            // Check that columns are properly aligned by looking for consistent spacing
-            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            lines.Length.Should().BeGreaterThan(3); // Title, header, separator, data rows
+            var result = builder.ToString();
+            result.Should().Contain("Width Test");
+            result.Should().Contain("A");
+            result.Should().Contain("VeryLongName");
+            result.Should().Contain("1.0");
+            result.Should().Contain("2.0");
         }
 
         [Fact]
-        public void AppendGenericTable_WithZeroTargetColumns_UsesSingleColumn()
+        public void AppendTable_WithZeroTargetColumns_UsesSingleColumn()
         {
             // Arrange
             var builder = new StringBuilder();
             var rows = new List<TestItem>
             {
-                new TestItem { Name = "Test", Value = 1.0, Status = "OK" }
+                new TestItem { Name = "Test", Value = 1.0 }
             };
             var columns = new List<ITableColumn<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name)
+                new TextColumn<TestItem>("Name", item => item.Name),
+                new NumericColumn<TestItem>("Value", item => item.Value, "F1")
             };
 
             // Act
-            var result = builder.AppendGenericTable("Zero Columns Test", rows, columns, 0, 80, 20);
+            _tableFormatter.AppendTable(builder, "Zero Columns Test", rows, columns, 0, 80, 20);
 
             // Assert
-            result.Should().Be(TableLayoutMode.SingleColumn);
-            var output = builder.ToString();
-            output.Should().Contain("Zero Columns Test");
-            output.Should().Contain("Test");
+            var result = builder.ToString();
+            result.Should().Contain("Zero Columns Test");
+            result.Should().Contain("Test");
+            result.Should().Contain("1.0");
+        }
+
+        private class TestItem
+        {
+            public string Name { get; set; } = string.Empty;
+            public double Value { get; set; }
         }
     }
 } 

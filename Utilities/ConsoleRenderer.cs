@@ -23,14 +23,15 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="console">The console implementation to use for output</param>
         /// <param name="logger">The logger to use for error reporting</param>
-        public ConsoleRenderer(IConsole console, IAppLogger logger)
+        /// <param name="tableFormatter">The table formatter to use for rendering tables</param>
+        public ConsoleRenderer(IConsole console, IAppLogger logger, ITableFormatter tableFormatter)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Register formatters for known types
-            RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter(_console));
-            RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter(_console));
+            RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter(_console, tableFormatter));
+            RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter(_console, tableFormatter));
         }
         
         /// <summary>

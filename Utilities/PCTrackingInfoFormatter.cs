@@ -12,17 +12,20 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class PCTrackingInfoFormatter : IFormatter
     {
-        private const int PARAM_DISPLAY_COUNT_NORMAL = 30;
+        private const int PARAM_DISPLAY_COUNT_NORMAL = 25;
         
         private readonly IConsole _console;
+        private readonly ITableFormatter _tableFormatter;
         
         /// <summary>
         /// Initializes a new instance of the PCTrackingInfoFormatter
         /// </summary>
         /// <param name="console">Console abstraction for getting window dimensions</param>
-        public PCTrackingInfoFormatter(IConsole console)
+        /// <param name="tableFormatter">Table formatter for generating tables</param>
+        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
+            _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
         }
         
         /// <summary>
@@ -138,7 +141,7 @@ namespace SharpBridge.Utilities
             var columns = new List<ITableColumn<TrackingParam>>
             {
                 new TextColumn<TrackingParam>("Parameter", param => param.Id, minWidth: 8),
-                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20),
+                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
                 new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
                 new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
                 new TextColumn<TrackingParam>("Expression", param => FormatExpression(param, trackingInfo), minWidth: 15, maxWidth: 90)
@@ -146,7 +149,7 @@ namespace SharpBridge.Utilities
 
             // Use the new generic table formatter - let it handle display limits
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
-            var layoutMode = builder.AppendGenericTable("Parameters", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "Parameters", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
         }
         
         /// <summary>
