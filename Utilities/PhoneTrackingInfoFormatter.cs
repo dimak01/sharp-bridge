@@ -139,16 +139,10 @@ namespace SharpBridge.Utilities
             {
                 builder.AppendLine();
                 
-                // Calculate initial display count based on target rows and columns for normal mode
-                int maxDisplayCount = CurrentVerbosity == VerbosityLevel.Detailed 
-                    ? phoneTrackingInfo.BlendShapes.Count 
-                    : TARGET_ROWS_NORMAL * TARGET_COLUMN_COUNT;
-
-                // Sort blend shapes by name and prepare for generic table
+                // Sort blend shapes by name - let TableFormatter handle display limits
                 var sortedShapes = phoneTrackingInfo.BlendShapes
                     .Where(s => s != null)
                     .OrderBy(s => s.Key)
-                    .Take(maxDisplayCount)
                     .ToList();
 
                 // Define columns for the generic table
@@ -159,20 +153,9 @@ namespace SharpBridge.Utilities
                     new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
                 };
 
-                // Use the new generic table formatter
-                // In single-column mode, limit to TARGET_ROWS_NORMAL for normal verbosity, or show all for detailed
+                // Use the new generic table formatter - let it handle display limits
                 var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
                 var layoutMode = builder.AppendGenericTable("BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
-
-                // Adjust display count based on actual layout mode used
-                int actualDisplayCount = layoutMode == TableLayoutMode.MultiColumn 
-                    ? maxDisplayCount 
-                    : Math.Min(TARGET_ROWS_NORMAL, maxDisplayCount);
-
-                if (CurrentVerbosity == VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes.Count > actualDisplayCount)
-                {
-                    builder.AppendLine($"  ... and {phoneTrackingInfo.BlendShapes.Count - actualDisplayCount} more");
-                }
 
                 builder.AppendLine();
                 builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");

@@ -407,6 +407,9 @@ namespace SharpBridge.Utilities
             var rowList = rows?.ToList() ?? new List<T>();
             if (!rowList.Any()) return TableLayoutMode.SingleColumn;
             
+            TableLayoutMode layoutMode;
+            int itemsDisplayed;
+            
             // Single column or fallback case
             if (targetColumnCount <= 1)
             {
@@ -414,21 +417,36 @@ namespace SharpBridge.Utilities
                     ? rowList.Take(singleColumnMaxItems.Value).ToList() 
                     : rowList;
                 AppendGenericSingleColumnTable(builder, singleColumnRows, columns, singleColumnBarWidth);
-                return TableLayoutMode.SingleColumn;
+                layoutMode = TableLayoutMode.SingleColumn;
+                itemsDisplayed = singleColumnRows.Count;
+            }
+            else
+            {
+                // Try multi-column layout
+                if (TryAppendGenericMultiColumnTable(builder, rowList, columns, targetColumnCount, consoleWidth))
+                {
+                    layoutMode = TableLayoutMode.MultiColumn;
+                    itemsDisplayed = rowList.Count; // Multi-column shows all items
+                }
+                else
+                {
+                    // Fallback to single column
+                    var fallbackRows = singleColumnMaxItems.HasValue 
+                        ? rowList.Take(singleColumnMaxItems.Value).ToList() 
+                        : rowList;
+                    AppendGenericSingleColumnTable(builder, fallbackRows, columns, singleColumnBarWidth);
+                    layoutMode = TableLayoutMode.SingleColumn;
+                    itemsDisplayed = fallbackRows.Count;
+                }
             }
             
-            // Try multi-column layout
-            if (TryAppendGenericMultiColumnTable(builder, rowList, columns, targetColumnCount, consoleWidth))
+            // Add "more items" message if items were truncated
+            if (rowList.Count > itemsDisplayed)
             {
-                return TableLayoutMode.MultiColumn;
+                builder.AppendLine($"  ... and {rowList.Count - itemsDisplayed} more");
             }
-
-            // Fallback to single column
-            var fallbackRows = singleColumnMaxItems.HasValue 
-                ? rowList.Take(singleColumnMaxItems.Value).ToList() 
-                : rowList;
-            AppendGenericSingleColumnTable(builder, fallbackRows, columns, singleColumnBarWidth);
-            return TableLayoutMode.SingleColumn;
+            
+            return layoutMode;
         }
         
         /// <summary>
