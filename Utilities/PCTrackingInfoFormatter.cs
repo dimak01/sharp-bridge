@@ -128,12 +128,10 @@ namespace SharpBridge.Utilities
         private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo)
         {
             var parameters = trackingInfo.Parameters.ToList();
-            int displayCount = CurrentVerbosity == VerbosityLevel.Detailed ? parameters.Count : PARAM_DISPLAY_COUNT_NORMAL;
             
-            // Sort parameters by ID and take only the parameters we want to display
+            // Sort parameters by ID - let TableFormatter handle display limits
             var parametersToShow = parameters
                 .OrderBy(p => p.Id)
-                .Take(displayCount)
                 .ToList();
             
             // Define columns for the generic table
@@ -146,16 +144,9 @@ namespace SharpBridge.Utilities
                 new TextColumn<TrackingParam>("Expression", param => FormatExpression(param, trackingInfo), minWidth: 15, maxWidth: 90)
             };
 
-            // Use the new generic table formatter
-            // Use 2-column layout as intended
+            // Use the new generic table formatter - let it handle display limits
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
             var layoutMode = builder.AppendGenericTable("Parameters", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
-
-            // Show count of additional parameters if not all are displayed
-            if (parameters.Count > displayCount)
-            {
-                builder.AppendLine($"  ... and {parameters.Count - displayCount} more");
-            }
         }
         
         /// <summary>
