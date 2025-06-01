@@ -188,21 +188,56 @@ namespace SharpBridge.Tests.Utilities
                 new TrackingParam { Id = "Param1", Value = 0.5 },
                 new TrackingParam { Id = "Param2", Value = -0.3 }
             };
+            trackingInfo.ParameterDefinitions["Param1"] = new VTSParameter("Param1", -1, 1, 0);
+            trackingInfo.ParameterCalculationExpressions["Param1"] = "Param1 * 1.0";
             var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Capture the columns to verify their behavior
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                        // Simulate table formatter behavior by executing column formatters
+                        foreach (var row in rows)
+                        {
+                            foreach (var col in columns)
+                            {
+                                col.ValueFormatter(row);
+                            }
+                        }
+                    });
 
             // Act
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            _mockTableFormatter.Verify(x => x.AppendTable(
-                It.IsAny<StringBuilder>(),
-                It.Is<string>(s => s == "Parameters"),
-                It.IsAny<List<TrackingParam>>(),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int?>()), Times.Once);
+            capturedColumns.Should().NotBeNull();
+            capturedColumns.Count.Should().Be(5);
+            
+            // Verify column headers
+            capturedColumns[0].Header.Should().Be("Parameter");
+            capturedColumns[1].Header.Should().Be(""); // Progress bar column
+            capturedColumns[2].Header.Should().Be("Value");
+            capturedColumns[3].Header.Should().Be("Width x Range");
+            capturedColumns[4].Header.Should().Be("Expression");
+
+            // Verify column formatter behavior
+            var param1 = trackingInfo.Parameters.First();
+            capturedColumns[0].ValueFormatter(param1).Should().Be("Param1");
+            capturedColumns[2].ValueFormatter(param1).Should().Be("0.5");
+            capturedColumns[3].ValueFormatter(param1).Should().Be("1 x [-1; 0; 1]");
+            capturedColumns[4].ValueFormatter(param1).Should().Be("Param1 * 1.0");
         }
 
         [Fact]
@@ -215,27 +250,55 @@ namespace SharpBridge.Tests.Utilities
                 new TrackingParam { Id = "Param1", Value = 0.5 }
             };
             trackingInfo.ParameterCalculationExpressions["Param1"] = "x * 2.0";
+            trackingInfo.ParameterDefinitions["Param1"] = new VTSParameter("Param1", -1, 1, 0);
             var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Capture the columns to verify their behavior
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                        // Simulate table formatter behavior by executing column formatters
+                        foreach (var row in rows)
+                        {
+                            foreach (var col in columns)
+                            {
+                                col.ValueFormatter(row);
+                            }
+                        }
+                    });
 
             // Act
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            _mockTableFormatter.Verify(x => x.AppendTable(
-                It.IsAny<StringBuilder>(),
-                It.Is<string>(s => s == "Parameters"),
-                It.IsAny<List<TrackingParam>>(),
-                It.Is<IList<ITableColumn<TrackingParam>>>(cols => 
-                    cols.Count == 5 &&
-                    cols[0].Header == "Parameter" &&
-                    cols[1].Header == "" && // Progress bar column
-                    cols[2].Header == "Value" &&
-                    cols[3].Header == "Width x Range" &&
-                    cols[4].Header == "Expression"),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int?>()), Times.Once);
+            capturedColumns.Should().NotBeNull();
+            capturedColumns.Count.Should().Be(5);
+            
+            // Verify column headers
+            capturedColumns[0].Header.Should().Be("Parameter");
+            capturedColumns[1].Header.Should().Be(""); // Progress bar column
+            capturedColumns[2].Header.Should().Be("Value");
+            capturedColumns[3].Header.Should().Be("Width x Range");
+            capturedColumns[4].Header.Should().Be("Expression");
+
+            // Verify column formatter behavior
+            var param1 = trackingInfo.Parameters.First();
+            capturedColumns[0].ValueFormatter(param1).Should().Be("Param1");
+            capturedColumns[2].ValueFormatter(param1).Should().Be("0.5");
+            capturedColumns[3].ValueFormatter(param1).Should().Be("1 x [-1; 0; 1]");
+            capturedColumns[4].ValueFormatter(param1).Should().Be("x * 2.0");
         }
 
         [Fact]
@@ -253,7 +316,7 @@ namespace SharpBridge.Tests.Utilities
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "Parameters"),
-                It.Is<List<TrackingParam>>(parameters => parameters.Count == 0),
+                It.Is<IEnumerable<TrackingParam>>(parameters => !parameters.Any()),
                 It.IsAny<List<ITableColumn<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -280,8 +343,8 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
-                It.Is<string>(s => s == "Parameters"),
-                It.IsAny<List<TrackingParam>>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<TrackingParam>>(),
                 It.IsAny<List<ITableColumn<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -307,8 +370,8 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
-                It.Is<string>(s => s == "Parameters"),
-                It.IsAny<List<TrackingParam>>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<TrackingParam>>(),
                 It.IsAny<List<ITableColumn<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -499,7 +562,7 @@ namespace SharpBridge.Tests.Utilities
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "Parameters"),
-                It.IsAny<List<TrackingParam>>(),
+                It.IsAny<IEnumerable<TrackingParam>>(),
                 It.Is<IList<ITableColumn<TrackingParam>>>(cols => 
                     cols.Count == 5 &&
                     cols[0].Header == "Parameter" &&
