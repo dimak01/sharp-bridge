@@ -63,11 +63,11 @@ namespace SharpBridge.Utilities
             // Tracking data details
             if (serviceStats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
             {
-            var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
+                var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
             
-            if (CurrentVerbosity >= VerbosityLevel.Normal && parameters.Any())
-            {
-                AppendParameters(builder, pcTrackingInfo);
+                if (CurrentVerbosity >= VerbosityLevel.Normal)
+                {
+                    AppendParameters(builder, pcTrackingInfo);
                 }
             }
             else if (serviceStats.CurrentEntity != null)
