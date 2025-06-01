@@ -7,19 +7,59 @@ using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Utilities;
 using Xunit;
+using System.Text;
 
 namespace SharpBridge.Tests.Utilities
 {
     public class PhoneTrackingInfoFormatterTests
     {
-        private readonly PhoneTrackingInfoFormatter _formatter;
         private readonly Mock<IConsole> _mockConsole;
+        private readonly Mock<ITableFormatter> _mockTableFormatter;
+        private readonly PhoneTrackingInfoFormatter _formatter;
 
         public PhoneTrackingInfoFormatterTests()
         {
             _mockConsole = new Mock<IConsole>();
             _mockConsole.Setup(c => c.WindowWidth).Returns(80); // Default console width for tests
-            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object);
+            
+            _mockTableFormatter = new Mock<ITableFormatter>();
+            
+            // Set up the table formatter to simulate table output for tests
+            _mockTableFormatter.Setup(tf => tf.AppendTable(
+                It.IsAny<StringBuilder>(), 
+                It.IsAny<string>(), 
+                It.IsAny<IEnumerable<BlendShape>>(), 
+                It.IsAny<IList<ITableColumn<BlendShape>>>(), 
+                It.IsAny<int>(), 
+                It.IsAny<int>(), 
+                It.IsAny<int>(), 
+                It.IsAny<int?>()))
+            .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                (builder, title, rows, columns, targetCols, consoleWidth, barWidth, maxItems) =>
+                {
+                    // Simulate the table output that tests expect
+                    builder.AppendLine(title);
+                    builder.AppendLine("Expression         Value");
+                    builder.AppendLine("------------------------");
+                    
+                    foreach (var shape in rows.Take(maxItems ?? int.MaxValue))
+                    {
+                        // Generate 20-character progress bar to match test expectations
+                        var filled = (int)(shape.Value * 20);
+                        var progressBar = new string('█', filled) + new string('░', 20 - filled);
+                        builder.AppendLine($"{shape.Key.PadRight(10)} {progressBar}   {shape.Value:F2}");
+                    }
+                });
+            
+            // Set up progress bar creation
+            _mockTableFormatter.Setup(tf => tf.CreateProgressBar(It.IsAny<double>(), It.IsAny<int>()))
+                .Returns<double, int>((value, width) =>
+                {
+                    var filled = (int)(value * width);
+                    return new string('█', filled) + new string('░', width - filled);
+                });
+            
+            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
         }
         
         /// <summary>

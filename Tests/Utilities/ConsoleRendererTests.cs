@@ -55,6 +55,7 @@ namespace SharpBridge.Tests.Utilities
         private ConsoleRenderer _renderer;
         private Mock<IFormatter> _mockFormatter;
         private Mock<IAppLogger> _mockLogger;
+        private Mock<ITableFormatter> _mockTableFormatter;
         private TestEntity _testEntity;
         private ServiceStats _testStats;
         
@@ -63,38 +64,27 @@ namespace SharpBridge.Tests.Utilities
         /// </summary>
         public ConsoleRendererTests()
         {
-            // Create test console to capture output
+            // Setup test console
             _testConsole = new TestConsole();
             
-            // Create and configure the logger mock
+            // Setup mock formatter
+            _mockFormatter = new Mock<IFormatter>();
+            _mockFormatter.Setup(f => f.Format(It.IsAny<IServiceStats>()))
+                         .Returns<IServiceStats>(stats => $"Test Entity: {((TestEntity)stats.CurrentEntity).Name}, Value: {((TestEntity)stats.CurrentEntity).Value}");
+            
+            // Setup mock logger
             _mockLogger = new Mock<IAppLogger>();
             
-            // Create and configure the formatter mock
-            _mockFormatter = new Mock<IFormatter>();
+            // Setup mock table formatter
+            _mockTableFormatter = new Mock<ITableFormatter>();
             
-            // Set up CurrentVerbosity property
-            _mockFormatter.Setup(f => f.CurrentVerbosity)
-                .Returns(VerbosityLevel.Normal);
-                
-            // Set up CycleVerbosity method
-            _mockFormatter.Setup(f => f.CycleVerbosity())
-                .Verifiable();
+            // Create test entity
+            _testEntity = new TestEntity("TestName", 42);
             
-            // The Format method with service stats parameter
-            _mockFormatter.Setup(f => f.Format(It.IsAny<IServiceStats>()))
-                .Returns<IServiceStats>(stats => {
-                    if (stats?.CurrentEntity is TestEntity testEntity)
-                        return $"Test Entity: {testEntity.Name}, Value: {testEntity.Value}";
-                    return "Unknown entity";
-                });
-                
-            // Create test entity and stats
-            _testEntity = new TestEntity("Test", 42);
-            
+            // Create test stats
             var counters = new Dictionary<string, long>
             {
-                ["Counter1"] = 10,
-                ["Counter2"] = 20
+                ["TestCounter"] = 100
             };
             
             _testStats = new ServiceStats(
@@ -105,7 +95,7 @@ namespace SharpBridge.Tests.Utilities
             );
             
             // Create the renderer with our test console and register our formatter
-            _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
+            _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTableFormatter.Object);
             _renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
         }
         
@@ -118,19 +108,55 @@ namespace SharpBridge.Tests.Utilities
         }
         
         [Fact]
+        public void Constructor_WithValidParameters_InitializesSuccessfully()
+        {
+            // Arrange
+            var mockConsole = new Mock<IConsole>();
+            var mockLogger = new Mock<IAppLogger>();
+            var mockTableFormatter = new Mock<ITableFormatter>();
+
+            // Act & Assert
+            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, mockTableFormatter.Object);
+            renderer.Should().NotBeNull();
+        }
+
+        [Fact]
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockTableFormatter = new Mock<ITableFormatter>();
+
             // Act & Assert
-            Action act = () => new ConsoleRenderer(null, _mockLogger.Object);
+            Action act = () => new ConsoleRenderer(null, mockLogger.Object, mockTableFormatter.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
+            // Arrange
+            var mockConsole = new Mock<IConsole>();
+            var mockTableFormatter = new Mock<ITableFormatter>();
+
             // Act & Assert
-            Action act = () => new ConsoleRenderer(_testConsole, null);
+            Action act = () => new ConsoleRenderer(mockConsole.Object, null, mockTableFormatter.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
+        }
+
+        [Fact]
+        public void RegisterFormatter_WithValidFormatter_RegistersSuccessfully()
+        {
+            // Arrange
+            var mockConsole = new Mock<IConsole>();
+            var mockLogger = new Mock<IAppLogger>();
+            var mockTableFormatter = new Mock<ITableFormatter>();
+            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, mockTableFormatter.Object);
+            var formatter = new Mock<IFormatter>().Object;
+
+            // Act & Assert
+            renderer.RegisterFormatter<TestEntity>(formatter);
+            // No exception should be thrown
         }
         
         [Fact]
@@ -154,7 +180,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             // Create a new renderer without registering formatters
             var testConsole = new TestConsole();
-            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object);
+            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, _mockTableFormatter.Object);
             
             // Act
             var result = renderer.GetFormatter<TestEntity>();
@@ -222,7 +248,7 @@ namespace SharpBridge.Tests.Utilities
             var stats = new List<IServiceStats> { statsWithNoFormatter };
             
             // We need a renderer that doesn't have formatters for OtherEntity
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTableFormatter.Object);
             
             // Act
             renderer.Update(stats);
@@ -245,7 +271,7 @@ namespace SharpBridge.Tests.Utilities
             );
             
             // Register our special multi-interface formatter
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTableFormatter.Object);
             renderer.RegisterFormatter<TestEntity>(multiFormatter);
             
             // Act - This should exercise the LINQ expression
@@ -265,7 +291,7 @@ namespace SharpBridge.Tests.Utilities
             smallConsole.Setup(c => c.WindowWidth).Returns(80);
             
             // Create a renderer with the small console
-            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object);
+            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object, _mockTableFormatter.Object);
             
             // Create more lines than the window height
             var manyStats = new List<IServiceStats>();
@@ -330,7 +356,7 @@ namespace SharpBridge.Tests.Utilities
                 .Throws(new InvalidOperationException("Test exception"));
             
             // Create a renderer with the throwing console
-            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object);
+            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object, _mockTableFormatter.Object);
             renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
             
             // Act & Assert
@@ -345,6 +371,119 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<Exception>(),
                 It.IsAny<object[]>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public void Update_WithEntityStats_CallsFormatterCorrectly()
+        {
+            // Arrange
+            var testConsole = new TestConsole();
+            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, _mockTableFormatter.Object);
+            var mockFormatter = new Mock<IFormatter>();
+            var testEntity = new TestEntity("Test", 42);
+            
+            mockFormatter.Setup(f => f.Format(It.IsAny<IServiceStats>()))
+                         .Returns("Formatted output");
+            
+            renderer.RegisterFormatter<TestEntity>(mockFormatter.Object);
+            
+            var stats = new List<IServiceStats>
+            {
+                CreateMockServiceStats("TestService", "Running", true, testEntity)
+            };
+
+            // Act
+            renderer.Update(stats);
+
+            // Assert
+            mockFormatter.Verify(f => f.Format(It.IsAny<IServiceStats>()), Times.Once);
+        }
+
+        [Fact]
+        public void Update_WithNullEntity_HandlesGracefully()
+        {
+            // Arrange
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTableFormatter.Object);
+            var stats = new List<IServiceStats>
+            {
+                CreateMockServiceStats("TestService", "Running", true, null)
+            };
+
+            // Act & Assert
+            Action act = () => renderer.Update(stats);
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Update_WithUnregisteredEntityType_HandlesGracefully()
+        {
+            // Arrange
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTableFormatter.Object);
+            var testEntity = new TestEntity("Test", 42);
+            var stats = new List<IServiceStats>
+            {
+                CreateMockServiceStats("TestService", "Running", true, testEntity)
+            };
+
+            // Act & Assert
+            Action act = () => renderer.Update(stats);
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Update_WithSmallConsole_HandlesGracefully()
+        {
+            // Arrange
+            var smallConsole = new Mock<IConsole>();
+            smallConsole.Setup(c => c.WindowWidth).Returns(10);
+            smallConsole.Setup(c => c.WindowHeight).Returns(5);
+            
+            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object, _mockTableFormatter.Object);
+            var stats = new List<IServiceStats>
+            {
+                CreateMockServiceStats("TestService", "Running", true)
+            };
+
+            // Act & Assert
+            Action act = () => renderer.Update(stats);
+            act.Should().NotThrow();
+        }
+
+        [Fact]
+        public void Update_WithConsoleException_LogsAndRethrows()
+        {
+            // Arrange
+            var throwingConsole = new Mock<IConsole>();
+            var expectedException = new InvalidOperationException("Console error");
+            
+            throwingConsole.Setup(c => c.SetCursorPosition(It.IsAny<int>(), It.IsAny<int>()))
+                          .Throws(expectedException);
+            
+            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object, _mockTableFormatter.Object);
+            var stats = new List<IServiceStats>
+            {
+                CreateMockServiceStats("TestService", "Running", true)
+            };
+
+            // Act & Assert
+            Action act = () => renderer.Update(stats);
+            act.Should().Throw<InvalidOperationException>().WithMessage("Console error");
+            
+            _mockLogger.Verify(l => l.ErrorWithException("Console rendering failed", expectedException), Times.Once);
+        }
+
+        /// <summary>
+        /// Helper method to create mock service stats
+        /// </summary>
+        private static IServiceStats CreateMockServiceStats(string serviceName, string status, bool isHealthy, IFormattableObject entity = null)
+        {
+            return new ServiceStats(
+                serviceName: serviceName,
+                status: status,
+                currentEntity: entity,
+                isHealthy: isHealthy,
+                counters: new Dictionary<string, long>()
+            );
         }
     }
 } 
