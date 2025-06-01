@@ -52,7 +52,7 @@ namespace SharpBridge.Models
             string status, 
             IFormattableObject currentEntity, 
             bool isHealthy = true,
-            DateTime? lastSuccessfulOperation = null,
+            DateTime lastSuccessfulOperation = default,
             string lastError = null,
             Dictionary<string, long> counters = null)
         {
@@ -60,7 +60,7 @@ namespace SharpBridge.Models
             Status = status;
             CurrentEntity = currentEntity;
             IsHealthy = isHealthy;
-            LastSuccessfulOperation = lastSuccessfulOperation ?? DateTime.UtcNow;
+            LastSuccessfulOperation = lastSuccessfulOperation;
             LastError = lastError;
             Counters = counters ?? new Dictionary<string, long>();
         }

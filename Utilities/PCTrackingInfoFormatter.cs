@@ -246,14 +246,14 @@ namespace SharpBridge.Utilities
         /// <param name="lastSuccess">Last successful operation timestamp</param>
         /// <param name="lastError">Last error message (optional)</param>
         /// <returns>Formatted health status string</returns>
-        private string FormatHealthStatus(bool isHealthy, DateTime? lastSuccess, string lastError = null)
+        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string lastError = null)
         {
             var healthIcon = isHealthy ? "√" : "X";
             var healthText = (isHealthy ? "Healthy" : "Unhealthy");
             var healthColor = ConsoleColors.GetHealthColor(isHealthy);
             
-            var timeAgo = lastSuccess.HasValue && !(lastSuccess.Value == DateTime.MinValue)
-                ? FormatTimeAgo(DateTime.UtcNow - lastSuccess.Value)
+            var timeAgo = lastSuccess != DateTime.MinValue
+                ? FormatTimeAgo(DateTime.UtcNow - lastSuccess)
                 : "Never";
             
             var healthContent = $"{healthIcon} {healthText}";
