@@ -121,47 +121,54 @@ namespace SharpBridge.Utilities
             if (phoneTrackingInfo.FaceFound && CurrentVerbosity >= VerbosityLevel.Normal)
             {
                 if (phoneTrackingInfo.Rotation != null)
-            {
-                builder.AppendLine($"Head Rotation (X,Y,Z): " +
-                    $"{phoneTrackingInfo.Rotation.X:F1}°, " +
-                    $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
-                    $"{phoneTrackingInfo.Rotation.Z:F1}°");
-            }
+                {
+                    builder.AppendLine($"Head Rotation (X,Y,Z): " +
+                        $"{phoneTrackingInfo.Rotation.X:F1}°, " +
+                        $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
+                        $"{phoneTrackingInfo.Rotation.Z:F1}°");
+                }
             
                 if (phoneTrackingInfo.Position != null)
-            {
-                builder.AppendLine($"Head Position (X,Y,Z): " +
-                    $"{phoneTrackingInfo.Position.X:F1}, " +
-                    $"{phoneTrackingInfo.Position.Y:F1}, " +
-                    $"{phoneTrackingInfo.Position.Z:F1}");
+                {
+                    builder.AppendLine($"Head Position (X,Y,Z): " +
+                        $"{phoneTrackingInfo.Position.X:F1}, " +
+                        $"{phoneTrackingInfo.Position.Y:F1}, " +
+                        $"{phoneTrackingInfo.Position.Z:F1}");
                 }
             }
             
             // Show blend shapes data in detailed mode
-            if (CurrentVerbosity >= VerbosityLevel.Normal && phoneTrackingInfo.BlendShapes != null && phoneTrackingInfo.BlendShapes.Count > 0)
+            if (CurrentVerbosity >= VerbosityLevel.Normal)
             {
                 builder.AppendLine();
                 
-                // Sort blend shapes by name - let TableFormatter handle display limits
-                var sortedShapes = phoneTrackingInfo.BlendShapes
-                    .Where(s => s != null)
-                    .OrderBy(s => s.Key)
-                    .ToList();
-
-                // Define columns for the generic table
-                var columns = new List<ITableColumn<BlendShape>>
+                if (phoneTrackingInfo.BlendShapes == null || phoneTrackingInfo.BlendShapes.Count == 0)
                 {
-                    new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
-                    new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
-                    new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
-                };
+                    builder.AppendLine("No blend shapes");
+                }
+                else
+                {
+                    // Sort blend shapes by name - let TableFormatter handle display limits
+                    var sortedShapes = phoneTrackingInfo.BlendShapes
+                        .Where(s => s != null)
+                        .OrderBy(s => s.Key)
+                        .ToList();
 
-                // Use the new generic table formatter - let it handle display limits
-                var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
-                _tableFormatter.AppendTable(builder, "BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
+                    // Define columns for the generic table
+                    var columns = new List<ITableColumn<BlendShape>>
+                    {
+                        new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
+                        new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
+                        new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
+                    };
 
-                builder.AppendLine();
-                builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
+                    // Use the new generic table formatter - let it handle display limits
+                    var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
+                    _tableFormatter.AppendTable(builder, "BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
+
+                    builder.AppendLine();
+                    builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
+                }
             }
         }
         
@@ -189,17 +196,16 @@ namespace SharpBridge.Utilities
         /// <param name="lastSuccess">Last successful operation timestamp</param>
         /// <param name="lastError">Last error message (optional)</param>
         /// <returns>Formatted health status string</returns>
-        private string FormatHealthStatus(bool isHealthy, DateTime? lastSuccess, string lastError = null)
+        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string lastError = null)
         {
             var healthIcon = isHealthy ? "√" : "X";
             var healthText = (isHealthy ? "Healthy" : "Unhealthy");
             var healthColor = ConsoleColors.GetHealthColor(isHealthy);
             
-            var timeAgo = lastSuccess.HasValue && !(lastSuccess.Value == DateTime.MinValue)
-                ? FormatTimeAgo(DateTime.UtcNow - lastSuccess.Value)
+            var timeAgo = lastSuccess != DateTime.MinValue
+                ? FormatTimeAgo(DateTime.UtcNow - lastSuccess)
                 : "Never".PadLeft(TIME_WIDTH);
 
-            
             var healthContent = $"{healthIcon} {healthText}";
             var colorizedHealth = ConsoleColors.Colorize(healthContent, healthColor);
 
