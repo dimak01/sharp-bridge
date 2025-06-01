@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using FluentAssertions;
+using SharpBridge.Interfaces;
 using SharpBridge.Utilities;
 using Xunit;
 
