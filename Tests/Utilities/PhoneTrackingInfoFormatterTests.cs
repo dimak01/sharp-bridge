@@ -392,6 +392,23 @@ namespace SharpBridge.Tests.Utilities
             result.Should().Contain(ConsoleColors.Error); // Red color for unhealthy status
         }
 
+        [Fact]
+        public void Format_WithUnhealthyServiceAndLongError_TruncatesErrorMessage()
+        {
+            // Arrange
+            var longError = new string('X', 60) + "_END";
+            var serviceStats = CreateMockServiceStats("Running", isHealthy: false, lastSuccess: DateTime.UtcNow.AddMinutes(-1), lastError: longError);
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().Contain("Error: ");
+            result.Should().Contain("XXX"); // Should contain part of the error
+            result.Should().Contain("..."); // Should be truncated
+            result.Should().NotContain("_END"); // The ending should be truncated
+        }
+
         #endregion
 
         #region Metrics Formatting Tests
@@ -718,6 +735,38 @@ namespace SharpBridge.Tests.Utilities
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
+                    cols[2].Header == "Value"),
+                TARGET_COLUMN_COUNT,
+                _mockConsole.Object.WindowWidth,
+                20,
+                TARGET_ROWS_NORMAL),
+                Times.Once);
+        }
+
+        [Fact]
+        public void Format_WithBlendShapes_CreatesAllExpectedTableColumns()
+        {
+            // Arrange
+            var blendShapes = new List<BlendShape>
+            {
+                new BlendShape { Key = "jawOpen", Value = 0.5f },
+                new BlendShape { Key = "eyeBlinkLeft", Value = 0.3f }
+            };
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: blendShapes);
+            var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            _mockTableFormatter.Verify(tf => tf.AppendTable(
+                It.IsAny<StringBuilder>(),
+                "BlendShapes:",
+                It.IsAny<IEnumerable<BlendShape>>(),
+                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
+                    cols.Count == 3 &&
+                    cols[0].Header == "Expression" &&
+                    cols[1].Header == "" &&
                     cols[2].Header == "Value"),
                 TARGET_COLUMN_COUNT,
                 _mockConsole.Object.WindowWidth,
