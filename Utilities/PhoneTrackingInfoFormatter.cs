@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.CompilerServices;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+
+[assembly: InternalsVisibleTo("Tests")]
 
 namespace SharpBridge.Utilities
 {
@@ -23,6 +26,16 @@ namespace SharpBridge.Utilities
         
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
+        
+        /// <summary>
+        /// Gets or sets the current time for testing purposes. If null, DateTime.UtcNow is used.
+        /// </summary>
+        internal DateTime? CurrentTime { get; set; }
+        
+        /// <summary>
+        /// Gets the current time, using the test time if set, otherwise DateTime.UtcNow
+        /// </summary>
+        private DateTime GetCurrentTime() => CurrentTime ?? DateTime.UtcNow;
         
         /// <summary>
         /// Initializes a new instance of the PhoneTrackingInfoFormatter
@@ -203,7 +216,7 @@ namespace SharpBridge.Utilities
             var healthColor = ConsoleColors.GetHealthColor(isHealthy);
             
             var timeAgo = lastSuccess != DateTime.MinValue
-                ? FormatTimeAgo(DateTime.UtcNow - lastSuccess)
+                ? FormatTimeAgo(GetCurrentTime() - lastSuccess)
                 : "Never".PadLeft(TIME_WIDTH);
 
             var healthContent = $"{healthIcon} {healthText}";
@@ -235,7 +248,9 @@ namespace SharpBridge.Utilities
         /// <returns>Formatted time string</returns>
         private string FormatTimeAgo(TimeSpan timeSpan)
         {
-            if (timeSpan.TotalSeconds < 60)
+            if (timeSpan.TotalSeconds < 0)
+                return "0s".PadLeft(TIME_WIDTH);
+            else if (timeSpan.TotalSeconds < 60)
                 return $"{timeSpan.TotalSeconds:F0}s".PadLeft(TIME_WIDTH);
             else if (timeSpan.TotalMinutes < 60)
                 return $"{timeSpan.TotalMinutes:F0}m".PadLeft(TIME_WIDTH);

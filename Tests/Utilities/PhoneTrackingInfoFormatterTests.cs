@@ -191,6 +191,23 @@ namespace SharpBridge.Tests.Utilities
             _formatter.CurrentVerbosity.Should().Be(VerbosityLevel.Basic);
         }
 
+        [Fact]
+        public void CycleVerbosity_WithInvalidVerbosityLevel_ResetsToNormal()
+        {
+            // Arrange
+            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            
+            // Use reflection to set an invalid verbosity level
+            var property = typeof(PhoneTrackingInfoFormatter).GetProperty("CurrentVerbosity");
+            property.SetValue(formatter, (VerbosityLevel)999); // Set to an invalid enum value
+
+            // Act
+            formatter.CycleVerbosity();
+
+            // Assert
+            formatter.CurrentVerbosity.Should().Be(VerbosityLevel.Normal);
+        }
+
         #endregion
 
         #region Service Header Tests
@@ -405,13 +422,13 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running");
             serviceStats.Counters["Total Frames"] = 1000;
             serviceStats.Counters["Failed Frames"] = 5;
-            // No FPS counter
+            serviceStats.Counters.Remove("FPS"); // Remove FPS counter
 
             // Act
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("0 FPS");
+            result.Should().MatchRegex("Metrics:.*\\|\\s*0\\s*FPS");
         }
 
         [Fact]
@@ -1014,6 +1031,60 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<int>(),
                 It.IsAny<int?>()),
                 Times.Once);
+        }
+
+        #endregion
+
+        #region FormatTimeAgo Tests
+
+        [Theory]
+        [InlineData(0, "0s")]
+        [InlineData(1, "1s")]
+        [InlineData(59, "59s")]
+        [InlineData(60, "1m")]
+        [InlineData(61, "1m")]
+        [InlineData(119, "2m")]  // 1.98 minutes rounds up to 2m
+        [InlineData(120, "2m")]
+        [InlineData(3599, "60m")]  // 59.98 minutes rounds up to 60m
+        [InlineData(3600, "1h")]
+        [InlineData(3601, "1h")]
+        [InlineData(7199, "2h")]  // 1.999 hours rounds up to 2h
+        [InlineData(7200, "2h")]
+        [InlineData(86399, "24h")]  // 23.999 hours rounds up to 24h
+        [InlineData(86400, "1d")]
+        [InlineData(86401, "1d")]
+        [InlineData(172799, "2d")]  // 1.999 days rounds up to 2d
+        [InlineData(172800, "2d")]
+        public void Format_WithDifferentLastSuccessTimes_ShowsCorrectTimeAgo(int seconds, string expected)
+        {
+            // Arrange
+            var currentTime = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            _formatter.CurrentTime = currentTime;
+            var lastSuccess = currentTime.AddSeconds(-seconds);
+            var serviceStats = CreateMockServiceStats("Running", isHealthy: true, lastSuccess: lastSuccess);
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            // The time is padded to 6 characters and may include color codes
+            result.Should().MatchRegex($"Last Success:\\s*{expected}");
+        }
+
+        [Fact]
+        public void Format_WithFutureLastSuccessTime_ShowsZeroSeconds()
+        {
+            // Arrange
+            var currentTime = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            _formatter.CurrentTime = currentTime;
+            var lastSuccess = currentTime.AddSeconds(1); // Future time
+            var serviceStats = CreateMockServiceStats("Running", isHealthy: true, lastSuccess: lastSuccess);
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().MatchRegex("Last Success:\\s*0s");
         }
 
         #endregion
