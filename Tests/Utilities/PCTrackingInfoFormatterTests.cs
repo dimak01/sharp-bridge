@@ -13,15 +13,17 @@ namespace SharpBridge.Tests.Utilities
     public class PCTrackingInfoFormatterTests
     {
         private const string TrackingParamName = "PCTrackingParam";
-        private readonly PCTrackingInfoFormatter _formatter;
         private readonly Mock<IConsole> _mockConsole;
+        private readonly Mock<ITableFormatter> _mockTableFormatter;
+        private readonly PCTrackingInfoFormatter _formatter;
 
         public PCTrackingInfoFormatterTests()
         {
             _mockConsole = new Mock<IConsole>();
-            _mockConsole.Setup(c => c.WindowWidth).Returns(120);
-            _mockConsole.Setup(c => c.WindowHeight).Returns(30);
-            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object);
+            _mockConsole.Setup(c => c.WindowWidth).Returns(80);
+            
+            _mockTableFormatter = new Mock<ITableFormatter>();
+            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
         }
 
         /// <summary>
