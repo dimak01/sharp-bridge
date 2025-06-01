@@ -103,11 +103,15 @@ namespace SharpBridge
             // Register keyboard input handler
             services.AddSingleton<IKeyboardInputHandler, KeyboardInputHandler>();
             
-            // Register console renderer - dependencies will be resolved automatically
-            services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
-            
             // Register table formatter
             services.AddSingleton<ITableFormatter, TableFormatter>();
+            
+            // Register formatters
+            services.AddSingleton<PhoneTrackingInfoFormatter>();
+            services.AddSingleton<PCTrackingInfoFormatter>();
+            
+            // Register console renderer - dependencies will be resolved automatically
+            services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
             
             // Register recovery policy
             services.AddSingleton<IRecoveryPolicy>(provider => 
