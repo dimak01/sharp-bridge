@@ -20,16 +20,23 @@ namespace SharpBridge.Services
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly VTubeStudioPCConfig _pcConfig;
-        private readonly IAuthTokenProvider _authTokenProvider;
         private readonly IAppLogger _logger;
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
+        private readonly IRecoveryPolicy _recoveryPolicy;
+        private readonly IConsole _console;
+        private readonly ConsoleWindowManager _consoleWindowManager;
+        
+        // Preferred console dimensions
+        private const int PREFERRED_CONSOLE_WIDTH = 150;
+        private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
         private bool _isInitialized;
         private bool _isDisposed;
         private string _status = "Initializing";
         private string _transformConfigPath; // Store the config path for reloading
+        private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -39,33 +46,39 @@ namespace SharpBridge.Services
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
         /// <param name="pcConfig">Configuration for the PC client</param>
-        /// <param name="authTokenProvider">Authentication token provider</param>
         /// <param name="logger">Application logger</param>
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
+        /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
+        /// <param name="console">Console abstraction for window management</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
             VTubeStudioPCConfig pcConfig,
-            IAuthTokenProvider authTokenProvider,
             IAppLogger logger,
             IConsoleRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler,
-            IVTubeStudioPCParameterManager parameterManager)
+            IVTubeStudioPCParameterManager parameterManager,
+            IRecoveryPolicy recoveryPolicy,
+            IConsole console)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
             _pcConfig = pcConfig ?? throw new ArgumentNullException(nameof(pcConfig));
-            _authTokenProvider = authTokenProvider ?? throw new ArgumentNullException(nameof(authTokenProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
+            _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
+            _console = console ?? throw new ArgumentNullException(nameof(console));
+            
+            // Initialize console window manager
+            _consoleWindowManager = new ConsoleWindowManager(_console);
         }
 
         /// <summary>
@@ -78,15 +91,20 @@ namespace SharpBridge.Services
         {
             ValidateInitializationParameters(transformConfigPath);
             
+            // Set preferred console window size
+            SetupConsoleWindow();
+            
             _logger.Info("Using transformation config: {0}", transformConfigPath);
             
             // Store the config path for reloading
             _transformConfigPath = transformConfigPath;
             
             await InitializeTransformationEngine(transformConfigPath);
-            await DiscoverAndConnectToVTubeStudio(cancellationToken);
-            await AuthenticateWithVTubeStudio(cancellationToken);
-            await SynchronizeParametersAsync(cancellationToken);
+            
+            // Initialize clients directly during startup
+            _logger.Info("Attempting initial client connections...");
+            await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
+            await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
             
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
@@ -96,14 +114,39 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
+        /// Sets up the console window with preferred dimensions
+        /// </summary>
+        private void SetupConsoleWindow()
+        {
+            try
+            {
+                var currentSize = _consoleWindowManager.GetCurrentSize();
+                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
+                
+                bool success = _consoleWindowManager.SetTemporarySize(PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                if (success)
+                {
+                    _logger.Info("Console window resized to preferred size: {0}x{1}", PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                }
+                else
+                {
+                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}", 
+                        currentSize.width, currentSize.height);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error setting up console window", ex);
+            }
+        }
+
+        /// <summary>
         /// Starts the data flow between components and runs until cancelled
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>A task that completes when the orchestrator is stopped</returns>
         public async Task RunAsync(CancellationToken cancellationToken)
         {
-            EnsureInitialized();
-            
             _logger.Info("Starting application...");
             
             try
@@ -113,7 +156,7 @@ namespace SharpBridge.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("Operation was canceled, shutting down...");
+                _logger.Info("Operation was canceled, shutting down gracefully...");
             }
             finally
             {
@@ -123,14 +166,6 @@ namespace SharpBridge.Services
             _logger.Info("Application stopped");
         }
 
-        private void EnsureInitialized()
-        {
-            if (!_isInitialized)
-            {
-                throw new InvalidOperationException("ApplicationOrchestrator must be initialized before running");
-            }
-        }
-        
         private void ValidateInitializationParameters(string transformConfigPath)
         {
             if (string.IsNullOrWhiteSpace(transformConfigPath))
@@ -147,77 +182,6 @@ namespace SharpBridge.Services
         private async Task InitializeTransformationEngine(string transformConfigPath)
         {
             await _transformationEngine.LoadRulesAsync(transformConfigPath);
-        }
-        
-        private async Task DiscoverAndConnectToVTubeStudio(CancellationToken cancellationToken)
-        {
-            _logger.Info("Discovering VTube Studio port...");
-            int port = await _vtubeStudioPCClient.DiscoverPortAsync(cancellationToken);
-            if (port <= 0)
-            {
-                throw new InvalidOperationException("Could not discover VTube Studio port. Is VTube Studio running?");
-            }
-            _logger.Info("Discovered VTube Studio on port {0}", port);
-            
-            _logger.Info("Connecting to VTube Studio...");
-            await _vtubeStudioPCClient.ConnectAsync(cancellationToken);
-        }
-        
-        private async Task AuthenticateWithVTubeStudio(CancellationToken cancellationToken)
-        {
-            _logger.Info("Starting VTube Studio authentication process...");
-            
-            // Load any existing token
-            _authTokenProvider.LoadAuthToken();
-            
-            // Try to authenticate with existing token if present
-            bool authenticated = false;
-            if (!string.IsNullOrEmpty(_authTokenProvider.Token))
-            {
-                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(_authTokenProvider.Token, cancellationToken);
-            }
-            
-            // If no token or authentication fails, get a new one
-            if (!authenticated)
-            {
-                _logger.Info("No valid token found, requesting new token...");
-                await _authTokenProvider.ClearTokenAsync();
-                var token = await _authTokenProvider.GetTokenAsync(cancellationToken);
-                authenticated = await _vtubeStudioPCClient.AuthenticateAsync(token, cancellationToken);
-            }
-            
-            if (!authenticated)
-            {
-                throw new InvalidOperationException("Failed to authenticate with VTube Studio");
-            }
-            
-            _logger.Info("Successfully authenticated with VTube Studio");
-        }
-
-        private async Task SynchronizeParametersAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                _logger.Info("Starting parameter synchronization...");
-                
-                // Get desired parameters from transformation engine
-                var desiredParameters = _transformationEngine.GetParameterDefinitions();
-                
-                // Use the parameter manager to sync
-                var success = await _parameterManager.SynchronizeParametersAsync(desiredParameters, cancellationToken);
-                
-                if (!success)
-                {
-                    throw new InvalidOperationException("Failed to synchronize parameters");
-                }
-                
-                _logger.Info("Parameter synchronization completed successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Failed to synchronize parameters: {0}", ex.Message);
-                throw;
-            }
         }
         
         private void SubscribeToEvents()
@@ -243,26 +207,39 @@ namespace SharpBridge.Services
             {
                 _consoleRenderer.ClearConsole();
 
-                // Send initial tracking request
-                await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
-                
+                // Send initial tracking request                
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     try
                     {
+                        // Check if it's time to attempt recovery
+                        if (DateTime.UtcNow >= _nextRecoveryAttempt)
+                        {
+                            var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
+                            if (needsRecovery)
+                            {
+                                _logger.Info("Recovery attempt completed");
+                            }
+                            _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+                        }
+
                         // Check if it's time to send another tracking request
                         if (DateTime.UtcNow >= nextRequestTime)
                         {
-                            await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                            // Only send requests if the phone client is healthy
+                            var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+                            if (phoneStats.IsHealthy)
+                            {
+                                await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                            }
                             
                             // Set the next request time based on phone configuration
-                            double requestIntervalSeconds = _phoneConfig?.RequestIntervalSeconds ?? 5.0;
+                            double requestIntervalSeconds = _phoneConfig.RequestIntervalSeconds;
                             nextRequestTime = DateTime.UtcNow.AddSeconds(requestIntervalSeconds);
                         }
                         
                         // Try to receive tracking data
                         bool dataReceived = await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
-                        
                         
                         // Check for keyboard input every tick of the loop
                         CheckForKeyboardInput();
@@ -285,14 +262,9 @@ namespace SharpBridge.Services
                     {
                         _status = $"Error: {ex.Message}";
                         _logger.Error("Error in application loop: {0}", ex.Message);
-                        await Task.Delay(1000, cancellationToken); // Add delay on error before retrying
+                        await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken); // Add delay on error before retrying
                     }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                _status = "Cancellation requested";
-                _logger.Info("Operation was canceled, shutting down...");
             }
             finally
             {
@@ -304,6 +276,17 @@ namespace SharpBridge.Services
         {
             UnsubscribeFromEvents();
             await CloseVTubeStudioConnection();
+            
+            // Restore original console window size
+            try
+            {
+                _consoleWindowManager?.RestoreOriginalSize();
+                _logger.Info("Console window size restored to original dimensions");
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error restoring console window size", ex);
+            }
         }
         
         private async Task CloseVTubeStudioConnection()
@@ -362,13 +345,7 @@ namespace SharpBridge.Services
         private async void ReloadTransformationConfig()
         {
             try
-            {
-                if (string.IsNullOrEmpty(_transformConfigPath))
-                {
-                    _status = "Error: No transformation config path available for reload";
-                    return;
-                }
-                
+            {      
                 _status = "Reloading transformation config...";
                 _logger.Info("Reloading transformation config...");
                 
@@ -398,18 +375,14 @@ namespace SharpBridge.Services
                 }
                 
                 // Transform tracking data
-                PCTrackingInfo trackingInfo = _transformationEngine.TransformData(trackingData);
+                PCTrackingInfo pcTrackingInfo = _transformationEngine.TransformData(trackingData);
                 
-                // Create PCTrackingInfo to encapsulate the transformed data
-                var pcTrackingInfo = new PCTrackingInfo
-                {
-                    Parameters = trackingInfo.Parameters,
-                    ParameterDefinitions = trackingInfo.ParameterDefinitions,
-                    FaceFound = trackingData.FaceFound
-                };
+                // Copy the FaceFound property from the original data
+                pcTrackingInfo.FaceFound = trackingData.FaceFound;
                 
-                // Send to VTube Studio if connection is open
-                if (_vtubeStudioPCClient.State == System.Net.WebSockets.WebSocketState.Open)
+                // Send to VTube Studio if PC client is healthy
+                var pcStats = _vtubeStudioPCClient.GetServiceStats();
+                if (pcStats.IsHealthy)
                 {
                     await _vtubeStudioPCClient.SendTrackingAsync(pcTrackingInfo, CancellationToken.None);
                 }
@@ -465,6 +438,34 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
+        /// Attempts to recover unhealthy components
+        /// </summary>
+        private async Task<bool> AttemptRecoveryAsync(CancellationToken cancellationToken)
+        {
+            bool needsRecovery = false;
+            
+            // Check PC client health
+            var pcStats = _vtubeStudioPCClient.GetServiceStats();
+            if (!pcStats.IsHealthy)
+            {
+                _logger.Info("Attempting to recover PC client...");
+                await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
+                needsRecovery = true;
+            }
+            
+            // Check Phone client health
+            var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+            if (!phoneStats.IsHealthy)
+            {
+                _logger.Info("Attempting to recover Phone client...");
+                await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
+                needsRecovery = true;
+            }
+            
+            return needsRecovery;
+        }
+
+        /// <summary>
         /// Disposes managed and unmanaged resources
         /// </summary>
         public void Dispose()
@@ -483,8 +484,11 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    _vtubeStudioPCClient?.Dispose();
-                    _vtubeStudioPhoneClient?.Dispose();
+                    // Dispose console window manager first to restore window size
+                    _consoleWindowManager?.Dispose();
+                    
+                    _vtubeStudioPCClient.Dispose();
+                    _vtubeStudioPhoneClient.Dispose();
                 }
                 
                 _isDisposed = true;

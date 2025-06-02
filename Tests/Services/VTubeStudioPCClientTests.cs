@@ -68,7 +68,7 @@ namespace SharpBridge.Tests.Services
             var stats = client.GetServiceStats();
 
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
-            Assert.Equal("None", stats.Status);
+            Assert.Equal("Initializing", stats.Status);
             Assert.Null(stats.CurrentEntity);
             Assert.NotNull(stats.Counters);
         }
@@ -85,7 +85,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             Assert.NotNull(stats);
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
-            Assert.Equal(WebSocketState.None.ToString(), stats.Status);
+            Assert.Equal("Initializing", stats.Status);
             Assert.NotNull(stats.Counters);
             
             // Check the counters
@@ -172,7 +172,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             Assert.NotNull(stats);
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
-            Assert.Equal(WebSocketState.Open.ToString(), stats.Status);
+            Assert.Equal("Connected", stats.Status);
             
             // Check the counters
             Assert.Equal(1, stats.Counters["MessagesSent"]);
@@ -662,6 +662,293 @@ namespace SharpBridge.Tests.Services
             
             // Assert
             Assert.Equal(1234, port);
+        }
+
+        [Fact]
+        public async Task CloseAsync_WhenWebSocketThrowsException_LogsErrorAndThrows()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            mockWebSocket.Setup(ws => ws.CloseAsync(It.IsAny<WebSocketCloseStatus>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                         .ThrowsAsync(new Exception("Close failed"));
+
+            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test", CancellationToken.None));
+            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error closing connection")), It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WhenWebSocketThrowsException_LogsErrorAndReturnsFalse()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Authentication failed"));
+
+            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+
+            // Act
+            var result = await client.AuthenticateAsync(CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendTrackingAsync_WhenWebSocketThrowsException_LogsErrorAndThrows()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            mockWebSocket.Setup(ws => ws.SendRequestAsync<InjectParamsRequest, object>(
+                It.IsAny<string>(), It.IsAny<InjectParamsRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Send failed"));
+
+            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            var trackingData = new PCTrackingInfo();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => client.SendTrackingAsync(trackingData, CancellationToken.None));
+            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Failed to send tracking data")), It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public void LoadAuthToken_WhenFileReadFails_LogsWarning()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPCConfig { TokenFilePath = "test-token-locked.txt" };
+            var client = new VTubeStudioPCClient(mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+
+            FileStream? fs = null;
+            try
+            {
+                // Create and lock the file
+                fs = new FileStream(config.TokenFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+                // Act
+                client.LoadAuthToken();
+                // Assert
+                mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to load authentication token")), It.IsAny<object[]>()), Times.Once);
+            }
+            finally
+            {
+                fs?.Dispose();
+                if (File.Exists(config.TokenFilePath))
+                    File.Delete(config.TokenFilePath);
+            }
+        }
+
+        [Fact]
+        public async Task SaveTokenAsync_WhenFileWriteFails_LogsWarning()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPCConfig { TokenFilePath = "invalid-path/token.txt" };
+            var client = new VTubeStudioPCClient(mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+
+            // Act
+            await client.SaveTokenAsync("test-token");
+
+            // Assert
+            mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to save authentication token")), It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ClearTokenAsync_WhenFileDeleteFails_LogsWarning()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPCConfig { TokenFilePath = "test-token.txt" };
+            var client = new VTubeStudioPCClient(mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+
+            // Create a file and make it read-only to simulate deletion issues
+            File.WriteAllText(config.TokenFilePath, "test-token");
+            File.SetAttributes(config.TokenFilePath, FileAttributes.ReadOnly);
+
+            try
+            {
+                // Act
+                await client.ClearTokenAsync();
+
+                // Assert
+                mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to clear authentication token")), It.IsAny<object[]>()), Times.Once);
+            }
+            finally
+            {
+                // Cleanup
+                File.SetAttributes(config.TokenFilePath, FileAttributes.Normal);
+                File.Delete(config.TokenFilePath);
+            }
+        }
+
+        [Fact]
+        public void Dispose_WhenWebSocketThrowsException_LogsError()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(ws => ws.Dispose()).Throws(new Exception("Dispose failed"));
+
+            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+
+            // Act
+            client.Dispose();
+
+            // Assert
+            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error disposing")), It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_WhenTokenFileEmpty_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create empty token file
+            File.WriteAllText(_config.TokenFilePath, string.Empty);
+            
+            // Queue token acquisition response
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            
+            // Act
+            var result = await client.GetTokenAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().Be("new-token");
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_WhenTokenFileInvalid_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create invalid token file
+            File.WriteAllText(_config.TokenFilePath, "invalid-token-data");
+            
+            // Queue token acquisition response
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            
+            // Act
+            var result = await client.GetTokenAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().Be("new-token");
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WhenTokenFileCorrupted_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create corrupted token file
+            File.WriteAllText(_config.TokenFilePath, "corrupted-token-data");
+            
+            // Queue token acquisition and authentication responses
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true });
+            
+            // Act
+            var result = await client.AuthenticateAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WhenTokenExpired_RequestsNewToken()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            await client.ConnectAsync(CancellationToken.None);
+            
+            // Create token file with expired token
+            File.WriteAllText(_config.TokenFilePath, "expired-token");
+            
+            // Load the expired token
+            client.LoadAuthToken();
+            
+            // Queue authentication failure, then token acquisition and successful authentication
+            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = false, Reason = "Token expired" });
+            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true });
+            
+            // Act
+            var result = await client.AuthenticateAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Requesting new authentication token")), It.IsAny<object[]>()), Times.Once);
+            
+            // Cleanup
+            File.Delete(_config.TokenFilePath);
+        }
+
+        [Fact]
+        public async Task GetTokenAsync_WhenNotConnected_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            // Do not connect
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetTokenAsync(CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WithToken_WhenNotConnected_ThrowsInvalidOperationException()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            // Do not connect
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.AuthenticateAsync("token", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task AuthenticateAsync_WithToken_WhenWebSocketThrows_ReturnsFalseAndLogsError()
+        {
+            // Arrange
+            var mockLogger = new Mock<IAppLogger>();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("WebSocket error"));
+            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            
+            // Act
+            var result = await client.AuthenticateAsync("token", CancellationToken.None);
+            
+            // Assert
+            result.Should().BeFalse();
+            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
         }
     }
 } 

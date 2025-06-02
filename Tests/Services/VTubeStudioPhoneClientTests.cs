@@ -556,7 +556,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             stats.Should().NotBeNull();
             stats.ServiceName.Should().Be("Phone Client");
-            stats.Status.Should().Be("Initializing");
+            stats.Status.Should().Be("ReceivingData");
             stats.CurrentEntity.Should().NotBeNull();
             (stats.CurrentEntity as PhoneTrackingInfo).FaceFound.Should().BeTrue();
             stats.Counters.Should().ContainKey("Total Frames").WhoseValue.Should().Be(1);
@@ -585,7 +585,7 @@ namespace SharpBridge.Tests.Services
             
             // Assert
             var stats = client.GetServiceStats();
-            stats.Status.Should().StartWith("Error:");
+            stats.Status.Should().Be("ReceiveError");
             stats.Counters.Should().ContainKey("Failed Frames").WhoseValue.Should().Be(1);
         }
         
@@ -608,7 +608,7 @@ namespace SharpBridge.Tests.Services
             
             // Assert
             var stats = client.GetServiceStats();
-            stats.Status.Should().Be("Sending Requests");
+            stats.Status.Should().Be("SendingRequests");
         }
     }
 } 

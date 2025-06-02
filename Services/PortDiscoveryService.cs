@@ -10,7 +10,7 @@ using SharpBridge.Models;
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Implementation of port discovery service using UDP broadcast
+    /// Implementation of port discovery service using UDP broadcast listening
     /// </summary>
     public class PortDiscoveryService : IPortDiscoveryService
     {
@@ -28,7 +28,9 @@ namespace SharpBridge.Services
         {
             try
             {
-                // Listen for broadcast
+                _logger.Debug("Listening for VTube Studio broadcast on port {0}", VTubeStudioDiscoveryPort);
+
+                // Listen for broadcast response (VTube Studio broadcasts every 2 seconds)
                 var receiveTask = _udpClient.ReceiveAsync(cancellationToken);
                 var timeoutTask = Task.Delay(timeoutMs, cancellationToken);
                 
@@ -42,22 +44,25 @@ namespace SharpBridge.Services
                 
                 var result = await receiveTask;
                 var json = Encoding.UTF8.GetString(result.Buffer);
-                var response = JsonSerializer.Deserialize<DiscoveryResponse>(json);
                 
-                if (response != null && response.Active)
+                _logger.Debug("Received broadcast data: {0}", json);
+                
+                var response = JsonSerializer.Deserialize<VTSApiResponse<DiscoveryResponse>>(json);
+                
+                if (response?.Data != null && response.Data.Active)
                 {
                     // Verify this is actually VTube Studio
-                    if (string.IsNullOrEmpty(response.InstanceId) || 
-                        string.IsNullOrEmpty(response.WindowTitle) ||
-                        !response.WindowTitle.Contains("VTube Studio", StringComparison.OrdinalIgnoreCase))
+                    if (string.IsNullOrEmpty(response.Data.InstanceId) || 
+                        string.IsNullOrEmpty(response.Data.WindowTitle) ||
+                        !response.Data.WindowTitle.StartsWith("VTube Studio", StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.Warning("Found service but it doesn't appear to be VTube Studio");
                         return null;
                     }
                     
                     _logger.Info("Found VTube Studio (Instance: {0}, Title: {1}) on port {2}", 
-                        response.InstanceId, response.WindowTitle, response.Port);
-                    return response;
+                        response.Data.InstanceId, response.Data.WindowTitle, response.Data.Port);
+                    return response.Data;
                 }
                 
                 _logger.Warning("No active VTube Studio instance found");
@@ -68,6 +73,11 @@ namespace SharpBridge.Services
                 _logger.Error("Error during port discovery: {0}", ex.Message);
                 return null;
             }
+        }
+        
+        public void Dispose()
+        {
+            _udpClient?.Dispose();
         }
     }
 } 

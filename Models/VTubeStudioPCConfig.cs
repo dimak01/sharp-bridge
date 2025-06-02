@@ -33,9 +33,9 @@ namespace SharpBridge.Models
         public string TokenFilePath { get; set; } = "auth_token.txt";
         
         /// <summary>
-        /// Connection timeout in milliseconds, defaults to 5000 (5 seconds)
+        /// Connection timeout in milliseconds, defaults to 1000 (1 second)
         /// </summary>
-        public int ConnectionTimeoutMs { get; set; } = 5000;
+        public int ConnectionTimeoutMs { get; set; } = 1000;
         
         /// <summary>
         /// Reconnection delay in milliseconds, defaults to 2000 (2 seconds)
@@ -46,5 +46,10 @@ namespace SharpBridge.Models
         /// Use port discovery if the specified port doesn't connect
         /// </summary>
         public bool UsePortDiscovery { get; set; } = true;
+        
+        /// <summary>
+        /// The interval in seconds between recovery attempts when services are unhealthy
+        /// </summary>
+        public double RecoveryIntervalSeconds { get; set; } = 2.0;
     }
 } 

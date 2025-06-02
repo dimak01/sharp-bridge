@@ -74,10 +74,9 @@ namespace SharpBridge
             
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
-            // Register VTubeStudioPCClient as a singleton and resolve IAuthTokenProvider to the same instance
+            // Register VTubeStudioPCClient as a singleton
             services.AddSingleton<VTubeStudioPCClient>();
             services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
-            services.AddSingleton<IAuthTokenProvider>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
             
             // Register VTubeStudioPCParameterManager
             services.AddSingleton<IVTubeStudioPCParameterManager, VTubeStudioPCParameterManager>();
@@ -104,8 +103,22 @@ namespace SharpBridge
             // Register keyboard input handler
             services.AddSingleton<IKeyboardInputHandler, KeyboardInputHandler>();
             
+            // Register table formatter
+            services.AddSingleton<ITableFormatter, TableFormatter>();
+            
+            // Register formatters
+            services.AddSingleton<PhoneTrackingInfoFormatter>();
+            services.AddSingleton<PCTrackingInfoFormatter>();
+            
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
+            
+            // Register recovery policy
+            services.AddSingleton<IRecoveryPolicy>(provider => 
+            {
+                var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
+                return new SimpleRecoveryPolicy(TimeSpan.FromSeconds(pcConfig.RecoveryIntervalSeconds));
+            });
             
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
@@ -122,11 +135,9 @@ namespace SharpBridge
             string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
             Directory.CreateDirectory(logDirectory);
             
-            // Configure Serilog with basic settings
-            // This is a temporary configuration, will be replaced with a proper configuration file
+            // Configure Serilog with file-only output to avoid interfering with console GUI
             return new LoggerConfiguration()
                 .MinimumLevel.Debug()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss.fff} {Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .WriteTo.File(
                     path: Path.Combine(logDirectory, "sharp-bridge-.log"),
                     rollingInterval: RollingInterval.Day,

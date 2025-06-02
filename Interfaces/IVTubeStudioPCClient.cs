@@ -10,7 +10,7 @@ namespace SharpBridge.Interfaces
     /// <summary>
     /// Client for communicating with VTube Studio on PC
     /// </summary>
-    public interface IVTubeStudioPCClient : IDisposable
+    public interface IVTubeStudioPCClient : IDisposable, IInitializable
     {
         /// <summary>
         /// Gets the current state of the WebSocket connection
