@@ -158,7 +158,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         private double CalculateNormalizedValue(TrackingParam param, PCTrackingInfo trackingInfo)
         {
-            if (trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition))
+            if (trackingInfo.ParameterDefinitions?.TryGetValue(param.Id, out var definition) == true)
             {
                 double range = definition.Max - definition.Min;
                 if (range != 0)
@@ -178,7 +178,7 @@ namespace SharpBridge.Utilities
         {
             var weight = param.Weight?.ToString("0.##") ?? "1";
             
-            if (trackingInfo.ParameterDefinitions.TryGetValue(param.Id, out var definition))
+            if (trackingInfo.ParameterDefinitions?.TryGetValue(param.Id, out var definition) == true)
             {
                 var min = definition.Min.ToString("0.##");
                 var defaultVal = definition.DefaultValue.ToString("0.##");
