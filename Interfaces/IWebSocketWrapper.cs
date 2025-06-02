@@ -2,6 +2,7 @@ using System;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+using SharpBridge.Models;
 
 namespace SharpBridge.Interfaces
 {
@@ -14,6 +15,11 @@ namespace SharpBridge.Interfaces
         /// Gets the current state of the WebSocket connection
         /// </summary>
         WebSocketState State { get; }
+        
+        /// <summary>
+        /// Recreates the internal WebSocket instance to allow reconnection
+        /// </summary>
+        void RecreateWebSocket();
         
         /// <summary>
         /// Connects to a WebSocket server

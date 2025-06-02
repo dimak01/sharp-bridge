@@ -26,7 +26,9 @@ namespace SharpBridge.Utilities
 
         public IUdpClientWrapper CreateForPortDiscovery()
         {
-            var client = new UdpClient(PortDiscoveryPort);
+            var client = new UdpClient();
+            client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            client.Client.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Any, PortDiscoveryPort));
             client.Client.ReceiveTimeout = PortDiscoveryTimeoutMs;
             return new UdpClientWrapper(client);
         }

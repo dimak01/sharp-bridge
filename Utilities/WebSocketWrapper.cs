@@ -15,7 +15,7 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class WebSocketWrapper : IWebSocketWrapper
     {
-        private readonly ClientWebSocket _webSocket;
+        private ClientWebSocket _webSocket;
         private bool _disposed;
         
         /// <summary>
@@ -28,6 +28,18 @@ namespace SharpBridge.Utilities
         
         /// <inheritdoc/>
         public WebSocketState State => _webSocket.State;
+        
+        /// <summary>
+        /// Recreates the internal ClientWebSocket instance to allow reconnection after the socket has been closed or aborted
+        /// </summary>
+        public void RecreateWebSocket()
+        {
+            if (!_disposed)
+            {
+                _webSocket?.Dispose();
+                _webSocket = new ClientWebSocket();
+            }
+        }
         
         /// <inheritdoc/>
         public Task ConnectAsync(Uri uri, CancellationToken cancellationToken)

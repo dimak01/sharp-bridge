@@ -23,14 +23,16 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="console">The console implementation to use for output</param>
         /// <param name="logger">The logger to use for error reporting</param>
-        public ConsoleRenderer(IConsole console, IAppLogger logger)
+        /// <param name="phoneFormatter">The phone tracking info formatter</param>
+        /// <param name="pcFormatter">The PC tracking info formatter</param>
+        public ConsoleRenderer(IConsole console, IAppLogger logger, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             // Register formatters for known types
-            RegisterFormatter<PhoneTrackingInfo>(new PhoneTrackingInfoFormatter());
-            RegisterFormatter<PCTrackingInfo>(new PCTrackingInfoFormatter());
+            RegisterFormatter<PhoneTrackingInfo>(phoneFormatter ?? throw new ArgumentNullException(nameof(phoneFormatter)));
+            RegisterFormatter<PCTrackingInfo>(pcFormatter ?? throw new ArgumentNullException(nameof(pcFormatter)));
         }
         
         /// <summary>
@@ -73,25 +75,28 @@ namespace SharpBridge.Utilities
                 
                 foreach (var stat in stats.Where(s => s != null))
                 {
-                    lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                    
-                    // Show counters for normal and detailed verbosity
-                    if (stat.Counters.Any())
-                    {
-                        lines.Add("Metrics:");
-                        foreach (var counter in stat.Counters)
-                        {
-                            lines.Add($"  {counter.Key}: {counter.Value}");
-                        }
-                        lines.Add(string.Empty);
-                    }
-                    
                     if (stat.CurrentEntity != null)
                     {
                         var entityType = stat.CurrentEntity.GetType();
                         if (_formatters.TryGetValue(entityType, out var typedFormatter))
                         {
-                            var formattedOutput = typedFormatter.Format(stat.CurrentEntity);
+                            string formattedOutput;
+                            
+                            // Check if formatter supports enhanced format with service stats
+                            if (typedFormatter is PhoneTrackingInfoFormatter phoneFormatter)
+                            {
+                                formattedOutput = phoneFormatter.Format(stat);
+                            }
+                            else if (typedFormatter is PCTrackingInfoFormatter pcFormatter)
+                            {
+                                formattedOutput = pcFormatter.Format(stat);
+                            }
+                            else
+                            {
+                                // For basic formatters, add service header and then formatted content
+                                lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
+                                formattedOutput = typedFormatter.Format(stat);
+                            }
                             
                             // Split formatted output into lines and add each one
                             foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
@@ -101,7 +106,36 @@ namespace SharpBridge.Utilities
                         }
                         else
                         {
+                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
                             lines.Add($"[No formatter registered for {entityType.Name}]");
+                        }
+                    }
+                    else
+                    {
+                        // No current entity, but we can still show service status
+                        if (_formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) && 
+                            phoneFormatter is PhoneTrackingInfoFormatter enhancedPhoneFormatter &&
+                            stat.ServiceName.Contains("Phone"))
+                        {
+                            var formattedOutput = enhancedPhoneFormatter.Format(stat);
+                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+                            {
+                                lines.Add(line);
+                            }
+                        }
+                        else if (_formatters.TryGetValue(typeof(PCTrackingInfo), out var pcFormatter) && 
+                                 stat.ServiceName.Contains("PC"))
+                        {
+                            var formattedOutput = pcFormatter.Format(stat);
+                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+                            {
+                                lines.Add(line);
+                            }
+                        }
+                        else
+                        {
+                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
+                            lines.Add("No current data available");
                         }
                     }
                     

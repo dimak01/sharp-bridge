@@ -15,7 +15,7 @@ namespace SharpBridge.Services
     /// <summary>
     /// Client for communicating with VTube Studio on PC via WebSocket
     /// </summary>
-    public class VTubeStudioPCClient : IVTubeStudioPCClient, IAuthTokenProvider, IServiceStatsProvider
+    public class VTubeStudioPCClient : IVTubeStudioPCClient, IAuthTokenProvider, IServiceStatsProvider, IInitializable
     {
         private readonly IAppLogger _logger;
         private readonly VTubeStudioPCConfig _config;
@@ -30,6 +30,9 @@ namespace SharpBridge.Services
         private int _failedConnections;
         private int _lastSuccessfulConnection;
         private string _authToken;
+        private string _lastInitializationError;
+        private DateTime _lastSuccessfulOperation;
+        private PCClientStatus _status = PCClientStatus.Initializing;
         
         /// <summary>
         /// Gets the current state of the WebSocket connection
@@ -45,6 +48,11 @@ namespace SharpBridge.Services
         /// Gets the client configuration
         /// </summary>
         public VTubeStudioPCConfig Config => _config;
+        
+        /// <summary>
+        /// Gets the last error that occurred during initialization
+        /// </summary>
+        public string LastInitializationError => _lastInitializationError;
         
         /// <summary>
         /// Creates a new instance of the VTubeStudioPCClient
@@ -89,6 +97,7 @@ namespace SharpBridge.Services
             catch (Exception ex)
             {
                 _failedConnections++;
+                _status = PCClientStatus.ConnectionFailed;
                 _logger.Error("Failed to connect to VTube Studio: {0}", ex.Message);
                 throw;
             }
@@ -109,10 +118,12 @@ namespace SharpBridge.Services
             try
             {
                 await _webSocket.CloseAsync(closeStatus, statusDescription, cancellationToken);
+                _status = PCClientStatus.Disconnected;
                 _logger.Info("Connection closed");
             }
             catch (Exception ex)
             {
+                _status = PCClientStatus.Disconnected;
                 _logger.Error("Error closing connection: {0}", ex.Message);
                 throw;
             }
@@ -203,6 +214,8 @@ namespace SharpBridge.Services
             
             try
             {
+                _status = PCClientStatus.SendingData;
+                
                 var request = new InjectParamsRequest
                 {
                     FaceFound = trackingData.FaceFound,
@@ -216,11 +229,75 @@ namespace SharpBridge.Services
                 _messagesSent++;
                 _lastSuccessfulSend = Environment.TickCount;
                 _lastTrackingData = trackingData;
+                _lastSuccessfulOperation = DateTime.UtcNow;
+                _status = PCClientStatus.Connected; // Reset status back to Connected after successful send
             }
             catch (Exception ex)
             {
+                _status = PCClientStatus.SendError;
                 _logger.Error("Failed to send tracking data: {0}", ex.Message);
                 throw;
+            }
+        }
+        
+        /// <summary>
+        /// Attempts to initialize the client
+        /// </summary>
+        public async Task<bool> TryInitializeAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _status = PCClientStatus.Initializing;
+                _logger.Info("Attempting to initialize VTube Studio PC Client...");
+                
+                // Load existing auth token first
+                LoadAuthToken();
+                
+                // Recreate WebSocket if it's in a closed or aborted state
+                if (_webSocket.State == WebSocketState.Closed || _webSocket.State == WebSocketState.Aborted)
+                {
+                    _logger.Info("WebSocket is in closed/aborted state, recreating...");
+                    _webSocket.RecreateWebSocket();
+                }
+                
+                // Discover port
+                _status = PCClientStatus.DiscoveringPort;
+                var port = await DiscoverPortAsync(cancellationToken);
+                if (port == 0)
+                {
+                    _logger.Error("Failed to discover VTube Studio port");
+                    _lastInitializationError = "Failed to discover VTube Studio port";
+                    _status = PCClientStatus.PortDiscoveryFailed;
+                    return false;
+                }
+                
+                // Connect
+                _status = PCClientStatus.Connecting;
+                await ConnectAsync(cancellationToken);
+                
+                // Authenticate
+                _status = PCClientStatus.Authenticating;
+                var authSuccess = await AuthenticateAsync(cancellationToken);
+                if (!authSuccess)
+                {
+                    _logger.Error("Failed to authenticate with VTube Studio");
+                    _lastInitializationError = "Failed to authenticate with VTube Studio";
+                    _status = PCClientStatus.AuthenticationFailed;
+                    return false;
+                }
+                
+                _logger.Info("VTube Studio PC Client initialized successfully");
+                _lastInitializationError = null;
+                _lastSuccessfulOperation = DateTime.UtcNow;
+                _status = PCClientStatus.Connected;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Failed to initialize VTube Studio PC Client: {ex.Message}");
+                _lastInitializationError = ex.Message;
+                _status = PCClientStatus.InitializationFailed;
+                return false;
             }
         }
         
@@ -237,10 +314,15 @@ namespace SharpBridge.Services
                 ["UptimeSeconds"] = (int)(DateTime.Now - _startTime).TotalSeconds
             };
             
+            var isHealthy = _status == PCClientStatus.Connected || _status == PCClientStatus.SendingData;
+            
             return new ServiceStats(
                 serviceName: "VTubeStudioPCClient",
-                status: _webSocket.State.ToString(),
+                status: _status.ToString(),
                 currentEntity: _lastTrackingData,
+                isHealthy: isHealthy,
+                lastSuccessfulOperation: _lastSuccessfulOperation,
+                lastError: _lastInitializationError,
                 counters: counters
             );
         }
@@ -263,8 +345,15 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    _webSocket?.Dispose();
-                    _logger.Debug("VTubeStudioPCClient disposed");
+                    try
+                    {
+                        _webSocket?.Dispose();
+                        _logger.Debug("VTubeStudioPCClient disposed");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error("Error disposing WebSocket: {0}", ex.Message);
+                    }
                 }
                 
                 _isDisposed = true;
