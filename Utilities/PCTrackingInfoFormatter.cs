@@ -4,6 +4,7 @@ using System.Text;
 using System.Collections.Generic;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using sharp_bridge.Utilities;
 
 namespace SharpBridge.Utilities
 {
@@ -194,8 +195,14 @@ namespace SharpBridge.Utilities
         /// </summary>
         private string FormatExpression(TrackingParam param, PCTrackingInfo trackingInfo)
         {
+            if (trackingInfo?.ParameterCalculationExpressions == null)
+                return "[no expression]";
+
             if (trackingInfo.ParameterCalculationExpressions.TryGetValue(param.Id, out var expression))
             {
+                if (string.IsNullOrEmpty(expression))
+                    return "[no expression]";
+
                 // Truncate long expressions for display
                 const int maxLength = 90;
                 if (expression.Length > maxLength)
@@ -229,14 +236,17 @@ namespace SharpBridge.Utilities
         /// <returns>Formatted uptime string</returns>
         private string FormatUptime(long uptimeSeconds)
         {
-            if (uptimeSeconds < 60)
-                return $"{uptimeSeconds}s";
-            else if (uptimeSeconds < 3600)
-                return $"{uptimeSeconds / 60}m";
-            else if (uptimeSeconds < 86400)
-                return $"{uptimeSeconds / 3600}h";
-            else
-                return $"{uptimeSeconds / 86400}d";
+            return DisplayFormatting.FormatDuration(TimeSpan.FromSeconds(uptimeSeconds));
+        }
+        
+        /// <summary>
+        /// Formats a time span into a human-readable string
+        /// </summary>
+        /// <param name="timeSpan">Time span to format</param>
+        /// <returns>Formatted time string</returns>
+        private string FormatTimeAgo(TimeSpan timeSpan)
+        {
+            return DisplayFormatting.FormatDuration(timeSpan);
         }
         
         /// <summary>
@@ -272,23 +282,6 @@ namespace SharpBridge.Utilities
             }
             
             return result;
-        }
-        
-        /// <summary>
-        /// Formats a time span into a human-readable string
-        /// </summary>
-        /// <param name="timeSpan">Time span to format</param>
-        /// <returns>Formatted time string</returns>
-        private string FormatTimeAgo(TimeSpan timeSpan)
-        {
-            if (timeSpan.TotalSeconds < 60)
-                return $"{timeSpan.TotalSeconds:F0}s";
-            else if (timeSpan.TotalMinutes < 60)
-                return $"{timeSpan.TotalMinutes:F0}m";
-            else if (timeSpan.TotalHours < 24)
-                return $"{timeSpan.TotalHours:F0}h";
-            else
-                return $"{timeSpan.TotalDays:F0}d";
         }
         
         /// <summary>

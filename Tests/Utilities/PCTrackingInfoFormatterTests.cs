@@ -575,5 +575,337 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<int>(),
                 It.IsAny<int?>()), Times.Once);
         }
+
+        [Fact]
+        public void Format_WithNullCurrentEntity_ShowsNoDataMessage()
+        {
+            // Arrange
+            var serviceStats = new ServiceStats(
+                serviceName: "PC Client",
+                status: "Connected",
+                currentEntity: null,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().Contain("No current tracking data available");
+        }
+
+        [Fact]
+        public void Format_WithDifferentUptimes_ShowsCorrectFormat()
+        {
+            // Arrange
+            var testCases = new[]
+            {
+                (seconds: 0L, expected: "0s"),
+                (seconds: 30L, expected: "30s"),
+                (seconds: 60L, expected: "1m"),
+                (seconds: 90L, expected: "1m 30s"),
+                (seconds: 3600L, expected: "1h"),
+                (seconds: 3660L, expected: "1h 1m"),
+                (seconds: 86400L, expected: "1d"),
+                (seconds: 86460L, expected: "1d 1m"),
+                (seconds: 90000L, expected: "1d 1h")
+            };
+
+            foreach (var (seconds, expected) in testCases)
+            {
+                var serviceStats = new ServiceStats(
+                    serviceName: "PC Client",
+                    status: "Connected",
+                    currentEntity: null,
+                    isHealthy: true,
+                    lastSuccessfulOperation: DateTime.UtcNow,
+                    lastError: null,
+                    counters: new Dictionary<string, long>
+                    {
+                        ["MessagesSent"] = 100,
+                        ["ConnectionAttempts"] = 1,
+                        ["UptimeSeconds"] = seconds
+                    }
+                );
+
+                // Act
+                var result = _formatter.Format(serviceStats);
+
+                // Assert
+                result.Should().Contain($"uptime | {expected}");
+            }
+        }
+
+        [Fact]
+        public void Format_WithDifferentLastSuccessTimes_ShowsCorrectFormat()
+        {
+            // Arrange
+            var now = DateTime.UtcNow;
+            var testCases = new[]
+            {
+                (time: now.AddSeconds(-30), expected: "30s"),
+                (time: now.AddMinutes(-1), expected: "1m"),
+                (time: now.AddMinutes(-90), expected: "1h 30m"),
+                (time: now.AddHours(-2), expected: "2h"),
+                (time: now.AddDays(-1), expected: "1d"),
+                (time: now.AddDays(-2), expected: "2d")
+            };
+
+            foreach (var (time, expected) in testCases)
+            {
+                var serviceStats = new ServiceStats(
+                    serviceName: "PC Client",
+                    status: "Connected",
+                    currentEntity: null,
+                    isHealthy: true,
+                    lastSuccessfulOperation: time,
+                    lastError: null,
+                    counters: new Dictionary<string, long>()
+                );
+
+                // Act
+                var result = _formatter.Format(serviceStats);
+
+                // Assert
+                result.Should().Contain($"Last Success: {expected}");
+            }
+        }
+
+        [Fact]
+        public void Format_WithDifferentExpressions_ShowsCorrectFormat()
+        {
+            // Arrange
+            var testCases = new[]
+            {
+                (expression: "x * 2.0", expected: "x * 2.0"),
+                (expression: null, expected: "[no expression]"),
+                (expression: "", expected: "[no expression]"),
+                (expression: "sin(x) * cos(y)", expected: "sin(x) * cos(y)")
+            };
+
+            foreach (var (expression, expected) in testCases)
+            {
+                var trackingInfo = CreatePCTrackingInfo();
+                trackingInfo.Parameters = new List<TrackingParam>
+                {
+                    new TrackingParam { Id = "TestParam", Value = 0.5 }
+                };
+                trackingInfo.ParameterCalculationExpressions["TestParam"] = expression;
+                trackingInfo.ParameterDefinitions["TestParam"] = new VTSParameter("TestParam", -1, 1, 0);
+
+                var serviceStats = new ServiceStats(
+                    serviceName: "PC Client",
+                    status: "Connected",
+                    currentEntity: trackingInfo,
+                    isHealthy: true,
+                    lastSuccessfulOperation: DateTime.UtcNow,
+                    lastError: null,
+                    counters: new Dictionary<string, long>()
+                );
+
+                // Capture the columns to verify their behavior
+                IList<ITableColumn<TrackingParam>> capturedColumns = null;
+                _mockTableFormatter
+                    .Setup(x => x.AppendTable(
+                        It.IsAny<StringBuilder>(),
+                        It.IsAny<string>(),
+                        It.IsAny<IEnumerable<TrackingParam>>(),
+                        It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                        It.IsAny<int>(),
+                        It.IsAny<int>(),
+                        It.IsAny<int>(),
+                        It.IsAny<int?>()))
+                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                        (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                        {
+                            capturedColumns = columns;
+                            // Simulate table formatter behavior by executing column formatters
+                            foreach (var row in rows)
+                            {
+                                foreach (var col in columns)
+                                {
+                                    col.ValueFormatter(row);
+                                }
+                            }
+                        });
+
+                // Act
+                var result = _formatter.Format(serviceStats);
+
+                // Assert
+                capturedColumns.Should().NotBeNull();
+                capturedColumns.Count.Should().Be(5);
+                
+                // Verify expression column behavior
+                var expressionColumn = capturedColumns[4];
+                expressionColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be(expected);
+            }
+        }
+
+        [Fact]
+        public void Format_WithDifferentParameterRanges_ShowsCorrectNormalizedValues()
+        {
+            // Arrange
+            var testCases = new[]
+            {
+                (value: 0.5, min: -1.0, max: 1.0, expected: "0.75"),
+                (value: -0.5, min: -1.0, max: 1.0, expected: "0.25"),
+                (value: 0.0, min: -1.0, max: 1.0, expected: "0.50"),
+                (value: 1.0, min: -1.0, max: 1.0, expected: "1.00"),
+                (value: -1.0, min: -1.0, max: 1.0, expected: "0.00")
+            };
+
+            foreach (var (value, min, max, expected) in testCases)
+            {
+                var trackingInfo = CreatePCTrackingInfo();
+                trackingInfo.Parameters = new List<TrackingParam>
+                {
+                    new TrackingParam { Id = "TestParam", Value = value }
+                };
+                trackingInfo.ParameterDefinitions["TestParam"] = new VTSParameter("TestParam", min, max, 0);
+                trackingInfo.ParameterCalculationExpressions["TestParam"] = "x * 1.0";
+
+                var serviceStats = new ServiceStats(
+                    serviceName: "PC Client",
+                    status: "Connected",
+                    currentEntity: trackingInfo,
+                    isHealthy: true,
+                    lastSuccessfulOperation: DateTime.UtcNow,
+                    lastError: null,
+                    counters: new Dictionary<string, long>()
+                );
+
+                // Capture the columns to verify their behavior
+                IList<ITableColumn<TrackingParam>> capturedColumns = null;
+                _mockTableFormatter
+                    .Setup(x => x.AppendTable(
+                        It.IsAny<StringBuilder>(),
+                        It.IsAny<string>(),
+                        It.IsAny<IEnumerable<TrackingParam>>(),
+                        It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                        It.IsAny<int>(),
+                        It.IsAny<int>(),
+                        It.IsAny<int>(),
+                        It.IsAny<int?>()))
+                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                        (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                        {
+                            capturedColumns = columns;
+                            // Simulate table formatter behavior by executing column formatters
+                            foreach (var row in rows)
+                            {
+                                foreach (var col in columns)
+                                {
+                                    col.ValueFormatter(row);
+                                }
+                            }
+                        });
+
+                // Act
+                var result = _formatter.Format(serviceStats);
+
+                // Assert
+                capturedColumns.Should().NotBeNull();
+                capturedColumns.Count.Should().Be(5);
+                
+                // Verify value column behavior
+                var valueColumn = capturedColumns[2];
+                valueColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be(expected);
+            }
+        }
+
+        [Fact]
+        public void CycleVerbosity_WithAllLevels_CyclesCorrectly()
+        {
+            // Arrange
+            var expectedSequence = new[]
+            {
+                VerbosityLevel.Normal,
+                VerbosityLevel.Detailed,
+                VerbosityLevel.Basic,
+                VerbosityLevel.Normal
+            };
+
+            // Act & Assert
+            foreach (var expectedLevel in expectedSequence)
+            {
+                _formatter.CurrentVerbosity.Should().Be(expectedLevel);
+                _formatter.CycleVerbosity();
+            }
+        }
+
+        [Fact]
+        public void Format_WithParameters_ShowsCorrectProgressBar()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            trackingInfo.Parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 },
+                new TrackingParam { Id = "Param2", Value = -0.3 },
+                new TrackingParam { Id = "Param3", Value = 0.0 }
+            };
+            trackingInfo.ParameterDefinitions["Param1"] = new VTSParameter("Param1", -1, 1, 0);
+            trackingInfo.ParameterDefinitions["Param2"] = new VTSParameter("Param2", -1, 1, 0);
+            trackingInfo.ParameterDefinitions["Param3"] = new VTSParameter("Param3", -1, 1, 0);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Capture the columns to verify their behavior
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                        // Simulate table formatter behavior by executing column formatters
+                        foreach (var row in rows)
+                        {
+                            foreach (var col in columns)
+                            {
+                                col.ValueFormatter(row);
+                            }
+                        }
+                    });
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            capturedColumns.Count.Should().Be(5);
+            
+            // Verify progress bar column behavior
+            var progressBarColumn = capturedColumns[1];
+            progressBarColumn.Header.Should().Be(""); // Progress bar column has no header
+
+            // Test different parameter values
+            var parameters = trackingInfo.Parameters.ToList();
+            var param1 = parameters[0]; // Value = 0.5
+            var param2 = parameters[1]; // Value = -0.3
+            var param3 = parameters[2]; // Value = 0.0
+
+            // Verify progress bar formatting for different values
+            progressBarColumn.ValueFormatter(param1).Should().Contain("█").And.Contain("░");
+            progressBarColumn.ValueFormatter(param2).Should().Contain("█").And.Contain("░");
+            progressBarColumn.ValueFormatter(param3).Should().Contain("█").And.Contain("░");
+
+            // Verify the progress bar length is consistent
+            var bar1 = progressBarColumn.ValueFormatter(param1);
+            var bar2 = progressBarColumn.ValueFormatter(param2);
+            var bar3 = progressBarColumn.ValueFormatter(param3);
+            bar1.Length.Should().Be(bar2.Length).And.Be(bar3.Length);
+        }
     }
 } 

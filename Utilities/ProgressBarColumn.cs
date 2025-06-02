@@ -48,7 +48,7 @@ namespace SharpBridge.Utilities
             _valueSelector = valueSelector ?? throw new ArgumentNullException(nameof(valueSelector));
             _tableFormatter = tableFormatter ?? new TableFormatter(); // Default fallback
             // ValueFormatter returns a sample bar for width calculation
-            ValueFormatter = item => new string('█', MinWidth);
+            ValueFormatter = item => FormatCell(item, MinWidth);
         }
         
         /// <summary>
@@ -71,6 +71,15 @@ namespace SharpBridge.Utilities
         public string FormatHeader(int width)
         {
             return Header.PadRight(width); // Progress bars typically left-align headers
+        }
+
+        private string FormatCell(object? value, int width)
+        {
+            if (value == null) return new string('░', width);
+            var normalizedValue = Convert.ToDouble(value);
+            var filledCount = (int)(normalizedValue * width);
+            var emptyCount = width - filledCount;
+            return new string('█', filledCount) + new string('░', emptyCount);
         }
     }
 } 
