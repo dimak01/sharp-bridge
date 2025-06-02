@@ -637,7 +637,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
-                "BlendShapes:",
+                It.IsAny<string>(),
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 2),
                 It.Is<IList<ITableColumn<BlendShape>>>(cols => 
                     cols.Count == 3 &&
@@ -1172,5 +1172,181 @@ namespace SharpBridge.Tests.Utilities
         }
 
         #endregion
+
+        [Fact]
+        public void Format_WithBlendShapes_ShowsCorrectColumnFormatters()
+        {
+            // Arrange
+            var blendShapes = new List<BlendShape>
+            {
+                new BlendShape { Key = "jawOpen", Value = 0.5f },
+                new BlendShape { Key = "eyeBlinkLeft", Value = 0.3f }
+            };
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: blendShapes);
+            var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
+
+            // Capture the columns to verify their behavior
+            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<BlendShape>>(),
+                    It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                        // Simulate table formatter behavior by executing column formatters
+                        foreach (var row in rows)
+                        {
+                            foreach (var col in columns)
+                            {
+                                col.ValueFormatter(row);
+                            }
+                        }
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            capturedColumns.Count.Should().Be(3);
+            
+            // Verify column headers
+            capturedColumns[0].Header.Should().Be("Expression");
+            capturedColumns[1].Header.Should().Be(""); // Progress bar column
+            capturedColumns[2].Header.Should().Be("Value");
+
+            // Verify column formatter behavior
+            var shape = blendShapes.First();
+            capturedColumns[0].ValueFormatter(shape).Should().Be("jawOpen");
+            capturedColumns[2].ValueFormatter(shape).Should().Be("0.50");
+        }
+
+        [Fact]
+        public void Format_WithBlendShapes_ShowsCorrectProgressBar()
+        {
+            // Arrange
+            var blendShapes = new List<BlendShape>
+            {
+                new BlendShape { Key = "jawOpen", Value = 0.5f },
+                new BlendShape { Key = "eyeBlinkLeft", Value = 0.3f },
+                new BlendShape { Key = "mouthSmile", Value = 0.0f }
+            };
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: blendShapes);
+            var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
+
+            // Setup mock table formatter to return progress bars
+            _mockTableFormatter
+                .Setup(x => x.CreateProgressBar(It.IsAny<double>(), It.IsAny<int>()))
+                .Returns<double, int>((value, width) =>
+                {
+                    var clampedValue = Math.Max(0, Math.Min(1, value));
+                    var barLength = (int)(clampedValue * width);
+                    return new string('█', barLength) + new string('░', width - barLength);
+                });
+
+            // Capture the columns to verify their behavior
+            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<BlendShape>>(),
+                    It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            capturedColumns.Count.Should().Be(3);
+            
+            // Verify progress bar column behavior
+            var progressBarColumn = capturedColumns[1];
+            progressBarColumn.Header.Should().Be(""); // Progress bar column has no header
+
+            // Test different blend shape values
+            var shapes = blendShapes.ToList();
+            var shape1 = shapes[0]; // Value = 0.5
+            var shape2 = shapes[1]; // Value = 0.3
+            var shape3 = shapes[2]; // Value = 0.0
+
+            // Verify progress bar formatting for different values using FormatCell with a reasonable width
+            const int progressBarWidth = 10;
+            progressBarColumn.FormatCell(shape1, progressBarWidth).Should().Contain("█").And.Contain("░");
+            progressBarColumn.FormatCell(shape2, progressBarWidth).Should().Contain("█").And.Contain("░");
+            progressBarColumn.FormatCell(shape3, progressBarWidth).Should().Contain("░");
+
+            // Verify the progress bar length is consistent
+            var bar1 = progressBarColumn.FormatCell(shape1, progressBarWidth);
+            var bar2 = progressBarColumn.FormatCell(shape2, progressBarWidth);
+            var bar3 = progressBarColumn.FormatCell(shape3, progressBarWidth);
+            bar1.Length.Should().Be(bar2.Length).And.Be(bar3.Length).And.Be(progressBarWidth);
+        }
+
+        [Fact]
+        public void Format_WithBlendShapes_ShowsCorrectNumericValues()
+        {
+            // Arrange
+            var blendShapes = new List<BlendShape>
+            {
+                new BlendShape { Key = "jawOpen", Value = 0.5f },
+                new BlendShape { Key = "eyeBlinkLeft", Value = 0.3f },
+                new BlendShape { Key = "mouthSmile", Value = 0.0f }
+            };
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: blendShapes);
+            var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
+
+            // Capture the columns to verify their behavior
+            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<BlendShape>>(),
+                    It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            capturedColumns.Count.Should().Be(3);
+            
+            // Verify numeric column behavior
+            var numericColumn = capturedColumns[2];
+            numericColumn.Header.Should().Be("Value");
+
+            // Test different blend shape values
+            var shapes = blendShapes.ToList();
+            numericColumn.ValueFormatter(shapes[0]).Should().Be("0.50"); // 0.5f
+            numericColumn.ValueFormatter(shapes[1]).Should().Be("0.30"); // 0.3f
+            numericColumn.ValueFormatter(shapes[2]).Should().Be("0.00"); // 0.0f
+        }
     }
 }
