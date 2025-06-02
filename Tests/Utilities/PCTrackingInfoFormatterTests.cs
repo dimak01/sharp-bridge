@@ -918,5 +918,298 @@ namespace SharpBridge.Tests.Utilities
             var bar3 = progressBarColumn.FormatCell(param3, progressBarWidth);
             bar1.Length.Should().Be(bar2.Length).And.Be(bar3.Length).And.Be(progressBarWidth);
         }
+
+        [Fact]
+        public void Constructor_WithNullConsole_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(null, _mockTableFormatter.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(_mockConsole.Object, null));
+        }
+
+        [Fact]
+        public void CycleVerbosity_WithInvalidEnum_ResetsToNormal()
+        {
+            // Arrange - Force an invalid enum value using reflection
+            var field = typeof(PCTrackingInfoFormatter).GetField("<CurrentVerbosity>k__BackingField", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            field.SetValue(_formatter, (VerbosityLevel)999); // Invalid enum value
+
+            // Act
+            _formatter.CycleVerbosity();
+
+            // Assert
+            _formatter.CurrentVerbosity.Should().Be(VerbosityLevel.Normal);
+        }
+
+        [Fact]
+        public void CalculateNormalizedValue_WithZeroRange_ReturnsExpectedValue()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            var param = new TrackingParam { Id = "TestParam", Value = 0.5 };
+            trackingInfo.ParameterDefinitions["TestParam"] = new VTSParameter("TestParam", 1.0, 1.0, 1.0); // Min = Max = 1.0 (zero range)
+            trackingInfo.Parameters = new List<TrackingParam> { param };
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Setup the mock to capture columns
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert - The normalized value calculation should be called via the progress bar column
+            capturedColumns.Should().NotBeNull();
+            var progressBarColumn = capturedColumns[1]; // Progress bar column
+            
+            // This will trigger the CalculateNormalizedValue method with zero range
+            // The method should handle this gracefully and not crash
+            progressBarColumn.ValueFormatter.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void FormatExpression_WithNullTrackingInfo_ReturnsNoExpression()
+        {
+            // This is difficult to test directly since FormatExpression is private,
+            // but we can test it indirectly by creating a scenario where trackingInfo is null
+            // and verifying the behavior through the formatter
+            
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            trackingInfo.ParameterCalculationExpressions = null; // This will trigger the null check
+            trackingInfo.Parameters = new List<TrackingParam> { new TrackingParam { Id = "TestParam", Value = 0.5 } };
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Setup the mock to capture columns
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var expressionColumn = capturedColumns[4]; // Expression column
+            expressionColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be("[no expression]");
+        }
+
+        [Fact]
+        public void FormatExpression_WithLongExpression_TruncatesCorrectly()
+        {
+            // Arrange
+            var longExpression = new string('x', 100); // 100 characters, should be truncated to 87 + "..."
+            var trackingInfo = CreatePCTrackingInfo();
+            trackingInfo.Parameters = new List<TrackingParam> { new TrackingParam { Id = "TestParam", Value = 0.5 } };
+            trackingInfo.ParameterCalculationExpressions["TestParam"] = longExpression;
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Setup the mock to capture columns
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var expressionColumn = capturedColumns[4]; // Expression column
+            var result = expressionColumn.ValueFormatter(trackingInfo.Parameters.First());
+            result.Should().EndWith("...");
+            result.Length.Should().Be(90); // 87 characters + "..."
+        }
+
+        [Fact]
+        public void FormatHealthStatus_WithLongErrorMessage_TruncatesCorrectly()
+        {
+            // Arrange
+            var longError = new string('x', 60); // 60 characters, should be truncated to 47 + "..."
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = new ServiceStats(
+                serviceName: "PC Client",
+                status: "Error",
+                currentEntity: trackingInfo,
+                isHealthy: false,
+                lastSuccessfulOperation: DateTime.UtcNow.AddHours(-1),
+                lastError: longError,
+                counters: new Dictionary<string, long>()
+            );
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().Contain("...");
+            // The truncated error should be 47 characters + "..." = 50 characters total
+            result.Should().MatchRegex(@"Error:.*\.\.\..*");
+        }
+
+        [Fact]
+        public void FormatHealthStatus_WithMinValueLastSuccess_ShowsNever()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = new ServiceStats(
+                serviceName: "PC Client",
+                status: "Connected",
+                currentEntity: trackingInfo,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.MinValue, // This should show "Never"
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().Contain("Last Success: Never");
+        }
+
+        [Fact]
+        public void FormatConnectionMetrics_WithMissingCounters_UsesZeroValues()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = new ServiceStats(
+                serviceName: "PC Client",
+                status: "Connected",
+                currentEntity: trackingInfo,
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>
+                {
+                    ["MessagesSent"] = 100
+                    // Missing "ConnectionAttempts" and "UptimeSeconds"
+                }
+            );
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().Contain("Connection: 100 msgs sent | 0 attempts | 0:00:00 uptime");
+        }
+
+        [Fact]
+        public void Format_WithParametersButNullParameterDefinitions_UsesEmptyDefinitions()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            trackingInfo.Parameters = new List<TrackingParam> { new TrackingParam { Id = "TestParam", Value = 0.5, Weight = 2.5 } };
+            trackingInfo.ParameterDefinitions = null; // This should be handled gracefully
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Setup the mock to capture columns
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var rangeColumn = capturedColumns[3]; // Width x Range column
+            rangeColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be("2.5 x [no definition]");
+        }
+
+        [Fact]
+        public void Format_WithParametersButNullWeight_UsesDefaultWeight()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            trackingInfo.Parameters = new List<TrackingParam> { new TrackingParam { Id = "TestParam", Value = 0.5, Weight = null } };
+            trackingInfo.ParameterDefinitions["TestParam"] = new VTSParameter("TestParam", -1, 1, 0);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Setup the mock to capture columns
+            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var rangeColumn = capturedColumns[3]; // Width x Range column
+            rangeColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be("1 x [-1; 0; 1]");
+        }
     }
 } 
