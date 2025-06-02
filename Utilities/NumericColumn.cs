@@ -70,5 +70,12 @@ namespace SharpBridge.Utilities
         {
             return _padLeft ? Header.PadLeft(width) : Header.PadRight(width);
         }
+
+        public NumericColumn(string header, int minWidth = 10)
+        {
+            Header = header;
+            MinWidth = minWidth;
+            ValueFormatter = item => item?.ToString() ?? string.Empty;
+        }
     }
 } 
