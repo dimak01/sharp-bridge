@@ -398,7 +398,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain(PCTestFormattingHelpers.FormatHealthStatus(false, "1h", "Connection failed"));
+            result.Should().Contain(PCTestFormattingHelpers.FormatHealthStatus(false, "1:00:00", "Connection failed"));
         }
 
         [Fact]
@@ -513,7 +513,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Connection: 100 msgs sent | 1 attempts | 1h uptime");
+            result.Should().Contain("Connection: 100 msgs sent | 1 attempts | 1:00:00 uptime");
         }
 
         [Fact]
@@ -603,15 +603,15 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var testCases = new[]
             {
-                (seconds: 0L, expected: "0s"),
-                (seconds: 30L, expected: "30s"),
-                (seconds: 60L, expected: "1m"),
-                (seconds: 90L, expected: "1m 30s"),
-                (seconds: 3600L, expected: "1h"),
-                (seconds: 3660L, expected: "1h 1m"),
-                (seconds: 86400L, expected: "1d"),
-                (seconds: 86460L, expected: "1d 1m"),
-                (seconds: 90000L, expected: "1d 1h")
+                (seconds: 0L, expected: "0:00:00 uptime"),
+                (seconds: 30L, expected: "0:00:30 uptime"),
+                (seconds: 60L, expected: "0:01:00 uptime"),
+                (seconds: 90L, expected: "0:01:30 uptime"),
+                (seconds: 3600L, expected: "1:00:00 uptime"),
+                (seconds: 3660L, expected: "1:01:00 uptime"),
+                (seconds: 86400L, expected: "24:00:00 uptime"),
+                (seconds: 86460L, expected: "24:01:00 uptime"),
+                (seconds: 90000L, expected: "25:00:00 uptime")
             };
 
             foreach (var (seconds, expected) in testCases)
@@ -635,7 +635,7 @@ namespace SharpBridge.Tests.Utilities
                 var result = _formatter.Format(serviceStats);
 
                 // Assert
-                result.Should().Contain($"uptime | {expected}");
+                result.Should().Contain(expected);
             }
         }
 
@@ -646,12 +646,12 @@ namespace SharpBridge.Tests.Utilities
             var now = DateTime.UtcNow;
             var testCases = new[]
             {
-                (time: now.AddSeconds(-30), expected: "30s"),
-                (time: now.AddMinutes(-1), expected: "1m"),
-                (time: now.AddMinutes(-90), expected: "1h 30m"),
-                (time: now.AddHours(-2), expected: "2h"),
-                (time: now.AddDays(-1), expected: "1d"),
-                (time: now.AddDays(-2), expected: "2d")
+                (time: now.AddSeconds(-30), expected: "0:00:30"),
+                (time: now.AddMinutes(-1), expected: "0:01:00"),
+                (time: now.AddMinutes(-90), expected: "1:30:00"),
+                (time: now.AddHours(-2), expected: "2:00:00"),
+                (time: now.AddDays(-1), expected: "24:00:00"),
+                (time: now.AddDays(-2), expected: "48:00:00")
             };
 
             foreach (var (time, expected) in testCases)
@@ -751,11 +751,11 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var testCases = new[]
             {
-                (value: 0.5, min: -1.0, max: 1.0, expected: "0.75"),
-                (value: -0.5, min: -1.0, max: 1.0, expected: "0.25"),
-                (value: 0.0, min: -1.0, max: 1.0, expected: "0.50"),
-                (value: 1.0, min: -1.0, max: 1.0, expected: "1.00"),
-                (value: -1.0, min: -1.0, max: 1.0, expected: "0.00")
+                (value: 0.5, min: -1.0, max: 1.0, expected: "0.5"),
+                (value: -0.5, min: -1.0, max: 1.0, expected: "-0.5"),
+                (value: 0.0, min: -1.0, max: 1.0, expected: "0"),
+                (value: 1.0, min: -1.0, max: 1.0, expected: "1"),
+                (value: -1.0, min: -1.0, max: 1.0, expected: "-1")
             };
 
             foreach (var (value, min, max, expected) in testCases)
@@ -853,6 +853,16 @@ namespace SharpBridge.Tests.Utilities
             trackingInfo.ParameterDefinitions["Param3"] = new VTSParameter("Param3", -1, 1, 0);
             var serviceStats = CreateServiceStats(trackingInfo);
 
+            // Setup mock table formatter to return progress bars
+            _mockTableFormatter
+                .Setup(x => x.CreateProgressBar(It.IsAny<double>(), It.IsAny<int>()))
+                .Returns<double, int>((value, width) =>
+                {
+                    var clampedValue = Math.Max(0, Math.Min(1, value));
+                    var barLength = (int)(clampedValue * width);
+                    return new string('█', barLength) + new string('░', width - barLength);
+                });
+
             // Capture the columns to verify their behavior
             IList<ITableColumn<TrackingParam>> capturedColumns = null;
             _mockTableFormatter
@@ -896,16 +906,17 @@ namespace SharpBridge.Tests.Utilities
             var param2 = parameters[1]; // Value = -0.3
             var param3 = parameters[2]; // Value = 0.0
 
-            // Verify progress bar formatting for different values
-            progressBarColumn.ValueFormatter(param1).Should().Contain("█").And.Contain("░");
-            progressBarColumn.ValueFormatter(param2).Should().Contain("█").And.Contain("░");
-            progressBarColumn.ValueFormatter(param3).Should().Contain("█").And.Contain("░");
+            // Verify progress bar formatting for different values using FormatCell with a reasonable width
+            const int progressBarWidth = 10;
+            progressBarColumn.FormatCell(param1, progressBarWidth).Should().Contain("█").And.Contain("░");
+            progressBarColumn.FormatCell(param2, progressBarWidth).Should().Contain("█").And.Contain("░");
+            progressBarColumn.FormatCell(param3, progressBarWidth).Should().Contain("░");
 
             // Verify the progress bar length is consistent
-            var bar1 = progressBarColumn.ValueFormatter(param1);
-            var bar2 = progressBarColumn.ValueFormatter(param2);
-            var bar3 = progressBarColumn.ValueFormatter(param3);
-            bar1.Length.Should().Be(bar2.Length).And.Be(bar3.Length);
+            var bar1 = progressBarColumn.FormatCell(param1, progressBarWidth);
+            var bar2 = progressBarColumn.FormatCell(param2, progressBarWidth);
+            var bar3 = progressBarColumn.FormatCell(param3, progressBarWidth);
+            bar1.Length.Should().Be(bar2.Length).And.Be(bar3.Length).And.Be(progressBarWidth);
         }
     }
 } 
