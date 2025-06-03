@@ -133,12 +133,15 @@ namespace SharpBridge.Services
             var paramDefinitions = new List<VTSParameter>();
             var paramExpressions = new Dictionary<string, string>();
 
+            // Get parameters from tracking data
+            var trackingParameters = GetParametersFromTrackingData(trackingData);
+
             foreach (var (name, expression, expressionString, min, max, defaultValue) in _rules)
             {
                 try
                 {
                     // Set parameters from tracking data
-                    SetParametersFromTrackingData(expression, trackingData);
+                    SetParametersOnExpression(expression, trackingParameters);
                     
                     // Evaluate and clamp value
                     var value = Convert.ToDouble(expression.Evaluate());
@@ -174,39 +177,41 @@ namespace SharpBridge.Services
         }
         
         /// <summary>
-        /// Sets parameters on the expression from tracking data
+        /// Gets parameters from tracking data as a dictionary
         /// </summary>
-        private void SetParametersFromTrackingData(Expression expression, PhoneTrackingInfo trackingData)
+        private Dictionary<string, object> GetParametersFromTrackingData(PhoneTrackingInfo trackingData)
         {
+            var parameters = new Dictionary<string, object>();
+            
             // Add head position
             if (trackingData.Position != null)
             {
-                expression.Parameters["HeadPosX"] = trackingData.Position.X;
-                expression.Parameters["HeadPosY"] = trackingData.Position.Y;
-                expression.Parameters["HeadPosZ"] = trackingData.Position.Z;
+                parameters["HeadPosX"] = trackingData.Position.X;
+                parameters["HeadPosY"] = trackingData.Position.Y;
+                parameters["HeadPosZ"] = trackingData.Position.Z;
             }
             
             // Add head rotation
             if (trackingData.Rotation != null)
             {
-                expression.Parameters["HeadRotX"] = trackingData.Rotation.X;
-                expression.Parameters["HeadRotY"] = trackingData.Rotation.Y;
-                expression.Parameters["HeadRotZ"] = trackingData.Rotation.Z;
+                parameters["HeadRotX"] = trackingData.Rotation.X;
+                parameters["HeadRotY"] = trackingData.Rotation.Y;
+                parameters["HeadRotZ"] = trackingData.Rotation.Z;
             }
             
             // Add eye positions
             if (trackingData.EyeLeft != null)
             {
-                expression.Parameters["EyeLeftX"] = trackingData.EyeLeft.X;
-                expression.Parameters["EyeLeftY"] = trackingData.EyeLeft.Y;
-                expression.Parameters["EyeLeftZ"] = trackingData.EyeLeft.Z;
+                parameters["EyeLeftX"] = trackingData.EyeLeft.X;
+                parameters["EyeLeftY"] = trackingData.EyeLeft.Y;
+                parameters["EyeLeftZ"] = trackingData.EyeLeft.Z;
             }
             
             if (trackingData.EyeRight != null)
             {
-                expression.Parameters["EyeRightX"] = trackingData.EyeRight.X;
-                expression.Parameters["EyeRightY"] = trackingData.EyeRight.Y;
-                expression.Parameters["EyeRightZ"] = trackingData.EyeRight.Z;
+                parameters["EyeRightX"] = trackingData.EyeRight.X;
+                parameters["EyeRightY"] = trackingData.EyeRight.Y;
+                parameters["EyeRightZ"] = trackingData.EyeRight.Z;
             }
             
             // Add blend shapes
@@ -216,9 +221,22 @@ namespace SharpBridge.Services
                 {
                     if (!string.IsNullOrEmpty(shape.Key))
                     {
-                        expression.Parameters[shape.Key] = shape.Value;
+                        parameters[shape.Key] = shape.Value;
                     }
                 }
+            }
+            
+            return parameters;
+        }
+
+        /// <summary>
+        /// Sets parameters on an expression from a dictionary
+        /// </summary>
+        private void SetParametersOnExpression(Expression expression, Dictionary<string, object> parameters)
+        {
+            foreach (var param in parameters)
+            {
+                expression.Parameters[param.Key] = param.Value;
             }
         }
 
