@@ -49,15 +49,29 @@
     "defaultValue": 0
   },
   {
-    "name": "EyeRightX",
+    "name": "EyeLeftX",
     "func": "(EyeLookInLeft - .1) - EyeLookOutLeft",
     "min": -1.0,
     "max": 1.0,
     "defaultValue": 0
   },
   {
-    "name": "EyeRightY",
+    "name": "EyeLeftY",
     "func": "(EyeLookUpLeft - EyeLookDownLeft) + (BrowOuterUpLeft * .15)",
+    "min": -1.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeRightX",
+    "func": "(EyeLookInRight - .1) - EyeLookOutRight",
+    "min": -1.0,
+    "max": 1.0,
+    "defaultValue": 0
+  },
+  {
+    "name": "EyeRightY",
+    "func": "(EyeLookUpRight - EyeLookDownRight) + (BrowOuterUpRight * .15)",
     "min": -1.0,
     "max": 1.0,
     "defaultValue": 0
@@ -139,7 +153,7 @@
     "max": 1.0,
     "defaultValue": 0
   },
-   {
+  {
     "name": "MouthShrugUpper",
     "func": "MouthShrugUpper",
     "min": 0.0,
@@ -216,116 +230,137 @@
     "max": 15.0,
     "defaultValue": 0
   },
-    {
+  {
     "name": "MouthDimpleL",
     "func": "MouthDimpleLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-      {
+  {
     "name": "MouthDimpleR",
     "func": "MouthDimpleRight",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-        {
+  {
     "name": "MouthFrownL",
     "func": "MouthFrownLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-          {
+  {
     "name": "MouthFrownR",
     "func": "MouthFrownRight",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-            {
+  {
     "name": "MouthLowerDownL",
     "func": "MouthLowerDownLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-              {
+  {
     "name": "MouthLowerDownR",
     "func": "MouthLowerDownRight",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                {
+  {
     "name": "MouthPressL",
     "func": "MouthPressLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                  {
+  {
     "name": "MouthPressR",
     "func": "MouthPressRight",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                    {
+  {
     "name": "MouthRollLower",
     "func": "MouthRollLower",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                      {
+  {
     "name": "MouthRollUpper",
     "func": "MouthRollUpper",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                        {
+  {
     "name": "MouthSmileL",
     "func": "MouthSmileLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                          {
+  {
     "name": "MouthSmileR",
     "func": "MouthSmileRight",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                            {
+  {
     "name": "MouthStretchL",
     "func": "MouthStretchLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                              {
+  {
     "name": "MouthStretchR",
     "func": "MouthStretchRight",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                                {
+  {
     "name": "MouthUpperUpL",
     "func": "MouthUpperUpLeft",
     "min": 0,
     "max": 1,
     "defaultValue": 0
   },
-                                  {
+  {
     "name": "MouthUpperUpR",
     "func": "MouthUpperUpRight",
     "min": 0,
     "max": 1,
+    "defaultValue": 0
+  },
+  {
+    "name": "CustomParameter1Parent",
+    "func": "CheekPuff",
+    "min": 0,
+    "max": 1,
+    "defaultValue": 0
+  },
+  {
+    "name": "CustomParameter2Child",
+    "func": "-CustomParameter1Parent",
+    "min": -1,
+    "max": 0,
+    "defaultValue": 0
+  },
+  {
+    "name": "CustomParameter3Child",
+    "func": "-CustomParameter2Child * 2",
+    "min": 0,
+    "max": 2,
     "defaultValue": 0
   }
 ]
