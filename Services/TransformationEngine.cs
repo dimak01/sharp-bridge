@@ -139,35 +139,70 @@ namespace SharpBridge.Services
             // Create a working copy of rules that we can modify during evaluation
             var remainingRules = new List<(string Name, Expression Expression, string ExpressionString, double Min, double Max, double DefaultValue)>(_rules);
             
-            for (int i = remainingRules.Count - 1; i >= 0; i--)
+            // Multi-pass evaluation with progress tracking
+            const int maxIterations = 10; // Prevent infinite loops
+            int currentIteration = 0;
+            
+            while (remainingRules.Count > 0 && currentIteration < maxIterations)
             {
-                var (name, expression, expressionString, min, max, defaultValue) = remainingRules[i];
+                currentIteration++;
+                int rulesCountAtStart = remainingRules.Count;
                 
-                // Set parameters from tracking data (and any previously calculated custom parameters)
-                SetParametersOnExpression(expression, trackingParameters);
+                // TODO: Add pass-level logging for debugging when needed
                 
-                // Test if expression can be evaluated with current parameters
-                if (TryEvaluateExpression(expression, out double evaluatedValue, out Exception evaluationError))
+                for (int i = remainingRules.Count - 1; i >= 0; i--)
                 {
-                    // Expression is valid - evaluate, clamp, and store result
-                    var value = Math.Clamp(evaluatedValue, min, max);
+                    var (name, expression, expressionString, min, max, defaultValue) = remainingRules[i];
+                    expression.Parameters.Clear();
+                    // Set parameters from tracking data (and any previously calculated custom parameters)
+                    SetParametersOnExpression(expression, trackingParameters);
                     
-                    paramValues.Add(new TrackingParam
+                    // Test if expression can be evaluated with current parameters
+                    if (TryEvaluateExpression(expression, out double evaluatedValue, out Exception evaluationError))
                     {
-                        Id = name,
-                        Value = value
-                    });
+                        // Expression is valid - evaluate, clamp, and store result
+                        var value = Math.Clamp(evaluatedValue, min, max);
+                        
+                        paramValues.Add(new TrackingParam
+                        {
+                            Id = name,
+                            Value = value
+                        });
 
-                    paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
-                    paramExpressions[name] = expressionString;
-                    
-                    // Add this parameter to trackingParameters for future rules to reference
-                    trackingParameters[name] = value;
-                    
-                    // Remove successfully evaluated rule from remaining rules
-                    remainingRules.RemoveAt(i);
+                        paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
+                        paramExpressions[name] = expressionString;
+                        
+                        // Add this parameter to trackingParameters for future rules to reference
+                        // Only add if not already present - blend shapes and first-evaluated parameters win
+                        if (!trackingParameters.ContainsKey(name))
+                        {
+                            trackingParameters[name] = value;
+                        }
+                        
+                        // Remove successfully evaluated rule from remaining rules
+                        remainingRules.RemoveAt(i);
+                        
+                        // TODO: Add per-parameter success logging for debugging when needed
+                    }
+                    // If evaluation failed, it must be a parameter dependency issue since
+                    // syntax errors are caught during initialization - keep for next pass
                 }
+                
+                // Check if we made progress in this pass
+                if (remainingRules.Count == rulesCountAtStart)
+                {
+                    // No progress made - stop evaluation
+                    // TODO: Add warning logging for unresolved dependencies when needed
+                    break;
+                }
+                
+                // TODO: Add pass completion logging when needed
             }
+            
+            // TODO: Add final result logging when needed
+            // if (remainingRules.Count == 0) { /* All rules evaluated successfully */ }
+            // else if (currentIteration >= maxIterations) { /* Hit iteration limit */ }
+            // else { /* Stopped due to no progress */ }
             
             return new PCTrackingInfo
             {
