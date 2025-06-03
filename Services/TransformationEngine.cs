@@ -136,16 +136,21 @@ namespace SharpBridge.Services
             // Get parameters from tracking data
             var trackingParameters = GetParametersFromTrackingData(trackingData);
 
-            foreach (var (name, expression, expressionString, min, max, defaultValue) in _rules)
+            // Create a working copy of rules that we can modify during evaluation
+            var remainingRules = new List<(string Name, Expression Expression, string ExpressionString, double Min, double Max, double DefaultValue)>(_rules);
+            
+            for (int i = remainingRules.Count - 1; i >= 0; i--)
             {
-                try
+                var (name, expression, expressionString, min, max, defaultValue) = remainingRules[i];
+                
+                // Set parameters from tracking data (and any previously calculated custom parameters)
+                SetParametersOnExpression(expression, trackingParameters);
+                
+                // Test if expression can be evaluated with current parameters
+                if (TryEvaluateExpression(expression, out double evaluatedValue, out Exception evaluationError))
                 {
-                    // Set parameters from tracking data
-                    SetParametersOnExpression(expression, trackingParameters);
-                    
-                    // Evaluate and clamp value
-                    var value = Convert.ToDouble(expression.Evaluate());
-                    value = Math.Clamp(value, min, max);
+                    // Expression is valid - evaluate, clamp, and store result
+                    var value = Math.Clamp(evaluatedValue, min, max);
                     
                     paramValues.Add(new TrackingParam
                     {
@@ -155,15 +160,12 @@ namespace SharpBridge.Services
 
                     paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
                     paramExpressions[name] = expressionString;
-                }
-                catch (Exception ex)
-                {
-                    // Log the error
-                    _logger.Error($"Error evaluating expression for parameter '{name}': {ex.Message}", ex);
                     
-                    // Instead of silently using default values, throw an exception with context
-                    throw new InvalidOperationException(
-                        $"Error evaluating expression for parameter '{name}': {ex.Message}", ex);
+                    // Add this parameter to trackingParameters for future rules to reference
+                    trackingParameters[name] = value;
+                    
+                    // Remove successfully evaluated rule from remaining rules
+                    remainingRules.RemoveAt(i);
                 }
             }
             
@@ -239,7 +241,43 @@ namespace SharpBridge.Services
                 expression.Parameters[param.Key] = param.Value;
             }
         }
-
+        
+        /// <summary>
+        /// Attempts to evaluate an expression, returning success/failure and any error
+        /// </summary>
+        private bool TryEvaluateExpression(Expression expression, out double result, out Exception error)
+        {
+            // Check if all required parameters are available before evaluation
+            var requiredParameters = expression.GetParameterNames();
+            var availableParameters = expression.Parameters.Keys;
+            
+            foreach (var requiredParam in requiredParameters)
+            {
+                if (!availableParameters.Contains(requiredParam))
+                {
+                    // Missing parameter - cannot evaluate yet
+                    result = 0;
+                    error = new ArgumentException($"Parameter '{requiredParam}' is not defined");
+                    return false;
+                }
+            }
+            
+            // All parameters are available - safe to evaluate
+            try
+            {
+                result = Convert.ToDouble(expression.Evaluate());
+                error = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // This should be rare now, but handle any other evaluation errors
+                result = 0;
+                error = ex;
+                return false;
+            }
+        }
+        
         /// <summary>
         /// Gets all parameters defined in the loaded transformation rules
         /// </summary>
