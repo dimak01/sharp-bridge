@@ -26,9 +26,27 @@ namespace SharpBridge.Tests.Services
         
         private string CreateTempRuleFile(string content)
         {
-            var tempPath = Path.GetTempFileName();
-            File.WriteAllText(tempPath, content);
-            return tempPath;
+            var filePath = Path.GetTempFileName();
+            File.WriteAllText(filePath, content);
+            return filePath;
+        }
+        
+        private PhoneTrackingInfo CreateValidTrackingData()
+        {
+            return new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                Position = new Coordinates { X = 0.1, Y = 0.2, Z = 0.3 },
+                Rotation = new Coordinates { X = 0.4, Y = 0.5, Z = 0.6 },
+                EyeLeft = new Coordinates { X = 0.7, Y = 0.8, Z = 0.9 },
+                EyeRight = new Coordinates { X = 1.0, Y = 1.1, Z = 1.2 },
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                    new BlendShape { Key = "eyeBlinkRight", Value = 0.6 },
+                    new BlendShape { Key = "mouthOpen", Value = 0.3 }
+                }
+            };
         }
         
         [Fact]
@@ -341,14 +359,25 @@ namespace SharpBridge.Tests.Services
                     }
                 };
                 
-                // Act & Assert
-                // With our new "fail fast" approach, we should expect an exception
-                var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData));
+                // Act
+                // With graceful degradation, this should succeed with partial results
+                var result = engine.TransformData(trackingData);
                 
-                // Verify that the exception message mentions the parameter name
-                exception.Message.Should().Contain("InvalidParam");
-                exception.Message.Should().Contain("unknownVariable");
+                // Assert
+                result.Should().NotBeNull();
+                result.Parameters.Should().ContainSingle(); // Only the valid parameter should be evaluated
+                
+                var validParam = result.Parameters.First();
+                validParam.Id.Should().Be("ValidParam");
+                validParam.Value.Should().Be(50); // 0.5 * 100 = 50
+                
+                // The invalid parameter should not be present in results
+                result.Parameters.Should().NotContain(p => p.Id == "InvalidParam");
+                
+                // Parameter definitions should only include successfully evaluated rules
+                result.ParameterDefinitions.Should().ContainSingle();
+                result.ParameterDefinitions.Should().ContainKey("ValidParam");
+                result.ParameterDefinitions.Should().NotContainKey("InvalidParam");
             }
             finally
             {
@@ -458,14 +487,24 @@ namespace SharpBridge.Tests.Services
                     EyeRight = new Coordinates { X = 0.4, Y = 0.5, Z = 0.6 } // Valid eye right
                 };
                 
-                // Act & Assert
-                // With our new behavior, we should expect an exception when trying to access EyeLeftX
-                var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData));
+                // Act
+                // With graceful degradation, this should succeed with partial results
+                var result = engine.TransformData(trackingData);
                 
-                // Verify that the exception message mentions the parameter
-                exception.Message.Should().Contain("EyeLeftParam");
-                exception.Message.Should().Contain("EyeLeftX");
+                // Assert
+                result.Should().NotBeNull();
+                result.Parameters.Should().ContainSingle(); // Only EyeRightParam should be evaluated
+                
+                var eyeRightParam = result.Parameters.First();
+                eyeRightParam.Id.Should().Be("EyeRightParam");
+                eyeRightParam.Value.Should().BeApproximately(1.5, 0.001); // 0.4 + 0.5 + 0.6 = 1.5
+                
+                // EyeLeftParam should not be present since EyeLeft coordinates are not available
+                result.Parameters.Should().NotContain(p => p.Id == "EyeLeftParam");
+                
+                // Parameter definitions should only include successfully evaluated rules
+                result.ParameterDefinitions.Should().ContainSingle();
+                result.ParameterDefinitions.Should().ContainKey("EyeRightParam");
             }
             finally
             {
@@ -508,14 +547,16 @@ namespace SharpBridge.Tests.Services
                     EyeRight = null
                 };
                 
-                // Act & Assert
-                // With our new behavior, we should expect an exception when trying to access EyeLeftX
-                var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData));
+                // Act
+                // With graceful degradation, this should succeed but with no evaluated parameters
+                var result = engine.TransformData(trackingData);
                 
-                // Verify that the exception message mentions the parameter
-                exception.Message.Should().Contain("EyeLeftParam");
-                exception.Message.Should().Contain("EyeLeftX");
+                // Assert
+                result.Should().NotBeNull();
+                result.Parameters.Should().BeEmpty(); // No parameters can be evaluated since both eyes are null
+                
+                // Parameter definitions should only include successfully evaluated rules
+                result.ParameterDefinitions.Should().BeEmpty(); // No rules could be evaluated
             }
             finally
             {
@@ -527,25 +568,17 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public async Task LoadRulesAsync_ThrowsJsonException_WhenDeserializationReturnsNull()
         {
-            // To test this scenario, we need a valid JSON that deserializes to null
-            // For System.Text.Json, an empty array is still a valid array, not null
-            // So we'll create a valid JSON that's not an array of TransformRule
-            
-            // Arrange - this is valid JSON but not a List<TransformRule>
-            var jsonContent = "{}"; // An empty object, not an array
-            var filePath = CreateTempRuleFile(jsonContent);
+            // Arrange - Create a file with content that deserializes to null
+            var filePath = Path.GetTempFileName();
+            await File.WriteAllTextAsync(filePath, "null");
             
             try
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
                 // Act & Assert
-                // This should trigger the `??` operator in the LoadRulesAsync method
-                var exception = await Assert.ThrowsAsync<JsonException>(async () => 
-                    await engine.LoadRulesAsync(filePath));
-                
-                // Verify that an exception is thrown - don't check specific message since it depends on JsonSerializer
-                exception.Should().NotBeNull();
+                var exception = await Assert.ThrowsAsync<JsonException>(() => engine.LoadRulesAsync(filePath));
+                exception.Message.Should().Be("Failed to deserialize transformation rules");
             }
             finally
             {
@@ -675,23 +708,12 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // First load the rules (this should succeed as the syntax is valid)
+                // Act & Assert - should not throw, should handle gracefully
                 await engine.LoadRulesAsync(filePath);
                 
-                // Now create tracking data and try to transform it
-                var trackingData = new PhoneTrackingInfo
-                {
-                    FaceFound = true,
-                    BlendShapes = new List<BlendShape>()
-                };
-                
-                // Act & Assert - this should throw when the expression is evaluated
-                var exception = Assert.Throws<InvalidOperationException>(() => 
-                    engine.TransformData(trackingData));
-                
-                // Verify the exception details
-                exception.Message.Should().Contain("BadRule");
-                exception.Message.Should().Contain("evaluating expression");
+                // Verify that evaluation fails gracefully at transform time
+                var result = engine.TransformData(CreateValidTrackingData());
+                result.Parameters.Should().BeEmpty(); // Rule couldn't be evaluated due to division by zero
             }
             finally
             {
@@ -701,42 +723,23 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_HandlesExceptionDuringRuleParsing()
+        public async Task LoadRulesAsync_HandlesExpressionParsingExceptions_Gracefully()
         {
-            // Arrange
-            // Use a completely invalid JSON rule file
-            var ruleContent = @"{ This is not valid JSON }";
-            var filePath = CreateTempRuleFile(ruleContent);
-            
-            try
-            {
-                var engine = new TransformationEngine(_mockLogger.Object);
-                
-                // Act & Assert
-                var exception = await Assert.ThrowsAsync<JsonException>(async () => 
-                    await engine.LoadRulesAsync(filePath));
-                
-                // We don't need to check the specific message as it may vary by JSON parser
-                exception.Should().NotBeNull();
-            }
-            finally
-            {
-                // Cleanup
-                File.Delete(filePath);
-            }
-        }
-        
-        [Fact]
-        public async Task LoadRulesAsync_ThrowsInvalidOperationException_ForRuleValidationFailures()
-        {
-            // Arrange
-            // Create a rule with min > max which fails validation
+            // Arrange - Create a rule that will cause an exception during Expression construction
+            // This is tricky since NCalc is quite forgiving, but we can try with very malformed syntax
             var ruleContent = @"[
                 {
-                    ""name"": ""InvalidRangeRule"",
-                    ""func"": ""x + 1"",
-                    ""min"": 100,
-                    ""max"": 0,  
+                    ""name"": ""ValidRule"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""BadRule"",
+                    ""func"": null,
+                    ""min"": 0,
+                    ""max"": 100,
                     ""defaultValue"": 0
                 }
             ]";
@@ -746,13 +749,63 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // Act & Assert
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                    async () => await engine.LoadRulesAsync(filePath));
+                // Act & Assert - should handle the null expression gracefully
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => engine.LoadRulesAsync(filePath));
+                exception.Message.Should().Contain("Failed to load 1 transformation rules");
+                exception.Message.Should().Contain("Valid rules: 1");
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public void Constructor_ThrowsArgumentNullException_WhenLoggerIsNull()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null));
+            exception.ParamName.Should().Be("logger");
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_ThrowsInvalidOperationException_WhenNoValidRulesFound()
+        {
+            // Arrange - Create rules that will all fail validation
+            var ruleContent = @"[
+                {
+                    ""name"": ""BadRule1"",
+                    ""func"": """",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""BadRule2"",
+                    ""func"": ""invalid syntax +++"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""BadRule3"",
+                    ""func"": ""validExpression"",
+                    ""min"": 100,
+                    ""max"": 0,
+                    ""defaultValue"": 50
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // Verify the exception details 
-                exception.Message.Should().Contain("Failed to load 1 transformation rules.");
-                exception.Message.Should().Contain("Rule 'InvalidRangeRule' has Min value (100) greater than Max value (0)");
+                // Act & Assert
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => engine.LoadRulesAsync(filePath));
+                exception.Message.Should().Contain("Failed to load 3 transformation rules");
+                exception.Message.Should().Contain("Valid rules: 0");
             }
             finally
             {

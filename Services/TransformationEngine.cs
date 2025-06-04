@@ -80,8 +80,8 @@ namespace SharpBridge.Services
                     {
                         string errorMsg = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
                         validationErrors.Add(errorMsg);
-                        // Still add the rule but count it as invalid
                         invalidRules++;
+                        continue; // Skip adding this rule
                     }
                     
                     // All validation passed, add the rule with the original expression string
@@ -171,7 +171,7 @@ namespace SharpBridge.Services
 
                         paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
                         paramExpressions[name] = expressionString;
-                        
+
                         // Add this parameter to trackingParameters for future rules to reference
                         // Only add if not already present - blend shapes and first-evaluated parameters win
                         if (!trackingParameters.ContainsKey(name))
