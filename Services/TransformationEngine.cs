@@ -80,8 +80,8 @@ namespace SharpBridge.Services
                     {
                         string errorMsg = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
                         validationErrors.Add(errorMsg);
-                        // Still add the rule but count it as invalid
                         invalidRules++;
+                        continue; // Skip adding this rule
                     }
                     
                     // All validation passed, add the rule with the original expression string
@@ -133,36 +133,76 @@ namespace SharpBridge.Services
             var paramDefinitions = new List<VTSParameter>();
             var paramExpressions = new Dictionary<string, string>();
 
-            foreach (var (name, expression, expressionString, min, max, defaultValue) in _rules)
-            {
-                try
-                {
-                    // Set parameters from tracking data
-                    SetParametersFromTrackingData(expression, trackingData);
-                    
-                    // Evaluate and clamp value
-                    var value = Convert.ToDouble(expression.Evaluate());
-                    value = Math.Clamp(value, min, max);
-                    
-                    paramValues.Add(new TrackingParam
-                    {
-                        Id = name,
-                        Value = value
-                    });
+            // Get parameters from tracking data
+            var trackingParameters = GetParametersFromTrackingData(trackingData);
 
-                    paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
-                    paramExpressions[name] = expressionString;
-                }
-                catch (Exception ex)
+            // Create a working copy of rules that we can modify during evaluation
+            var remainingRules = new List<(string Name, Expression Expression, string ExpressionString, double Min, double Max, double DefaultValue)>(_rules);
+            
+            // Multi-pass evaluation with progress tracking
+            const int maxIterations = 10; // Prevent infinite loops
+            int currentIteration = 0;
+            
+            while (remainingRules.Count > 0 && currentIteration < maxIterations)
+            {
+                currentIteration++;
+                int rulesCountAtStart = remainingRules.Count;
+                
+                // TODO: Add pass-level logging for debugging when needed
+                
+                for (int i = remainingRules.Count - 1; i >= 0; i--)
                 {
-                    // Log the error
-                    _logger.Error($"Error evaluating expression for parameter '{name}': {ex.Message}", ex);
+                    var (name, expression, expressionString, min, max, defaultValue) = remainingRules[i];
+                    expression.Parameters.Clear();
+                    // Set parameters from tracking data (and any previously calculated custom parameters)
+                    SetParametersOnExpression(expression, trackingParameters);
                     
-                    // Instead of silently using default values, throw an exception with context
-                    throw new InvalidOperationException(
-                        $"Error evaluating expression for parameter '{name}': {ex.Message}", ex);
+                    // Test if expression can be evaluated with current parameters
+                    if (TryEvaluateExpression(expression, out double evaluatedValue, out Exception evaluationError))
+                    {
+                        // Expression is valid - evaluate, clamp, and store result
+                        var value = Math.Clamp(evaluatedValue, min, max);
+                        
+                        paramValues.Add(new TrackingParam
+                        {
+                            Id = name,
+                            Value = value
+                        });
+
+                        paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
+                        paramExpressions[name] = expressionString;
+
+                        // Add this parameter to trackingParameters for future rules to reference
+                        // Only add if not already present - blend shapes and first-evaluated parameters win
+                        if (!trackingParameters.ContainsKey(name))
+                        {
+                            trackingParameters[name] = value;
+                        }
+                        
+                        // Remove successfully evaluated rule from remaining rules
+                        remainingRules.RemoveAt(i);
+                        
+                        // TODO: Add per-parameter success logging for debugging when needed
+                    }
+                    // If evaluation failed, it must be a parameter dependency issue since
+                    // syntax errors are caught during initialization - keep for next pass
                 }
+                
+                // Check if we made progress in this pass
+                if (remainingRules.Count == rulesCountAtStart)
+                {
+                    // No progress made - stop evaluation
+                    // TODO: Add warning logging for unresolved dependencies when needed
+                    break;
+                }
+                
+                // TODO: Add pass completion logging when needed
             }
+            
+            // TODO: Add final result logging when needed
+            // if (remainingRules.Count == 0) { /* All rules evaluated successfully */ }
+            // else if (currentIteration >= maxIterations) { /* Hit iteration limit */ }
+            // else { /* Stopped due to no progress */ }
             
             return new PCTrackingInfo
             {
@@ -174,39 +214,41 @@ namespace SharpBridge.Services
         }
         
         /// <summary>
-        /// Sets parameters on the expression from tracking data
+        /// Gets parameters from tracking data as a dictionary
         /// </summary>
-        private void SetParametersFromTrackingData(Expression expression, PhoneTrackingInfo trackingData)
+        private Dictionary<string, object> GetParametersFromTrackingData(PhoneTrackingInfo trackingData)
         {
+            var parameters = new Dictionary<string, object>();
+            
             // Add head position
             if (trackingData.Position != null)
             {
-                expression.Parameters["HeadPosX"] = trackingData.Position.X;
-                expression.Parameters["HeadPosY"] = trackingData.Position.Y;
-                expression.Parameters["HeadPosZ"] = trackingData.Position.Z;
+                parameters["HeadPosX"] = trackingData.Position.X;
+                parameters["HeadPosY"] = trackingData.Position.Y;
+                parameters["HeadPosZ"] = trackingData.Position.Z;
             }
             
             // Add head rotation
             if (trackingData.Rotation != null)
             {
-                expression.Parameters["HeadRotX"] = trackingData.Rotation.X;
-                expression.Parameters["HeadRotY"] = trackingData.Rotation.Y;
-                expression.Parameters["HeadRotZ"] = trackingData.Rotation.Z;
+                parameters["HeadRotX"] = trackingData.Rotation.X;
+                parameters["HeadRotY"] = trackingData.Rotation.Y;
+                parameters["HeadRotZ"] = trackingData.Rotation.Z;
             }
             
             // Add eye positions
             if (trackingData.EyeLeft != null)
             {
-                expression.Parameters["EyeLeftX"] = trackingData.EyeLeft.X;
-                expression.Parameters["EyeLeftY"] = trackingData.EyeLeft.Y;
-                expression.Parameters["EyeLeftZ"] = trackingData.EyeLeft.Z;
+                parameters["EyeLeftX"] = trackingData.EyeLeft.X;
+                parameters["EyeLeftY"] = trackingData.EyeLeft.Y;
+                parameters["EyeLeftZ"] = trackingData.EyeLeft.Z;
             }
             
             if (trackingData.EyeRight != null)
             {
-                expression.Parameters["EyeRightX"] = trackingData.EyeRight.X;
-                expression.Parameters["EyeRightY"] = trackingData.EyeRight.Y;
-                expression.Parameters["EyeRightZ"] = trackingData.EyeRight.Z;
+                parameters["EyeRightX"] = trackingData.EyeRight.X;
+                parameters["EyeRightY"] = trackingData.EyeRight.Y;
+                parameters["EyeRightZ"] = trackingData.EyeRight.Z;
             }
             
             // Add blend shapes
@@ -216,12 +258,61 @@ namespace SharpBridge.Services
                 {
                     if (!string.IsNullOrEmpty(shape.Key))
                     {
-                        expression.Parameters[shape.Key] = shape.Value;
+                        parameters[shape.Key] = shape.Value;
                     }
                 }
             }
+            
+            return parameters;
         }
 
+        /// <summary>
+        /// Sets parameters on an expression from a dictionary
+        /// </summary>
+        private void SetParametersOnExpression(Expression expression, Dictionary<string, object> parameters)
+        {
+            foreach (var param in parameters)
+            {
+                expression.Parameters[param.Key] = param.Value;
+            }
+        }
+        
+        /// <summary>
+        /// Attempts to evaluate an expression, returning success/failure and any error
+        /// </summary>
+        private bool TryEvaluateExpression(Expression expression, out double result, out Exception error)
+        {
+            // Check if all required parameters are available before evaluation
+            var requiredParameters = expression.GetParameterNames();
+            var availableParameters = expression.Parameters.Keys;
+            
+            foreach (var requiredParam in requiredParameters)
+            {
+                if (!availableParameters.Contains(requiredParam))
+                {
+                    // Missing parameter - cannot evaluate yet
+                    result = 0;
+                    error = new ArgumentException($"Parameter '{requiredParam}' is not defined");
+                    return false;
+                }
+            }
+            
+            // All parameters are available - safe to evaluate
+            try
+            {
+                result = Convert.ToDouble(expression.Evaluate());
+                error = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // This should be rare now, but handle any other evaluation errors
+                result = 0;
+                error = ex;
+                return false;
+            }
+        }
+        
         /// <summary>
         /// Gets all parameters defined in the loaded transformation rules
         /// </summary>

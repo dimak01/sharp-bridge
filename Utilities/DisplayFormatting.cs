@@ -1,6 +1,6 @@
 using System;
 
-namespace sharp_bridge.Utilities;
+namespace SharpBridge.Utilities;
 
 public static class DisplayFormatting
 {
