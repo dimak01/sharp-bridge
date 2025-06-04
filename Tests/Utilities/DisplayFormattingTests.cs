@@ -1,8 +1,8 @@
 using System;
 using Xunit;
-using sharp_bridge.Utilities;
+using SharpBridge.Utilities;
 
-namespace sharp_bridge.Tests.Utilities;
+namespace SharpBridge.Tests.Utilities;
 
 public class DisplayFormattingTests
 {
