@@ -68,43 +68,43 @@
 
 ### Create Formatter
 
-- [ ] **Create `Utilities/TransformationEngineInfoFormatter.cs`**
-  - [ ] Implement `IFormatter` interface
-  - [ ] Add constructor taking `IConsole` and `ITableFormatter`
-  - [ ] Implement `CurrentVerbosity` property and `CycleVerbosity()` method
-  - [ ] Implement `Format(IServiceStats serviceStats)` method
-  - [ ] Display rule stats, config info, operational status
-  - [ ] Use `ITableFormatter` for invalid rules and abandoned rules tables
-  - [ ] Follow patterns from `PCTrackingInfoFormatter`
+- [x] **Create `Utilities/TransformationEngineInfoFormatter.cs`**
+  - [x] Implement `IFormatter` interface
+  - [x] Add constructor taking `IConsole` and `ITableFormatter`
+  - [x] Implement `CurrentVerbosity` property and `CycleVerbosity()` method
+  - [x] Implement `Format(IServiceStats serviceStats)` method
+  - [x] Display rule stats, config info, operational status
+  - [x] Use `ITableFormatter` for invalid rules and abandoned rules tables
+  - [x] Follow patterns from `PCTrackingInfoFormatter`
 
 ### Register Formatter
 
-- [ ] **Update `ConsoleRenderer` constructor**
-  - [ ] Add `TransformationEngineInfoFormatter` parameter
-  - [ ] Store formatter in private field
+- [x] **Update `ConsoleRenderer` constructor**
+  - [x] Add `TransformationEngineInfoFormatter` parameter
+  - [x] Register formatter for `TransformationEngineInfo` type in constructor
 
-- [ ] **Update `ConsoleRenderer.RegisterFormatter()` calls**
-  - [ ] Register formatter for `TransformationEngineInfo` type in constructor
+- [x] **Update `ServiceRegistration.cs`**
+  - [x] Add `TransformationEngineInfoFormatter` as singleton service registration
 
-- [ ] **Update `ConsoleRenderer.Update()` method**
-  - [ ] Add special case handling for `TransformationEngineInfoFormatter` like phone/PC formatters
+- [x] **Update `ConsoleRenderer.Update()` method**
+  - [x] Add special case handling for `TransformationEngineInfoFormatter` like phone/PC formatters
 
 ## Phase 4: Orchestrator Integration
 
 ### Update ApplicationOrchestrator
 
-- [ ] **Update `UpdateConsoleStatus()` method**
-  - [ ] Get stats from transformation engine: `var transformationStats = _transformationEngine.GetServiceStats();`
-  - [ ] Add to `allStats` list alongside phone and PC stats
+- [x] **Update `UpdateConsoleStatus()` method**
+  - [x] Get stats from transformation engine: `var transformationStats = _transformationEngine.GetServiceStats();`
+  - [x] Add to `allStats` list alongside phone and PC stats
 
 ### Add Keyboard Shortcut
 
-- [ ] **Update `RegisterKeyboardShortcuts()` method**
-  - [ ] Register Alt+T for transformation engine verbosity cycling
-  - [ ] Add shortcut description to help text
+- [x] **Update `RegisterKeyboardShortcuts()` method**
+  - [x] Register Alt+T for transformation engine verbosity cycling
+  - [x] Add shortcut description to help text
 
-- [ ] **Update help text display**
-  - [ ] Add "Alt+T for Transformation Engine verbosity" to console footer
+- [x] **Update help text display**
+  - [x] Add "Alt+T for Transformation Engine verbosity" to console footer
 
 ## Phase 5: Testing & Integration
 

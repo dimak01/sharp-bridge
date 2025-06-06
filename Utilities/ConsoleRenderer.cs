@@ -148,7 +148,7 @@ namespace SharpBridge.Utilities
                     lines.Add(string.Empty);
                 }
                 
-                lines.Add("Press Ctrl+C to exit | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
+                lines.Add("Press Ctrl+C to exit | Alt+T for Transformation Engine verbosity | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
                 
                 ConsoleDisplayAction(lines.ToArray());
             }

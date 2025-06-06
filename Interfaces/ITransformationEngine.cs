@@ -8,7 +8,7 @@ namespace SharpBridge.Interfaces
     /// <summary>
     /// Interface for transforming tracking data into VTube Studio parameters
     /// </summary>
-    public interface ITransformationEngine
+    public interface ITransformationEngine : IServiceStatsProvider
     {
         /// <summary>
         /// Loads transformation rules from the specified file

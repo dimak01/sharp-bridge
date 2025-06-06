@@ -166,12 +166,12 @@ namespace SharpBridge.Utilities
             var columns = new List<ITableColumn<RuleInfo>>
             {
                 new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: 8, maxWidth: 20),
-                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, 30), minWidth: 12, maxWidth: 30),
-                new TextColumn<RuleInfo>("Error", rule => TruncateError(rule.Error, 40), minWidth: 15, maxWidth: 40)
+                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, 80), minWidth: 12, maxWidth: 80),
+                new TextColumn<RuleInfo>("Error", rule => TruncateError(rule.Error, 80), minWidth: 15, maxWidth: 80)
             };
             
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "Invalid Rules", rulesToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "Invalid Rules", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
         }
         
         /// <summary>
@@ -185,12 +185,12 @@ namespace SharpBridge.Utilities
             var columns = new List<ITableColumn<RuleInfo>>
             {
                 new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: 8, maxWidth: 20),
-                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, 30), minWidth: 12, maxWidth: 30),
-                new TextColumn<RuleInfo>("Reason", rule => TruncateError(rule.Error, 40), minWidth: 15, maxWidth: 40)
+                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, 80), minWidth: 12, maxWidth: 80),
+                new TextColumn<RuleInfo>("Reason", rule => TruncateError(rule.Error, 80), minWidth: 15, maxWidth: 80)
             };
             
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "Abandoned Rules", rulesToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "Abandoned Rules", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
         }
         
         /// <summary>

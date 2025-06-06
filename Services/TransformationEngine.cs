@@ -153,23 +153,21 @@ namespace SharpBridge.Services
                 _hotReloadSuccesses++;
             }
             
-            // Throw an exception if any rules failed validation
+            // Log validation errors but continue with graceful degradation
             if (invalidRules > 0)
             {
                 string errorDetails = string.Join($"{Environment.NewLine}- ", validationErrors);
                 _lastError = $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.";
                 _logger.Error($"{_lastError}{Environment.NewLine}Errors:{Environment.NewLine}- {errorDetails}");
-                throw new InvalidOperationException(
-                    $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.{Environment.NewLine}" +
-                    $"Errors:{Environment.NewLine}- {errorDetails}");
+                // Continue with valid rules - don't throw exception
             }
             
-            // Check if we have at least one valid rule
+            // Log if no valid rules but continue operating (graceful degradation)
             if (validRules == 0)
             {
                 _lastError = "No valid transformation rules found in the configuration file.";
                 _logger.Error(_lastError);
-                throw new InvalidOperationException(_lastError);
+                // Continue operating - transformation will return empty results but app won't crash
             }
         }
         
