@@ -189,8 +189,8 @@ namespace SharpBridge.Services
                 {
                     _successfulTransformations++; // Count as successful even if no processing needed
                     _lastSuccessfulTransformation = DateTime.UtcNow;
-                    return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
-                }
+                return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
+            }
             
             var paramValues = new List<TrackingParam>();
             var paramDefinitions = new List<VTSParameter>();
@@ -281,14 +281,14 @@ namespace SharpBridge.Services
                 
                 _successfulTransformations++;
                 _lastSuccessfulTransformation = DateTime.UtcNow;
-                
-                return new PCTrackingInfo
-                {
-                    FaceFound = trackingData.FaceFound,
-                    Parameters = paramValues,
-                    ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p),
-                    ParameterCalculationExpressions = paramExpressions
-                };
+            
+            return new PCTrackingInfo
+            {
+                FaceFound = trackingData.FaceFound,
+                Parameters = paramValues,
+                ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p),
+                ParameterCalculationExpressions = paramExpressions
+            };
             }
             catch (Exception ex)
             {
