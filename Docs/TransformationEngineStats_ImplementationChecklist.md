@@ -4,65 +4,65 @@
 
 ### Models to Create
 
-- [ ] **Create `Models/TransformationEngineStatus.cs`**
-  - [ ] Define enum with values: `Ready`, `Partial`, `ConfigErrorCached`, `NoValidRules`, `NeverLoaded`, `ConfigMissing`
-  - [ ] Add XML documentation for each status value
+- [x] **Create `Models/TransformationEngineStatus.cs`**
+  - [x] Define enum with values: `Ready`, `Partial`, `ConfigErrorCached`, `NoValidRules`, `NeverLoaded`, `ConfigMissing`
+  - [x] Add XML documentation for each status value
 
-- [ ] **Create `Models/RuleInfo.cs`**
-  - [ ] Properties: `string Name`, `string Error`, `string Type` (validation/evaluation)
-  - [ ] Constructor for easy creation
-  - [ ] XML documentation
+- [x] **Create `Models/RuleInfo.cs`**
+  - [x] Properties: `string Name`, `string Error`, `string Type` (validation/evaluation)
+  - [x] Constructor for easy creation
+  - [x] XML documentation
 
-- [ ] **Create `Models/TransformationEngineInfo.cs`**
-  - [ ] Implement `IFormattableObject`
-  - [ ] Properties: `string ConfigFilePath`, `int ValidRulesCount`, `List<RuleInfo> InvalidRules`, `List<RuleInfo> AbandonedRules`
-  - [ ] Constructor with parameters
-  - [ ] XML documentation
+- [x] **Create `Models/TransformationEngineInfo.cs`**
+  - [x] Implement `IFormattableObject`
+  - [x] Properties: `string ConfigFilePath`, `int ValidRulesCount`, `List<RuleInfo> InvalidRules`, `List<RuleInfo> AbandonedRules`
+  - [x] Constructor with parameters
+  - [x] XML documentation
 
 ## Phase 2: TransformationEngine Statistics
 
 ### Add Statistics Tracking Fields
 
-- [ ] **Add private fields to `TransformationEngine` class**
-  - [ ] `private long _totalTransformations = 0;`
-  - [ ] `private long _successfulTransformations = 0;`
-  - [ ] `private long _failedTransformations = 0;`
-  - [ ] `private long _hotReloadAttempts = 0;`
-  - [ ] `private long _hotReloadSuccesses = 0;`
-  - [ ] `private DateTime _lastSuccessfulTransformation;`
-  - [ ] `private DateTime _rulesLoadedTime;`
-  - [ ] `private string _lastError;`
-  - [ ] `private string _configFilePath;`
-  - [ ] `private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;`
-  - [ ] `private readonly List<RuleInfo> _invalidRules = new();`
-  - [ ] `private readonly List<RuleInfo> _lastAbandonedRules = new();`
+- [x] **Add private fields to `TransformationEngine` class**
+  - [x] `private long _totalTransformations = 0;`
+  - [x] `private long _successfulTransformations = 0;`
+  - [x] `private long _failedTransformations = 0;`
+  - [x] `private long _hotReloadAttempts = 0;`
+  - [x] `private long _hotReloadSuccesses = 0;`
+  - [x] `private DateTime _lastSuccessfulTransformation;`
+  - [x] `private DateTime _rulesLoadedTime;`
+  - [x] `private string _lastError;`
+  - [x] `private string _configFilePath;`
+  - [x] `private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;`
+  - [x] `private readonly List<RuleInfo> _invalidRules = new();`
+  - [x] `private readonly List<RuleInfo> _lastAbandonedRules = new();`
 
 ### Implement IServiceStatsProvider
 
-- [ ] **Add `IServiceStatsProvider` to `TransformationEngine` class declaration**
+- [x] **Add `IServiceStatsProvider` to `TransformationEngine` class declaration**
 
-- [ ] **Implement `GetServiceStats()` method**
-  - [ ] Create counters dictionary from tracking fields
-  - [ ] Create `TransformationEngineInfo` entity with current state
-  - [ ] Determine `isHealthy` based on status and recent activity
-  - [ ] Return `ServiceStats` with all data
+- [x] **Implement `GetServiceStats()` method**
+  - [x] Create counters dictionary from tracking fields
+  - [x] Create `TransformationEngineInfo` entity with current state
+  - [x] Determine `isHealthy` based on status and recent activity
+  - [x] Return `ServiceStats` with all data
 
 ### Update Existing Methods
 
-- [ ] **Update `LoadRulesAsync()` method**
-  - [ ] Store `_configFilePath` parameter
-  - [ ] Track `_hotReloadAttempts` and `_hotReloadSuccesses`
-  - [ ] Populate `_invalidRules` list instead of just counting
-  - [ ] Set `_rulesLoadedTime` on successful load
-  - [ ] Update `_currentStatus` based on results
-  - [ ] Clear `_lastError` on success, set on failure
+- [x] **Update `LoadRulesAsync()` method**
+  - [x] Store `_configFilePath` parameter
+  - [x] Track `_hotReloadAttempts` and `_hotReloadSuccesses`
+  - [x] Populate `_invalidRules` list instead of just counting
+  - [x] Set `_rulesLoadedTime` on successful load
+  - [x] Update `_currentStatus` based on results
+  - [x] Clear `_lastError` on success, set on failure
 
-- [ ] **Update `TransformData()` method**
-  - [ ] Increment `_totalTransformations`
-  - [ ] Track `_successfulTransformations` vs `_failedTransformations`
-  - [ ] Update `_lastSuccessfulTransformation` timestamp
-  - [ ] Populate `_lastAbandonedRules` list with evaluation failures
-  - [ ] Update `_currentStatus` based on results
+- [x] **Update `TransformData()` method**
+  - [x] Increment `_totalTransformations`
+  - [x] Track `_successfulTransformations` vs `_failedTransformations`
+  - [x] Update `_lastSuccessfulTransformation` timestamp
+  - [x] Populate `_lastAbandonedRules` list with evaluation failures
+  - [x] Update `_currentStatus` based on results
 
 ## Phase 3: Console UI Integration
 
