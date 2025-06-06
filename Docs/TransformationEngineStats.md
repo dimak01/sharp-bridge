@@ -91,12 +91,22 @@ The transformation engine operates in a **graceful degradation** model - it cont
 
 ## Implementation Approach
 
-1. **Add Statistics Fields**: Track rule counts, transformation counts, error states, timestamps
-2. **Implement IServiceStatsProvider**: Create `GetServiceStats()` method returning appropriate statistics
-3. **Create TransformationEngineInfo Entity**: Define `IFormattableObject` for current entity data
-4. **Create Formatter**: Implement `TransformationEngineInfoFormatter` with tabular display for rule issues
-5. **Update ApplicationOrchestrator**: Include transformation engine stats in console display
-6. **Add Keyboard Shortcut**: Register Alt+T for transformation engine verbosity cycling
+### Architecture Decisions
+
+**Follow Existing Service Patterns**: Use the same approach as `VTubeStudioPhoneClient` and `VTubeStudioPCClient` - individual tracking fields in the service class, populate `ServiceStats.Counters` in `GetServiceStats()`, and keep `IFormattableObject` entity simple.
+
+**No Statistics Duplication**: Counters live in `ServiceStats.Counters`, current state lives in `TransformationEngineInfo`. Avoid duplicating data between internal tracking and external representation.
+
+**Consistent Interface Implementation**: TransformationEngine implements `IServiceStatsProvider` using the same patterns as existing services for maintainability and consistency.
+
+### Implementation Steps
+
+1. **Add Individual Statistics Fields**: Track transformation counts, reload attempts, error states, timestamps as private fields in TransformationEngine class
+2. **Implement IServiceStatsProvider**: Create `GetServiceStats()` method that populates `ServiceStats.Counters` from tracking fields
+3. **Create TransformationEngineInfo Entity**: Simple `IFormattableObject` containing current state (config path, rule lists, status) - no counters or statistics logic
+4. **Create TransformationEngineInfoFormatter**: Implement formatter with tabular display for rule problems, following existing formatter patterns
+5. **Update ApplicationOrchestrator**: Include transformation engine stats in console display alongside phone and PC client stats
+6. **Add Keyboard Shortcut**: Register Alt+T for transformation engine verbosity cycling, maintaining UI consistency
 
 ## Questions Answered
 
