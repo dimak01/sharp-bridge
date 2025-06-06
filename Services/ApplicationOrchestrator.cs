@@ -311,14 +311,16 @@ namespace SharpBridge.Services
         {
             try
             {
-                // Get statistics from both clients
+                // Get statistics from all components
+                var transformationStats = _transformationEngine.GetServiceStats();
                 var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
                 var pcStats = _vtubeStudioPCClient.GetServiceStats();
                 
                 // Create a list of all service stats to display
                 var allStats = new List<IServiceStats>();
                 
-                // Add stats to the list - this works because of covariance with the 'out' parameter in IServiceStats<out T>
+                // Add stats to the list - transformation engine first, then clients
+                if (transformationStats != null) allStats.Add(transformationStats);
                 if (phoneStats != null) allStats.Add(phoneStats);
                 if (pcStats != null) allStats.Add(pcStats);
                 
@@ -398,6 +400,21 @@ namespace SharpBridge.Services
         /// </summary>
         private void RegisterKeyboardShortcuts()
         {
+            // Register Alt+T to cycle Transformation Engine verbosity
+            _keyboardInputHandler.RegisterShortcut(
+                ConsoleKey.T, 
+                ConsoleModifiers.Alt, 
+                () => {
+                    var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
+                    if (transformationFormatter != null)
+                    {
+                        transformationFormatter.CycleVerbosity();
+                        _status = $"Transformation Engine verbosity changed to {transformationFormatter.CurrentVerbosity}";
+                    }
+                },
+                "Cycle Transformation Engine verbosity"
+            );
+            
             // Register Alt+P to cycle PC client verbosity
             _keyboardInputHandler.RegisterShortcut(
                 ConsoleKey.P, 
