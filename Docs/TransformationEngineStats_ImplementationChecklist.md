@@ -106,6 +106,19 @@
 - [x] **Update help text display**
   - [x] Add "Alt+T for Transformation Engine verbosity" to console footer
 
+### Interface Enhancement
+
+- [x] **Update `ITransformationEngine` interface**
+  - [x] Add inheritance from `IServiceStatsProvider` to enable statistics collection
+
+### Graceful Degradation Enhancement
+
+- [x] **Improve error handling in `LoadRulesAsync()`**
+  - [x] Remove exceptions for invalid rules that would crash the app
+  - [x] Continue operating with valid rules when some rules fail validation
+  - [x] Display invalid rules through statistics system instead of crashing
+  - [x] Only throw exceptions for critical infrastructure failures (missing files)
+
 ## Phase 5: Testing & Integration
 
 ### Unit Tests
