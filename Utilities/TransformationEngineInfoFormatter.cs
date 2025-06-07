@@ -269,6 +269,10 @@ namespace SharpBridge.Utilities
             if (text.Length <= maxLength)
                 return text;
                 
+            // Guard against maxLength being too small for ellipsis
+            if (maxLength <= ELLIPSIS_LENGTH)
+                return text.Substring(0, Math.Max(0, maxLength));
+                
             return text.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
         }
         
