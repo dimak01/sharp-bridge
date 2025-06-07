@@ -56,6 +56,7 @@ namespace SharpBridge.Tests.Utilities
         private Mock<IFormatter> _mockFormatter;
         private Mock<IAppLogger> _mockLogger;
         private Mock<ITableFormatter> _mockTableFormatter;
+        private Mock<TransformationEngineInfoFormatter> _mockTransformationFormatter;
         private Mock<PhoneTrackingInfoFormatter> _mockPhoneFormatter;
         private Mock<PCTrackingInfoFormatter> _mockPCFormatter;
         private TestEntity _testEntity;
@@ -80,12 +81,13 @@ namespace SharpBridge.Tests.Utilities
             // Setup mock table formatter
             _mockTableFormatter = new Mock<ITableFormatter>();
             
-            // Setup mock formatters
+            // Setup mock formatters - shared across all tests to eliminate duplication
+            _mockTransformationFormatter = new Mock<TransformationEngineInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
             _mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
             _mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
             
             // Create renderer with mocked dependencies
-            _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
+            _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             
             // Register the test formatter for TestEntity
             _renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
@@ -109,11 +111,9 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var mockConsole = new Mock<IConsole>();
             var mockLogger = new Mock<IAppLogger>();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
 
             // Act & Assert
-            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             renderer.Should().NotBeNull();
         }
 
@@ -122,11 +122,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockLogger = new Mock<IAppLogger>();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
 
             // Act & Assert
-            Action act = () => new ConsoleRenderer(null, mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            Action act = () => new ConsoleRenderer(null, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -135,11 +133,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockConsole = new Mock<IConsole>();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
 
             // Act & Assert
-            Action act = () => new ConsoleRenderer(mockConsole.Object, null, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            Action act = () => new ConsoleRenderer(mockConsole.Object, null, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
         }
 
@@ -149,9 +145,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var mockConsole = new Mock<IConsole>();
             var mockLogger = new Mock<IAppLogger>();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var mockFormatter = new Mock<IFormatter>();
 
             // Act & Assert
@@ -165,9 +159,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var mockConsole = new Mock<IConsole>();
             var mockLogger = new Mock<IAppLogger>();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var mockFormatter = new Mock<IFormatter>();
 
             // Act
@@ -184,9 +176,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             // Create a new renderer without registering formatters
             var testConsole = new TestConsole();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             
             // Act
             var result = renderer.GetFormatter<TestEntity>();
@@ -199,9 +189,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WithValidStats_CallsFormatterWithCorrectStats()
         {
             // Arrange
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
             var stats = new List<IServiceStats> { _testStats };
 
@@ -216,9 +204,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WritesFormattedOutputToConsole()
         {
             // Arrange
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
             var stats = new List<IServiceStats> { _testStats };
 
@@ -233,9 +219,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WhenCalledRapidly_ThrottlesUpdates()
         {
             // Arrange
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var stats = new List<IServiceStats> { _testStats };
 
             // Act - Call update multiple times rapidly
@@ -257,9 +241,7 @@ namespace SharpBridge.Tests.Utilities
             {
                 CreateMockServiceStats("TestService", "Running", true, otherEntity)
             };
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
 
             // Act
             renderer.Update(stats);
@@ -273,9 +255,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var multiFormatter = new MultiInterfaceFormatter();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             renderer.RegisterFormatter<TestEntity>(multiFormatter);
             var stats = new List<IServiceStats> { _testStats };
 
@@ -293,9 +273,7 @@ namespace SharpBridge.Tests.Utilities
             smallConsole.Setup(c => c.WindowWidth).Returns(80);
             
             // Create a renderer with the small console
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             
             // Create more lines than the window height
             var manyStats = new List<IServiceStats>();
@@ -360,9 +338,7 @@ namespace SharpBridge.Tests.Utilities
                 .Throws(new InvalidOperationException("Test exception"));
 
             // Create a renderer with the throwing console
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
 
             // Act & Assert
@@ -384,9 +360,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var testConsole = new TestConsole();
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var mockFormatter = new Mock<IFormatter>();
             var testEntity = new TestEntity("Test", 42);
             
@@ -411,9 +385,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WithNullEntity_HandlesGracefully()
         {
             // Arrange
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var stats = new List<IServiceStats>
             {
                 CreateMockServiceStats("TestService", "Running", true, null)
@@ -428,9 +400,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WithUnregisteredEntityType_HandlesGracefully()
         {
             // Arrange
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var testEntity = new TestEntity("Test", 42);
             var stats = new List<IServiceStats>
             {
@@ -450,9 +420,7 @@ namespace SharpBridge.Tests.Utilities
             smallConsole.Setup(c => c.WindowWidth).Returns(10);
             smallConsole.Setup(c => c.WindowHeight).Returns(5);
             
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(smallConsole.Object, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var stats = new List<IServiceStats>
             {
                 CreateMockServiceStats("TestService", "Running", true)
@@ -473,9 +441,7 @@ namespace SharpBridge.Tests.Utilities
             throwingConsole.Setup(c => c.SetCursorPosition(It.IsAny<int>(), It.IsAny<int>()))
                           .Throws(expectedException);
             
-            var mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object);
-            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object, mockPhoneFormatter.Object, mockPCFormatter.Object);
+            var renderer = new ConsoleRenderer(throwingConsole.Object, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object);
             var stats = new List<IServiceStats>
             {
                 CreateMockServiceStats("TestService", "Running", true)

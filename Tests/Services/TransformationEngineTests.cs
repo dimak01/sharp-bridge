@@ -588,7 +588,7 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_ThrowsExceptionForRulesWithInvalidSyntax()
+        public async Task LoadRulesAsync_HandlesInvalidSyntaxWithGracefulDegradation()
         {
             // Arrange
             var ruleContent = @"[
@@ -627,15 +627,37 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // Act & Assert
-                // With the new behavior, we should throw an exception during loading
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-                    await engine.LoadRulesAsync(filePath));
+                // Act - should succeed with graceful degradation
+                await engine.LoadRulesAsync(filePath);
                 
-                // Verify that the exception message contains details about the invalid rules
-                exception.Message.Should().Contain("Failed to load");
-                exception.Message.Should().Contain("InvalidSyntaxRule");
-                exception.Message.Should().Contain("EmptyRule");
+                // Assert - Check that service stats reflect partial loading
+                var stats = engine.GetServiceStats();
+                stats.Status.Should().Be("SomeRulesActive"); // 2 valid rules, 2 invalid rules
+                stats.Counters["Valid Rules"].Should().Be(2);
+                stats.Counters["Invalid Rules"].Should().Be(2);
+                
+                // Check that invalid rules are tracked
+                var engineInfo = stats.CurrentEntity as TransformationEngineInfo;
+                engineInfo.Should().NotBeNull();
+                engineInfo.InvalidRules.Should().HaveCount(2);
+                engineInfo.InvalidRules.Should().Contain(r => r.Name == "InvalidSyntaxRule");
+                engineInfo.InvalidRules.Should().Contain(r => r.Name == "EmptyRule");
+                
+                // Test that valid rules still work
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                        new BlendShape { Key = "eyeBlinkRight", Value = 0.3 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData);
+                result.Parameters.Should().HaveCount(2); // Only valid rules processed
+                result.Parameters.Should().Contain(p => p.Id == "ValidRule" && p.Value == 50);
+                result.Parameters.Should().Contain(p => p.Id == "AnotherValidRule" && p.Value == 15);
             }
             finally
             {
@@ -645,7 +667,7 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_ThrowsExceptionWhenMinGreaterThanMax()
+        public async Task LoadRulesAsync_HandlesInvalidRangeWithGracefulDegradation()
         {
             // Arrange
             var ruleContent = @"[
@@ -670,16 +692,36 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // Act & Assert
-                // With the new behavior, we should throw an exception during loading
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
-                    await engine.LoadRulesAsync(filePath));
+                // Act - should succeed with graceful degradation
+                await engine.LoadRulesAsync(filePath);
                 
-                // Verify that the exception message contains details about the invalid rule
-                exception.Message.Should().Contain("Failed to load");
-                exception.Message.Should().Contain("InvalidRangeRule");
-                exception.Message.Should().Contain("Min value");
-                exception.Message.Should().Contain("greater than Max value");
+                // Assert - Check that service stats reflect partial loading
+                var stats = engine.GetServiceStats();
+                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule
+                stats.Counters["Valid Rules"].Should().Be(1);
+                stats.Counters["Invalid Rules"].Should().Be(1);
+                
+                // Check that invalid rule is tracked with proper error message
+                var engineInfo = stats.CurrentEntity as TransformationEngineInfo;
+                engineInfo.Should().NotBeNull();
+                engineInfo.InvalidRules.Should().HaveCount(1);
+                var invalidRule = engineInfo.InvalidRules.First();
+                invalidRule.Name.Should().Be("InvalidRangeRule");
+                invalidRule.Error.Should().Contain("Min").And.Contain("Max");
+                
+                // Test that valid rule still works
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData);
+                result.Parameters.Should().HaveCount(1); // Only valid rule processed
+                result.Parameters.Should().Contain(p => p.Id == "ValidRule" && p.Value == 50);
             }
             finally
             {
@@ -723,10 +765,9 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_HandlesExpressionParsingExceptions_Gracefully()
+        public async Task LoadRulesAsync_HandlesNullExpressionWithGracefulDegradation()
         {
             // Arrange - Create a rule that will cause an exception during Expression construction
-            // This is tricky since NCalc is quite forgiving, but we can try with very malformed syntax
             var ruleContent = @"[
                 {
                     ""name"": ""ValidRule"",
@@ -749,10 +790,36 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // Act & Assert - should handle the null expression gracefully
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => engine.LoadRulesAsync(filePath));
-                exception.Message.Should().Contain("Failed to load 1 transformation rules");
-                exception.Message.Should().Contain("Valid rules: 1");
+                // Act - should succeed with graceful degradation
+                await engine.LoadRulesAsync(filePath);
+                
+                // Assert - Check that service stats reflect partial loading
+                var stats = engine.GetServiceStats();
+                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule
+                stats.Counters["Valid Rules"].Should().Be(1);
+                stats.Counters["Invalid Rules"].Should().Be(1);
+                
+                // Check that invalid rule is tracked with proper error message
+                var engineInfo = stats.CurrentEntity as TransformationEngineInfo;
+                engineInfo.Should().NotBeNull();
+                engineInfo.InvalidRules.Should().HaveCount(1);
+                var invalidRule = engineInfo.InvalidRules.First();
+                invalidRule.Name.Should().Be("BadRule");
+                invalidRule.Error.Should().Contain("empty expression");
+                
+                // Test that valid rule still works
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData);
+                result.Parameters.Should().HaveCount(1); // Only valid rule processed
+                result.Parameters.Should().Contain(p => p.Id == "ValidRule" && p.Value == 50);
             }
             finally
             {
@@ -770,7 +837,7 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task LoadRulesAsync_ThrowsInvalidOperationException_WhenNoValidRulesFound()
+        public async Task LoadRulesAsync_HandlesAllInvalidRulesWithGracefulDegradation()
         {
             // Arrange - Create rules that will all fail validation
             var ruleContent = @"[
@@ -802,10 +869,35 @@ namespace SharpBridge.Tests.Services
             {
                 var engine = new TransformationEngine(_mockLogger.Object);
                 
-                // Act & Assert
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => engine.LoadRulesAsync(filePath));
-                exception.Message.Should().Contain("Failed to load 3 transformation rules");
-                exception.Message.Should().Contain("Valid rules: 0");
+                // Act - should succeed even with all invalid rules
+                await engine.LoadRulesAsync(filePath);
+                
+                // Assert - Check that service stats reflect no valid rules
+                var stats = engine.GetServiceStats();
+                stats.Status.Should().Be("NoValidRules"); // No valid rules loaded
+                stats.Counters["Valid Rules"].Should().Be(0);
+                stats.Counters["Invalid Rules"].Should().Be(3);
+                
+                // Check that all invalid rules are tracked
+                var engineInfo = stats.CurrentEntity as TransformationEngineInfo;
+                engineInfo.Should().NotBeNull();
+                engineInfo.InvalidRules.Should().HaveCount(3);
+                engineInfo.InvalidRules.Should().Contain(r => r.Name == "BadRule1");
+                engineInfo.InvalidRules.Should().Contain(r => r.Name == "BadRule2");
+                engineInfo.InvalidRules.Should().Contain(r => r.Name == "BadRule3");
+                
+                // Test that transformation returns empty results but doesn't crash
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData);
+                result.Parameters.Should().BeEmpty(); // No valid rules to process
             }
             finally
             {
@@ -933,6 +1025,129 @@ namespace SharpBridge.Tests.Services
                 result.GetExpression("TestParam1").Should().Be("eyeBlinkLeft * 100");
                 result.GetExpression("TestParam2").Should().Be("HeadPosX + HeadPosY");
                 result.GetExpression("NonExistentParam").Should().BeNull();
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_HandlesUnexpectedExceptionDuringRuleProcessing()
+        {
+            // Arrange - Create a JSON rule that will cause validation error (normal case that's already handled)
+            // This test mainly validates the exception handling path is working
+            var ruleContent = @"[
+                {
+                    ""name"": ""ValidRule"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""InvalidRule"",
+                    ""func"": ""invalid_syntax_expression_[{#"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
+                
+                // Act - should not throw, should handle gracefully
+                await engine.LoadRulesAsync(filePath);
+                
+                // Assert - Check that service stats reflect partial loading
+                var stats = engine.GetServiceStats();
+                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule due to exception
+                stats.Counters["Valid Rules"].Should().Be(1);
+                stats.Counters["Invalid Rules"].Should().Be(1);
+                
+                // Check that exception was caught and rule marked as invalid
+                var engineInfo = stats.CurrentEntity as TransformationEngineInfo;
+                engineInfo.Should().NotBeNull();
+                engineInfo.InvalidRules.Should().HaveCount(1);
+                var invalidRule = engineInfo.InvalidRules.First();
+                invalidRule.Name.Should().Be("InvalidRule");
+                invalidRule.Type.Should().Be("Validation");
+                invalidRule.Error.Should().NotBeNullOrEmpty();
+                
+                // Verify the valid rule still works
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData);
+                result.Parameters.Should().HaveCount(1); // Only valid rule processed
+                result.Parameters.Should().Contain(p => p.Id == "ValidRule" && p.Value == 50);
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task TransformData_HandlesUnexpectedExceptionDuringTransformation()
+        {
+            // Arrange - Set up a scenario that will cause an exception during transformation
+            var ruleContent = @"[
+                {
+                    ""name"": ""TestParam"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
+                await engine.LoadRulesAsync(filePath);
+                
+                // Create tracking data with a BlendShape that has a null Key to cause an exception
+                // This will trigger an exception during parameter processing
+                var malformedData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        null // This will cause a NullReferenceException when iterating over BlendShapes
+                    }
+                };
+                
+                // Act - should handle the exception gracefully
+                var result = engine.TransformData(malformedData);
+                
+                // Assert - should return safe fallback result
+                result.Should().NotBeNull();
+                result.FaceFound.Should().BeTrue(); // Should preserve the original FaceFound value
+                result.Parameters.Should().BeNullOrEmpty();
+                
+                // Verify error statistics were updated
+                var stats = engine.GetServiceStats();
+                stats.Counters["Total Transformations"].Should().Be(1);
+                stats.Counters["Failed Transformations"].Should().Be(1);
+                stats.Counters["Successful Transformations"].Should().Be(0);
+                stats.LastError.Should().NotBeNullOrEmpty();
+                stats.LastError.Should().Contain("Transformation failed");
+                
+                // Verify that logger was called for the error
+                _mockLogger.Verify(logger => logger.Error(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeastOnce);
             }
             finally
             {

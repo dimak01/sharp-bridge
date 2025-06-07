@@ -149,7 +149,7 @@ namespace SharpBridge.Utilities
 
             // Use the new generic table formatter - let it handle display limits
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "Parameters", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "=== Parameters ===", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
         }
         
         /// <summary>
