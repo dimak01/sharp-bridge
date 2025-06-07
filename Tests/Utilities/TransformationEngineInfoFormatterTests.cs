@@ -970,7 +970,7 @@ namespace SharpBridge.Tests.Utilities
             var result = (string)method.Invoke(formatter, new object[] { text, 15, "[empty]" });
 
             // Assert
-            result.Should().Be("This is exa..."); // 12 chars + 3 ellipsis = 15 total
+            result.Should().Be("This is exac..."); // 12 chars + 3 ellipsis = 15 total
             result.Should().HaveLength(15);
         }
 
