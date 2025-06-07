@@ -30,7 +30,6 @@ namespace SharpBridge.Services
         private string _configFilePath;
         private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;
         private readonly List<RuleInfo> _invalidRules = new();
-        private readonly List<RuleInfo> _lastAbandonedRules = new();
         
         public TransformationEngine(IAppLogger logger)
         {
@@ -260,11 +259,14 @@ namespace SharpBridge.Services
                 // TODO: Add pass completion logging when needed
             }
             
-                // Track abandoned rules from this transformation
-                _lastAbandonedRules.Clear();
+                // Track abandoned rules from this transformation by adding them to invalid rules
+                // First, remove any previous evaluation failures (keep validation failures)
+                _invalidRules.RemoveAll(rule => rule.Type == "Evaluation");
+                
+                // Add new evaluation failures
                 foreach (var (name, _, expressionString, _, _, _) in remainingRules)
                 {
-                    _lastAbandonedRules.Add(new RuleInfo(name, expressionString, "Failed to evaluate - missing dependencies or evaluation error", "Evaluation"));
+                    _invalidRules.Add(new RuleInfo(name, expressionString, "Failed to evaluate - missing dependencies or evaluation error", "Evaluation"));
                 }
                 
                 // Update status based on evaluation results
@@ -424,8 +426,7 @@ namespace SharpBridge.Services
             var currentEntity = new TransformationEngineInfo(
                 configFilePath: _configFilePath ?? string.Empty,
                 validRulesCount: _rules.Count,
-                invalidRules: _invalidRules.AsReadOnly(),
-                abandonedRules: _lastAbandonedRules.AsReadOnly());
+                invalidRules: _invalidRules.AsReadOnly());
             
             // Determine if service is healthy
             bool isHealthy = _currentStatus == TransformationEngineStatus.Ready || 
