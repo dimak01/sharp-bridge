@@ -12,9 +12,20 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class TransformationEngineInfoFormatter : IFormatter
     {
+        // Counter Keys
+        private const string VALID_RULES_KEY = "Valid Rules";
+        private const string INVALID_RULES_KEY = "Invalid Rules";
+        private const string UPTIME_SINCE_RULES_LOADED_KEY = "Uptime Since Rules Loaded (seconds)";
+        private const string HOT_RELOAD_ATTEMPTS_KEY = "Hot Reload Attempts";
+        private const string HOT_RELOAD_SUCCESSES_KEY = "Hot Reload Successes";
+        private const string TOTAL_TRANSFORMATIONS_KEY = "Total Transformations";
+        private const string SUCCESSFUL_TRANSFORMATIONS_KEY = "Successful Transformations";
+        private const string FAILED_TRANSFORMATIONS_KEY = "Failed Transformations";
+        
+        // Display Limits
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
         
-        // Column width constants
+        // Column Width Constants
         private const int RULE_NAME_COLUMN_MIN_WIDTH = 8;
         private const int RULE_NAME_COLUMN_MAX_WIDTH = 20;
         private const int FUNCTION_COLUMN_MIN_WIDTH = 12;
@@ -22,13 +33,17 @@ namespace SharpBridge.Utilities
         private const int ERROR_COLUMN_MIN_WIDTH = 15;
         private const int ERROR_COLUMN_MAX_WIDTH = 80;
         
-        // Text truncation constants
+        // Text Truncation Constants
         private const int DEFAULT_TEXT_TRUNCATION_LENGTH = 80;
         private const int ELLIPSIS_LENGTH = 3;
         
-        // Table formatting constants
+        // Table Formatting Constants
         private const int TABLE_MINIMUM_ROWS = 1;
         private const int TABLE_MINIMUM_WIDTH = 20;
+        
+        // Service Display Constants
+        private const string SERVICE_NAME = "Transformation Engine";
+        private const string KEYBOARD_SHORTCUT = "Alt+T";
         
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
@@ -90,7 +105,8 @@ namespace SharpBridge.Utilities
             }
             else if (serviceStats.CurrentEntity != null)
             {
-                throw new ArgumentException("CurrentEntity must be of type TransformationEngineInfo or null");
+                throw new ArgumentException(
+                    "CurrentEntity must be of type TransformationEngineInfo or null");
             }
             else
             {
@@ -107,62 +123,78 @@ namespace SharpBridge.Utilities
         private void AppendServiceHeader(StringBuilder builder, IServiceStats serviceStats)
         {
             // Header with service status
-            builder.AppendLine(FormatServiceHeader("Transformation Engine", serviceStats.Status, "Alt+T"));
+            builder.AppendLine(FormatServiceHeader(SERVICE_NAME, serviceStats.Status, KEYBOARD_SHORTCUT));
             builder.AppendLine($"Verbosity: {CurrentVerbosity}");
             builder.AppendLine();
             
-            // Status Overview Group
-            // Core rule stats
-            if (serviceStats.Counters.ContainsKey("Valid Rules") && serviceStats.Counters.ContainsKey("Invalid Rules"))
-            {
-                var validRules = serviceStats.Counters["Valid Rules"];
-                var invalidRules = serviceStats.Counters["Invalid Rules"];
-                var totalRules = validRules + invalidRules;
-                
-                var uptimeText = string.Empty;
-                if (serviceStats.Counters.ContainsKey("Uptime Since Rules Loaded (seconds)"))
-                {
-                    var uptimeSeconds = serviceStats.Counters["Uptime Since Rules Loaded (seconds)"];
-                    uptimeText = $", Uptime: {FormatUptime(uptimeSeconds)}";
-                }
-                
-                builder.AppendLine($"Rules Loaded - Total: {totalRules}, Valid: {validRules}, Invalid: {invalidRules}{uptimeText}");
-            }
-            
-            // Empty line to separate groups
+            AppendRulesOverview(builder, serviceStats);
             builder.AppendLine();
             
-            // Configuration & Performance Group
+            AppendConfigurationInfo(builder, serviceStats);
+            AppendTransformationMetrics(builder, serviceStats);
+            
+            // Empty line before Problem Details section
+            builder.AppendLine();
+        }
+        
+        /// <summary>
+        /// Appends the rules overview section to the string builder
+        /// </summary>
+        private void AppendRulesOverview(StringBuilder builder, IServiceStats serviceStats)
+        {
+            var validRules = GetCounterValue(serviceStats.Counters, VALID_RULES_KEY);
+            var invalidRules = GetCounterValue(serviceStats.Counters, INVALID_RULES_KEY);
+            
+            if (validRules > 0 || invalidRules > 0)
+            {
+                var totalRules = validRules + invalidRules;
+                var uptimeText = GetUptimeText(serviceStats.Counters);
+                
+                builder.AppendLine(
+                    $"Rules Loaded - Total: {totalRules}, Valid: {validRules}, " +
+                    $"Invalid: {invalidRules}{uptimeText}");
+            }
+        }
+        
+        /// <summary>
+        /// Appends the configuration information section to the string builder
+        /// </summary>
+        private void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
+        {
             // Config file info
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
                 var configStatus = DetermineConfigStatus(serviceStats.Status, engineInfo.ConfigFilePath);
-                builder.AppendLine($"Config File - Path: {engineInfo.ConfigFilePath}, Status: {configStatus}");
+                builder.AppendLine(
+                    $"Config File - Path: {engineInfo.ConfigFilePath}, Status: {configStatus}");
             }
             
             // Config file load stats (includes initial load + hot reloads)
-            if (serviceStats.Counters.ContainsKey("Hot Reload Attempts") && serviceStats.Counters.ContainsKey("Hot Reload Successes"))
-            {
-                var attempts = serviceStats.Counters["Hot Reload Attempts"];
-                var successes = serviceStats.Counters["Hot Reload Successes"];
-                builder.AppendLine($"Config file loads count - Attempts: {attempts}, Successful: {successes}");
-            }
+            var attempts = GetCounterValue(serviceStats.Counters, HOT_RELOAD_ATTEMPTS_KEY);
+            var successes = GetCounterValue(serviceStats.Counters, HOT_RELOAD_SUCCESSES_KEY);
             
-            // Transformation metrics
-            if (serviceStats.Counters.ContainsKey("Total Transformations"))
+            if (attempts > 0)
             {
-                var total = serviceStats.Counters["Total Transformations"];
-                var successful = serviceStats.Counters.ContainsKey("Successful Transformations") ? serviceStats.Counters["Successful Transformations"] : 0;
-                var failed = serviceStats.Counters.ContainsKey("Failed Transformations") ? serviceStats.Counters["Failed Transformations"] : 0;
+                builder.AppendLine(
+                    $"Config file loads count - Attempts: {attempts}, Successful: {successes}");
+            }
+        }
+        
+        /// <summary>
+        /// Appends the transformation metrics section to the string builder
+        /// </summary>
+        private void AppendTransformationMetrics(StringBuilder builder, IServiceStats serviceStats)
+        {
+            var total = GetCounterValue(serviceStats.Counters, TOTAL_TRANSFORMATIONS_KEY);
+            
+            if (total > 0)
+            {
+                var successful = GetCounterValue(serviceStats.Counters, SUCCESSFUL_TRANSFORMATIONS_KEY);
+                var failed = GetCounterValue(serviceStats.Counters, FAILED_TRANSFORMATIONS_KEY);
                 
-                if (total > 0)
-                {
-                    builder.AppendLine($"Transformations - Total: {total}, Successful: {successful}, Failed: {failed}");
-                }
+                builder.AppendLine(
+                    $"Transformations - Total: {total}, Successful: {successful}, Failed: {failed}");
             }
-            
-            // Empty line before Problem Details section
-            builder.AppendLine();
         }
         
         /// <summary>
@@ -175,16 +207,39 @@ namespace SharpBridge.Utilities
             // Define columns for failed rules table
             var columns = new List<ITableColumn<RuleInfo>>
             {
-                new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH), minWidth: FUNCTION_COLUMN_MIN_WIDTH, maxWidth: FUNCTION_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Error", rule => TruncateError(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH), minWidth: ERROR_COLUMN_MIN_WIDTH, maxWidth: ERROR_COLUMN_MAX_WIDTH)
+                new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, 
+                    minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
+                new TextColumn<RuleInfo>("Function", 
+                    rule => TruncateText(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH, "[empty]"), 
+                    minWidth: FUNCTION_COLUMN_MIN_WIDTH, maxWidth: FUNCTION_COLUMN_MAX_WIDTH),
+                new TextColumn<RuleInfo>("Error", 
+                    rule => TruncateText(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH, "[no error]"), 
+                    minWidth: ERROR_COLUMN_MIN_WIDTH, maxWidth: ERROR_COLUMN_MAX_WIDTH)
             };
             
-            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, TABLE_MINIMUM_ROWS, _console.WindowWidth, TABLE_MINIMUM_WIDTH, singleColumnLimit);
+            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? 
+                (int?)null : RULE_DISPLAY_COUNT_NORMAL;
+                
+            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, 
+                TABLE_MINIMUM_ROWS, _console.WindowWidth, TABLE_MINIMUM_WIDTH, singleColumnLimit);
         }
         
-
+        /// <summary>
+        /// Safely gets a counter value with a default fallback
+        /// </summary>
+        private long GetCounterValue(IReadOnlyDictionary<string, long> counters, string key, long defaultValue = 0)
+        {
+            return counters.TryGetValue(key, out var value) ? value : defaultValue;
+        }
+        
+        /// <summary>
+        /// Gets the uptime text from counters if available
+        /// </summary>
+        private string GetUptimeText(IReadOnlyDictionary<string, long> counters)
+        {
+            var uptimeSeconds = GetCounterValue(counters, UPTIME_SINCE_RULES_LOADED_KEY);
+            return uptimeSeconds > 0 ? $", Uptime: {FormatUptime(uptimeSeconds)}" : string.Empty;
+        }
         
         /// <summary>
         /// Determines the config file status based on engine status and file path
@@ -204,31 +259,17 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Truncates an expression string for display in tables
+        /// Truncates text for display in tables with customizable empty placeholder
         /// </summary>
-        private string TruncateExpression(string expression, int maxLength)
+        private string TruncateText(string text, int maxLength, string emptyPlaceholder = "[empty]")
         {
-            if (string.IsNullOrEmpty(expression))
-                return "[empty]";
+            if (string.IsNullOrEmpty(text))
+                return emptyPlaceholder;
                 
-            if (expression.Length <= maxLength)
-                return expression;
+            if (text.Length <= maxLength)
+                return text;
                 
-            return expression.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
-        }
-        
-        /// <summary>
-        /// Truncates an error message for display in tables
-        /// </summary>
-        private string TruncateError(string error, int maxLength)
-        {
-            if (string.IsNullOrEmpty(error))
-                return "[no error]";
-                
-            if (error.Length <= maxLength)
-                return error;
-                
-            return error.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
+            return text.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
         }
         
         /// <summary>
