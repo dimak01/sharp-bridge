@@ -14,6 +14,22 @@ namespace SharpBridge.Utilities
     {
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
         
+        // Column width constants
+        private const int RULE_NAME_COLUMN_MIN_WIDTH = 8;
+        private const int RULE_NAME_COLUMN_MAX_WIDTH = 20;
+        private const int FUNCTION_COLUMN_MIN_WIDTH = 12;
+        private const int FUNCTION_COLUMN_MAX_WIDTH = 80;
+        private const int ERROR_COLUMN_MIN_WIDTH = 15;
+        private const int ERROR_COLUMN_MAX_WIDTH = 80;
+        
+        // Text truncation constants
+        private const int DEFAULT_TEXT_TRUNCATION_LENGTH = 80;
+        private const int ELLIPSIS_LENGTH = 3;
+        
+        // Table formatting constants
+        private const int TABLE_MINIMUM_ROWS = 1;
+        private const int TABLE_MINIMUM_WIDTH = 20;
+        
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
         
@@ -159,13 +175,13 @@ namespace SharpBridge.Utilities
             // Define columns for failed rules table
             var columns = new List<ITableColumn<RuleInfo>>
             {
-                new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: 8, maxWidth: 20),
-                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, 80), minWidth: 12, maxWidth: 80),
-                new TextColumn<RuleInfo>("Error", rule => TruncateError(rule.Error, 80), minWidth: 15, maxWidth: 80)
+                new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
+                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH), minWidth: FUNCTION_COLUMN_MIN_WIDTH, maxWidth: FUNCTION_COLUMN_MAX_WIDTH),
+                new TextColumn<RuleInfo>("Error", rule => TruncateError(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH), minWidth: ERROR_COLUMN_MIN_WIDTH, maxWidth: ERROR_COLUMN_MAX_WIDTH)
             };
             
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, TABLE_MINIMUM_ROWS, _console.WindowWidth, TABLE_MINIMUM_WIDTH, singleColumnLimit);
         }
         
 
@@ -198,7 +214,7 @@ namespace SharpBridge.Utilities
             if (expression.Length <= maxLength)
                 return expression;
                 
-            return expression.Substring(0, maxLength - 3) + "...";
+            return expression.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
         }
         
         /// <summary>
@@ -212,7 +228,7 @@ namespace SharpBridge.Utilities
             if (error.Length <= maxLength)
                 return error;
                 
-            return error.Substring(0, maxLength - 3) + "...";
+            return error.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
         }
         
         /// <summary>
