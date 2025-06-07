@@ -698,5 +698,77 @@ namespace SharpBridge.Tests.Utilities
         }
 
         #endregion
+
+        #region Edge Cases and Coverage Gaps
+
+        [Fact]
+        public void Format_WithMissingSuccessfulTransformationsCounter_UsesFallbackValue()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters.Remove("Successful Transformations"); // Remove the key to test fallback
+            serviceStats.Counters["Total Transformations"] = 100;
+            serviceStats.Counters["Failed Transformations"] = 5;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Should use fallback value of 0 for successful transformations
+            result.Should().Contain("Transformations - Total: 100, Successful: 0, Failed: 5");
+        }
+
+        [Fact]
+        public void Format_WithMissingFailedTransformationsCounter_UsesFallbackValue()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters.Remove("Failed Transformations"); // Remove the key to test fallback
+            serviceStats.Counters["Total Transformations"] = 100;
+            serviceStats.Counters["Successful Transformations"] = 95;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Should use fallback value of 0 for failed transformations
+            result.Should().Contain("Transformations - Total: 100, Successful: 95, Failed: 0");
+        }
+
+        [Fact]
+        public void Format_WithBothSuccessfulAndFailedTransformationsCountersMissing_UsesFallbackValues()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters.Remove("Successful Transformations"); // Remove both keys to test fallback
+            serviceStats.Counters.Remove("Failed Transformations");
+            serviceStats.Counters["Total Transformations"] = 100;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Should use fallback value of 0 for both successful and failed transformations
+            result.Should().Contain("Transformations - Total: 100, Successful: 0, Failed: 0");
+        }
+
+        [Fact]
+        public void Format_WithZeroTotalTransformations_DoesNotShowTransformationLine()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters["Total Transformations"] = 0; // Zero transformations
+            serviceStats.Counters["Successful Transformations"] = 0;
+            serviceStats.Counters["Failed Transformations"] = 0;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Should not show transformation line when total is 0
+            result.Should().NotContain("Transformations - Total:");
+        }
+
+        #endregion
     }
 } 

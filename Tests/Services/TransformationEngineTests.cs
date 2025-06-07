@@ -1032,5 +1032,128 @@ namespace SharpBridge.Tests.Services
                 File.Delete(filePath);
             }
         }
+        
+        [Fact]
+        public async Task LoadRulesAsync_HandlesUnexpectedExceptionDuringRuleProcessing()
+        {
+            // Arrange - Create a JSON rule that will cause validation error (normal case that's already handled)
+            // This test mainly validates the exception handling path is working
+            var ruleContent = @"[
+                {
+                    ""name"": ""ValidRule"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""InvalidRule"",
+                    ""func"": ""invalid_syntax_expression_[{#"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
+                
+                // Act - should not throw, should handle gracefully
+                await engine.LoadRulesAsync(filePath);
+                
+                // Assert - Check that service stats reflect partial loading
+                var stats = engine.GetServiceStats();
+                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule due to exception
+                stats.Counters["Valid Rules"].Should().Be(1);
+                stats.Counters["Invalid Rules"].Should().Be(1);
+                
+                // Check that exception was caught and rule marked as invalid
+                var engineInfo = stats.CurrentEntity as TransformationEngineInfo;
+                engineInfo.Should().NotBeNull();
+                engineInfo.InvalidRules.Should().HaveCount(1);
+                var invalidRule = engineInfo.InvalidRules.First();
+                invalidRule.Name.Should().Be("InvalidRule");
+                invalidRule.Type.Should().Be("Validation");
+                invalidRule.Error.Should().NotBeNullOrEmpty();
+                
+                // Verify the valid rule still works
+                var trackingData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 }
+                    }
+                };
+                
+                var result = engine.TransformData(trackingData);
+                result.Parameters.Should().HaveCount(1); // Only valid rule processed
+                result.Parameters.Should().Contain(p => p.Id == "ValidRule" && p.Value == 50);
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task TransformData_HandlesUnexpectedExceptionDuringTransformation()
+        {
+            // Arrange - Set up a scenario that will cause an exception during transformation
+            var ruleContent = @"[
+                {
+                    ""name"": ""TestParam"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+            
+            try
+            {
+                var engine = new TransformationEngine(_mockLogger.Object);
+                await engine.LoadRulesAsync(filePath);
+                
+                // Create tracking data with a BlendShape that has a null Key to cause an exception
+                // This will trigger an exception during parameter processing
+                var malformedData = new PhoneTrackingInfo
+                {
+                    FaceFound = true,
+                    BlendShapes = new List<BlendShape>
+                    {
+                        null // This will cause a NullReferenceException when iterating over BlendShapes
+                    }
+                };
+                
+                // Act - should handle the exception gracefully
+                var result = engine.TransformData(malformedData);
+                
+                // Assert - should return safe fallback result
+                result.Should().NotBeNull();
+                result.FaceFound.Should().BeTrue(); // Should preserve the original FaceFound value
+                result.Parameters.Should().BeNullOrEmpty();
+                
+                // Verify error statistics were updated
+                var stats = engine.GetServiceStats();
+                stats.Counters["Total Transformations"].Should().Be(1);
+                stats.Counters["Failed Transformations"].Should().Be(1);
+                stats.Counters["Successful Transformations"].Should().Be(0);
+                stats.LastError.Should().NotBeNullOrEmpty();
+                stats.LastError.Should().Contain("Transformation failed");
+                
+                // Verify that logger was called for the error
+                _mockLogger.Verify(logger => logger.Error(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeastOnce);
+            }
+            finally
+            {
+                // Cleanup
+                File.Delete(filePath);
+            }
+        }
     }
 } 

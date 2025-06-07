@@ -224,42 +224,6 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Formats a time span into a human-readable string
-        /// </summary>
-        private string FormatTimeAgo(TimeSpan timeSpan)
-        {
-            return DisplayFormatting.FormatDuration(timeSpan);
-        }
-        
-        /// <summary>
-        /// Formats a health status with color coding
-        /// </summary>
-        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string lastError = null)
-        {
-            var healthIcon = isHealthy ? "√" : "X";
-            var healthColor = isHealthy ? ConsoleColors.Success : ConsoleColors.Error;
-            var healthText = ConsoleColors.Colorize($"{healthIcon} {(isHealthy ? "Healthy" : "Unhealthy")}", healthColor);
-            
-            var lastSuccessText = lastSuccess == default ? "Never" : FormatTimeAgo(DateTime.UtcNow - lastSuccess);
-            
-            var result = new StringBuilder();
-            result.Append($"Health: {healthText} | Last Success: {lastSuccessText}");
-            
-            // Display full error on separate line if present, without truncation until console width
-            if (!string.IsNullOrEmpty(lastError))
-            {
-                var maxErrorLength = Math.Max(50, _console.WindowWidth - 10); // Leave some margin
-                var errorText = lastError.Length > maxErrorLength ? 
-                    lastError.Substring(0, maxErrorLength - 3) + "..." : 
-                    lastError;
-                result.AppendLine();
-                result.Append($"Error: {errorText}");
-            }
-            
-            return result.ToString();
-        }
-        
-        /// <summary>
         /// Formats a service header with status and color coding
         /// </summary>
         private string FormatServiceHeader(string serviceName, string status, string shortcut)
