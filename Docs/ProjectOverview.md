@@ -95,6 +95,7 @@ The application features a **sophisticated console-based user interface** that p
 2. **Interactive Controls**
    - **Alt+P**: Cycle PC client display verbosity (Basic → Normal → Detailed)
    - **Alt+O**: Cycle Phone client display verbosity (Basic → Normal → Detailed)
+   - **Alt+T**: Cycle Transformation Engine display verbosity (Basic → Normal → Detailed)
    - **Alt+K**: Hot-reload transformation configuration
    - **Ctrl+C**: Graceful application shutdown
 
@@ -130,6 +131,7 @@ The application features a **sophisticated console-based user interface** that p
 #### Specialized Formatters
 - **PhoneTrackingInfoFormatter** - Displays iPhone tracking data with multi-column parameter tables
 - **PCTrackingInfoFormatter** - Shows PC client status and outgoing parameter data
+- **TransformationEngineInfoFormatter** - Real-time transformation engine statistics with rule status tables and interactive verbosity control
 - **TableFormatter** - Utility for complex tabular data with responsive layout
 
 #### Visual Enhancement
@@ -175,13 +177,16 @@ The application implements a **comprehensive resiliency system** that ensures co
    - Provides real-time health status and error tracking
    - Supports automatic reconnection during network failures
 
-3. **TransformationEngine** (fully implemented)
-   - Loads and validates transformation rules from JSON configuration
-   - Transforms tracking data according to mathematical expressions
-   - Applies min/max bounds to tracking parameters
-   - Features robust validation during rule loading
-   - Uses fail-fast error handling during transformation
-   - Supports hot-reloading of configurations at runtime
+3. **TransformationEngine** (fully implemented with major refactoring)
+   - **Architectural Improvements**: Introduced `TransformationRule` class to replace complex 6-parameter tuples
+   - **Method Decomposition**: Refactored 150+ line methods into focused, single-responsibility methods
+   - **Code Quality**: Eliminated excessive comments, TODO items, and magic numbers through self-documenting code
+   - **Mathematical Processing**: Transforms tracking data according to expressions with proper error handling
+   - **Rule Validation**: Comprehensive validation with graceful degradation for invalid rules
+   - **Multi-pass Algorithm**: Supports parameter dependencies with automatic resolution
+   - **Hot-reload Support**: Runtime configuration changes without restart
+   - **Statistics Integration**: Full `IServiceStatsProvider` implementation for console UI
+   - **Health Monitoring**: Real-time status tracking with detailed error reporting
 
 4. **ApplicationOrchestrator** (fully implemented with recovery)
    - Coordinates data flow between all components
@@ -191,7 +196,7 @@ The application implements a **comprehensive resiliency system** that ensures co
    - Processes events from VTubeStudioPhoneClient
    - Forwards transformed data to VTubeStudioPCClient
    - Supports hot-reloading of transformation configurations
-   - Handles keyboard shortcuts for runtime operations
+   - Handles keyboard shortcuts for runtime operations including Alt+T for transformation engine verbosity
 
 5. **Recovery System** (fully implemented)
    - `SimpleRecoveryPolicy` provides consistent 2-second recovery intervals
@@ -199,12 +204,15 @@ The application implements a **comprehensive resiliency system** that ensures co
    - Non-blocking recovery attempts that don't interrupt normal operation
    - Comprehensive logging of recovery attempts and outcomes
 
-6. **Console Status Display System** (fully implemented)
-   - Displays real-time statistics from all components including health status
-   - Shows connection status, tracking data, and performance metrics
-   - Implements formatters for different data types with customizable verbosity levels
-   - Uses centralized console rendering for efficient display updates
-   - Supports keyboard shortcuts for interactive control
+6. **Console Status Display System** (fully implemented with transformation engine integration)
+   - **Transformation Engine Display**: Real-time statistics showing rule validation, evaluation status, and error tracking
+   - **Interactive Controls**: Alt+T shortcut for cycling transformation engine display verbosity
+   - **Health Monitoring**: Visual indicators for transformation engine health and rule processing status
+   - **Error Visualization**: Dedicated tables for invalid rules and evaluation failures with detailed error messages
+   - **Performance Metrics**: Real-time display of transformation counts, success rates, and rule statistics
+   - **Multi-level Verbosity**: Basic/Normal/Detailed views for different debugging needs
+   - **Responsive Design**: Adaptive layout based on console dimensions with table formatting
+   - **Color-coded Status**: Green (healthy), Red (error), Yellow (warning) indicators for quick status assessment
 
 7. **Command-Line Interface** (fully implemented)
    - Uses System.CommandLine for declarative parameter definition
@@ -326,11 +334,12 @@ The code follows clean architecture principles with resiliency built-in:
    - **Color-coded Health Indicators** - Green (healthy), Red (error), Yellow (warning), Cyan (info)
    - **Multi-column Parameter Tables** - Responsive layout that adapts to console width
    - **Progress Bars** - Visual representation of tracking parameter values
-   - **Service Status Sections** - Dedicated areas for Phone Client and PC Client status
+   - **Service Status Sections** - Dedicated areas for Phone Client, PC Client, and Transformation Engine status
 
 2. **Interactive Keyboard Shortcuts**:
    - **Alt+P**: Cycle PC client display verbosity (Basic → Normal → Detailed)
    - **Alt+O**: Cycle Phone client display verbosity (Basic → Normal → Detailed)  
+   - **Alt+T**: Cycle Transformation Engine display verbosity (Basic → Normal → Detailed)
    - **Alt+K**: Hot-reload transformation configuration without restart
    - **Ctrl+C**: Graceful application shutdown with cleanup
 
@@ -359,7 +368,6 @@ The project implements a comprehensive testing strategy:
 - Mock-based testing of network dependencies and recovery scenarios
 - **Console UI Testing** - Comprehensive test coverage for formatters, rendering, and keyboard input
 - Integration tests for recovery flows and health monitoring
-- High code coverage targets (271 tests currently passing)
 - Coverage tracking with automated reports
 
 ## Console UI Benefits
