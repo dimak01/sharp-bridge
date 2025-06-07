@@ -6,14 +6,14 @@ namespace SharpBridge.Models
     public enum TransformationEngineStatus
     {
         /// <summary>
-        /// All loaded rules are valid and evaluating successfully
+        /// All loaded rules are valid and actively processing data
         /// </summary>
-        Ready,
+        AllRulesActive,
         
         /// <summary>
-        /// Some rules work, others have issues (mixed operational state)
+        /// Some rules are active and working, others have issues
         /// </summary>
-        Partial,
+        SomeRulesActive,
         
         /// <summary>
         /// Hot-reload failed, continuing with previously loaded rules
