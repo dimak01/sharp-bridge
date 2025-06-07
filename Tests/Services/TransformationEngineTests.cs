@@ -805,7 +805,7 @@ namespace SharpBridge.Tests.Services
                 engineInfo.InvalidRules.Should().HaveCount(1);
                 var invalidRule = engineInfo.InvalidRules.First();
                 invalidRule.Name.Should().Be("BadRule");
-                invalidRule.Error.Should().Contain("Empty expression");
+                invalidRule.Error.Should().Contain("empty expression");
                 
                 // Test that valid rule still works
                 var trackingData = new PhoneTrackingInfo

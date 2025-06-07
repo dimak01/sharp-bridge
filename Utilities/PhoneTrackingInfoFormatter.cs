@@ -177,7 +177,7 @@ namespace SharpBridge.Utilities
 
                     // Use the new generic table formatter - let it handle display limits
                     var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
-                    _tableFormatter.AppendTable(builder, "BlendShapes:", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
+                    _tableFormatter.AppendTable(builder, "=== BlendShapes ===", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
 
                     builder.AppendLine();
                     builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
