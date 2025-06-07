@@ -11,11 +11,40 @@ using SharpBridge.Models;
 namespace SharpBridge.Services
 {
     /// <summary>
+    /// Represents a single transformation rule with its expression and constraints
+    /// </summary>
+    public class TransformationRule
+    {
+        public string Name { get; }
+        public Expression Expression { get; }
+        public string ExpressionString { get; }
+        public double Min { get; }
+        public double Max { get; }
+        public double DefaultValue { get; }
+
+        public TransformationRule(string name, Expression expression, string expressionString, 
+            double min, double max, double defaultValue)
+        {
+            Name = name;
+            Expression = expression;
+            ExpressionString = expressionString;
+            Min = min;
+            Max = max;
+            DefaultValue = defaultValue;
+        }
+    }
+
+    /// <summary>
     /// Transforms tracking data into VTube Studio parameters according to transformation rules
     /// </summary>
     public class TransformationEngine : ITransformationEngine, IServiceStatsProvider
     {
-        private readonly List<(string Name, Expression Expression, string ExpressionString, double Min, double Max, double DefaultValue)> _rules = new();
+        private const int MAX_EVALUATION_ITERATIONS = 10;
+        private const string EVALUATION_ERROR_MESSAGE = "Failed to evaluate - missing dependencies or evaluation error";
+        private const string EVALUATION_ERROR_TYPE = "Evaluation";
+        private const string VALIDATION_ERROR_TYPE = "Validation";
+        
+        private readonly List<TransformationRule> _rules = new();
         private readonly IAppLogger _logger;
         
         // Statistics tracking fields
@@ -65,99 +94,9 @@ namespace SharpBridge.Services
             var rules = JsonSerializer.Deserialize<List<TransformRule>>(json) ?? 
                 throw new JsonException("Failed to deserialize transformation rules");
             
-            _rules.Clear();
-            _invalidRules.Clear(); // Clear previous invalid rules
+            var (validRules, invalidRules, validationErrors) = ValidateAndCreateRules(rules);
             
-            int validRules = 0;
-            int invalidRules = 0;
-            List<string> validationErrors = new List<string>();
-            
-            foreach (var rule in rules)
-            {
-                try
-                {
-                    // Check for null or empty expression
-                    if (string.IsNullOrWhiteSpace(rule.Func))
-                    {
-                        string errorMsg = $"Rule '{rule.Name}' has an empty expression";
-                        validationErrors.Add(errorMsg);
-                        _invalidRules.Add(new RuleInfo(rule.Name, rule.Func ?? string.Empty, "Empty expression", "Validation"));
-                        invalidRules++;
-                        continue;
-                    }
-                    
-                    // Create expression with default options
-                    var expression = new Expression(rule.Func);
-                    
-                    // Check for syntax errors
-                    if (expression.HasErrors())
-                    {
-                        string errorMsg = $"Syntax error in rule '{rule.Name}': {expression.Error}";
-                        validationErrors.Add(errorMsg);
-                        _invalidRules.Add(new RuleInfo(rule.Name, rule.Func, expression.Error?.Message ?? "Syntax error", "Validation"));
-                        invalidRules++;
-                        continue;
-                    }
-                    
-                    // Check for valid min/max ranges
-                    if (rule.Min > rule.Max)
-                    {
-                        string errorMsg = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
-                        validationErrors.Add(errorMsg);
-                        _invalidRules.Add(new RuleInfo(rule.Name, rule.Func, $"Min ({rule.Min}) > Max ({rule.Max})", "Validation"));
-                        invalidRules++;
-                        continue; // Skip adding this rule
-                    }
-                    
-                    // All validation passed, add the rule with the original expression string
-                    _rules.Add((rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue));
-                    validRules++;
-                }
-                catch (Exception ex)
-                {
-                    string errorMsg = $"Error parsing expression '{rule.Func}': {ex.Message}";
-                    validationErrors.Add(errorMsg);
-                    _invalidRules.Add(new RuleInfo(rule.Name, rule.Func, ex.Message, "Validation"));
-                    invalidRules++;
-                    // Continue with other rules even if one fails
-                }
-            }
-            
-            _logger.Info($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
-            
-            // Update status and timestamps based on results
-            if (validRules > 0 && invalidRules == 0)
-            {
-                _currentStatus = TransformationEngineStatus.AllRulesActive;
-                _lastError = null; // Clear previous errors on successful load
-            }
-            else if (validRules > 0 && invalidRules > 0)
-            {
-                _currentStatus = TransformationEngineStatus.SomeRulesActive;
-                _lastError = null; // Clear runtime errors - validation errors are shown in table
-            }
-            else
-            {
-                _currentStatus = TransformationEngineStatus.NoValidRules;
-                _lastError = "No valid transformation rules found in the configuration file.";
-            }
-            
-            // Set timestamps and success tracking for valid rules
-            if (validRules > 0)
-            {
-                _rulesLoadedTime = DateTime.UtcNow;
-                _hotReloadSuccesses++;
-            }
-            
-            // Log validation errors but continue with graceful degradation
-            if (invalidRules > 0)
-            {
-                string errorDetails = string.Join($"{Environment.NewLine}- ", validationErrors);
-                var logMessage = $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.";
-                _logger.Error($"{logMessage}{Environment.NewLine}Errors:{Environment.NewLine}- {errorDetails}");
-                // Continue with valid rules - don't throw exception
-                // Note: Don't set _lastError here as validation errors are shown in Failed Rules table
-            }
+            UpdateRulesLoadedStatus(validRules, invalidRules, validationErrors);
         }
         
         /// <summary>
@@ -167,110 +106,120 @@ namespace SharpBridge.Services
         /// <returns>Collection of transformed parameters</returns>
         public PCTrackingInfo TransformData(PhoneTrackingInfo trackingData)
         {
-            // Track total transformation attempts
             _totalTransformations++;
             
             try
             {
                 if (_rules.Count == 0 || !trackingData.FaceFound)
                 {
-                    _successfulTransformations++; // Count as successful even if no processing needed
-                    _lastSuccessfulTransformation = DateTime.UtcNow;
-                return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
+                    return HandleEmptyTransformation(trackingData);
+                }
+                
+                return ProcessTransformation(trackingData);
             }
-            
-            var paramValues = new List<TrackingParam>();
-            var paramDefinitions = new List<VTSParameter>();
-            var paramExpressions = new Dictionary<string, string>();
-
-            // Get parameters from tracking data
+            catch (Exception ex)
+            {
+                return HandleTransformationError(ex, trackingData);
+            }
+        }
+        
+        private PCTrackingInfo HandleEmptyTransformation(PhoneTrackingInfo trackingData)
+        {
+            _successfulTransformations++;
+            _lastSuccessfulTransformation = DateTime.UtcNow;
+            return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
+        }
+        
+        private PCTrackingInfo ProcessTransformation(PhoneTrackingInfo trackingData)
+        {
             var trackingParameters = GetParametersFromTrackingData(trackingData);
-
-            // Create a working copy of rules that we can modify during evaluation
-            var remainingRules = new List<(string Name, Expression Expression, string ExpressionString, double Min, double Max, double DefaultValue)>(_rules);
+            var (successfulRules, abandonedRules) = EvaluateRulesMultiPass(trackingParameters);
             
-            // Multi-pass evaluation with progress tracking
-            const int maxIterations = 10; // Prevent infinite loops
+            UpdateTransformationStatus(successfulRules, abandonedRules);
+            return BuildTransformationResult(trackingData, successfulRules);
+        }
+        
+        private (List<TransformationRule> successful, List<TransformationRule> abandoned) 
+            EvaluateRulesMultiPass(Dictionary<string, object> trackingParameters)
+        {
+            var remainingRules = new List<TransformationRule>(_rules);
+            var successfulRules = new List<TransformationRule>();
             int currentIteration = 0;
             
-            while (remainingRules.Count > 0 && currentIteration < maxIterations)
+            while (remainingRules.Count > 0 && currentIteration < MAX_EVALUATION_ITERATIONS)
             {
                 currentIteration++;
                 int rulesCountAtStart = remainingRules.Count;
                 
-                // TODO: Add pass-level logging for debugging when needed
+                ProcessSingleEvaluationPass(remainingRules, successfulRules, trackingParameters);
                 
-                for (int i = remainingRules.Count - 1; i >= 0; i--)
-                {
-                    var (name, expression, expressionString, min, max, defaultValue) = remainingRules[i];
-                    expression.Parameters.Clear();
-                    // Set parameters from tracking data (and any previously calculated custom parameters)
-                    SetParametersOnExpression(expression, trackingParameters);
-                    
-                    // Test if expression can be evaluated with current parameters
-                    if (TryEvaluateExpression(expression, out double evaluatedValue, out Exception evaluationError))
-                    {
-                        // Expression is valid - evaluate, clamp, and store result
-                        var value = Math.Clamp(evaluatedValue, min, max);
-                        
-                        paramValues.Add(new TrackingParam
-                        {
-                            Id = name,
-                            Value = value
-                        });
-
-                        paramDefinitions.Add(new VTSParameter(name, min, max, defaultValue));
-                        paramExpressions[name] = expressionString;
-
-                        // Add this parameter to trackingParameters for future rules to reference
-                        // Only add if not already present - blend shapes and first-evaluated parameters win
-                        if (!trackingParameters.ContainsKey(name))
-                        {
-                            trackingParameters[name] = value;
-                        }
-                        
-                        // Remove successfully evaluated rule from remaining rules
-                        remainingRules.RemoveAt(i);
-                        
-                        // TODO: Add per-parameter success logging for debugging when needed
-                    }
-                    // If evaluation failed, it must be a parameter dependency issue since
-                    // syntax errors are caught during initialization - keep for next pass
-                }
-                
-                // Check if we made progress in this pass
                 if (remainingRules.Count == rulesCountAtStart)
                 {
-                    // No progress made - stop evaluation
-                    // TODO: Add warning logging for unresolved dependencies when needed
-                    break;
+                    break; // No progress made
                 }
-                
-                // TODO: Add pass completion logging when needed
             }
             
-                // Track abandoned rules from this transformation by adding them to invalid rules
-                // First, remove any previous evaluation failures (keep validation failures)
-                _invalidRules.RemoveAll(rule => rule.Type == "Evaluation");
+            return (successfulRules, remainingRules);
+        }
+        
+        private void ProcessSingleEvaluationPass(List<TransformationRule> remainingRules, 
+            List<TransformationRule> successfulRules, Dictionary<string, object> trackingParameters)
+        {
+            for (int i = remainingRules.Count - 1; i >= 0; i--)
+            {
+                var rule = remainingRules[i];
+                rule.Expression.Parameters.Clear();
+                SetParametersOnExpression(rule.Expression, trackingParameters);
                 
-                // Add new evaluation failures
-                foreach (var (name, _, expressionString, _, _, _) in remainingRules)
+                if (TryEvaluateExpression(rule.Expression, out double evaluatedValue, out Exception evaluationError))
                 {
-                    _invalidRules.Add(new RuleInfo(name, expressionString, "Failed to evaluate - missing dependencies or evaluation error", "Evaluation"));
+                    var value = Math.Clamp(evaluatedValue, rule.Min, rule.Max);
+                    
+                    if (!trackingParameters.ContainsKey(rule.Name))
+                    {
+                        trackingParameters[rule.Name] = value;
+                    }
+                    
+                    successfulRules.Add(rule);
+                    remainingRules.RemoveAt(i);
                 }
-                
-                // Update status based on evaluation results
-                if (remainingRules.Count == 0)
-                {
-                    _currentStatus = TransformationEngineStatus.AllRulesActive; // All rules evaluated successfully
-                }
-                else if (paramValues.Count > 0)
-                {
-                    _currentStatus = TransformationEngineStatus.SomeRulesActive; // Some rules worked
-                }
-                
-                _successfulTransformations++;
-                _lastSuccessfulTransformation = DateTime.UtcNow;
+            }
+        }
+        
+        private void UpdateTransformationStatus(List<TransformationRule> successfulRules, List<TransformationRule> abandonedRules)
+        {
+            _invalidRules.RemoveAll(rule => rule.Type == EVALUATION_ERROR_TYPE);
+            
+            foreach (var rule in abandonedRules)
+            {
+                _invalidRules.Add(new RuleInfo(rule.Name, rule.ExpressionString, EVALUATION_ERROR_MESSAGE, EVALUATION_ERROR_TYPE));
+            }
+            
+            if (abandonedRules.Count == 0)
+            {
+                _currentStatus = TransformationEngineStatus.AllRulesActive;
+            }
+            else if (successfulRules.Count > 0)
+            {
+                _currentStatus = TransformationEngineStatus.SomeRulesActive;
+            }
+            
+            _successfulTransformations++;
+            _lastSuccessfulTransformation = DateTime.UtcNow;
+        }
+        
+        private PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<TransformationRule> successfulRules)
+        {
+            var paramValues = new List<TrackingParam>();
+            var paramDefinitions = new List<VTSParameter>();
+            var paramExpressions = new Dictionary<string, string>();
+            
+            foreach (var rule in successfulRules)
+            {
+                paramValues.Add(new TrackingParam { Id = rule.Name, Value = GetRuleValue(rule) });
+                paramDefinitions.Add(new VTSParameter(rule.Name, rule.Min, rule.Max, rule.DefaultValue));
+                paramExpressions[rule.Name] = rule.ExpressionString;
+            }
             
             return new PCTrackingInfo
             {
@@ -279,16 +228,123 @@ namespace SharpBridge.Services
                 ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p),
                 ParameterCalculationExpressions = paramExpressions
             };
+        }
+        
+        private double GetRuleValue(TransformationRule rule)
+        {
+            var evaluatedValue = Convert.ToDouble(rule.Expression.Evaluate());
+            return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
+        }
+        
+        private PCTrackingInfo HandleTransformationError(Exception ex, PhoneTrackingInfo trackingData)
+        {
+            _failedTransformations++;
+            _lastError = $"Transformation failed: {ex.Message}";
+            _logger.Error("Error during transformation: {0}", ex.Message);
+            return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
+        }
+        
+        private (int validRules, int invalidRules, List<string> validationErrors) 
+            ValidateAndCreateRules(List<TransformRule> rules)
+        {
+            _rules.Clear();
+            _invalidRules.Clear();
+            
+            int validRules = 0;
+            int invalidRules = 0;
+            var validationErrors = new List<string>();
+            
+            foreach (var rule in rules)
+            {
+                if (TryCreateTransformationRule(rule, out TransformationRule transformationRule, out string error))
+                {
+                    _rules.Add(transformationRule);
+                    validRules++;
+                }
+                else
+                {
+                    validationErrors.Add(error);
+                    _invalidRules.Add(new RuleInfo(rule.Name, rule.Func ?? string.Empty, error, VALIDATION_ERROR_TYPE));
+                    invalidRules++;
+                }
+            }
+            
+            _logger.Info($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
+            return (validRules, invalidRules, validationErrors);
+        }
+        
+        private bool TryCreateTransformationRule(TransformRule rule, out TransformationRule transformationRule, out string error)
+        {
+            transformationRule = null;
+            error = null;
+            
+            if (string.IsNullOrWhiteSpace(rule.Func))
+            {
+                error = $"Rule '{rule.Name}' has an empty expression";
+                return false;
+            }
+            
+            try
+            {
+                var expression = new Expression(rule.Func);
+                
+                if (expression.HasErrors())
+                {
+                    error = $"Syntax error in rule '{rule.Name}': {expression.Error}";
+                    return false;
+                }
+                
+                if (rule.Min > rule.Max)
+                {
+                    error = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
+                    return false;
+                }
+                
+                transformationRule = new TransformationRule(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue);
+                return true;
             }
             catch (Exception ex)
             {
-                _failedTransformations++;
-                _lastError = $"Transformation failed: {ex.Message}";
-                _logger.Error("Error during transformation: {0}", ex.Message);
-                
-                // Return empty result on failure
-                return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
+                error = $"Error parsing expression '{rule.Func}': {ex.Message}";
+                return false;
             }
+        }
+        
+        private void UpdateRulesLoadedStatus(int validRules, int invalidRules, List<string> validationErrors)
+        {
+            if (validRules > 0 && invalidRules == 0)
+            {
+                _currentStatus = TransformationEngineStatus.AllRulesActive;
+                _lastError = null;
+            }
+            else if (validRules > 0 && invalidRules > 0)
+            {
+                _currentStatus = TransformationEngineStatus.SomeRulesActive;
+                _lastError = null;
+            }
+            else
+            {
+                _currentStatus = TransformationEngineStatus.NoValidRules;
+                _lastError = "No valid transformation rules found in the configuration file.";
+            }
+            
+            if (validRules > 0)
+            {
+                _rulesLoadedTime = DateTime.UtcNow;
+                _hotReloadSuccesses++;
+            }
+            
+            if (invalidRules > 0)
+            {
+                LogValidationErrors(validRules, invalidRules, validationErrors);
+            }
+        }
+        
+        private void LogValidationErrors(int validRules, int invalidRules, List<string> validationErrors)
+        {
+            string errorDetails = string.Join($"{Environment.NewLine}- ", validationErrors);
+            var logMessage = $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.";
+            _logger.Error($"{logMessage}{Environment.NewLine}Errors:{Environment.NewLine}- {errorDetails}");
         }
         
         /// <summary>
@@ -298,41 +354,56 @@ namespace SharpBridge.Services
         {
             var parameters = new Dictionary<string, object>();
             
-            // Add head position
-            if (trackingData.Position != null)
+            AddPositionParameters(parameters, trackingData.Position);
+            AddRotationParameters(parameters, trackingData.Rotation);
+            AddEyeParameters(parameters, trackingData.EyeLeft, trackingData.EyeRight);
+            AddBlendShapeParameters(parameters, trackingData.BlendShapes);
+            
+            return parameters;
+        }
+        
+        private void AddPositionParameters(Dictionary<string, object> parameters, Coordinates position)
+        {
+            if (position != null)
             {
-                parameters["HeadPosX"] = trackingData.Position.X;
-                parameters["HeadPosY"] = trackingData.Position.Y;
-                parameters["HeadPosZ"] = trackingData.Position.Z;
+                parameters["HeadPosX"] = position.X;
+                parameters["HeadPosY"] = position.Y;
+                parameters["HeadPosZ"] = position.Z;
+            }
+        }
+        
+        private void AddRotationParameters(Dictionary<string, object> parameters, Coordinates rotation)
+        {
+            if (rotation != null)
+            {
+                parameters["HeadRotX"] = rotation.X;
+                parameters["HeadRotY"] = rotation.Y;
+                parameters["HeadRotZ"] = rotation.Z;
+            }
+        }
+        
+        private void AddEyeParameters(Dictionary<string, object> parameters, Coordinates eyeLeft, Coordinates eyeRight)
+        {
+            if (eyeLeft != null)
+            {
+                parameters["EyeLeftX"] = eyeLeft.X;
+                parameters["EyeLeftY"] = eyeLeft.Y;
+                parameters["EyeLeftZ"] = eyeLeft.Z;
             }
             
-            // Add head rotation
-            if (trackingData.Rotation != null)
+            if (eyeRight != null)
             {
-                parameters["HeadRotX"] = trackingData.Rotation.X;
-                parameters["HeadRotY"] = trackingData.Rotation.Y;
-                parameters["HeadRotZ"] = trackingData.Rotation.Z;
+                parameters["EyeRightX"] = eyeRight.X;
+                parameters["EyeRightY"] = eyeRight.Y;
+                parameters["EyeRightZ"] = eyeRight.Z;
             }
-            
-            // Add eye positions
-            if (trackingData.EyeLeft != null)
+        }
+        
+        private void AddBlendShapeParameters(Dictionary<string, object> parameters, List<BlendShape> blendShapes)
+        {
+            if (blendShapes != null)
             {
-                parameters["EyeLeftX"] = trackingData.EyeLeft.X;
-                parameters["EyeLeftY"] = trackingData.EyeLeft.Y;
-                parameters["EyeLeftZ"] = trackingData.EyeLeft.Z;
-            }
-            
-            if (trackingData.EyeRight != null)
-            {
-                parameters["EyeRightX"] = trackingData.EyeRight.X;
-                parameters["EyeRightY"] = trackingData.EyeRight.Y;
-                parameters["EyeRightZ"] = trackingData.EyeRight.Z;
-            }
-            
-            // Add blend shapes
-            if (trackingData.BlendShapes != null)
-            {
-                foreach (var shape in trackingData.BlendShapes)
+                foreach (var shape in blendShapes)
                 {
                     if (!string.IsNullOrEmpty(shape.Key))
                     {
@@ -340,8 +411,6 @@ namespace SharpBridge.Services
                     }
                 }
             }
-            
-            return parameters;
         }
 
         /// <summary>
@@ -360,7 +429,6 @@ namespace SharpBridge.Services
         /// </summary>
         private bool TryEvaluateExpression(Expression expression, out double result, out Exception error)
         {
-            // Check if all required parameters are available before evaluation
             var requiredParameters = expression.GetParameterNames();
             var availableParameters = expression.Parameters.Keys;
             
@@ -368,14 +436,12 @@ namespace SharpBridge.Services
             {
                 if (!availableParameters.Contains(requiredParam))
                 {
-                    // Missing parameter - cannot evaluate yet
                     result = 0;
                     error = new ArgumentException($"Parameter '{requiredParam}' is not defined");
                     return false;
                 }
             }
             
-            // All parameters are available - safe to evaluate
             try
             {
                 result = Convert.ToDouble(expression.Evaluate());
@@ -384,7 +450,6 @@ namespace SharpBridge.Services
             }
             catch (Exception ex)
             {
-                // This should be rare now, but handle any other evaluation errors
                 result = 0;
                 error = ex;
                 return false;
@@ -407,7 +472,6 @@ namespace SharpBridge.Services
                 ["Invalid Rules"] = _invalidRules.Count
             };
             
-            // Add uptime since rules loaded if applicable
             if (_rulesLoadedTime != default)
             {
                 counters["Uptime Since Rules Loaded (seconds)"] = (long)(DateTime.UtcNow - _rulesLoadedTime).TotalSeconds;
@@ -418,7 +482,6 @@ namespace SharpBridge.Services
                 validRulesCount: _rules.Count,
                 invalidRules: _invalidRules.AsReadOnly());
             
-            // Determine if service is healthy
             bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesActive || 
                            _currentStatus == TransformationEngineStatus.SomeRulesActive;
             
