@@ -23,14 +23,16 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="console">The console implementation to use for output</param>
         /// <param name="logger">The logger to use for error reporting</param>
+        /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
-        public ConsoleRenderer(IConsole console, IAppLogger logger, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter)
+        public ConsoleRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
-            // Register formatters for known types
+            // Register formatters for known types - order determines display order
+            RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
             RegisterFormatter<PhoneTrackingInfo>(phoneFormatter ?? throw new ArgumentNullException(nameof(phoneFormatter)));
             RegisterFormatter<PCTrackingInfo>(pcFormatter ?? throw new ArgumentNullException(nameof(pcFormatter)));
         }
@@ -91,6 +93,10 @@ namespace SharpBridge.Utilities
                             {
                                 formattedOutput = pcFormatter.Format(stat);
                             }
+                            else if (typedFormatter is TransformationEngineInfoFormatter transformationFormatter)
+                            {
+                                formattedOutput = transformationFormatter.Format(stat);
+                            }
                             else
                             {
                                 // For basic formatters, add service header and then formatted content
@@ -142,7 +148,7 @@ namespace SharpBridge.Utilities
                     lines.Add(string.Empty);
                 }
                 
-                lines.Add("Press Ctrl+C to exit | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
+                lines.Add("Press Ctrl+C to exit | Alt+T for Transformation Engine verbosity | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
                 
                 ConsoleDisplayAction(lines.ToArray());
             }

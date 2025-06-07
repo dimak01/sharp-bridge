@@ -362,5 +362,19 @@
     "min": 0,
     "max": 2,
     "defaultValue": 0
+  },
+  {
+    "name": "BrokenParameter",
+    "func": "MouthOpen-",
+    "min": 0,
+    "max": 2,
+    "defaultValue": 0
+  },
+  {
+    "name": "BrokenParameter2",
+    "func": "BrokenParameter2",
+    "min": 0,
+    "max": 2,
+    "defaultValue": 0
   }
 ]

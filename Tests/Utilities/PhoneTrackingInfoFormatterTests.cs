@@ -695,7 +695,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
-                "BlendShapes:",
+                "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
                 It.Is<IList<ITableColumn<BlendShape>>>(cols => 
                     cols.Count == 3 &&
@@ -729,7 +729,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
-                "BlendShapes:",
+                "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
                 It.Is<IList<ITableColumn<BlendShape>>>(cols => 
                     cols.Count == 3 &&
@@ -761,7 +761,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
-                "BlendShapes:",
+                "=== BlendShapes ===",
                 It.IsAny<IEnumerable<BlendShape>>(),
                 It.Is<IList<ITableColumn<BlendShape>>>(cols =>
                     cols.Count == 3 &&
@@ -799,7 +799,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
-                "BlendShapes:",
+                "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
                 It.Is<IList<ITableColumn<BlendShape>>>(cols => cols.Count == 3),
                 4, // TARGET_COLUMN_COUNT
@@ -828,7 +828,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
-                "BlendShapes:",
+                "=== BlendShapes ===",
                 It.IsAny<IEnumerable<BlendShape>>(),
                 It.IsAny<IList<ITableColumn<BlendShape>>>(),
                 4, // TARGET_COLUMN_COUNT

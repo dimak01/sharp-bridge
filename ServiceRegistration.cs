@@ -109,6 +109,7 @@ namespace SharpBridge
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();
             services.AddSingleton<PCTrackingInfoFormatter>();
+            services.AddSingleton<TransformationEngineInfoFormatter>();
             
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
