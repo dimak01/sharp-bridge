@@ -65,16 +65,10 @@ namespace SharpBridge.Utilities
             {
                 if (CurrentVerbosity >= VerbosityLevel.Normal)
                 {
-                    // Show invalid rules if any
+                    // Show failed rules if any
                     if (engineInfo.InvalidRules.Count > 0)
                     {
-                        AppendInvalidRules(builder, engineInfo.InvalidRules);
-                    }
-                    
-                    // Show abandoned rules if any
-                    if (engineInfo.AbandonedRules.Count > 0)
-                    {
-                        AppendAbandonedRules(builder, engineInfo.AbandonedRules);
+                        AppendFailedRules(builder, engineInfo.InvalidRules);
                     }
                 }
             }
@@ -121,22 +115,22 @@ namespace SharpBridge.Utilities
                     uptimeText = $", Uptime: {FormatUptime(uptimeSeconds)}";
                 }
                 
-                builder.AppendLine($"Rules Loaded: Total: {totalRules}, Valid: {validRules}, Invalid: {invalidRules}{uptimeText}");
+                builder.AppendLine($"Rules Loaded - Total: {totalRules}, Valid: {validRules}, Invalid: {invalidRules}{uptimeText}");
             }
             
             // Config file info
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
                 var configStatus = DetermineConfigStatus(serviceStats.Status, engineInfo.ConfigFilePath);
-                builder.AppendLine($"Config File: Path: {engineInfo.ConfigFilePath}, Status: {configStatus}");
+                builder.AppendLine($"Config File - Path: {engineInfo.ConfigFilePath}, Status: {configStatus}");
             }
             
-            // Hot reload stats
+            // Config file load stats (includes initial load + hot reloads)
             if (serviceStats.Counters.ContainsKey("Hot Reload Attempts") && serviceStats.Counters.ContainsKey("Hot Reload Successes"))
             {
                 var attempts = serviceStats.Counters["Hot Reload Attempts"];
                 var successes = serviceStats.Counters["Hot Reload Successes"];
-                builder.AppendLine($"Hot Reloads: Attempts: {attempts}, Successful: {successes}");
+                builder.AppendLine($"Config file loads count - Attempts: {attempts}, Successful: {successes}");
             }
             
             // Transformation metrics
@@ -148,7 +142,7 @@ namespace SharpBridge.Utilities
                 
                 if (total > 0)
                 {
-                    builder.AppendLine($"Transformations: Total: {total}, Successful: {successful}, Failed: {failed}");
+                    builder.AppendLine($"Transformations - Total: {total}, Successful: {successful}, Failed: {failed}");
                 }
             }
             
@@ -156,13 +150,13 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Appends invalid rules table to the string builder
+        /// Appends failed rules table to the string builder (includes validation failures and evaluation failures)
         /// </summary>
-        private void AppendInvalidRules(StringBuilder builder, IReadOnlyList<RuleInfo> invalidRules)
+        private void AppendFailedRules(StringBuilder builder, IReadOnlyList<RuleInfo> failedRules)
         {
-            var rulesToShow = invalidRules.ToList();
+            var rulesToShow = failedRules.ToList();
             
-            // Define columns for invalid rules table
+            // Define columns for failed rules table
             var columns = new List<ITableColumn<RuleInfo>>
             {
                 new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: 8, maxWidth: 20),
@@ -171,27 +165,10 @@ namespace SharpBridge.Utilities
             };
             
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "Invalid Rules", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "Failed Rules", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
         }
         
-        /// <summary>
-        /// Appends abandoned rules table to the string builder
-        /// </summary>
-        private void AppendAbandonedRules(StringBuilder builder, IReadOnlyList<RuleInfo> abandonedRules)
-        {
-            var rulesToShow = abandonedRules.ToList();
-            
-            // Define columns for abandoned rules table
-            var columns = new List<ITableColumn<RuleInfo>>
-            {
-                new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, minWidth: 8, maxWidth: 20),
-                new TextColumn<RuleInfo>("Function", rule => TruncateExpression(rule.Func, 80), minWidth: 12, maxWidth: 80),
-                new TextColumn<RuleInfo>("Reason", rule => TruncateError(rule.Error, 80), minWidth: 15, maxWidth: 80)
-            };
-            
-            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "Abandoned Rules", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
-        }
+
         
         /// <summary>
         /// Determines the config file status based on engine status and file path
@@ -265,15 +242,21 @@ namespace SharpBridge.Utilities
             
             var lastSuccessText = lastSuccess == default ? "Never" : FormatTimeAgo(DateTime.UtcNow - lastSuccess);
             
-            var errorText = string.Empty;
+            var result = new StringBuilder();
+            result.Append($"Health: {healthText} | Last Success: {lastSuccessText}");
+            
+            // Display full error on separate line if present, without truncation until console width
             if (!string.IsNullOrEmpty(lastError))
             {
-                // Truncate long error messages
-                var truncatedError = lastError.Length > 50 ? lastError.Substring(0, 47) + "..." : lastError;
-                errorText = $" | Error: {truncatedError}";
+                var maxErrorLength = Math.Max(50, _console.WindowWidth - 10); // Leave some margin
+                var errorText = lastError.Length > maxErrorLength ? 
+                    lastError.Substring(0, maxErrorLength - 3) + "..." : 
+                    lastError;
+                result.AppendLine();
+                result.Append($"Error: {errorText}");
             }
             
-            return $"Health: {healthText} | Last Success: {lastSuccessText}{errorText}";
+            return result.ToString();
         }
         
         /// <summary>
