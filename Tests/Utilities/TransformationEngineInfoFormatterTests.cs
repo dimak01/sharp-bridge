@@ -770,5 +770,210 @@ namespace SharpBridge.Tests.Utilities
         }
 
         #endregion
+
+        #region TruncateText Method Tests
+
+        [Fact]
+        public void TruncateText_WithNullText_ReturnsEmptyPlaceholder()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { null, 50, "[empty]" });
+
+            // Assert
+            result.Should().Be("[empty]");
+        }
+
+        [Fact]
+        public void TruncateText_WithEmptyText_ReturnsEmptyPlaceholder()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { "", 50, "[empty]" });
+
+            // Assert
+            result.Should().Be("[empty]");
+        }
+
+        [Fact]
+        public void TruncateText_WithShortText_ReturnsOriginalText()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var shortText = "short";
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { shortText, 50, "[empty]" });
+
+            // Assert
+            result.Should().Be("short");
+        }
+
+        [Fact]
+        public void TruncateText_WithTextEqualToMaxLength_ReturnsOriginalText()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var text = "exactly10!"; // 10 characters
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { text, 10, "[empty]" });
+
+            // Assert
+            result.Should().Be("exactly10!");
+        }
+
+        [Fact]
+        public void TruncateText_WithLongText_TruncatesWithEllipsis()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var longText = "This is a very long text that should be truncated";
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { longText, 20, "[empty]" });
+
+            // Assert
+            result.Should().Be("This is a very lo...");
+            result.Should().HaveLength(20);
+        }
+
+        [Fact]
+        public void TruncateText_WithMaxLengthEqualToEllipsisLength_ReturnsPartialTextWithoutEllipsis()
+        {
+            // Arrange - This tests the edge case fix
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var text = "This is a test";
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { text, 3, "[empty]" });
+
+            // Assert
+            result.Should().Be("Thi");
+            result.Should().HaveLength(3);
+        }
+
+        [Fact]
+        public void TruncateText_WithMaxLengthLessThanEllipsisLength_ReturnsPartialTextWithoutEllipsis()
+        {
+            // Arrange - This tests the edge case fix with very small maxLength
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var text = "This is a test";
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { text, 2, "[empty]" });
+
+            // Assert
+            result.Should().Be("Th");
+            result.Should().HaveLength(2);
+        }
+
+        [Fact]
+        public void TruncateText_WithMaxLengthOne_ReturnsFirstCharacterOnly()
+        {
+            // Arrange - This tests the edge case fix with maxLength = 1
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var text = "Test";
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { text, 1, "[empty]" });
+
+            // Assert
+            result.Should().Be("T");
+            result.Should().HaveLength(1);
+        }
+
+        [Fact]
+        public void TruncateText_WithMaxLengthZero_ReturnsEmptyString()
+        {
+            // Arrange - This tests the edge case fix with maxLength = 0
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var text = "Test";
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { text, 0, "[empty]" });
+
+            // Assert
+            result.Should().Be("");
+            result.Should().HaveLength(0);
+        }
+
+        [Fact]
+        public void TruncateText_WithCustomEmptyPlaceholder_UsesCustomPlaceholder()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { null, 50, "[no data]" });
+
+            // Assert
+            result.Should().Be("[no data]");
+        }
+
+        [Fact]
+        public void TruncateText_WithNormalTruncation_PreservesCorrectLength()
+        {
+            // Arrange
+            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var text = "This is exactly 25 chars!"; // 25 characters
+            
+            // Use reflection to access the private TruncateText method
+            var method = typeof(TransformationEngineInfoFormatter)
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            var result = (string)method.Invoke(formatter, new object[] { text, 15, "[empty]" });
+
+            // Assert
+            result.Should().Be("This is exa..."); // 12 chars + 3 ellipsis = 15 total
+            result.Should().HaveLength(15);
+        }
+
+        #endregion
     }
 } 
