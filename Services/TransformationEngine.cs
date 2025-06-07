@@ -128,21 +128,18 @@ namespace SharpBridge.Services
             // Update status and timestamps based on results
             if (validRules > 0 && invalidRules == 0)
             {
-                _currentStatus = TransformationEngineStatus.Ready;
+                _currentStatus = TransformationEngineStatus.AllRulesActive;
                 _lastError = null; // Clear previous errors on successful load
             }
             else if (validRules > 0 && invalidRules > 0)
             {
-                _currentStatus = TransformationEngineStatus.Partial;
-                // Don't clear _lastError for partial loads as there are still issues
-            }
-            else if (validRules == 0 && invalidRules > 0)
-            {
-                _currentStatus = TransformationEngineStatus.NoValidRules;
+                _currentStatus = TransformationEngineStatus.SomeRulesActive;
+                _lastError = null; // Clear runtime errors - validation errors are shown in table
             }
             else
             {
                 _currentStatus = TransformationEngineStatus.NoValidRules;
+                _lastError = "No valid transformation rules found in the configuration file.";
             }
             
             // Set timestamps and success tracking for valid rules
@@ -156,17 +153,10 @@ namespace SharpBridge.Services
             if (invalidRules > 0)
             {
                 string errorDetails = string.Join($"{Environment.NewLine}- ", validationErrors);
-                _lastError = $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.";
-                _logger.Error($"{_lastError}{Environment.NewLine}Errors:{Environment.NewLine}- {errorDetails}");
+                var logMessage = $"Failed to load {invalidRules} transformation rules. Valid rules: {validRules}.";
+                _logger.Error($"{logMessage}{Environment.NewLine}Errors:{Environment.NewLine}- {errorDetails}");
                 // Continue with valid rules - don't throw exception
-            }
-            
-            // Log if no valid rules but continue operating (graceful degradation)
-            if (validRules == 0)
-            {
-                _lastError = "No valid transformation rules found in the configuration file.";
-                _logger.Error(_lastError);
-                // Continue operating - transformation will return empty results but app won't crash
+                // Note: Don't set _lastError here as validation errors are shown in Failed Rules table
             }
         }
         
@@ -272,11 +262,11 @@ namespace SharpBridge.Services
                 // Update status based on evaluation results
                 if (remainingRules.Count == 0)
                 {
-                    _currentStatus = TransformationEngineStatus.Ready; // All rules evaluated successfully
+                    _currentStatus = TransformationEngineStatus.AllRulesActive; // All rules evaluated successfully
                 }
                 else if (paramValues.Count > 0)
                 {
-                    _currentStatus = TransformationEngineStatus.Partial; // Some rules worked
+                    _currentStatus = TransformationEngineStatus.SomeRulesActive; // Some rules worked
                 }
                 
                 _successfulTransformations++;
@@ -429,8 +419,8 @@ namespace SharpBridge.Services
                 invalidRules: _invalidRules.AsReadOnly());
             
             // Determine if service is healthy
-            bool isHealthy = _currentStatus == TransformationEngineStatus.Ready || 
-                           _currentStatus == TransformationEngineStatus.Partial;
+            bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesActive || 
+                           _currentStatus == TransformationEngineStatus.SomeRulesActive;
             
             return new ServiceStats(
                 serviceName: "Transformation Engine",

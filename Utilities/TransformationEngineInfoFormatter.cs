@@ -95,12 +95,7 @@ namespace SharpBridge.Utilities
             builder.AppendLine($"Verbosity: {CurrentVerbosity}");
             builder.AppendLine();
             
-            // Health status
-            builder.AppendLine(FormatHealthStatus(
-                serviceStats.IsHealthy, 
-                serviceStats.LastSuccessfulOperation, 
-                serviceStats.LastError));
-            
+            // Status Overview Group
             // Core rule stats
             if (serviceStats.Counters.ContainsKey("Valid Rules") && serviceStats.Counters.ContainsKey("Invalid Rules"))
             {
@@ -118,6 +113,10 @@ namespace SharpBridge.Utilities
                 builder.AppendLine($"Rules Loaded - Total: {totalRules}, Valid: {validRules}, Invalid: {invalidRules}{uptimeText}");
             }
             
+            // Empty line to separate groups
+            builder.AppendLine();
+            
+            // Configuration & Performance Group
             // Config file info
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
@@ -146,6 +145,7 @@ namespace SharpBridge.Utilities
                 }
             }
             
+            // Empty line before Problem Details section
             builder.AppendLine();
         }
         
@@ -165,7 +165,7 @@ namespace SharpBridge.Utilities
             };
             
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-            _tableFormatter.AppendTable(builder, "Failed Rules", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
+            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, 1, _console.WindowWidth, 20, singleColumnLimit);
         }
         
 
@@ -177,8 +177,8 @@ namespace SharpBridge.Utilities
         {
             return engineStatus switch
             {
-                "Ready" => "Loaded",
-                "Partial" => "Loaded",
+                "AllRulesActive" => "Loaded",
+                "SomeRulesActive" => "Loaded",
                 "ConfigErrorCached" => "Error (Using Cached)",
                 "NoValidRules" => "Loaded (No Valid Rules)",
                 "ConfigMissing" => "Not Found",

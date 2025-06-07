@@ -46,8 +46,8 @@ Currently, the transformation engine does **not** implement `IServiceStatsProvid
 
 The transformation engine operates in a **graceful degradation** model - it continues working with whatever valid rules are available:
 
-- **"Ready"**: All loaded rules are valid and evaluating successfully
-- **"Partial"**: Some rules work, others have issues (mixed operational state)
+- **"AllRulesActive"**: All loaded rules are valid and actively processing data
+- **"SomeRulesActive"**: Some rules are active and working, others have issues
 - **"Config Error (Cached)"**: Hot-reload failed, continuing with previously loaded rules
 - **"No Valid Rules"**: Configuration loaded but no rules passed validation
 - **"Never Loaded"**: Initial state, no configuration load attempted
@@ -67,7 +67,7 @@ The transformation engine operates in a **graceful degradation** model - it cont
 ### 1. Graceful Degradation
 - **Decision**: Keep operating with valid rules when some rules fail
 - **Rationale**: Partial functionality is better than complete failure
-- **Impact**: Status reflects mixed states ("Partial"), detailed tables show specific issues
+- **Impact**: Status reflects mixed states ("SomeRulesActive"), detailed tables show specific issues
 
 ### 2. Persistent Evaluation Errors
 - **Decision**: Track evaluation failures separately from validation errors
@@ -77,7 +77,7 @@ The transformation engine operates in a **graceful degradation** model - it cont
 ### 3. Hot Reload Error Handling
 - **Decision**: Continue with cached rules when hot-reload fails
 - **Rationale**: Maintains service availability during configuration experiments
-- **Impact**: Status shows "Config Error (Cached)" with error details in Last Error
+- **Impact**: Status shows "Config Error (Cached)" with error details displayed in Failed Rules table
 
 ### 4. CurrentEntity Type
 - **Decision**: Create a dedicated `TransformationEngineInfo` entity type
