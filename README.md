@@ -102,9 +102,10 @@ dotnet test
 
 ### Coverage Report
 
-Automated coverage reports are published to GitHub Pages. Enable Pages in the
-repository settings with `gh-pages` as the deployment branch. After the CI
-workflow runs, view the latest report at:
+Automated coverage reports are published to GitHub Pages using the workflow
+in `.github/workflows/ci.yml`. In the repository settings, choose **GitHub
+Actions** as the Pages source. After the CI workflow runs, view the latest
+report at:
 
 ```
 https://<OWNER>.github.io/<REPO>/
