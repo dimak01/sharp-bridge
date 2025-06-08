@@ -24,11 +24,9 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private DateTime _startTime;
         private int _messagesSent;
-        private int _lastSuccessfulSend;
         private PCTrackingInfo _lastTrackingData;
         private int _connectionAttempts;
         private int _failedConnections;
-        private int _lastSuccessfulConnection;
         private string _authToken;
         private string _lastInitializationError;
         private DateTime _lastSuccessfulOperation;
@@ -91,7 +89,6 @@ namespace SharpBridge.Services
             {
                 var uri = new Uri($"ws://{_config.Host}:{_config.Port}");
                 await _webSocket.ConnectAsync(uri, cancellationToken);
-                _lastSuccessfulConnection = Environment.TickCount;
                 _logger.Info("Connected to VTube Studio");
             }
             catch (Exception ex)
@@ -227,7 +224,6 @@ namespace SharpBridge.Services
                     "InjectParameterDataRequest", request, cancellationToken);
                 
                 _messagesSent++;
-                _lastSuccessfulSend = Environment.TickCount;
                 _lastTrackingData = trackingData;
                 _lastSuccessfulOperation = DateTime.UtcNow;
                 _status = PCClientStatus.Connected; // Reset status back to Connected after successful send
