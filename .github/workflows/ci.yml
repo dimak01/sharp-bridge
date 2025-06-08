@@ -30,7 +30,6 @@ jobs:
 
       - name: Generate coverage report
         run: |
-        run: |
           echo "Coverage site: https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_STEP_SUMMARY
             echo "Error: No test results found in the 'TestResults' directory." >&2
             exit 1
@@ -44,7 +43,8 @@ jobs:
           path: TestResults/CoverageReport
 
       - name: Output coverage URL
-        run: echo "Coverage site: https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_STEP_SUMMARY
+        run: |
+          echo "Coverage site: https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_STEP_SUMMARY
 
   deploy:
     needs: build
