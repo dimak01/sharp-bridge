@@ -30,7 +30,6 @@ jobs:
 
       - name: Generate coverage report
         run: |
-        uses: actions/upload-pages-artifact@v3
         uses: actions/deploy-pages@v4
             exit 1
           fi
@@ -38,7 +37,7 @@ jobs:
           reportgenerator -reports:"${COVERAGE_DIR}coverage.cobertura.xml" -targetdir:"TestResults/CoverageReport" -reporttypes:Html
 
       - name: Upload coverage pages artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: TestResults/CoverageReport
 
