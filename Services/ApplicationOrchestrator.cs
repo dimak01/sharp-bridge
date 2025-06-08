@@ -223,58 +223,105 @@ namespace SharpBridge.Services
             {
                 try
                 {
-                    // Check if it's time to attempt recovery
-                    if (DateTime.UtcNow >= _nextRecoveryAttempt)
-                    {
-                        var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
-                        if (needsRecovery)
-                        {
-                            _logger.Info("Recovery attempt completed");
-                        }
-                        _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
-                    }
-
-                    // Check if it's time to send another tracking request
-                    if (DateTime.UtcNow >= nextRequestTime)
-                    {
-                        // Only send requests if the phone client is healthy
-                        var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
-                        if (phoneStats.IsHealthy)
-                        {
-                            await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
-                        }
-                        
-                        // Set the next request time based on phone configuration
-                        double requestIntervalSeconds = _phoneConfig.RequestIntervalSeconds;
-                        nextRequestTime = DateTime.UtcNow.AddSeconds(requestIntervalSeconds);
-                    }
-                    
-                    // Try to receive tracking data
-                    bool dataReceived = await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
-                    
-                    // Check for keyboard input every tick of the loop
-                    CheckForKeyboardInput();
-
-                    // Check if it's time to update console status
-                    if (DateTime.UtcNow >= nextStatusUpdateTime)
-                    {
-                        UpdateConsoleStatus();
-                        
-                        nextStatusUpdateTime = DateTime.UtcNow.AddSeconds(0.1f); // Update status every 0.1 seconds
-                    }
-                    
-                    // If no data was received, add a small delay to prevent CPU spinning
-                    if (!dataReceived)
-                    {
-                        await Task.Delay(10, cancellationToken);
-                    }
+                    await ProcessRecoveryIfNeeded(cancellationToken);
+                    nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
+                    var dataReceived = await ProcessDataReceiving(cancellationToken);
+                    ProcessKeyboardInput();
+                    nextStatusUpdateTime = await ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
+                    await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
                 }
                 catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
                 {
-                    _logger.Error("Error in application loop: {0}", ex.Message);
-                    await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken); // Add delay on error before retrying
+                    await HandleMainLoopError(ex, cancellationToken);
                 }
             }
+        }
+
+        /// <summary>
+        /// Processes recovery attempt if it's time to do so
+        /// </summary>
+        private async Task ProcessRecoveryIfNeeded(CancellationToken cancellationToken)
+        {
+            if (DateTime.UtcNow >= _nextRecoveryAttempt)
+            {
+                var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
+                if (needsRecovery)
+                {
+                    _logger.Info("Recovery attempt completed");
+                }
+                _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+            }
+        }
+
+        /// <summary>
+        /// Processes tracking request if it's time to send one
+        /// </summary>
+        private async Task<DateTime> ProcessTrackingRequestIfNeeded(DateTime nextRequestTime, CancellationToken cancellationToken)
+        {
+            if (DateTime.UtcNow >= nextRequestTime)
+            {
+                // Only send requests if the phone client is healthy
+                var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+                if (phoneStats.IsHealthy)
+                {
+                    await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                }
+                
+                // Set the next request time based on phone configuration
+                return DateTime.UtcNow.AddSeconds(_phoneConfig.RequestIntervalSeconds);
+            }
+            
+            return nextRequestTime;
+        }
+
+        /// <summary>
+        /// Processes data receiving from the phone client
+        /// </summary>
+        private async Task<bool> ProcessDataReceiving(CancellationToken cancellationToken)
+        {
+            return await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Processes keyboard input checking
+        /// </summary>
+        private void ProcessKeyboardInput()
+        {
+            CheckForKeyboardInput();
+        }
+
+        /// <summary>
+        /// Processes console status update if it's time to do so
+        /// </summary>
+        private async Task<DateTime> ProcessConsoleUpdateIfNeeded(DateTime nextStatusUpdateTime)
+        {
+            if (DateTime.UtcNow >= nextStatusUpdateTime)
+            {
+                UpdateConsoleStatus();
+                return DateTime.UtcNow.AddSeconds(0.1f); // Update status every 0.1 seconds
+            }
+            
+            return nextStatusUpdateTime;
+        }
+
+        /// <summary>
+        /// Processes idle delay if no data was received to prevent CPU spinning
+        /// </summary>
+        private async Task ProcessIdleDelayIfNeeded(bool dataReceived, CancellationToken cancellationToken)
+        {
+            if (!dataReceived)
+            {
+                await Task.Delay(10, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Handles errors that occur in the main application loop
+        /// </summary>
+        private async Task HandleMainLoopError(Exception ex, CancellationToken cancellationToken)
+        {
+            _logger.Error("Error in application loop: {0}", ex.Message);
+            await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken);
         }
         
         private async Task PerformCleanup(CancellationToken cancellationToken)
