@@ -70,42 +70,42 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats a PhoneTrackingInfo object with service statistics into a display string
         /// </summary>
-        public string Format(IServiceStats serviceStats)
+        public string Format(IServiceStats stats)
         {
-            if (serviceStats == null) 
+            if (stats == null) 
                 return "No service data available";
             
             var builder = new StringBuilder();
             
             // Header with service status
-            builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", serviceStats.Status, "Alt+O"));
+            builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", stats.Status, "Alt+O"));
             builder.AppendLine($"Verbosity: {CurrentVerbosity}");
             builder.AppendLine();
             
             // Health status
             builder.AppendLine(FormatHealthStatus(
-                serviceStats.IsHealthy, 
-                serviceStats.LastSuccessfulOperation, 
-                serviceStats.LastError));
+                stats.IsHealthy, 
+                stats.LastSuccessfulOperation, 
+                stats.LastError));
             
             // Metrics with proper padding
-            if (serviceStats.Counters.ContainsKey("Total Frames") && 
-                serviceStats.Counters.ContainsKey("Failed Frames"))
+            if (stats.Counters.ContainsKey("Total Frames") && 
+                stats.Counters.ContainsKey("Failed Frames"))
             {
-                var totalFrames = serviceStats.Counters["Total Frames"];
-                var failedFrames = serviceStats.Counters["Failed Frames"];
-                var fps = serviceStats.Counters.ContainsKey("FPS") ? serviceStats.Counters["FPS"] : 0;
+                var totalFrames = stats.Counters["Total Frames"];
+                var failedFrames = stats.Counters["Failed Frames"];
+                var fps = stats.Counters.ContainsKey("FPS") ? stats.Counters["FPS"] : 0;
                 
                 builder.AppendLine(FormatMetrics(totalFrames, failedFrames, fps));
             }
             
             // Tracking data details
-            if (serviceStats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
+            if (stats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
             {
                 builder.AppendLine();
                 AppendTrackingDetails(builder, phoneTrackingInfo);
             }
-            else if (serviceStats.CurrentEntity != null)
+            else if (stats.CurrentEntity != null)
             {
                 throw new ArgumentException("CurrentEntity must be of type PhoneTrackingInfo or null");
             }
@@ -118,71 +118,149 @@ namespace SharpBridge.Utilities
             return builder.ToString();
         }
         
-
-        
         /// <summary>
         /// Appends tracking data details to the string builder
         /// </summary>
         private void AppendTrackingDetails(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
         {
-            // Face detection status with ASCII icon
+            AppendFaceStatus(builder, phoneTrackingInfo);
+            AppendPositionAndRotation(builder, phoneTrackingInfo);
+            AppendBlendShapes(builder, phoneTrackingInfo);
+        }
+
+        /// <summary>
+        /// Appends face detection status to the string builder
+        /// </summary>
+        private void AppendFaceStatus(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        {
             var faceIcon = phoneTrackingInfo.FaceFound ? "√" : "X";
             var faceColor = phoneTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
-            builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(phoneTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
+            var faceText = phoneTrackingInfo.FaceFound ? "Detected" : "Not Found";
             
-            // Only show head rotation and position if face is detected
-            if (phoneTrackingInfo.FaceFound && CurrentVerbosity >= VerbosityLevel.Normal)
+            builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {faceText}", faceColor)}");
+        }
+
+        /// <summary>
+        /// Appends position and rotation data if face is detected and verbosity allows
+        /// </summary>
+        private void AppendPositionAndRotation(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        {
+            if (!ShouldShowPositionAndRotation(phoneTrackingInfo))
+                return;
+
+            AppendRotationData(builder, phoneTrackingInfo.Rotation);
+            AppendPositionData(builder, phoneTrackingInfo.Position);
+        }
+
+        /// <summary>
+        /// Determines if position and rotation data should be shown
+        /// </summary>
+        private bool ShouldShowPositionAndRotation(PhoneTrackingInfo phoneTrackingInfo)
+        {
+            return phoneTrackingInfo.FaceFound && CurrentVerbosity >= VerbosityLevel.Normal;
+        }
+
+        /// <summary>
+        /// Appends rotation data if available
+        /// </summary>
+        private void AppendRotationData(StringBuilder builder, Coordinates rotation)
+        {
+            if (rotation != null)
             {
-                if (phoneTrackingInfo.Rotation != null)
-                {
-                    builder.AppendLine($"Head Rotation (X,Y,Z): " +
-                        $"{phoneTrackingInfo.Rotation.X:F1}°, " +
-                        $"{phoneTrackingInfo.Rotation.Y:F1}°, " +
-                        $"{phoneTrackingInfo.Rotation.Z:F1}°");
-                }
-            
-                if (phoneTrackingInfo.Position != null)
-                {
-                    builder.AppendLine($"Head Position (X,Y,Z): " +
-                        $"{phoneTrackingInfo.Position.X:F1}, " +
-                        $"{phoneTrackingInfo.Position.Y:F1}, " +
-                        $"{phoneTrackingInfo.Position.Z:F1}");
-                }
+                builder.AppendLine($"Head Rotation (X,Y,Z): " +
+                    $"{rotation.X:F1}°, " +
+                    $"{rotation.Y:F1}°, " +
+                    $"{rotation.Z:F1}°");
             }
-            
-            // Show blend shapes data in detailed mode
-            if (CurrentVerbosity >= VerbosityLevel.Normal)
+        }
+
+        /// <summary>
+        /// Appends position data if available
+        /// </summary>
+        private void AppendPositionData(StringBuilder builder, Coordinates position)
+        {
+            if (position != null)
             {
-                builder.AppendLine();
-                
-                if (phoneTrackingInfo.BlendShapes == null || phoneTrackingInfo.BlendShapes.Count == 0)
-                {
-                    builder.AppendLine("No blend shapes");
-                }
-                else
-                {
-                    // Sort blend shapes by name - let TableFormatter handle display limits
-                    var sortedShapes = phoneTrackingInfo.BlendShapes
-                        .Where(s => s != null)
-                        .OrderBy(s => s.Key)
-                        .ToList();
-
-                    // Define columns for the generic table
-                    var columns = new List<ITableColumn<BlendShape>>
-                    {
-                        new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
-                        new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
-                        new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
-                    };
-
-                    // Use the new generic table formatter - let it handle display limits
-                    var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
-                    _tableFormatter.AppendTable(builder, "=== BlendShapes ===", sortedShapes, columns, TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
-
-                    builder.AppendLine();
-                    builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
-                }
+                builder.AppendLine($"Head Position (X,Y,Z): " +
+                    $"{position.X:F1}, " +
+                    $"{position.Y:F1}, " +
+                    $"{position.Z:F1}");
             }
+        }
+
+        /// <summary>
+        /// Appends blend shapes data in detailed mode
+        /// </summary>
+        private void AppendBlendShapes(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        {
+            if (CurrentVerbosity < VerbosityLevel.Normal)
+                return;
+
+            builder.AppendLine();
+
+            if (HasNoBlendShapes(phoneTrackingInfo))
+            {
+                builder.AppendLine("No blend shapes");
+                return;
+            }
+
+            AppendBlendShapesTable(builder, phoneTrackingInfo);
+        }
+
+        /// <summary>
+        /// Checks if there are no blend shapes available
+        /// </summary>
+        private bool HasNoBlendShapes(PhoneTrackingInfo phoneTrackingInfo)
+        {
+            return phoneTrackingInfo.BlendShapes == null || phoneTrackingInfo.BlendShapes.Count == 0;
+        }
+
+        /// <summary>
+        /// Appends the blend shapes table to the string builder
+        /// </summary>
+        private void AppendBlendShapesTable(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        {
+            var sortedShapes = GetSortedBlendShapes(phoneTrackingInfo);
+            var columns = CreateBlendShapeColumns();
+            var singleColumnLimit = GetBlendShapeDisplayLimit();
+
+            _tableFormatter.AppendTable(builder, "=== BlendShapes ===", sortedShapes, columns, 
+                TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
+
+            builder.AppendLine();
+            builder.AppendLine($"Total Blend Shapes: {phoneTrackingInfo.BlendShapes.Count}");
+        }
+
+        /// <summary>
+        /// Gets sorted blend shapes for display
+        /// </summary>
+        private List<BlendShape> GetSortedBlendShapes(PhoneTrackingInfo phoneTrackingInfo)
+        {
+            return phoneTrackingInfo.BlendShapes
+                .Where(s => s != null)
+                .OrderBy(s => s.Key)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Creates columns for the blend shapes table
+        /// </summary>
+        private List<ITableColumn<BlendShape>> CreateBlendShapeColumns()
+        {
+            return new List<ITableColumn<BlendShape>>
+            {
+                new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
+                new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
+                new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
+            };
+        }
+
+        /// <summary>
+        /// Gets the display limit for blend shapes based on verbosity
+        /// </summary>
+        private int? GetBlendShapeDisplayLimit()
+        {
+            return CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
         }
         
         /// <summary>
