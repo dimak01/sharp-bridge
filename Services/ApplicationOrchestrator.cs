@@ -109,6 +109,9 @@ namespace SharpBridge.Services
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
             
+            // Synchronize VTube Studio parameters
+            await SynchronizeParametersAsync(cancellationToken);
+            
             _logger.Info("Application initialized successfully");
             _isInitialized = true;
         }
@@ -182,6 +185,24 @@ namespace SharpBridge.Services
         private async Task InitializeTransformationEngine(string transformConfigPath)
         {
             await _transformationEngine.LoadRulesAsync(transformConfigPath);
+        }
+        
+        /// <summary>
+        /// Synchronizes VTube Studio parameters based on loaded transformation rules
+        /// </summary>
+        private async Task SynchronizeParametersAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var requiredParameters = _transformationEngine.GetParameterDefinitions();
+                await _parameterManager.SynchronizeParametersAsync(requiredParameters, cancellationToken);
+                _logger.Info("VTube Studio parameters synchronized successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error synchronizing VTube Studio parameters", ex);
+                throw; // Re-throw to let the caller handle initialization failure
+            }
         }
         
         private void SubscribeToEvents()
@@ -353,6 +374,9 @@ namespace SharpBridge.Services
                 
                 // Use a lock or semaphore here if there are concurrency concerns
                 await InitializeTransformationEngine(_transformConfigPath);
+                
+                // Synchronize VTube Studio parameters
+                await SynchronizeParametersAsync(CancellationToken.None);
                 
                 _status = "Transformation config reloaded successfully";
                 _logger.Info("Transformation config reloaded successfully");
