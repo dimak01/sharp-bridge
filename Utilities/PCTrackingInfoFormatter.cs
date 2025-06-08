@@ -50,18 +50,18 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats a PCTrackingInfo object with service statistics into a display string
         /// </summary>
-        public string Format(IServiceStats serviceStats)
+        public string Format(IServiceStats stats)
         {
-            if (serviceStats == null) 
+            if (stats == null) 
                 return "No service data available";
             
             var builder = new StringBuilder();
             
             // Header with service status
-            AppendServiceHeader(builder, serviceStats);
+            AppendServiceHeader(builder, stats);
             
             // Tracking data details
-            if (serviceStats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
+            if (stats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
             {
                 var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
             
@@ -70,7 +70,7 @@ namespace SharpBridge.Utilities
                     AppendParameters(builder, pcTrackingInfo);
                 }
             }
-            else if (serviceStats.CurrentEntity != null)
+            else if (stats.CurrentEntity != null)
             {
                 throw new ArgumentException("CurrentEntity must be of type PCTrackingInfo or null");
             }

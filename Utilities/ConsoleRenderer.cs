@@ -64,96 +64,201 @@ namespace SharpBridge.Utilities
         {
             lock (_lock)
             {
-                var now = DateTime.UtcNow;
-                if (now - _lastUpdate < TimeSpan.FromMilliseconds(100))
+                if (!ShouldUpdate())
                     return;
                 
-                _lastUpdate = now;
+                _lastUpdate = DateTime.UtcNow;
                 
-                var lines = new List<string>();
-                lines.Add($"=== SharpBridge Status ===");
-                lines.Add($"Current Time: {DateTime.Now:HH:mm:ss}");
-                lines.Add(string.Empty);
-                
-                foreach (var stat in stats.Where(s => s != null))
-                {
-                    if (stat.CurrentEntity != null)
-                    {
-                        var entityType = stat.CurrentEntity.GetType();
-                        if (_formatters.TryGetValue(entityType, out var typedFormatter))
-                        {
-                            string formattedOutput;
-                            
-                            // Check if formatter supports enhanced format with service stats
-                            if (typedFormatter is PhoneTrackingInfoFormatter phoneFormatter)
-                            {
-                                formattedOutput = phoneFormatter.Format(stat);
-                            }
-                            else if (typedFormatter is PCTrackingInfoFormatter pcFormatter)
-                            {
-                                formattedOutput = pcFormatter.Format(stat);
-                            }
-                            else if (typedFormatter is TransformationEngineInfoFormatter transformationFormatter)
-                            {
-                                formattedOutput = transformationFormatter.Format(stat);
-                            }
-                            else
-                            {
-                                // For basic formatters, add service header and then formatted content
-                                lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                                formattedOutput = typedFormatter.Format(stat);
-                            }
-                            
-                            // Split formatted output into lines and add each one
-                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
-                            {
-                                lines.Add(line);
-                            }
-                        }
-                        else
-                        {
-                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                            lines.Add($"[No formatter registered for {entityType.Name}]");
-                        }
-                    }
-                    else
-                    {
-                        // No current entity, but we can still show service status
-                        if (_formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) && 
-                            phoneFormatter is PhoneTrackingInfoFormatter enhancedPhoneFormatter &&
-                            stat.ServiceName.Contains("Phone"))
-                        {
-                            var formattedOutput = enhancedPhoneFormatter.Format(stat);
-                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
-                            {
-                                lines.Add(line);
-                            }
-                        }
-                        else if (_formatters.TryGetValue(typeof(PCTrackingInfo), out var pcFormatter) && 
-                                 stat.ServiceName.Contains("PC"))
-                        {
-                            var formattedOutput = pcFormatter.Format(stat);
-                            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
-                            {
-                                lines.Add(line);
-                            }
-                        }
-                        else
-                        {
-                            lines.Add($"=== {stat.ServiceName} ({stat.Status}) ===");
-                            lines.Add("No current data available");
-                        }
-                    }
-                    
-                    lines.Add(string.Empty);
-                }
-                
-                lines.Add("Press Ctrl+C to exit | Alt+T for Transformation Engine verbosity | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
-                
+                var lines = BuildDisplayLines(stats);
                 ConsoleDisplayAction(lines.ToArray());
             }
         }
-        
+
+        /// <summary>
+        /// Determines if the console should be updated based on timing
+        /// </summary>
+        private bool ShouldUpdate()
+        {
+            var now = DateTime.UtcNow;
+            return now - _lastUpdate >= TimeSpan.FromMilliseconds(100);
+        }
+
+        /// <summary>
+        /// Builds the complete list of display lines from service statistics
+        /// </summary>
+        private List<string> BuildDisplayLines(IEnumerable<IServiceStats> stats)
+        {
+            var lines = new List<string>();
+            
+            AddHeaderLines(lines);
+            AddServiceLines(lines, stats);
+            AddFooterLines(lines);
+            
+            return lines;
+        }
+
+        /// <summary>
+        /// Adds header lines to the display
+        /// </summary>
+        private void AddHeaderLines(List<string> lines)
+        {
+            lines.Add($"=== SharpBridge Status ===");
+            lines.Add($"Current Time: {DateTime.Now:HH:mm:ss}");
+            lines.Add(string.Empty);
+        }
+
+        /// <summary>
+        /// Adds service status lines to the display
+        /// </summary>
+        private void AddServiceLines(List<string> lines, IEnumerable<IServiceStats> stats)
+        {
+            foreach (var stat in stats.Where(s => s != null))
+            {
+                AddSingleServiceLines(lines, stat);
+                lines.Add(string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Adds lines for a single service to the display
+        /// </summary>
+        private void AddSingleServiceLines(List<string> lines, IServiceStats stat)
+        {
+            var formattedOutput = FormatServiceOutput(stat);
+            AddFormattedOutputLines(lines, formattedOutput);
+        }
+
+        /// <summary>
+        /// Formats the output for a single service
+        /// </summary>
+        private string FormatServiceOutput(IServiceStats stat)
+        {
+            if (stat.CurrentEntity != null)
+            {
+                return FormatServiceWithEntity(stat);
+            }
+            else
+            {
+                return FormatServiceWithoutEntity(stat);
+            }
+        }
+
+        /// <summary>
+        /// Formats service output when it has a current entity
+        /// </summary>
+        private string FormatServiceWithEntity(IServiceStats stat)
+        {
+            var entityType = stat.CurrentEntity.GetType();
+            
+            if (_formatters.TryGetValue(entityType, out var formatter))
+            {
+                return GetFormattedOutputFromFormatter(formatter, stat);
+            }
+            else
+            {
+                return CreateNoFormatterOutput(stat, entityType);
+            }
+        }
+
+        /// <summary>
+        /// Formats service output when it has no current entity
+        /// </summary>
+        private string FormatServiceWithoutEntity(IServiceStats stat)
+        {
+            var formatter = FindFormatterForServiceWithoutEntity(stat);
+            
+            if (formatter != null)
+            {
+                return GetFormattedOutputFromFormatter(formatter, stat);
+            }
+            else
+            {
+                return CreateNoDataOutput(stat);
+            }
+        }
+
+        /// <summary>
+        /// Gets formatted output from a specific formatter
+        /// </summary>
+        private string GetFormattedOutputFromFormatter(IFormatter formatter, IServiceStats stat)
+        {
+            return formatter switch
+            {
+                PhoneTrackingInfoFormatter phoneFormatter => phoneFormatter.Format(stat),
+                PCTrackingInfoFormatter pcFormatter => pcFormatter.Format(stat),
+                TransformationEngineInfoFormatter transformationFormatter => transformationFormatter.Format(stat),
+                _ => CreateBasicFormatterOutput(formatter, stat)
+            };
+        }
+
+        /// <summary>
+        /// Finds a formatter for a service that has no current entity
+        /// </summary>
+        private IFormatter FindFormatterForServiceWithoutEntity(IServiceStats stat)
+        {
+            if (stat.ServiceName.Contains("Phone") && 
+                _formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) && 
+                phoneFormatter is PhoneTrackingInfoFormatter)
+            {
+                return phoneFormatter;
+            }
+            
+            if (stat.ServiceName.Contains("PC") && 
+                _formatters.TryGetValue(typeof(PCTrackingInfo), out var pcFormatter))
+            {
+                return pcFormatter;
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Creates output for basic formatters that don't support service stats
+        /// </summary>
+        private string CreateBasicFormatterOutput(IFormatter formatter, IServiceStats stat)
+        {
+            var header = $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}";
+            var content = formatter.Format(stat);
+            return header + content;
+        }
+
+        /// <summary>
+        /// Creates output when no formatter is registered
+        /// </summary>
+        private string CreateNoFormatterOutput(IServiceStats stat, Type entityType)
+        {
+            return $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}" +
+                   $"[No formatter registered for {entityType.Name}]";
+        }
+
+        /// <summary>
+        /// Creates output when no data is available
+        /// </summary>
+        private string CreateNoDataOutput(IServiceStats stat)
+        {
+            return $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}" +
+                   "No current data available";
+        }
+
+        /// <summary>
+        /// Adds formatted output lines to the display list
+        /// </summary>
+        private void AddFormattedOutputLines(List<string> lines, string formattedOutput)
+        {
+            foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+            {
+                lines.Add(line);
+            }
+        }
+
+        /// <summary>
+        /// Adds footer lines to the display
+        /// </summary>
+        private void AddFooterLines(List<string> lines)
+        {
+            lines.Add("Press Ctrl+C to exit | Alt+T for Transformation Engine verbosity | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
+        }
+
         // Reusing PerformanceMonitor's console display technique
         private void ConsoleDisplayAction(string[] outputLines)
         {

@@ -19,7 +19,6 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPhoneClient _vtubeStudioPhoneClient;
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
-        private readonly VTubeStudioPCConfig _pcConfig;
         private readonly IAppLogger _logger;
         private readonly IConsoleRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
@@ -32,9 +31,7 @@ namespace SharpBridge.Services
         private const int PREFERRED_CONSOLE_WIDTH = 150;
         private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
-        private bool _isInitialized;
         private bool _isDisposed;
-        private string _status = "Initializing";
         private string _transformConfigPath; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         
@@ -45,7 +42,6 @@ namespace SharpBridge.Services
         /// <param name="vtubeStudioPhoneClient">The VTube Studio phone client</param>
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
-        /// <param name="pcConfig">Configuration for the PC client</param>
         /// <param name="logger">Application logger</param>
         /// <param name="consoleRenderer">Console renderer for displaying status</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
@@ -57,7 +53,6 @@ namespace SharpBridge.Services
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
-            VTubeStudioPCConfig pcConfig,
             IAppLogger logger,
             IConsoleRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler,
@@ -69,7 +64,6 @@ namespace SharpBridge.Services
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
-            _pcConfig = pcConfig ?? throw new ArgumentNullException(nameof(pcConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
@@ -109,8 +103,10 @@ namespace SharpBridge.Services
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
             
+            // Synchronize VTube Studio parameters
+            await SynchronizeParametersAsync(cancellationToken);
+            
             _logger.Info("Application initialized successfully");
-            _isInitialized = true;
         }
 
         /// <summary>
@@ -184,6 +180,24 @@ namespace SharpBridge.Services
             await _transformationEngine.LoadRulesAsync(transformConfigPath);
         }
         
+        /// <summary>
+        /// Synchronizes VTube Studio parameters based on loaded transformation rules
+        /// </summary>
+        private async Task SynchronizeParametersAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var requiredParameters = _transformationEngine.GetParameterDefinitions();
+                await _parameterManager.SynchronizeParametersAsync(requiredParameters, cancellationToken);
+                _logger.Info("VTube Studio parameters synchronized successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error synchronizing VTube Studio parameters", ex);
+                throw; // Re-throw to let the caller handle initialization failure
+            }
+        }
+        
         private void SubscribeToEvents()
         {
             _vtubeStudioPhoneClient.TrackingDataReceived += OnTrackingDataReceived;
@@ -196,80 +210,118 @@ namespace SharpBridge.Services
         
         private async Task RunUntilCancelled(CancellationToken cancellationToken)
         {
-            _status = "Running";
             _logger.Info("Starting main application loop...");
             
             // Initialize timing variables
             var nextRequestTime = DateTime.UtcNow;
             var nextStatusUpdateTime = DateTime.UtcNow;
             
-            try
+            _consoleRenderer.ClearConsole();
+
+            // Send initial tracking request                
+            while (!cancellationToken.IsCancellationRequested)
             {
-                _consoleRenderer.ClearConsole();
-
-                // Send initial tracking request                
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        // Check if it's time to attempt recovery
-                        if (DateTime.UtcNow >= _nextRecoveryAttempt)
-                        {
-                            var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
-                            if (needsRecovery)
-                            {
-                                _logger.Info("Recovery attempt completed");
-                            }
-                            _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
-                        }
-
-                        // Check if it's time to send another tracking request
-                        if (DateTime.UtcNow >= nextRequestTime)
-                        {
-                            // Only send requests if the phone client is healthy
-                            var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
-                            if (phoneStats.IsHealthy)
-                            {
-                                await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
-                            }
-                            
-                            // Set the next request time based on phone configuration
-                            double requestIntervalSeconds = _phoneConfig.RequestIntervalSeconds;
-                            nextRequestTime = DateTime.UtcNow.AddSeconds(requestIntervalSeconds);
-                        }
-                        
-                        // Try to receive tracking data
-                        bool dataReceived = await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
-                        
-                        // Check for keyboard input every tick of the loop
-                        CheckForKeyboardInput();
-
-                        // Check if it's time to update console status
-                        if (DateTime.UtcNow >= nextStatusUpdateTime)
-                        {
-                            UpdateConsoleStatus();
-                            
-                            nextStatusUpdateTime = DateTime.UtcNow.AddSeconds(0.1f); // Update status every 0.1 seconds
-                        }
-                        
-                        // If no data was received, add a small delay to prevent CPU spinning
-                        if (!dataReceived)
-                        {
-                            await Task.Delay(10, cancellationToken);
-                        }
-                    }
-                    catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
-                    {
-                        _status = $"Error: {ex.Message}";
-                        _logger.Error("Error in application loop: {0}", ex.Message);
-                        await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken); // Add delay on error before retrying
-                    }
+                    await ProcessRecoveryIfNeeded(cancellationToken);
+                    nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
+                    var dataReceived = await ProcessDataReceiving(cancellationToken);
+                    ProcessKeyboardInput();
+                    nextStatusUpdateTime = await ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
+                    await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
+                }
+                catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
+                {
+                    await HandleMainLoopError(ex, cancellationToken);
                 }
             }
-            finally
+        }
+
+        /// <summary>
+        /// Processes recovery attempt if it's time to do so
+        /// </summary>
+        private async Task ProcessRecoveryIfNeeded(CancellationToken cancellationToken)
+        {
+            if (DateTime.UtcNow >= _nextRecoveryAttempt)
             {
-                _status = "Stopped";
+                var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
+                if (needsRecovery)
+                {
+                    _logger.Info("Recovery attempt completed");
+                }
+                _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
             }
+        }
+
+        /// <summary>
+        /// Processes tracking request if it's time to send one
+        /// </summary>
+        private async Task<DateTime> ProcessTrackingRequestIfNeeded(DateTime nextRequestTime, CancellationToken cancellationToken)
+        {
+            if (DateTime.UtcNow >= nextRequestTime)
+            {
+                // Only send requests if the phone client is healthy
+                var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
+                if (phoneStats.IsHealthy)
+                {
+                    await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
+                }
+                
+                // Set the next request time based on phone configuration
+                return DateTime.UtcNow.AddSeconds(_phoneConfig.RequestIntervalSeconds);
+            }
+            
+            return nextRequestTime;
+        }
+
+        /// <summary>
+        /// Processes data receiving from the phone client
+        /// </summary>
+        private async Task<bool> ProcessDataReceiving(CancellationToken cancellationToken)
+        {
+            return await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Processes keyboard input checking
+        /// </summary>
+        private void ProcessKeyboardInput()
+        {
+            CheckForKeyboardInput();
+        }
+
+        /// <summary>
+        /// Processes console status update if it's time to do so
+        /// </summary>
+        private async Task<DateTime> ProcessConsoleUpdateIfNeeded(DateTime nextStatusUpdateTime)
+        {
+            if (DateTime.UtcNow >= nextStatusUpdateTime)
+            {
+                UpdateConsoleStatus();
+                return DateTime.UtcNow.AddSeconds(0.1f); // Update status every 0.1 seconds
+            }
+            
+            return nextStatusUpdateTime;
+        }
+
+        /// <summary>
+        /// Processes idle delay if no data was received to prevent CPU spinning
+        /// </summary>
+        private async Task ProcessIdleDelayIfNeeded(bool dataReceived, CancellationToken cancellationToken)
+        {
+            if (!dataReceived)
+            {
+                await Task.Delay(10, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// Handles errors that occur in the main application loop
+        /// </summary>
+        private async Task HandleMainLoopError(Exception ex, CancellationToken cancellationToken)
+        {
+            _logger.Error("Error in application loop: {0}", ex.Message);
+            await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken);
         }
         
         private async Task PerformCleanup(CancellationToken cancellationToken)
@@ -348,18 +400,18 @@ namespace SharpBridge.Services
         {
             try
             {      
-                _status = "Reloading transformation config...";
                 _logger.Info("Reloading transformation config...");
                 
                 // Use a lock or semaphore here if there are concurrency concerns
                 await InitializeTransformationEngine(_transformConfigPath);
                 
-                _status = "Transformation config reloaded successfully";
+                // Synchronize VTube Studio parameters
+                await SynchronizeParametersAsync(CancellationToken.None);
+                
                 _logger.Info("Transformation config reloaded successfully");
             }
             catch (Exception ex)
             {
-                _status = $"Error reloading config: {ex.Message}";
                 _logger.ErrorWithException("Error reloading transformation config", ex);
             }
         }
@@ -409,7 +461,6 @@ namespace SharpBridge.Services
                     if (transformationFormatter != null)
                     {
                         transformationFormatter.CycleVerbosity();
-                        _status = $"Transformation Engine verbosity changed to {transformationFormatter.CurrentVerbosity}";
                     }
                 },
                 "Cycle Transformation Engine verbosity"
@@ -424,7 +475,6 @@ namespace SharpBridge.Services
                     if (pcFormatter != null)
                     {
                         pcFormatter.CycleVerbosity();
-                        _status = $"PC client verbosity changed to {pcFormatter.CurrentVerbosity}";
                     }
                 },
                 "Cycle PC client verbosity"
@@ -439,7 +489,6 @@ namespace SharpBridge.Services
                     if (phoneFormatter != null)
                     {
                         phoneFormatter.CycleVerbosity();
-                        _status = $"Phone client verbosity changed to {phoneFormatter.CurrentVerbosity}";
                     }
                 },
                 "Cycle Phone client verbosity"
