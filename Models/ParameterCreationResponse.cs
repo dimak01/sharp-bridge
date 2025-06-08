@@ -7,8 +7,8 @@ namespace SharpBridge.Models
     /// </summary>
     public class ParameterCreationResponse
     {
-        /// <summary>Created parameter name</summary>
+        /// <summary>Name of the created parameter</summary>
         [JsonPropertyName("parameterName")]
-        public string ParameterName { get; set; }
+        public string ParameterName { get; set; } = string.Empty;
     }
 } 

@@ -16,12 +16,12 @@ namespace SharpBridge.Models
         [JsonPropertyName("port")]
         public ushort Port { get; set; }
         
-        /// <summary>VTube Studio instance ID</summary>
+        /// <summary>VTS instance ID</summary>
         [JsonPropertyName("instanceID")]
-        public string InstanceId { get; set; }
+        public string InstanceId { get; set; } = string.Empty;
         
-        /// <summary>Window title of VTube Studio</summary>
+        /// <summary>Window title of VTS instance</summary>
         [JsonPropertyName("windowTitle")]
-        public string WindowTitle { get; set; }
+        public string WindowTitle { get; set; } = string.Empty;
     }
 } 

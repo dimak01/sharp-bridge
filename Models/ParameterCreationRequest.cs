@@ -8,13 +8,13 @@ namespace SharpBridge.Models
     /// </summary>
     public class ParameterCreationRequest
     {
-        /// <summary>Parameter name</summary>
+        /// <summary>Name of the parameter to create</summary>
         [JsonPropertyName("parameterName")]
-        public string ParameterName { get; set; }
+        public string ParameterName { get; set; } = string.Empty;
         
-        /// <summary>Parameter explanation</summary>
+        /// <summary>Explanation of the parameter</summary>
         [JsonPropertyName("explanation")]
-        public string Explanation { get; set; }
+        public string Explanation { get; set; } = string.Empty;
         
         /// <summary>Minimum parameter value</summary>
         [JsonPropertyName("min")]

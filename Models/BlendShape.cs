@@ -10,7 +10,7 @@ namespace SharpBridge.Models
     {
         /// <summary>The name of the blend shape</summary>
         [JsonPropertyName("k")]
-        public string Key { get; set; }
+        public string Key { get; set; } = string.Empty;
         
         /// <summary>The value of the blend shape (0-1)</summary>
         [JsonPropertyName("v")]
