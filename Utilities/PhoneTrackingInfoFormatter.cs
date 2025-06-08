@@ -70,42 +70,42 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats a PhoneTrackingInfo object with service statistics into a display string
         /// </summary>
-        public string Format(IServiceStats serviceStats)
+        public string Format(IServiceStats stats)
         {
-            if (serviceStats == null) 
+            if (stats == null) 
                 return "No service data available";
             
             var builder = new StringBuilder();
             
             // Header with service status
-            builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", serviceStats.Status, "Alt+O"));
+            builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", stats.Status, "Alt+O"));
             builder.AppendLine($"Verbosity: {CurrentVerbosity}");
             builder.AppendLine();
             
             // Health status
             builder.AppendLine(FormatHealthStatus(
-                serviceStats.IsHealthy, 
-                serviceStats.LastSuccessfulOperation, 
-                serviceStats.LastError));
+                stats.IsHealthy, 
+                stats.LastSuccessfulOperation, 
+                stats.LastError));
             
             // Metrics with proper padding
-            if (serviceStats.Counters.ContainsKey("Total Frames") && 
-                serviceStats.Counters.ContainsKey("Failed Frames"))
+            if (stats.Counters.ContainsKey("Total Frames") && 
+                stats.Counters.ContainsKey("Failed Frames"))
             {
-                var totalFrames = serviceStats.Counters["Total Frames"];
-                var failedFrames = serviceStats.Counters["Failed Frames"];
-                var fps = serviceStats.Counters.ContainsKey("FPS") ? serviceStats.Counters["FPS"] : 0;
+                var totalFrames = stats.Counters["Total Frames"];
+                var failedFrames = stats.Counters["Failed Frames"];
+                var fps = stats.Counters.ContainsKey("FPS") ? stats.Counters["FPS"] : 0;
                 
                 builder.AppendLine(FormatMetrics(totalFrames, failedFrames, fps));
             }
             
             // Tracking data details
-            if (serviceStats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
+            if (stats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
             {
                 builder.AppendLine();
                 AppendTrackingDetails(builder, phoneTrackingInfo);
             }
-            else if (serviceStats.CurrentEntity != null)
+            else if (stats.CurrentEntity != null)
             {
                 throw new ArgumentException("CurrentEntity must be of type PhoneTrackingInfo or null");
             }
