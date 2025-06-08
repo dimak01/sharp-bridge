@@ -85,7 +85,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -105,7 +104,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -794,7 +792,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -812,7 +809,6 @@ namespace SharpBridge.Tests.Services
                 null,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -830,7 +826,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 null,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -848,7 +843,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 null,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -857,23 +851,6 @@ namespace SharpBridge.Tests.Services
                 _consoleMock.Object));
         }
 
-        [Fact]
-        public void Constructor_WithNullPCConfig_ThrowsArgumentNullException()
-        {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                null,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object));
-        }
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
@@ -884,7 +861,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 null,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -902,7 +878,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 null,
                 _keyboardInputHandlerMock.Object,
@@ -919,7 +894,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 null,
@@ -936,7 +910,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -953,7 +926,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -970,7 +942,6 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                _pcConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
