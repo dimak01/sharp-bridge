@@ -69,7 +69,7 @@ namespace SharpBridge.Tests.Services
 
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
             Assert.Equal("Initializing", stats.Status);
-            Assert.Null(stats.CurrentEntity);
+            Assert.NotNull(stats.CurrentEntity);
             Assert.NotNull(stats.Counters);
         }
 
@@ -564,7 +564,7 @@ namespace SharpBridge.Tests.Services
             
             // Act & Assert
             Assert.Equal(config, client.Config);
-            Assert.Null(client.Token); // Token should be null initially
+            Assert.Equal(string.Empty, client.Token); // Token should be empty string initially
         }
 
         [Fact]

@@ -32,7 +32,7 @@ namespace SharpBridge.Services
         private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
         private bool _isDisposed;
-        private string _transformConfigPath; // Store the config path for reloading
+        private string _transformConfigPath = string.Empty; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         
         /// <summary>

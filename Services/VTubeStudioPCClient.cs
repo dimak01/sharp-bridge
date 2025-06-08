@@ -24,11 +24,11 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private DateTime _startTime;
         private int _messagesSent;
-        private PCTrackingInfo _lastTrackingData;
+        private PCTrackingInfo _lastTrackingData = new PCTrackingInfo();
         private int _connectionAttempts;
         private int _failedConnections;
-        private string _authToken;
-        private string _lastInitializationError;
+        private string _authToken = string.Empty;
+        private string _lastInitializationError = string.Empty;
         private DateTime _lastSuccessfulOperation;
         private PCClientStatus _status = PCClientStatus.Initializing;
         
