@@ -62,7 +62,10 @@ jobs:
             /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.coverageReportPaths="TestResults/CoverageReport/SonarQube.xml" \
-            /d:sonar.qualitygate.wait=true
+            /d:sonar.qualitygate.wait=true \
+            /d:sonar.inclusions="**/*.cs" \
+            /d:sonar.exclusions="**/bin/**,**/obj/**,**/Tests/**" \
+            /d:sonar.coverage.exclusions="**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/CommandLineParser.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**"
 
       - name: Build
         run: dotnet build sharp-bridge.sln --no-restore --configuration Release
