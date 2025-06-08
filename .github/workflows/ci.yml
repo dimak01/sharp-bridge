@@ -8,6 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -24,23 +29,56 @@ jobs:
 
       - name: Test with coverage
         run: |
-          dotnet test sharp-bridge.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings
+          dotnet test sharp-bridge.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory TestResults --settings coverlet.runsettings --logger "trx;LogFileName=test-results.trx"
 
       - name: Install ReportGenerator
         run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
       - name: Generate coverage report
         run: |
-          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:"TestResults/CoverageReport" -reporttypes:"Html;JsonSummary"
+          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" -targetdir:"TestResults/CoverageReport" -reporttypes:"Html;JsonSummary;Badges"
 
       - name: Enforce coverage threshold
+        id: coverage-check
         run: |
-          coverage=$(jq '.summary.linecoverage' TestResults/CoverageReport/Summary.json)
+          coverage=$(jq -r '.summary.linecoverage' TestResults/CoverageReport/Summary.json)
           echo "Line coverage: $coverage%"
+          echo "COVERAGE=$coverage" >> $GITHUB_OUTPUT
           jq -e '.summary.linecoverage >= 90' TestResults/CoverageReport/Summary.json > /dev/null
 
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
         with:
-          name: TestResults
-          path: TestResults
+          name: .NET Tests
+          path: TestResults/test-results.trx
+          reporter: dotnet-trx
+
+      - name: Add PR Coverage Comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          message: |
+            ## 📊 Code Coverage Report
+            
+            **Line Coverage:** ${{ steps.coverage-check.outputs.COVERAGE }}%
+            
+            Coverage threshold: 90% ✅
+            
+            [View detailed coverage report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/coverage/)
+
+      - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v4
+
+      - name: Upload coverage to Pages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: TestResults/CoverageReport
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        id: deployment
+        uses: actions/deploy-pages@v4
