@@ -148,7 +148,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(pcStats);
                 
             // Configure parameter manager
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
+            _parameterManagerMock.Setup(x => x.TrySynchronizeParametersAsync(
                     It.IsAny<IEnumerable<VTSParameter>>(), 
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
@@ -1596,7 +1596,7 @@ namespace SharpBridge.Tests.Services
         // Parameter Synchronization Tests
         
         [Fact]
-        public async Task InitializeAsync_CallsSynchronizeParametersAsync()
+        public async Task InitializeAsync_CallsTrySynchronizeParametersAsync()
         {
             // Arrange
             SetupBasicMocks();
@@ -1615,7 +1615,7 @@ namespace SharpBridge.Tests.Services
             await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
             
             // Assert
-            _parameterManagerMock.Verify(x => x.SynchronizeParametersAsync(
+            _parameterManagerMock.Verify(x => x.TrySynchronizeParametersAsync(
                 It.Is<IEnumerable<VTSParameter>>(parameters => 
                     parameters.Count() == 2 && 
                     parameters.Any(p => p.Name == "TestParam1") &&
@@ -1625,7 +1625,7 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task InitializeAsync_WhenParameterSynchronizationFails_ThrowsException()
+        public async Task InitializeAsync_WhenParameterSynchronizationFails_LogsWarning()
         {
             // Arrange
             SetupBasicMocks();
@@ -1637,27 +1637,29 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.GetParameterDefinitions())
                 .Returns(expectedParameters);
                 
-            var expectedException = new InvalidOperationException("Parameter sync failed");
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
+            _parameterManagerMock.Setup(x => x.TrySynchronizeParametersAsync(
                     It.IsAny<IEnumerable<VTSParameter>>(), 
                     It.IsAny<CancellationToken>()))
-                .ThrowsAsync(expectedException);
+                .ReturnsAsync(false);
             
             var cancellationToken = CancellationToken.None;
             
-            // Act & Assert
-            var thrownException = await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
+            // Act
+            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
                 
-            Assert.Equal(expectedException, thrownException);
-            _parameterManagerMock.Verify(x => x.SynchronizeParametersAsync(
+            // Assert
+            _parameterManagerMock.Verify(x => x.TrySynchronizeParametersAsync(
                 It.IsAny<IEnumerable<VTSParameter>>(), 
                 cancellationToken), 
+                Times.Once);
+                
+            _loggerMock.Verify(x => x.Warning(
+                It.Is<string>(s => s.Contains("Parameter synchronization failed during initialization"))), 
                 Times.Once);
         }
         
         [Fact]
-        public async Task ReloadTransformationConfig_CallsSynchronizeParametersAsync()
+        public async Task ReloadTransformationConfig_CallsTrySynchronizeParametersAsync()
         {
             // Arrange
             SetupBasicMocks();
@@ -1708,7 +1710,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
             
             // Assert
-            _parameterManagerMock.Verify(x => x.SynchronizeParametersAsync(
+            _parameterManagerMock.Verify(x => x.TrySynchronizeParametersAsync(
                 It.Is<IEnumerable<VTSParameter>>(parameters => 
                     parameters.Count() == 2 && 
                     parameters.Any(p => p.Name == "ReloadedParam1") &&
@@ -1718,7 +1720,7 @@ namespace SharpBridge.Tests.Services
         }
         
         [Fact]
-        public async Task ReloadTransformationConfig_WhenParameterSynchronizationFails_LogsError()
+        public async Task ReloadTransformationConfig_WhenParameterSynchronizationFails_LogsWarning()
         {
             // Arrange
             SetupBasicMocks();
@@ -1735,14 +1737,13 @@ namespace SharpBridge.Tests.Services
             
             // Setup parameter manager to fail on second call
             int syncCallCount = 0;
-            var expectedException = new InvalidOperationException("Parameter sync failed");
-            _parameterManagerMock.Setup(x => x.SynchronizeParametersAsync(
+            _parameterManagerMock.Setup(x => x.TrySynchronizeParametersAsync(
                     It.IsAny<IEnumerable<VTSParameter>>(), 
                     It.IsAny<CancellationToken>()))
                 .Returns(() => {
                     syncCallCount++;
                     if (syncCallCount > 1)
-                        throw expectedException;
+                        return Task.FromResult(false);
                     return Task.FromResult(true);
                 });
             
@@ -1767,9 +1768,9 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
             
             // Assert
-            _loggerMock.Verify(x => x.ErrorWithException(
-                It.Is<string>(s => s.Contains("Error reloading transformation config")),
-                expectedException), Times.Once);
+            _loggerMock.Verify(x => x.Warning(
+                It.Is<string>(s => s.Contains("Parameter synchronization failed during config reload"))), 
+                Times.Once);
         }
     }
 }

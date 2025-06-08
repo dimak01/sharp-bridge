@@ -42,11 +42,11 @@ namespace SharpBridge.Interfaces
         Task<bool> DeleteParameterAsync(string parameterName, CancellationToken cancellationToken);
 
         /// <summary>
-        /// Synchronizes the desired parameters with VTube Studio
+        /// Attempts to synchronize the desired parameters with VTube Studio
         /// </summary>
         /// <param name="desiredParameters">Collection of parameters that should exist in VTube Studio</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if synchronization was successful</returns>
-        Task<bool> SynchronizeParametersAsync(IEnumerable<VTSParameter> desiredParameters, CancellationToken cancellationToken);
+        /// <returns>True if synchronization was successful, false if it failed</returns>
+        Task<bool> TrySynchronizeParametersAsync(IEnumerable<VTSParameter> desiredParameters, CancellationToken cancellationToken);
     }
 } 
