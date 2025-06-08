@@ -55,8 +55,8 @@ namespace SharpBridge.Services
         private long _hotReloadSuccesses = 0;
         private DateTime _lastSuccessfulTransformation;
         private DateTime _rulesLoadedTime;
-        private string _lastError;
-        private string _configFilePath;
+        private string _lastError = string.Empty;
+        private string _configFilePath = string.Empty;
         private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;
         private readonly List<RuleInfo> _invalidRules = new();
         
