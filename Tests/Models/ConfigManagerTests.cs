@@ -254,21 +254,27 @@ namespace SharpBridge.Tests.Models
         [Fact]
         public async Task SaveConfigAsync_IOException_ThrowsInvalidOperationException()
         {
+            // This scenario relies on Windows read-only semantics. Skip on other platforms
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             // Arrange
             // Create a readonly directory to cause an IO exception on save
             string readOnlyDir = Path.Combine(_testDirectory, "ReadOnly");
             Directory.CreateDirectory(readOnlyDir);
-            
+
             var manager = new ConfigManager(readOnlyDir, "readonly.json", "phone.json");
             var config = new VTubeStudioPCConfig();
-            
+
             try
             {
                 // Create a file and make it read-only to cause an exception
                 string readOnlyPath = Path.Combine(readOnlyDir, "readonly.json");
                 File.WriteAllText(readOnlyPath, "{}");
                 File.SetAttributes(readOnlyPath, FileAttributes.ReadOnly);
-                
+
                 // Act & Assert
                 Func<Task> act = async () => await manager.SavePCConfigAsync(config);
                 await act.Should().ThrowAsync<InvalidOperationException>()

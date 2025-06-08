@@ -765,6 +765,12 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public async Task ClearTokenAsync_WhenFileDeleteFails_LogsWarning()
         {
+            // Deleting a read-only file only fails on Windows. Skip on other platforms
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             // Arrange
             var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig { TokenFilePath = "test-token.txt" };
@@ -785,8 +791,11 @@ namespace SharpBridge.Tests.Services
             finally
             {
                 // Cleanup
-                File.SetAttributes(config.TokenFilePath, FileAttributes.Normal);
-                File.Delete(config.TokenFilePath);
+                if (File.Exists(config.TokenFilePath))
+                {
+                    File.SetAttributes(config.TokenFilePath, FileAttributes.Normal);
+                    File.Delete(config.TokenFilePath);
+                }
             }
         }
 
