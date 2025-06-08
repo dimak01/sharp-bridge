@@ -19,18 +19,18 @@ namespace SharpBridge.Models
         public bool FaceFound { get; set; }
         
         /// <summary>Head rotation in 3D space</summary>
-        public Coordinates Rotation { get; set; }
+        public Coordinates Rotation { get; set; } = new Coordinates();
         
         /// <summary>Head position in 3D space</summary>
-        public Coordinates Position { get; set; }
+        public Coordinates Position { get; set; } = new Coordinates();
         
         /// <summary>Left eye position</summary>
-        public Coordinates EyeLeft { get; set; }
+        public Coordinates EyeLeft { get; set; } = new Coordinates();
         
         /// <summary>Right eye position</summary>
-        public Coordinates EyeRight { get; set; }
+        public Coordinates EyeRight { get; set; } = new Coordinates();
         
         /// <summary>Collection of blend shapes representing facial expressions</summary>
-        public List<BlendShape> BlendShapes { get; set; }
+        public List<BlendShape> BlendShapes { get; set; } = new List<BlendShape>();
     }
 } 

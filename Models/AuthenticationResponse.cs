@@ -12,8 +12,8 @@ namespace SharpBridge.Models
         [JsonPropertyName("authenticated")]
         public bool Authenticated { get; set; }
         
-        /// <summary>Reason for authentication result</summary>
+        /// <summary>Reason for authentication response</summary>
         [JsonPropertyName("reason")]
-        public string Reason { get; set; }
+        public string Reason { get; set; } = string.Empty;
     }
 } 

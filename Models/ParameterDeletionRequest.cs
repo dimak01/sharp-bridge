@@ -7,8 +7,8 @@ namespace SharpBridge.Models
     /// </summary>
     public class ParameterDeletionRequest
     {
-        /// <summary>Parameter name to delete</summary>
+        /// <summary>Name of parameter to delete</summary>
         [JsonPropertyName("parameterName")]
-        public string ParameterName { get; set; }
+        public string ParameterName { get; set; } = string.Empty;
     }
 } 
