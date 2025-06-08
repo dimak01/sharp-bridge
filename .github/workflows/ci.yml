@@ -30,6 +30,10 @@ jobs:
 
       - name: Generate coverage report
         run: |
+          if [ -z "$(ls -td TestResults/*/ 2>/dev/null | head -1)" ]; then
+            echo "Error: No test results found in the 'TestResults' directory." >&2
+            exit 1
+          fi
           COVERAGE_DIR=$(ls -td TestResults/*/ | head -1)
           reportgenerator -reports:"${COVERAGE_DIR}coverage.cobertura.xml" -targetdir:"TestResults/CoverageReport" -reporttypes:Html
 
