@@ -100,6 +100,16 @@ dotnet build
 dotnet test
 ```
 
+### Coverage Report
+
+Automated coverage reports are published to GitHub Pages. Enable Pages in the
+repository settings with `gh-pages` as the deployment branch. After the CI
+workflow runs, view the latest report at:
+
+```
+https://<OWNER>.github.io/<REPO>/
+```
+
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
