@@ -30,7 +30,8 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          if [ -z "$(ls -td TestResults/*/ 2>/dev/null | head -1)" ]; then
+        run: |
+          echo "Coverage site: https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_STEP_SUMMARY
             echo "Error: No test results found in the 'TestResults' directory." >&2
             exit 1
           fi
