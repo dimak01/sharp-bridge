@@ -30,8 +30,8 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          echo "Coverage site: https://$GITHUB_REPOSITORY_OWNER.github.io/${GITHUB_REPOSITORY#*/}/" >> $GITHUB_STEP_SUMMARY
-            echo "Error: No test results found in the 'TestResults' directory." >&2
+        uses: actions/upload-pages-artifact@v3
+        uses: actions/deploy-pages@v4
             exit 1
           fi
           COVERAGE_DIR=$(ls -td TestResults/*/ | head -1)
