@@ -36,7 +36,7 @@ namespace SharpBridge.Services
         /// <param name="timeoutMs">Maximum time to wait for a discovery response in milliseconds</param>
         /// <param name="cancellationToken">Token to cancel the discovery operation</param>
         /// <returns>Discovery response containing VTube Studio instance information, or null if not found</returns>
-        public async Task<DiscoveryResponse> DiscoverAsync(int timeoutMs, CancellationToken cancellationToken)
+        public async Task<DiscoveryResponse?> DiscoverAsync(int timeoutMs, CancellationToken cancellationToken)
         {
             try
             {
