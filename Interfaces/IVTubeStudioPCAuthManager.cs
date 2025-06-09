@@ -1,4 +1,3 @@
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +13,7 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>A task that completes when authentication is successful</returns>
-        /// <exception cref="InvalidOperationException">Thrown when authentication fails after all retries</exception>
+        /// <exception cref="System.InvalidOperationException">Thrown when authentication fails after all retries</exception>
         Task AuthenticateAsync(CancellationToken cancellationToken);
     }
 } 
