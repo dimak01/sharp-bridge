@@ -85,8 +85,10 @@ namespace SharpBridge.Utilities
                 var headerWidth = column.Header.Length;
                 var minWidth = column.MinWidth;
                 
-                // Use ValueFormatter to get natural content width - rows guaranteed to exist
-                var maxContentWidth = rows.Max(r => column.ValueFormatter(r).Length);
+                // Use ValueFormatter to get natural content width
+                var maxContentWidth = rows.Any() 
+                    ? rows.Max(r => column.ValueFormatter(r).Length) 
+                    : 0;
                 
                 var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
                 
@@ -130,8 +132,10 @@ namespace SharpBridge.Utilities
                 var headerWidth = column.Header.Length;
                 var minWidth = column.MinWidth;
                 
-                // Use ValueFormatter to get natural content width - rows guaranteed to exist
-                var maxContentWidth = rows.Max(r => column.ValueFormatter(r).Length);
+                // Use ValueFormatter to get natural content width
+                var maxContentWidth = rows.Any() 
+                    ? rows.Max(r => column.ValueFormatter(r).Length) 
+                    : 0;
                 
                 var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
                 
