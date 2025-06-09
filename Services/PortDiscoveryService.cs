@@ -86,13 +86,5 @@ namespace SharpBridge.Services
                 return null;
             }
         }
-        
-        /// <summary>
-        /// Releases all resources used by the port discovery service
-        /// </summary>
-        public void Dispose()
-        {
-            _udpClient?.Dispose();
-        }
     }
 } 
