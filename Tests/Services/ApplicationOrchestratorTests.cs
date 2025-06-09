@@ -1707,5 +1707,179 @@ namespace SharpBridge.Tests.Services
             // Verify SendTrackingAsync was not called for unhealthy states (due to PC client being unhealthy)
             Assert.Equal(0, sendTrackingCallCount);
         }
+
+        // Tests for recovery scenarios that were missing coverage
+        
+        [Fact]
+        public async Task AttemptRecoveryAsync_WhenPhoneClientIsUnhealthy_AttemptsPhoneClientRecovery()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Setup phone client to be unhealthy initially
+            var unhealthyPhoneStats = new ServiceStats(
+                serviceName: "PhoneClient",
+                status: "Disconnected",
+                currentEntity: new PhoneTrackingInfo(),
+                isHealthy: false,
+                lastSuccessfulOperation: DateTime.UtcNow.AddMinutes(-5),
+                lastError: "Connection lost",
+                counters: new Dictionary<string, long>()
+            );
+            
+            _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
+                .Returns(unhealthyPhoneStats);
+                
+            // Setup phone client TryInitializeAsync to be called during recovery
+            _vtubeStudioPhoneClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            // Setup phone client to throw exception which triggers recovery
+            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                .ThrowsAsync(new InvalidOperationException("Phone client connection failed"));
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            
+            // Act - Run the orchestrator which will trigger recovery due to phone client exception
+            await RunWithCustomTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(_longTimeoutCts.Token);
+            }, _longTimeout);
+            
+            // Assert
+            _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _loggerMock.Verify(x => x.Info("Attempting to recover Phone client..."), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public async Task AttemptRecoveryAsync_WhenPCClientRecoverySucceeds_AttemptParameterSynchronization()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Setup PC client to be initially unhealthy
+            var unhealthyPcStats = new ServiceStats(
+                serviceName: "VTubeStudioPCClient",
+                status: "Disconnected",
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: false,
+                lastSuccessfulOperation: DateTime.UtcNow.AddMinutes(-5),
+                lastError: "Connection lost",
+                counters: new Dictionary<string, long>()
+            );
+            
+            // Setup healthy PC stats for after recovery
+            var healthyPcStats = new ServiceStats(
+                serviceName: "VTubeStudioPCClient",
+                status: "Connected",
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+            
+            // Setup sequence: first call returns unhealthy, subsequent calls return healthy
+            var setupSequence = _vtubeStudioPCClientMock.SetupSequence(x => x.GetServiceStats());
+            setupSequence.Returns(unhealthyPcStats);
+            setupSequence.Returns(healthyPcStats);
+            // Add more healthy returns for subsequent calls during the test
+            for (int i = 0; i < 10; i++)
+            {
+                setupSequence.Returns(healthyPcStats);
+            }
+                
+            // Setup PC client TryInitializeAsync to succeed (simulating successful recovery)
+            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            // Setup parameter manager to be called during recovery
+            _parameterManagerMock.Setup(x => x.TrySynchronizeParametersAsync(
+                    It.IsAny<IEnumerable<VTSParameter>>(), 
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            // Setup phone client to throw exception which triggers recovery
+            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                .ThrowsAsync(new InvalidOperationException("Trigger recovery scenario"));
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            
+            // Act - Run the orchestrator which will trigger recovery
+            await RunWithCustomTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(_longTimeoutCts.Token);
+            }, _longTimeout);
+            
+            // Assert
+            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+            _loggerMock.Verify(x => x.Info("Attempting to recover PC client..."), Times.AtLeastOnce);
+            _loggerMock.Verify(x => x.Info("PC client recovered successfully, attempting parameter synchronization..."), Times.AtLeastOnce);
+            _parameterManagerMock.Verify(x => x.TrySynchronizeParametersAsync(
+                It.IsAny<IEnumerable<VTSParameter>>(), 
+                It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public async Task AttemptRecoveryAsync_WhenPCClientRecoverySucceedsButParameterSyncFails_LogsWarning()
+        {
+            // Arrange
+            SetupBasicMocks();
+            
+            // Setup PC client to be initially unhealthy then healthy after recovery
+            var unhealthyPcStats = new ServiceStats(
+                serviceName: "VTubeStudioPCClient",
+                status: "Disconnected",
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: false,
+                lastSuccessfulOperation: DateTime.UtcNow.AddMinutes(-5),
+                lastError: "Connection lost",
+                counters: new Dictionary<string, long>()
+            );
+            
+            var healthyPcStats = new ServiceStats(
+                serviceName: "VTubeStudioPCClient",
+                status: "Connected",
+                currentEntity: new PCTrackingInfo(),
+                isHealthy: true,
+                lastSuccessfulOperation: DateTime.UtcNow,
+                lastError: null,
+                counters: new Dictionary<string, long>()
+            );
+            
+            // Setup sequence: unhealthy -> healthy after recovery
+            var setupSequence = _vtubeStudioPCClientMock.SetupSequence(x => x.GetServiceStats());
+            setupSequence.Returns(unhealthyPcStats);
+            setupSequence.Returns(healthyPcStats);
+            for (int i = 0; i < 10; i++)
+            {
+                setupSequence.Returns(healthyPcStats);
+            }
+                
+            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+                
+            // Setup parameter synchronization to fail
+            _parameterManagerMock.Setup(x => x.TrySynchronizeParametersAsync(
+                    It.IsAny<IEnumerable<VTSParameter>>(), 
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+                
+            // Trigger recovery scenario
+            _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
+                .ThrowsAsync(new InvalidOperationException("Trigger recovery"));
+            
+            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            
+            // Act
+            await RunWithCustomTimeout(async () => 
+            {
+                await _orchestrator.RunAsync(_longTimeoutCts.Token);
+            }, _longTimeout);
+            
+            // Assert
+            _loggerMock.Verify(x => x.Info("PC client recovered successfully, attempting parameter synchronization..."), Times.AtLeastOnce);
+            _loggerMock.Verify(x => x.Warning("Parameter synchronization failed after PC client recovery"), Times.AtLeastOnce);
+        }
     }
 }
