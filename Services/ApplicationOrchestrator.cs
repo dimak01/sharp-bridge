@@ -404,7 +404,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Reloads the transformation configuration
         /// </summary>
-        private async void ReloadTransformationConfig()
+        private async Task ReloadTransformationConfig()
         {
             try
             {      
@@ -510,7 +510,7 @@ namespace SharpBridge.Services
             _keyboardInputHandler.RegisterShortcut(
                 ConsoleKey.K, 
                 ConsoleModifiers.Alt, 
-                () => ReloadTransformationConfig(),
+                () => _ = ReloadTransformationConfig(),
                 "Reload transformation configuration"
             );
         }
