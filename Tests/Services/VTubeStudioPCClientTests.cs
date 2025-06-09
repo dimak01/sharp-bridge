@@ -97,7 +97,8 @@ namespace SharpBridge.Tests.Services
             // The entity might be null initially since no tracking data has been sent yet
             if (stats.CurrentEntity != null)
             {
-                var pcTrackingInfo = stats.CurrentEntity as PCTrackingInfo; 
+                var pcTrackingInfo = stats.CurrentEntity as PCTrackingInfo;
+                Assert.NotNull(pcTrackingInfo); // Ensure the cast was successful
                 Assert.Equal(false, pcTrackingInfo.FaceFound);
                 Assert.NotNull(pcTrackingInfo.Parameters);
             }
