@@ -3,8 +3,10 @@
 [![CI](https://github.com/dimak01/sharp-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/dimak01/sharp-bridge/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=coverage)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=bugs)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=dimak01_sharp-bridge&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=dimak01_sharp-bridge)
 
 A .NET/C# bridge application for connecting iPhone's VTube Studio to PC. This tool receives tracking data from iPhone, processes it according to user-defined configurations, and sends it to VTube Studio on PC.
 

@@ -48,7 +48,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
-        public IFormatter GetFormatter<T>() where T : IFormattableObject
+        public IFormatter? GetFormatter<T>() where T : IFormattableObject
         {
             if (_formatters.TryGetValue(typeof(T), out var formatter))
             {
@@ -148,7 +148,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         private string FormatServiceWithEntity(IServiceStats stat)
         {
-            var entityType = stat.CurrentEntity.GetType();
+            var entityType = stat.CurrentEntity!.GetType();
             
             if (_formatters.TryGetValue(entityType, out var formatter))
             {
@@ -194,7 +194,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Finds a formatter for a service that has no current entity
         /// </summary>
-        private IFormatter FindFormatterForServiceWithoutEntity(IServiceStats stat)
+        private IFormatter? FindFormatterForServiceWithoutEntity(IServiceStats stat)
         {
             if (stat.ServiceName.Contains("Phone") && 
                 _formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) && 

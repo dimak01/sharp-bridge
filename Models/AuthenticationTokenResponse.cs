@@ -10,6 +10,6 @@ namespace SharpBridge.Models
     {
         /// <summary>Authentication token</summary>
         [JsonPropertyName("authenticationToken")]
-        public string AuthenticationToken { get; set; }
+        public string AuthenticationToken { get; set; } = string.Empty;
     }
 } 

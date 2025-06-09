@@ -96,6 +96,16 @@ namespace SharpBridge.Utilities
             };
         }
 
+        /// <summary>
+        /// Sends a request to the VTube Studio API and receives the response
+        /// </summary>
+        /// <typeparam name="TRequest">The type of the request data</typeparam>
+        /// <typeparam name="TResponse">The type of the response data</typeparam>
+        /// <param name="messageType">The VTube Studio API message type</param>
+        /// <param name="requestData">The request data to send</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>The response data from the API</returns>
+        /// <exception cref="InvalidOperationException">Thrown when response data is null</exception>
         public async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
             string messageType,
             TRequest requestData,
@@ -110,7 +120,7 @@ namespace SharpBridge.Utilities
             var responseJson = await ReceiveMessageAsync(cancellationToken);
             
             var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
-            if (response.Data == null)
+            if (response?.Data == null)
             {
                 throw new InvalidOperationException($"Response data was null for message type {messageType}");
             }

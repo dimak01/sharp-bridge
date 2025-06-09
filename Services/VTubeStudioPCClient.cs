@@ -24,11 +24,11 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private DateTime _startTime;
         private int _messagesSent;
-        private PCTrackingInfo _lastTrackingData;
+        private PCTrackingInfo _lastTrackingData = new PCTrackingInfo();
         private int _connectionAttempts;
         private int _failedConnections;
-        private string _authToken;
-        private string _lastInitializationError;
+        private string _authToken = string.Empty;
+        private string _lastInitializationError = string.Empty;
         private DateTime _lastSuccessfulOperation;
         private PCClientStatus _status = PCClientStatus.Initializing;
         
@@ -283,7 +283,7 @@ namespace SharpBridge.Services
                 }
                 
                 _logger.Info("VTube Studio PC Client initialized successfully");
-                _lastInitializationError = null;
+                _lastInitializationError = string.Empty;
                 _lastSuccessfulOperation = DateTime.UtcNow;
                 _status = PCClientStatus.Connected;
                 return true;
@@ -412,7 +412,7 @@ namespace SharpBridge.Services
             _authToken = token;
             try
             {
-                File.WriteAllText(_config.TokenFilePath, token);
+                await File.WriteAllTextAsync(_config.TokenFilePath, token);
                 _logger.Debug("Saved authentication token to {0}", _config.TokenFilePath);
             }
             catch (Exception ex)
@@ -424,12 +424,12 @@ namespace SharpBridge.Services
         /// <inheritdoc />
         public async Task ClearTokenAsync()
         {
-            _authToken = null;
+            _authToken = string.Empty;
             try
             {
                 if (File.Exists(_config.TokenFilePath))
                 {
-                    File.Delete(_config.TokenFilePath);
+                    await Task.Run(() => File.Delete(_config.TokenFilePath));
                     _logger.Debug("Cleared authentication token from {0}", _config.TokenFilePath);
                 }
             }

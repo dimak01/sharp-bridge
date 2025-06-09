@@ -15,13 +15,45 @@ namespace SharpBridge.Services
     /// </summary>
     public class TransformationRule
     {
+        /// <summary>
+        /// Gets the name of the transformation rule
+        /// </summary>
         public string Name { get; }
+        
+        /// <summary>
+        /// Gets the compiled mathematical expression for this rule
+        /// </summary>
         public Expression Expression { get; }
+        
+        /// <summary>
+        /// Gets the original string representation of the expression
+        /// </summary>
         public string ExpressionString { get; }
+        
+        /// <summary>
+        /// Gets the minimum allowed value for the transformation result
+        /// </summary>
         public double Min { get; }
+        
+        /// <summary>
+        /// Gets the maximum allowed value for the transformation result
+        /// </summary>
         public double Max { get; }
+        
+        /// <summary>
+        /// Gets the default value to use when the transformation fails
+        /// </summary>
         public double DefaultValue { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TransformationRule"/> class
+        /// </summary>
+        /// <param name="name">The name of the transformation rule</param>
+        /// <param name="expression">The compiled mathematical expression</param>
+        /// <param name="expressionString">The original string representation of the expression</param>
+        /// <param name="min">The minimum allowed value for the transformation result</param>
+        /// <param name="max">The maximum allowed value for the transformation result</param>
+        /// <param name="defaultValue">The default value to use when the transformation fails</param>
         public TransformationRule(string name, Expression expression, string expressionString, 
             double min, double max, double defaultValue)
         {
@@ -55,11 +87,16 @@ namespace SharpBridge.Services
         private long _hotReloadSuccesses = 0;
         private DateTime _lastSuccessfulTransformation;
         private DateTime _rulesLoadedTime;
-        private string _lastError;
-        private string _configFilePath;
+        private string _lastError = string.Empty;
+        private string _configFilePath = string.Empty;
         private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;
         private readonly List<RuleInfo> _invalidRules = new();
         
+        /// <summary>
+        /// Initializes a new instance of the <see cref="TransformationEngine"/> class
+        /// </summary>
+        /// <param name="logger">The logger instance for logging transformation operations</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger is null</exception>
         public TransformationEngine(IAppLogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -275,8 +312,8 @@ namespace SharpBridge.Services
         
         private bool TryCreateTransformationRule(TransformRule rule, out TransformationRule transformationRule, out string error)
         {
-            transformationRule = null;
-            error = null;
+            transformationRule = null!;
+            error = string.Empty;
             
             if (string.IsNullOrWhiteSpace(rule.Func))
             {
@@ -315,12 +352,12 @@ namespace SharpBridge.Services
             if (validRules > 0 && invalidRules == 0)
             {
                 _currentStatus = TransformationEngineStatus.AllRulesActive;
-                _lastError = null;
+                _lastError = string.Empty;
             }
             else if (validRules > 0 && invalidRules > 0)
             {
                 _currentStatus = TransformationEngineStatus.SomeRulesActive;
-                _lastError = null;
+                _lastError = string.Empty;
             }
             else
             {
@@ -445,7 +482,7 @@ namespace SharpBridge.Services
             try
             {
                 result = Convert.ToDouble(expression.Evaluate());
-                error = null;
+                error = null!;
                 return true;
             }
             catch (Exception ex)

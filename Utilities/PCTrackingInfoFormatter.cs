@@ -160,7 +160,7 @@ namespace SharpBridge.Utilities
             if (trackingInfo.ParameterDefinitions?.TryGetValue(param.Id, out var definition) == true)
             {
                 double range = definition.Max - definition.Min;
-                if (range != 0)
+                if (Math.Abs(range) > double.Epsilon)
                 {
                     return Math.Max(0, Math.Min(1, (param.Value - definition.Min) / range));
                 }
@@ -255,7 +255,7 @@ namespace SharpBridge.Utilities
         /// <param name="lastSuccess">Last successful operation timestamp</param>
         /// <param name="lastError">Last error message (optional)</param>
         /// <returns>Formatted health status string</returns>
-        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string lastError = null)
+        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string? lastError = null)
         {
             var healthIcon = isHealthy ? "√" : "X";
             var healthText = (isHealthy ? "Healthy" : "Unhealthy");

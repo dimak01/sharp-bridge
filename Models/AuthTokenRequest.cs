@@ -10,14 +10,14 @@ namespace SharpBridge.Models
     {
         /// <summary>Plugin name</summary>
         [JsonPropertyName("pluginName")]
-        public string PluginName { get; set; }
+        public string PluginName { get; set; } = string.Empty;
         
         /// <summary>Plugin developer</summary>
         [JsonPropertyName("pluginDeveloper")]
-        public string PluginDeveloper { get; set; }
+        public string PluginDeveloper { get; set; } = string.Empty;
         
         /// <summary>Optional plugin icon (Base64)</summary>
         [JsonPropertyName("pluginIcon")]
-        public string PluginIcon { get; set; }
+        public string PluginIcon { get; set; } = string.Empty;
     }
 } 

@@ -15,6 +15,6 @@ namespace SharpBridge.Interfaces
         /// <param name="timeoutMs">Timeout in milliseconds</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>The discovered port, or null if not found</returns>
-        Task<DiscoveryResponse> DiscoverAsync(int timeoutMs, CancellationToken cancellationToken);
+        Task<DiscoveryResponse?> DiscoverAsync(int timeoutMs, CancellationToken cancellationToken);
     }
 } 

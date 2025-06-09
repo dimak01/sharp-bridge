@@ -8,13 +8,13 @@ namespace SharpBridge.Models
     /// </summary>
     public class TransformRule
     {
-        /// <summary>Parameter name</summary>
+        /// <summary>Name of the parameter this rule targets</summary>
         [JsonPropertyName("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         
-        /// <summary>Transformation expression</summary>
+        /// <summary>Mathematical transformation function</summary>
         [JsonPropertyName("func")]
-        public string Func { get; set; }
+        public string Func { get; set; } = string.Empty;
         
         /// <summary>Minimum parameter value</summary>
         [JsonPropertyName("min")]

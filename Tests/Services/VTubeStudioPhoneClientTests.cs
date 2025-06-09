@@ -610,5 +610,193 @@ namespace SharpBridge.Tests.Services
             var stats = client.GetServiceStats();
             stats.Status.Should().Be("SendingRequests");
         }
+        
+        // ===== NEW TESTS TO CLOSE COVERAGE GAPS =====
+        
+        [Fact]
+        public async Task TryInitializeAsync_ReturnsTrue_WhenSuccessful()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Setup successful send
+            mockUdpClient
+                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ReturnsAsync(100);
+            
+            // Setup successful receive with valid tracking data
+            var trackingData = new PhoneTrackingInfo { FaceFound = true };
+            var json = JsonSerializer.Serialize(trackingData);
+            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeTrue("initialization should succeed when iPhone responds");
+            
+            var stats = client.GetServiceStats();
+            stats.Status.Should().Be("Connected");
+            client.LastInitializationError.Should().BeEmpty("no error should be set on success");
+        }
+        
+        [Fact]
+        public async Task TryInitializeAsync_ReturnsFalse_WhenNoResponseReceived()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Setup successful send
+            mockUdpClient
+                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ReturnsAsync(100);
+            
+            // Setup receive to timeout (return false)
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new OperationCanceledException());
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeFalse("initialization should fail when no response is received");
+            
+            var stats = client.GetServiceStats();
+            stats.Status.Should().Be("InitializationFailed");
+            client.LastInitializationError.Should().Be("Failed to receive initial response from iPhone");
+        }
+        
+        [Fact]
+        public async Task TryInitializeAsync_ReturnsFalse_WhenExceptionOccurs()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Setup send to throw an exception
+            mockUdpClient
+                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ThrowsAsync(new Exception("Network error"));
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+            
+            // Assert
+            result.Should().BeFalse("initialization should fail when an exception occurs");
+            
+            var stats = client.GetServiceStats();
+            stats.Status.Should().Be("InitializationFailed");
+            client.LastInitializationError.Should().Be("Network error");
+            
+            // Verify error was logged (twice: once in SendTrackingRequestAsync, once in TryInitializeAsync)
+            mockLogger.Verify(l => l.Error(It.IsAny<string>(), It.IsAny<object[]>()), Times.Exactly(2));
+        }
+        
+        [Fact]
+        public void LastInitializationError_ReturnsEmpty_WhenNoErrorOccurred()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act & Assert
+            client.LastInitializationError.Should().BeEmpty("no error should be present initially");
+        }
+        
+        [Fact]
+        public async Task LastInitializationError_ReturnsError_AfterFailedInitialization()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            // Setup to fail during send
+            mockUdpClient
+                .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
+                .ThrowsAsync(new InvalidOperationException("Test initialization error"));
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act
+            await client.TryInitializeAsync(CancellationToken.None);
+            
+            // Assert
+            client.LastInitializationError.Should().Be("Test initialization error");
+        }
+        
+        [Fact]
+        public void GetServiceStats_DoesNotIncludeFPS_WhenNoFramesReceived()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            // Act
+            var stats = client.GetServiceStats();
+            
+            // Assert
+            stats.Counters.Should().ContainKey("Total Frames").WhoseValue.Should().Be(0);
+            stats.Counters.Should().NotContainKey("FPS", "FPS should not be included when no frames received");
+            stats.CurrentEntity.Should().BeNull("current entity should be null when no data received");
+        }
+        
+        [Fact]
+        public async Task TrackingDataReceived_InvokesEvent_WhenSubscribersExist()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
+            
+            var trackingData = new PhoneTrackingInfo { FaceFound = true };
+            var json = JsonSerializer.Serialize(trackingData);
+            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            
+            mockUdpClient
+                .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
+                
+            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            
+            bool eventInvoked = false;
+            PhoneTrackingInfo receivedData = null;
+            
+            client.TrackingDataReceived += (sender, data) => 
+            {
+                eventInvoked = true;
+                receivedData = data;
+            };
+            
+            // Act
+            await client.ReceiveResponseAsync(CancellationToken.None);
+            
+            // Assert
+            eventInvoked.Should().BeTrue("event should be invoked when subscribers exist");
+            receivedData.Should().NotBeNull();
+            receivedData.FaceFound.Should().BeTrue();
+        }
     }
 } 

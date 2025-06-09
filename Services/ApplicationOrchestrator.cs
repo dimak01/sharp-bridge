@@ -32,7 +32,7 @@ namespace SharpBridge.Services
         private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
         private bool _isDisposed;
-        private string _transformConfigPath; // Store the config path for reloading
+        private string _transformConfigPath = string.Empty; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         
         /// <summary>
@@ -103,8 +103,12 @@ namespace SharpBridge.Services
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
             
-            // Synchronize VTube Studio parameters
-            await SynchronizeParametersAsync(cancellationToken);
+            // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
+            var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
+            if (!parameterSyncSuccess)
+            {
+                _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
+            }
             
             _logger.Info("Application initialized successfully");
         }
@@ -181,21 +185,25 @@ namespace SharpBridge.Services
         }
         
         /// <summary>
-        /// Synchronizes VTube Studio parameters based on loaded transformation rules
+        /// Attempts to synchronize VTube Studio parameters based on loaded transformation rules
         /// </summary>
-        private async Task SynchronizeParametersAsync(CancellationToken cancellationToken)
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>True if synchronization was successful, false otherwise</returns>
+        private async Task<bool> TrySynchronizeParametersAsync(CancellationToken cancellationToken)
         {
-            try
+            var requiredParameters = _transformationEngine.GetParameterDefinitions();
+            var success = await _parameterManager.TrySynchronizeParametersAsync(requiredParameters, cancellationToken);
+            
+            if (success)
             {
-                var requiredParameters = _transformationEngine.GetParameterDefinitions();
-                await _parameterManager.SynchronizeParametersAsync(requiredParameters, cancellationToken);
                 _logger.Info("VTube Studio parameters synchronized successfully");
             }
-            catch (Exception ex)
+            else
             {
-                _logger.ErrorWithException("Error synchronizing VTube Studio parameters", ex);
-                throw; // Re-throw to let the caller handle initialization failure
+                _logger.Warning("Failed to synchronize VTube Studio parameters");
             }
+            
+            return success;
         }
         
         private void SubscribeToEvents()
@@ -227,7 +235,7 @@ namespace SharpBridge.Services
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     ProcessKeyboardInput();
-                    nextStatusUpdateTime = await ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
+                    nextStatusUpdateTime = ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
                     await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
                 }
                 catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
@@ -244,8 +252,8 @@ namespace SharpBridge.Services
         {
             if (DateTime.UtcNow >= _nextRecoveryAttempt)
             {
-                var needsRecovery = await AttemptRecoveryAsync(cancellationToken);
-                if (needsRecovery)
+                var recoveryAttempted = await AttemptRecoveryAsync(cancellationToken);
+                if (recoveryAttempted)
                 {
                     _logger.Info("Recovery attempt completed");
                 }
@@ -293,7 +301,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Processes console status update if it's time to do so
         /// </summary>
-        private async Task<DateTime> ProcessConsoleUpdateIfNeeded(DateTime nextStatusUpdateTime)
+        private DateTime ProcessConsoleUpdateIfNeeded(DateTime nextStatusUpdateTime)
         {
             if (DateTime.UtcNow >= nextStatusUpdateTime)
             {
@@ -396,7 +404,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Reloads the transformation configuration
         /// </summary>
-        private async void ReloadTransformationConfig()
+        private async Task ReloadTransformationConfig()
         {
             try
             {      
@@ -405,8 +413,12 @@ namespace SharpBridge.Services
                 // Use a lock or semaphore here if there are concurrency concerns
                 await InitializeTransformationEngine(_transformConfigPath);
                 
-                // Synchronize VTube Studio parameters
-                await SynchronizeParametersAsync(CancellationToken.None);
+                // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
+                var parameterSyncSuccess = await TrySynchronizeParametersAsync(CancellationToken.None);
+                if (!parameterSyncSuccess)
+                {
+                    _logger.Warning("Parameter synchronization failed during config reload");
+                }
                 
                 _logger.Info("Transformation config reloaded successfully");
             }
@@ -419,7 +431,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Handles tracking data received from the iPhone
         /// </summary>
-        private async void OnTrackingDataReceived(object sender, PhoneTrackingInfo trackingData)
+        private async void OnTrackingDataReceived(object? sender, PhoneTrackingInfo trackingData)
         {
             try
             {
@@ -498,7 +510,7 @@ namespace SharpBridge.Services
             _keyboardInputHandler.RegisterShortcut(
                 ConsoleKey.K, 
                 ConsoleModifiers.Alt, 
-                () => ReloadTransformationConfig(),
+                () => _ = ReloadTransformationConfig(),
                 "Reload transformation configuration"
             );
         }
@@ -508,7 +520,8 @@ namespace SharpBridge.Services
         /// </summary>
         private async Task<bool> AttemptRecoveryAsync(CancellationToken cancellationToken)
         {
-            bool needsRecovery = false;
+            bool recoveryAttempted = false;
+            bool pcClientRecovered = false;
             
             // Check PC client health
             var pcStats = _vtubeStudioPCClient.GetServiceStats();
@@ -516,7 +529,11 @@ namespace SharpBridge.Services
             {
                 _logger.Info("Attempting to recover PC client...");
                 await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
-                needsRecovery = true;
+                recoveryAttempted = true;
+                
+                // Check if PC client recovery was successful
+                var newPcStats = _vtubeStudioPCClient.GetServiceStats();
+                pcClientRecovered = newPcStats.IsHealthy;
             }
             
             // Check Phone client health
@@ -525,10 +542,21 @@ namespace SharpBridge.Services
             {
                 _logger.Info("Attempting to recover Phone client...");
                 await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
-                needsRecovery = true;
+                recoveryAttempted = true;
             }
             
-            return needsRecovery;
+            // If PC client was successfully recovered, try to synchronize parameters
+            if (pcClientRecovered)
+            {
+                _logger.Info("PC client recovered successfully, attempting parameter synchronization...");
+                var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
+                if (!parameterSyncSuccess)
+                {
+                    _logger.Warning("Parameter synchronization failed after PC client recovery");
+                }
+            }
+            
+            return recoveryAttempted;
         }
 
         /// <summary>

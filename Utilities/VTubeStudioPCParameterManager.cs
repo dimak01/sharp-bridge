@@ -108,7 +108,7 @@ namespace SharpBridge.Utilities
             {
                 var operation = isUpdate ? "update" : "create";
                 _logger.Error("Failed to {0} parameter {1}: {2}", operation, parameter.Name, ex.Message);
-                throw;
+                return false;
             }
         }
 
@@ -163,17 +163,17 @@ namespace SharpBridge.Utilities
             catch (Exception ex)
             {
                 _logger.Error("Failed to delete parameter {0}: {1}", parameterName, ex.Message);
-                throw;
+                return false;
             }
         }
 
         /// <summary>
-        /// Synchronizes the desired parameters with VTube Studio
+        /// Attempts to synchronize the desired parameters with VTube Studio
         /// </summary>
         /// <param name="desiredParameters">Collection of parameters that should exist in VTube Studio</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if synchronization was successful</returns>
-        public async Task<bool> SynchronizeParametersAsync(IEnumerable<VTSParameter> desiredParameters, CancellationToken cancellationToken)
+        /// <returns>True if synchronization was successful, false if it failed</returns>
+        public async Task<bool> TrySynchronizeParametersAsync(IEnumerable<VTSParameter> desiredParameters, CancellationToken cancellationToken)
         {
             try
             {
@@ -189,11 +189,21 @@ namespace SharpBridge.Utilities
 
                     if (existingParameterNames.Contains(parameter.Name))
                     {
-                        await UpdateParameterAsync(parameter, cancellationToken);
+                        var updateSuccess = await UpdateParameterAsync(parameter, cancellationToken);
+                        if (!updateSuccess)
+                        {
+                            _logger.Error("Failed to update parameter: {0}", parameter.Name);
+                            return false;
+                        }
                     }
                     else
                     {
-                        await CreateParameterAsync(parameter, cancellationToken);
+                        var createSuccess = await CreateParameterAsync(parameter, cancellationToken);
+                        if (!createSuccess)
+                        {
+                            _logger.Error("Failed to create parameter: {0}", parameter.Name);
+                            return false;
+                        }
                     }
                 }
 
@@ -202,7 +212,7 @@ namespace SharpBridge.Utilities
             catch (Exception ex)
             {
                 _logger.Error("Failed to synchronize parameters: {0}", ex.Message);
-                throw;
+                return false;
             }
         }
     }
