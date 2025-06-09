@@ -255,7 +255,7 @@ namespace SharpBridge.Utilities
         /// <param name="lastSuccess">Last successful operation timestamp</param>
         /// <param name="lastError">Last error message (optional)</param>
         /// <returns>Formatted health status string</returns>
-        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string lastError = null)
+        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string? lastError = null)
         {
             var healthIcon = isHealthy ? "√" : "X";
             var healthText = (isHealthy ? "Healthy" : "Unhealthy");

@@ -283,7 +283,7 @@ namespace SharpBridge.Services
                 }
                 
                 _logger.Info("VTube Studio PC Client initialized successfully");
-                _lastInitializationError = null;
+                _lastInitializationError = string.Empty;
                 _lastSuccessfulOperation = DateTime.UtcNow;
                 _status = PCClientStatus.Connected;
                 return true;
@@ -424,7 +424,7 @@ namespace SharpBridge.Services
         /// <inheritdoc />
         public async Task ClearTokenAsync()
         {
-            _authToken = null;
+            _authToken = string.Empty;
             try
             {
                 if (File.Exists(_config.TokenFilePath))

@@ -275,8 +275,8 @@ namespace SharpBridge.Services
         
         private bool TryCreateTransformationRule(TransformRule rule, out TransformationRule transformationRule, out string error)
         {
-            transformationRule = null;
-            error = null;
+            transformationRule = null!;
+            error = string.Empty;
             
             if (string.IsNullOrWhiteSpace(rule.Func))
             {
@@ -315,12 +315,12 @@ namespace SharpBridge.Services
             if (validRules > 0 && invalidRules == 0)
             {
                 _currentStatus = TransformationEngineStatus.AllRulesActive;
-                _lastError = null;
+                _lastError = string.Empty;
             }
             else if (validRules > 0 && invalidRules > 0)
             {
                 _currentStatus = TransformationEngineStatus.SomeRulesActive;
-                _lastError = null;
+                _lastError = string.Empty;
             }
             else
             {
@@ -445,7 +445,7 @@ namespace SharpBridge.Services
             try
             {
                 result = Convert.ToDouble(expression.Evaluate());
-                error = null;
+                error = null!;
                 return true;
             }
             catch (Exception ex)

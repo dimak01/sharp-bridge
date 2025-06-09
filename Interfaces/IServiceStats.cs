@@ -27,7 +27,7 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// The current entity being processed by the service
         /// </summary>
-        IFormattableObject CurrentEntity { get; }
+        IFormattableObject? CurrentEntity { get; }
 
         /// <summary>
         /// Gets whether the service is currently healthy
@@ -42,6 +42,6 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Gets the last error that occurred in the service
         /// </summary>
-        string LastError { get; }
+        string? LastError { get; }
     }
 } 

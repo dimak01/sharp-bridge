@@ -431,7 +431,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Handles tracking data received from the iPhone
         /// </summary>
-        private async void OnTrackingDataReceived(object sender, PhoneTrackingInfo trackingData)
+        private async void OnTrackingDataReceived(object? sender, PhoneTrackingInfo trackingData)
         {
             try
             {
