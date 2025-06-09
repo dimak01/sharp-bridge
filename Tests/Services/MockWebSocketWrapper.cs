@@ -25,7 +25,7 @@ namespace SharpBridge.Tests.Services
         public WebSocketState State 
         { 
             get => _state;
-            private set => _state = value;
+            set => _state = value;
         }
         
         /// <summary>
