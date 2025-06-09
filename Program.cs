@@ -58,13 +58,13 @@ namespace SharpBridge
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("Application was canceled.");
+                await Console.Out.WriteLineAsync("Application was canceled.");
                 return 0;
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error: {ex.Message}");
-                Console.Error.WriteLine(ex.StackTrace);
+                await Console.Error.WriteLineAsync($"Error: {ex.Message}");
+                await Console.Error.WriteLineAsync(ex.StackTrace);
                 return 1;
             }
         }
