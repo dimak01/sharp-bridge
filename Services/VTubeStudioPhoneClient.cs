@@ -82,7 +82,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     {
         try
         {
-            _lastInitializationError = null;
+            _lastInitializationError = string.Empty;
             _status = PhoneClientStatus.Initializing;
             
             // Send initial tracking request

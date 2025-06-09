@@ -1022,9 +1022,9 @@ namespace SharpBridge.Tests.Services
                 result.ParameterCalculationExpressions["TestParam2"].Should().Be("HeadPosX + HeadPosY");
                 
                 // Verify GetExpression helper method works
-                result.GetExpression("TestParam1").Should().Be("eyeBlinkLeft * 100");
-                result.GetExpression("TestParam2").Should().Be("HeadPosX + HeadPosY");
-                result.GetExpression("NonExistentParam").Should().BeNull();
+                result.ParameterCalculationExpressions["TestParam1"].Should().Be("eyeBlinkLeft * 100");
+                result.ParameterCalculationExpressions["TestParam2"].Should().Be("HeadPosX + HeadPosY");
+                result.ParameterCalculationExpressions.Should().NotContainKey("NonExistentParam");
             }
             finally
             {
