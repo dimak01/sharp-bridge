@@ -18,12 +18,24 @@ namespace SharpBridge.Services
         private readonly IUdpClientWrapper _udpClient;
         private const int VTubeStudioDiscoveryPort = 47779;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PortDiscoveryService"/> class
+        /// </summary>
+        /// <param name="logger">The logger for recording discovery operations</param>
+        /// <param name="udpClient">The UDP client wrapper for network operations</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger or udpClient is null</exception>
         public PortDiscoveryService(IAppLogger logger, IUdpClientWrapper udpClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
         }
 
+        /// <summary>
+        /// Discovers VTube Studio instances by listening for UDP broadcasts
+        /// </summary>
+        /// <param name="timeoutMs">Maximum time to wait for a discovery response in milliseconds</param>
+        /// <param name="cancellationToken">Token to cancel the discovery operation</param>
+        /// <returns>Discovery response containing VTube Studio instance information, or null if not found</returns>
         public async Task<DiscoveryResponse> DiscoverAsync(int timeoutMs, CancellationToken cancellationToken)
         {
             try
@@ -75,6 +87,9 @@ namespace SharpBridge.Services
             }
         }
         
+        /// <summary>
+        /// Releases all resources used by the port discovery service
+        /// </summary>
         public void Dispose()
         {
             _udpClient?.Dispose();

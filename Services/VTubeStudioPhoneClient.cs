@@ -64,6 +64,9 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress, _config.IphonePort);
     }
 
+    /// <summary>
+    /// Releases all resources used by the phone client
+    /// </summary>
     public void Dispose()
     {
         _logger.Debug("Disposing VTubeStudioPhoneClient");

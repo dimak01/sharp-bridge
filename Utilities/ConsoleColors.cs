@@ -6,21 +6,66 @@ namespace SharpBridge.Utilities
     public static class ConsoleColors
     {
         // Reset and formatting
+        /// <summary>
+        /// ANSI escape code to reset all formatting and colors
+        /// </summary>
         public const string Reset = "\u001b[0m";
+        
+        /// <summary>
+        /// ANSI escape code for bold text formatting
+        /// </summary>
         public const string Bold = "\u001b[1m";
+        
+        /// <summary>
+        /// ANSI escape code for underlined text formatting
+        /// </summary>
         public const string Underline = "\u001b[4m";
         
         // Status colors
+        /// <summary>
+        /// Green color for healthy status indicators
+        /// </summary>
         public const string Healthy = "\u001b[32m";      // Green
+        
+        /// <summary>
+        /// Yellow color for warning status indicators
+        /// </summary>
         public const string Warning = "\u001b[33m";      // Yellow  
+        
+        /// <summary>
+        /// Red color for error status indicators
+        /// </summary>
         public const string Error = "\u001b[31m";        // Red
+        
+        /// <summary>
+        /// Cyan color for informational status indicators
+        /// </summary>
         public const string Info = "\u001b[36m";         // Cyan
+        
+        /// <summary>
+        /// Bright green color for success status indicators
+        /// </summary>
         public const string Success = "\u001b[92m";      // Bright green
         
         // Service status colors
+        /// <summary>
+        /// Green color for connected service status
+        /// </summary>
         public const string Connected = "\u001b[32m";    // Green
+        
+        /// <summary>
+        /// Yellow color for connecting service status
+        /// </summary>
         public const string Connecting = "\u001b[33m";   // Yellow
+        
+        /// <summary>
+        /// Red color for disconnected service status
+        /// </summary>
         public const string Disconnected = "\u001b[31m"; // Red
+        
+        /// <summary>
+        /// Cyan color for initializing service status
+        /// </summary>
         public const string Initializing = "\u001b[36m"; // Cyan
         
         /// <summary>
