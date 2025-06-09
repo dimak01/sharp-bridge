@@ -9,7 +9,7 @@ namespace SharpBridge.Models
     {
         /// <summary>Parameter ID</summary>
         [JsonPropertyName("id")]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         
         /// <summary>Parameter value</summary>
         [JsonPropertyName("value")]

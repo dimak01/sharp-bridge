@@ -10,9 +10,24 @@ namespace SharpBridge.Utilities
     /// </summary>
     public static class CommandLineDefaults
     {
+        /// <summary>
+        /// Default configuration directory name
+        /// </summary>
         public const string ConfigDirectory = "Configs";
+        
+        /// <summary>
+        /// Default transform configuration filename
+        /// </summary>
         public const string TransformConfigFilename = "vts_transforms_ja.json";
+        
+        /// <summary>
+        /// Default PC configuration filename
+        /// </summary>
         public const string PCConfigFilename = "VTubeStudioPCConfig.json";
+        
+        /// <summary>
+        /// Default phone configuration filename
+        /// </summary>
         public const string PhoneConfigFilename = "VTubeStudioPhoneConfig.json";
     }
 
@@ -24,22 +39,22 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets or sets the configuration directory path
         /// </summary>
-        public string ConfigDirectory { get; set; }
+        public string ConfigDirectory { get; set; } = CommandLineDefaults.ConfigDirectory;
         
         /// <summary>
         /// Gets or sets the transform configuration filename
         /// </summary>
-        public string TransformConfigFilename { get; set; }
+        public string TransformConfigFilename { get; set; } = CommandLineDefaults.TransformConfigFilename;
         
         /// <summary>
         /// Gets or sets the PC configuration filename
-        /// </summary>EnsureConfigDirectoryExists
-        public string PCConfigFilename { get; set; }
+        /// </summary>
+        public string PCConfigFilename { get; set; } = CommandLineDefaults.PCConfigFilename;
         
         /// <summary>
         /// Gets or sets the phone configuration filename
         /// </summary>
-        public string PhoneConfigFilename { get; set; }
+        public string PhoneConfigFilename { get; set; } = CommandLineDefaults.PhoneConfigFilename;
         
         /// <summary>
         /// Gets the full path to the transform configuration file

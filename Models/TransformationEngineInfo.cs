@@ -32,7 +32,7 @@ namespace SharpBridge.Models
         public TransformationEngineInfo(
             string configFilePath, 
             int validRulesCount,
-            IReadOnlyList<RuleInfo> invalidRules = null)
+            IReadOnlyList<RuleInfo>? invalidRules = null)
         {
             ConfigFilePath = configFilePath ?? string.Empty;
             ValidRulesCount = validRulesCount;

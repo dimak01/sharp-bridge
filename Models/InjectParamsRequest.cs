@@ -15,10 +15,10 @@ namespace SharpBridge.Models
         
         /// <summary>Injection mode</summary>
         [JsonPropertyName("mode")]
-        public string Mode { get; set; }
+        public string Mode { get; set; } = string.Empty;
         
         /// <summary>Parameter values to inject</summary>
         [JsonPropertyName("parameterValues")]
-        public IEnumerable<TrackingParam> ParameterValues { get; set; }
+        public IEnumerable<TrackingParam> ParameterValues { get; set; } = Array.Empty<TrackingParam>();
     }
 } 

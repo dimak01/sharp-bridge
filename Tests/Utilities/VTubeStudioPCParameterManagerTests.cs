@@ -91,7 +91,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public async Task CreateParameterAsync_Fails_WhenParameterAlreadyExists()
+        public async Task CreateParameterAsync_ReturnsFalse_WhenParameterAlreadyExists()
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
@@ -99,9 +99,12 @@ namespace SharpBridge.Tests.Utilities
                 "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter already exists"));
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _parameterManager.CreateParameterAsync(parameter, CancellationToken.None));
+            // Act
+            var result = await _parameterManager.CreateParameterAsync(parameter, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error("Failed to {0} parameter {1}: {2}", "create", "TestParam", "Parameter already exists"), Times.Once);
         }
 
         [Fact]
@@ -121,7 +124,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public async Task UpdateParameterAsync_Fails_WhenParameterDoesNotExist()
+        public async Task UpdateParameterAsync_ReturnsFalse_WhenParameterDoesNotExist()
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
@@ -129,9 +132,12 @@ namespace SharpBridge.Tests.Utilities
                 "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter not found"));
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _parameterManager.UpdateParameterAsync(parameter, CancellationToken.None));
+            // Act
+            var result = await _parameterManager.UpdateParameterAsync(parameter, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error("Failed to {0} parameter {1}: {2}", "update", "TestParam", "Parameter not found"), Times.Once);
         }
 
         [Fact]
@@ -151,7 +157,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public async Task DeleteParameterAsync_Fails_WhenParameterDoesNotExist()
+        public async Task DeleteParameterAsync_ReturnsFalse_WhenParameterDoesNotExist()
         {
             // Arrange
             var parameterName = "TestParam";
@@ -159,13 +165,16 @@ namespace SharpBridge.Tests.Utilities
                 "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter not found"));
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(() => 
-                _parameterManager.DeleteParameterAsync(parameterName, CancellationToken.None));
+            // Act
+            var result = await _parameterManager.DeleteParameterAsync(parameterName, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error("Failed to delete parameter {0}: {1}", "TestParam", "Parameter not found"), Times.Once);
         }
 
         [Fact]
-        public async Task SynchronizeParametersAsync_SuccessfullySynchronizesParameters()
+        public async Task TrySynchronizeParametersAsync_SuccessfullySynchronizesParameters()
         {
             // Arrange
             var existingParameters = new List<VTSParameter>
@@ -204,7 +213,7 @@ namespace SharpBridge.Tests.Utilities
                 .ReturnsAsync(new ParameterCreationResponse { ParameterName = "NewParam" });
 
             // Act
-            var result = await _parameterManager.SynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
 
             // Assert
             result.Should().BeTrue();
@@ -217,7 +226,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public async Task SynchronizeParametersAsync_HandlesErrorsDuringSynchronization()
+        public async Task TrySynchronizeParametersAsync_ReturnsFalse_WhenSynchronizationFails()
         {
             // Arrange
             var existingParameters = new List<VTSParameter>
@@ -247,16 +256,19 @@ namespace SharpBridge.Tests.Utilities
                 "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Update failed"));
 
-            // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() => 
-                _parameterManager.SynchronizeParametersAsync(desiredParameters, CancellationToken.None));
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
             
-            // Verify error was logged
-            _mockLogger.Verify(x => x.Error("Failed to synchronize parameters: {0}", "Update failed"), Times.Once);
+            // Assert
+            result.Should().BeFalse();
+            
+            // Verify error was logged at parameter level
+            _mockLogger.Verify(x => x.Error("Failed to {0} parameter {1}: {2}", "update", "ExistingParam", "Update failed"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Failed to update parameter: {0}", "ExistingParam"), Times.Once);
         }
 
         [Fact]
-        public async Task SynchronizeParametersAsync_LogsErrorsAppropriately()
+        public async Task TrySynchronizeParametersAsync_LogsErrorsAppropriately()
         {
             // Arrange
             var existingParameters = new List<VTSParameter>
@@ -274,9 +286,11 @@ namespace SharpBridge.Tests.Utilities
                 "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Get parameters failed"));
 
-            // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() => 
-                _parameterManager.SynchronizeParametersAsync(desiredParameters, CancellationToken.None));
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+            
+            // Assert
+            result.Should().BeFalse();
             
             // Verify error was logged
             _mockLogger.Verify(x => x.Error("Failed to synchronize parameters: {0}", "Get parameters failed"), Times.Once);

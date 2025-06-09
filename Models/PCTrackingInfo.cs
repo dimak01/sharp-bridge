@@ -28,31 +28,14 @@ namespace SharpBridge.Models
         /// </summary>
         public bool FaceFound { get; set; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PCTrackingInfo"/> class.
+        /// </summary>
         public PCTrackingInfo()
         {
             Parameters = new List<TrackingParam>();
             ParameterDefinitions = new Dictionary<string, VTSParameter>();
             ParameterCalculationExpressions = new Dictionary<string, string>();
-        }
-
-        /// <summary>
-        /// Gets the full parameter definition for a given tracking parameter
-        /// </summary>
-        /// <param name="paramId">The parameter ID to look up</param>
-        /// <returns>The parameter definition if found, null otherwise</returns>
-        public VTSParameter GetDefinition(string paramId)
-        {
-            return ParameterDefinitions.TryGetValue(paramId, out var definition) ? definition : null;
-        }
-        
-        /// <summary>
-        /// Gets the calculation expression for a given tracking parameter
-        /// </summary>
-        /// <param name="paramId">The parameter ID to look up</param>
-        /// <returns>The calculation expression if found, null otherwise</returns>
-        public string GetExpression(string paramId)
-        {
-            return ParameterCalculationExpressions.TryGetValue(paramId, out var expression) ? expression : null;
         }
     }
 } 

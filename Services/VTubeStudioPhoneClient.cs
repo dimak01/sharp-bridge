@@ -25,18 +25,18 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private long _totalFramesReceived = 0;
     private long _failedFrames = 0;
     private DateTime _startTime;
-    private PhoneTrackingInfo _lastTrackingData;
+    private PhoneTrackingInfo _lastTrackingData = new PhoneTrackingInfo();
     private PhoneClientStatus _status = PhoneClientStatus.Initializing;
-    private string _lastInitializationError;
+    private string _lastInitializationError = string.Empty;
     private DateTime _lastSuccessfulOperation;
     
     // Health check timeout - consider unhealthy if no successful operation in this many seconds
     private const int HEALTH_TIMEOUT_SECONDS = 3;
     
     /// <summary>
-    /// Event triggered when new tracking data is received.
+    /// Event raised when tracking data is received from the iPhone
     /// </summary>
-    public event EventHandler<PhoneTrackingInfo> TrackingDataReceived;
+    public event EventHandler<PhoneTrackingInfo> TrackingDataReceived = delegate { };
     
     /// <summary>
     /// Initializes a new instance of the <see cref="VTubeStudioPhoneClient"/> class.
@@ -64,6 +64,9 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress, _config.IphonePort);
     }
 
+    /// <summary>
+    /// Releases all resources used by the phone client
+    /// </summary>
     public void Dispose()
     {
         _logger.Debug("Disposing VTubeStudioPhoneClient");
@@ -82,7 +85,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     {
         try
         {
-            _lastInitializationError = null;
+            _lastInitializationError = string.Empty;
             _status = PhoneClientStatus.Initializing;
             
             // Send initial tracking request

@@ -27,7 +27,7 @@ namespace SharpBridge.Models
         /// <summary>
         /// The current entity being processed by the service
         /// </summary>
-        public IFormattableObject CurrentEntity { get; }
+        public IFormattableObject? CurrentEntity { get; }
 
         /// <summary>
         /// Gets whether the service is currently healthy
@@ -42,7 +42,7 @@ namespace SharpBridge.Models
         /// <summary>
         /// Gets the last error that occurred in the service
         /// </summary>
-        public string LastError { get; }
+        public string? LastError { get; }
         
         /// <summary>
         /// Creates a new instance of ServiceStats
@@ -50,11 +50,11 @@ namespace SharpBridge.Models
         public ServiceStats(
             string serviceName, 
             string status, 
-            IFormattableObject currentEntity, 
+            IFormattableObject? currentEntity, 
             bool isHealthy = true,
             DateTime lastSuccessfulOperation = default,
-            string lastError = null,
-            Dictionary<string, long> counters = null)
+            string? lastError = null,
+            Dictionary<string, long>? counters = null)
         {
             ServiceName = serviceName;
             Status = status;
