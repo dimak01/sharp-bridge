@@ -14,16 +14,29 @@ namespace SharpBridge.Utilities
         private const int PortDiscoveryPort = 47779;
         private const int PortDiscoveryTimeoutMs = 2000;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="UdpClientWrapperFactory"/> class
+        /// </summary>
+        /// <param name="phoneConfig">The phone client configuration</param>
+        /// <exception cref="ArgumentNullException">Thrown when phoneConfig is null</exception>
         public UdpClientWrapperFactory(VTubeStudioPhoneClientConfig phoneConfig)
         {
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
         }
 
+        /// <summary>
+        /// Creates a UDP client wrapper configured for phone client operations
+        /// </summary>
+        /// <returns>A configured UDP client wrapper for phone communication</returns>
         public IUdpClientWrapper CreateForPhoneClient()
         {
             return new UdpClientWrapper(new UdpClient(_phoneConfig.LocalPort));
         }
 
+        /// <summary>
+        /// Creates a UDP client wrapper configured for port discovery operations
+        /// </summary>
+        /// <returns>A configured UDP client wrapper for port discovery</returns>
         public IUdpClientWrapper CreateForPortDiscovery()
         {
             var client = new UdpClient();
