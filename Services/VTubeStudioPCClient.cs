@@ -412,7 +412,7 @@ namespace SharpBridge.Services
             _authToken = token;
             try
             {
-                File.WriteAllText(_config.TokenFilePath, token);
+                await File.WriteAllTextAsync(_config.TokenFilePath, token);
                 _logger.Debug("Saved authentication token to {0}", _config.TokenFilePath);
             }
             catch (Exception ex)
@@ -429,7 +429,7 @@ namespace SharpBridge.Services
             {
                 if (File.Exists(_config.TokenFilePath))
                 {
-                    File.Delete(_config.TokenFilePath);
+                    await Task.Run(() => File.Delete(_config.TokenFilePath));
                     _logger.Debug("Cleared authentication token from {0}", _config.TokenFilePath);
                 }
             }

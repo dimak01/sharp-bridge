@@ -120,7 +120,7 @@ namespace SharpBridge.Utilities
             var responseJson = await ReceiveMessageAsync(cancellationToken);
             
             var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
-            if (response.Data == null)
+            if (response?.Data == null)
             {
                 throw new InvalidOperationException($"Response data was null for message type {messageType}");
             }

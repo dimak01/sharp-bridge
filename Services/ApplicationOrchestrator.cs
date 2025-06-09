@@ -235,7 +235,7 @@ namespace SharpBridge.Services
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     ProcessKeyboardInput();
-                    nextStatusUpdateTime = await ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
+                    nextStatusUpdateTime = ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
                     await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
                 }
                 catch (Exception ex) when (!(ex is OperationCanceledException && cancellationToken.IsCancellationRequested))
@@ -301,7 +301,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Processes console status update if it's time to do so
         /// </summary>
-        private async Task<DateTime> ProcessConsoleUpdateIfNeeded(DateTime nextStatusUpdateTime)
+        private DateTime ProcessConsoleUpdateIfNeeded(DateTime nextStatusUpdateTime)
         {
             if (DateTime.UtcNow >= nextStatusUpdateTime)
             {

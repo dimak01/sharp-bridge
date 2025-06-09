@@ -16,7 +16,7 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
-        IFormatter GetFormatter<T>() where T : IFormattableObject;
+        IFormatter? GetFormatter<T>() where T : IFormattableObject;
 
         /// <summary>
         /// Updates the display with service statistics
