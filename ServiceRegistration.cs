@@ -106,6 +106,9 @@ namespace SharpBridge
             // Register table formatter
             services.AddSingleton<ITableFormatter, TableFormatter>();
             
+            // Register parameter color service
+            services.AddSingleton<IParameterColorService, ParameterColorService>();
+            
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();
             services.AddSingleton<PCTrackingInfoFormatter>();
