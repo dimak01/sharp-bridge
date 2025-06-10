@@ -78,6 +78,7 @@ namespace SharpBridge.Services
         
         private readonly List<TransformationRule> _rules = new();
         private readonly IAppLogger _logger;
+        private readonly IParameterColorService? _colorService;
         
         // Statistics tracking fields
         private long _totalTransformations = 0;
@@ -96,10 +97,12 @@ namespace SharpBridge.Services
         /// Initializes a new instance of the <see cref="TransformationEngine"/> class
         /// </summary>
         /// <param name="logger">The logger instance for logging transformation operations</param>
+        /// <param name="colorService">Optional parameter color service for colored console output</param>
         /// <exception cref="ArgumentNullException">Thrown when logger is null</exception>
-        public TransformationEngine(IAppLogger logger)
+        public TransformationEngine(IAppLogger logger, IParameterColorService? colorService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _colorService = colorService;
         }
         
         /// <summary>
@@ -369,12 +372,91 @@ namespace SharpBridge.Services
             {
                 _rulesLoadedTime = DateTime.UtcNow;
                 _hotReloadSuccesses++;
+                
+                // Initialize color service with loaded rules if available
+                InitializeColorService();
             }
             
             if (invalidRules > 0)
             {
                 LogValidationErrors(validRules, invalidRules, validationErrors);
             }
+        }
+        
+        /// <summary>
+        /// Initializes the color service with current transformation rules and extracted blend shape names
+        /// </summary>
+        private void InitializeColorService()
+        {
+            if (_colorService == null) return;
+            
+            try
+            {
+                // Create expressions dictionary from loaded rules
+                var expressions = _rules.ToDictionary(r => r.Name, r => r.ExpressionString);
+                
+                // Extract blend shape names from expressions and known tracking parameters
+                var blendShapeNames = ExtractBlendShapeNames(expressions.Values);
+                
+                _colorService.InitializeFromConfiguration(expressions, blendShapeNames);
+                _logger.Debug($"Color service initialized with {expressions.Count} expressions and {blendShapeNames.Count()} blend shapes");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Failed to initialize color service: {ex.Message}");
+                // Color service failure is not critical - continue without coloring
+            }
+        }
+        
+        /// <summary>
+        /// Extracts blend shape names from transformation expressions and known parameter names
+        /// </summary>
+        /// <param name="expressions">Collection of transformation expressions</param>
+        /// <returns>Collection of detected blend shape names</returns>
+        private IEnumerable<string> ExtractBlendShapeNames(IEnumerable<string> expressions)
+        {
+            // Known parameter prefixes that are NOT blend shapes
+            var nonBlendShapePrefixes = new[] { "HeadPos", "HeadRot", "EyeLeft", "EyeRight" };
+            
+            var allParameterNames = new HashSet<string>();
+            
+            // Extract parameter names from all expressions using simple regex
+            // This is a basic implementation - could be enhanced in Phase 2
+            foreach (var expression in expressions)
+            {
+                if (string.IsNullOrEmpty(expression)) continue;
+                
+                // Simple regex to find parameter-like tokens (letters, numbers, underscores)
+                var matches = System.Text.RegularExpressions.Regex.Matches(expression, @"\b[a-zA-Z][a-zA-Z0-9_]*\b");
+                foreach (System.Text.RegularExpressions.Match match in matches)
+                {
+                    var paramName = match.Value;
+                    // Skip known non-blend-shape parameters and operators/functions
+                    if (!IsKnownOperatorOrFunction(paramName) && !StartsWithAnyPrefix(paramName, nonBlendShapePrefixes))
+                    {
+                        allParameterNames.Add(paramName);
+                    }
+                }
+            }
+            
+            return allParameterNames;
+        }
+        
+        /// <summary>
+        /// Checks if a parameter name starts with any of the given prefixes
+        /// </summary>
+        private bool StartsWithAnyPrefix(string paramName, string[] prefixes)
+        {
+            return prefixes.Any(prefix => paramName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        }
+        
+        /// <summary>
+        /// Checks if a token is a known mathematical operator or function
+        /// </summary>
+        private bool IsKnownOperatorOrFunction(string token)
+        {
+            var knownTokens = new[] { "and", "or", "not", "if", "in", "abs", "sin", "cos", "tan", "sqrt", "max", "min" };
+            return knownTokens.Contains(token.ToLowerInvariant());
         }
         
         private void LogValidationErrors(int validRules, int invalidRules, List<string> validationErrors)

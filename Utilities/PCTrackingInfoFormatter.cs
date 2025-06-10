@@ -16,16 +16,19 @@ namespace SharpBridge.Utilities
         
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
+        private readonly IParameterColorService _colorService;
         
         /// <summary>
         /// Initializes a new instance of the PCTrackingInfoFormatter
         /// </summary>
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
-        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter)
+        /// <param name="colorService">Parameter color service for colored display</param>
+        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
+            _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         }
         
         /// <summary>
@@ -140,11 +143,11 @@ namespace SharpBridge.Utilities
             // Define columns for the generic table
             var columns = new List<ITableColumn<TrackingParam>>
             {
-                new TextColumn<TrackingParam>("Parameter", param => param.Id, minWidth: 8),
+                new TextColumn<TrackingParam>("Parameter", param => _colorService.GetColoredParameterName(param.Id), minWidth: 8),
                 new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
                 new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
                 new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
-                new TextColumn<TrackingParam>("Expression", param => FormatExpression(param, trackingInfo), minWidth: 15, maxWidth: 90)
+                new TextColumn<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
             };
 
             // Use the new generic table formatter - let it handle display limits
