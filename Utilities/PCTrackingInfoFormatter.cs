@@ -143,7 +143,7 @@ namespace SharpBridge.Utilities
             // Define columns for the generic table
             var columns = new List<ITableColumn<TrackingParam>>
             {
-                new TextColumn<TrackingParam>("Parameter", param => _colorService.GetColoredParameterName(param.Id), minWidth: 8),
+                new TextColumn<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
                 new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
                 new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
                 new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),

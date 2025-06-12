@@ -60,20 +60,25 @@ This document tracks the implementation of color-coded parameter names and expre
 
 ### Phase 2: Basic Color Implementation
 
-#### Step 2.1: Color Constants & Assignment ⬜
-- [ ] Add color constants to `ConsoleColors.cs`:
-  - [ ] `BlendShapeColor = "\u001b[96m"` (Light Cyan)
-  - [ ] `CalculatedParameterColor = "\u001b[93m"` (Light Yellow)
-- [ ] Implement color assignment in `ParameterColorService`:
-  - [ ] `_blendShapeColors` dictionary for blend shape → color mapping
-  - [ ] `_parameterColors` dictionary for parameter → color mapping
+#### Step 2.1: Color Constants & Assignment ✅
+- [x] Add color constants to `ConsoleColors.cs`:
+  - [x] `BlendShapeColor = "\u001b[96m"` (Light Cyan)
+  - [x] `CalculatedParameterColor = "\u001b[93m"` (Light Yellow)
+  - [x] Helper methods: `ColorizeBlendShape()`, `ColorizeCalculatedParameter()`, `Colorize()`
+- [x] Implement color assignment in `ParameterColorService`:
+  - [x] `_blendShapeColors` dictionary for blend shape → color mapping
+  - [x] `_parameterColors` dictionary for parameter → color mapping
+  - [x] `_coloredExpressionCache` dictionary for future expression caching
+  - [x] Clear mappings on reinitialization for configuration reload support
 
-#### Step 2.2: Basic Parameter Name Coloring ⬜
-- [ ] Implement `GetColoredParameterName`:
-  - [ ] Check if parameter is blend shape → return cyan colored
-  - [ ] Check if parameter is calculated parameter → return yellow colored  
-  - [ ] Fallback to uncolored if not found
-- [ ] Add unit tests for parameter name coloring
+#### Step 2.2: Basic Parameter Name Coloring ✅
+- [x] Implement `GetColoredParameterName`:
+  - [x] Check if parameter is blend shape → return cyan colored
+  - [x] Check if parameter is calculated parameter → return yellow colored  
+  - [x] Blend shapes have priority over calculated parameters (if same name exists)
+  - [x] Fallback to uncolored if not found
+  - [x] Handle null/empty input gracefully
+- [x] Add comprehensive unit tests for parameter name coloring (14 test cases)
 
 #### Step 2.3: Basic Expression Coloring ⬜
 - [ ] Implement `GetColoredExpression` with simple token replacement:
@@ -175,6 +180,6 @@ This document tracks the implementation of color-coded parameter names and expre
 ---
 
 ## Progress Tracking
-- **Current Phase**: Phase 1 - Foundation & Integration Testing
-- **Last Updated**: [Update when working on this]
-- **Estimated Completion**: [Update with timeline] 
+- **Current Phase**: Phase 2 - Basic Color Implementation (Steps 2.1 & 2.2 Complete)
+- **Last Updated**: Step 2.1 Color Constants & Assignment completed with comprehensive testing
+- **Next Step**: Step 2.3 Basic Expression Coloring with regex-based parameter replacement 

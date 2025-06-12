@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace SharpBridge.Utilities
 {
     /// <summary>
@@ -5,6 +7,8 @@ namespace SharpBridge.Utilities
     /// </summary>
     public static class ConsoleColors
     {
+        // Cache the compiled regex for ANSI escape sequence removal
+        private static readonly Regex AnsiEscapeRegex = new Regex(@"\u001b\[[0-9;]*m", RegexOptions.Compiled);
         // Reset and formatting
         /// <summary>
         /// ANSI escape code to reset all formatting and colors
@@ -69,6 +73,18 @@ namespace SharpBridge.Utilities
         public const string Initializing = "\u001b[36m"; // Cyan
         
         /// <summary>
+        /// Light cyan color for blend shape names (iPhone source data)
+        /// Color-blind friendly and visually distinct
+        /// </summary>
+        public const string BlendShapeColor = "\u001b[96m";
+        
+        /// <summary>
+        /// Light yellow color for calculated parameter names (PC derived parameters)
+        /// Color-blind friendly and visually distinct from blend shapes
+        /// </summary>
+        public const string CalculatedParameterColor = "\u001b[93m";
+        
+        /// <summary>
         /// Wraps text with the specified color and resets afterward
         /// </summary>
         /// <param name="text">Text to colorize</param>
@@ -76,7 +92,30 @@ namespace SharpBridge.Utilities
         /// <returns>Colorized text with reset</returns>
         public static string Colorize(string text, string color)
         {
+            if (string.IsNullOrEmpty(text))
+                return text;
+                
             return $"{color}{text}{Reset}";
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize blend shape names
+        /// </summary>
+        /// <param name="blendShapeName">Blend shape name to colorize</param>
+        /// <returns>Blend shape name in light cyan with reset</returns>
+        public static string ColorizeBlendShape(string blendShapeName)
+        {
+            return Colorize(blendShapeName, BlendShapeColor);
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize calculated parameter names
+        /// </summary>
+        /// <param name="parameterName">Parameter name to colorize</param>
+        /// <returns>Parameter name in light yellow with reset</returns>
+        public static string ColorizeCalculatedParameter(string parameterName)
+        {
+            return Colorize(parameterName, CalculatedParameterColor);
         }
         
         /// <summary>
@@ -107,6 +146,21 @@ namespace SharpBridge.Utilities
                 var s when s.Contains("initializ") => Initializing,
                 _ => Info
             };
+        }
+        
+        /// <summary>
+        /// Calculates the visual length of a string, excluding ANSI escape sequences.
+        /// This is essential for proper padding and alignment when using colored text.
+        /// </summary>
+        /// <param name="text">Text that may contain ANSI escape sequences</param>
+        /// <returns>The number of visible characters (excluding ANSI sequences)</returns>
+        public static int GetVisualLength(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+            
+            // Strip all ANSI escape sequences and return visible character count
+            return AnsiEscapeRegex.Replace(text, "").Length;
         }
     }
 } 

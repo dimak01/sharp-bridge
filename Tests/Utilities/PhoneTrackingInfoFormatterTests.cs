@@ -120,7 +120,7 @@ namespace SharpBridge.Tests.Utilities
             
             _mockColorService = new Mock<IParameterColorService>();
             // Setup default pass-through behavior for color service
-            _mockColorService.Setup(x => x.GetColoredParameterName(It.IsAny<string>())).Returns<string>(s => s);
+            _mockColorService.Setup(x => x.GetColoredBlendShapeName(It.IsAny<string>())).Returns<string>(s => s);
             _mockColorService.Setup(x => x.GetColoredExpression(It.IsAny<string>())).Returns<string>(s => s);
             
             _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);

@@ -47,8 +47,10 @@ namespace SharpBridge.Utilities
             MaxWidth = maxWidth;
             _valueSelector = valueSelector ?? throw new ArgumentNullException(nameof(valueSelector));
             _tableFormatter = tableFormatter ?? new TableFormatter(); // Default fallback
-            // ValueFormatter returns a sample bar for width calculation
-            ValueFormatter = item => FormatCell(item, MinWidth);
+            // ValueFormatter returns a representative bar for width calculation
+            // Use a reasonable default width that represents typical progress bar size
+            var representativeWidth = Math.Max(MinWidth, 10);
+            ValueFormatter = item => _tableFormatter.CreateProgressBar(_valueSelector(item), representativeWidth);
         }
         
         /// <summary>
@@ -71,15 +73,6 @@ namespace SharpBridge.Utilities
         public string FormatHeader(int width)
         {
             return Header.PadRight(width); // Progress bars typically left-align headers
-        }
-
-        private string FormatCell(object? value, int width)
-        {
-            if (value == null) return new string('░', width);
-            var normalizedValue = Convert.ToDouble(value);
-            var filledCount = (int)(normalizedValue * width);
-            var emptyCount = width - filledCount;
-            return new string('█', filledCount) + new string('░', emptyCount);
         }
     }
 } 
