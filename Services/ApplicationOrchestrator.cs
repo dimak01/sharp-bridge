@@ -419,6 +419,10 @@ namespace SharpBridge.Services
                 // Use a lock or semaphore here if there are concurrency concerns
                 await InitializeTransformationEngine(_transformConfigPath);
                 
+                // Reset color service initialization flag so it will be reinitialized with new config
+                _colorServiceInitialized = false;
+                _logger.Debug("Color service initialization flag reset for config reload");
+                
                 // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
                 var parameterSyncSuccess = await TrySynchronizeParametersAsync(CancellationToken.None);
                 if (!parameterSyncSuccess)
