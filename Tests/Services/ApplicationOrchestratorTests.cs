@@ -1886,5 +1886,371 @@ namespace SharpBridge.Tests.Services
             _loggerMock.Verify(x => x.Info("PC client recovered successfully, attempting parameter synchronization..."), Times.AtLeastOnce);
             _loggerMock.Verify(x => x.Warning("Parameter synchronization failed after PC client recovery"), Times.AtLeastOnce);
         }
+
+        // Tests for Color Service Integration
+
+        [Fact]
+        public void Constructor_WithNullColorService_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    null));
+
+            Assert.Equal("colorService", exception.ParamName);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WithValidBlendShapes_InitializesColorServiceOnce()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var trackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                    new BlendShape { Key = "eyeBlinkRight", Value = 0.3 },
+                    new BlendShape { Key = "jawOpen", Value = 0.8 }
+                }
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(trackingData))
+                .Returns(pcTrackingInfo);
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act - Trigger the event multiple times
+            bool eventTriggered1 = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
+            bool eventTriggered2 = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(eventTriggered1, "First event should have been triggered");
+            Assert.True(eventTriggered2, "Second event should have been triggered");
+            
+            // Verify color service was initialized exactly once with the blend shape names
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.Is<IEnumerable<string>>(names => 
+                    names.Contains("eyeBlinkLeft") && 
+                    names.Contains("eyeBlinkRight") && 
+                    names.Contains("jawOpen"))), 
+                Times.Once);
+                
+            // Verify debug log was written
+            _loggerMock.Verify(x => x.Debug(It.Is<string>(msg => 
+                msg.Contains("Color service initialized with") && 
+                msg.Contains("expressions and") && 
+                msg.Contains("blend shapes"))), 
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WithEmptyBlendShapes_DoesNotInitializeColorService()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var trackingDataWithEmptyBlendShapes = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>() // Empty blend shapes
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(trackingDataWithEmptyBlendShapes))
+                .Returns(pcTrackingInfo);
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act
+            bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingDataWithEmptyBlendShapes, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(eventTriggered, "Event should have been triggered");
+            
+            // Verify color service was NOT initialized
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>()), 
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WithNullBlendShapes_DoesNotInitializeColorService()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var trackingDataWithNullBlendShapes = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = null // Null blend shapes
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(trackingDataWithNullBlendShapes))
+                .Returns(pcTrackingInfo);
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act
+            bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingDataWithNullBlendShapes, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(eventTriggered, "Event should have been triggered");
+            
+            // Verify color service was NOT initialized
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>()), 
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WhenColorServiceInitializationFails_ContinuesProcessingGracefully()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var trackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                    new BlendShape { Key = "eyeBlinkRight", Value = 0.3 }
+                }
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(trackingData))
+                .Returns(pcTrackingInfo);
+
+            // Setup color service to throw exception during initialization
+            _colorServiceMock.Setup(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>()))
+                .Throws(new InvalidOperationException("Color service initialization failed"));
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act
+            bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(eventTriggered, "Event should have been triggered despite color service failure");
+            
+            // Verify transformation and sending still occurred
+            _transformationEngineMock.Verify(x => x.TransformData(trackingData), Times.Once);
+            _vtubeStudioPCClientMock.Verify(x => x.SendTrackingAsync(
+                It.Is<PCTrackingInfo>(info => info.FaceFound == true), 
+                It.IsAny<CancellationToken>()), 
+                Times.Once);
+                
+            // Verify warning was logged
+            _loggerMock.Verify(x => x.Warning(It.Is<string>(msg => 
+                msg.Contains("Failed to initialize color service") && 
+                msg.Contains("Color service initialization failed"))), 
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WithBlendShapesContainingEmptyKeys_FiltersOutEmptyKeys()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var trackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                    new BlendShape { Key = "", Value = 0.3 }, // Empty key should be filtered out
+                    new BlendShape { Key = "jawOpen", Value = 0.8 },
+                    new BlendShape { Key = null, Value = 0.2 } // Null key should be filtered out
+                }
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(trackingData))
+                .Returns(pcTrackingInfo);
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act
+            bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(eventTriggered, "Event should have been triggered");
+            
+            // Verify color service was initialized with only valid blend shape names (empty/null keys filtered out)
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.Is<IEnumerable<string>>(names => 
+                    names.Contains("eyeBlinkLeft") && 
+                    names.Contains("jawOpen") && 
+                    names.Count() == 2)), // Only 2 valid names, empty and null filtered out
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnTrackingDataReceived_AfterColorServiceInitialized_DoesNotReinitialize()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var firstTrackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                    new BlendShape { Key = "eyeBlinkRight", Value = 0.3 }
+                }
+            };
+            
+            var secondTrackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "jawOpen", Value = 0.8 },
+                    new BlendShape { Key = "mouthSmile", Value = 0.6 }
+                }
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<PhoneTrackingInfo>()))
+                .Returns(pcTrackingInfo);
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act - Trigger events with different blend shapes
+            bool firstEventTriggered = await RunWithTimeoutAndEventTrigger(firstTrackingData, TimeSpan.FromMilliseconds(100));
+            bool secondEventTriggered = await RunWithTimeoutAndEventTrigger(secondTrackingData, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(firstEventTriggered, "First event should have been triggered");
+            Assert.True(secondEventTriggered, "Second event should have been triggered");
+            
+            // Verify color service was initialized exactly once (with the first tracking data)
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.Is<IEnumerable<string>>(names => 
+                    names.Contains("eyeBlinkLeft") && 
+                    names.Contains("eyeBlinkRight") && 
+                    names.Count() == 2)), 
+                Times.Once);
+                
+            // Verify it was NOT called with the second set of blend shapes
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.Is<IEnumerable<string>>(names => 
+                    names.Contains("jawOpen") || names.Contains("mouthSmile"))), 
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task ReloadTransformationConfig_ResetsColorServiceInitializationFlag()
+        {
+            // Arrange
+            SetupOrchestratorTest();
+            
+            var firstTrackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "eyeBlinkLeft", Value = 0.5 },
+                    new BlendShape { Key = "eyeBlinkRight", Value = 0.3 }
+                }
+            };
+            
+            var secondTrackingData = new PhoneTrackingInfo
+            {
+                FaceFound = true,
+                BlendShapes = new List<BlendShape>
+                {
+                    new BlendShape { Key = "jawOpen", Value = 0.8 },
+                    new BlendShape { Key = "mouthSmile", Value = 0.6 }
+                }
+            };
+
+            var pcTrackingInfo = new PCTrackingInfo();
+            _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<PhoneTrackingInfo>()))
+                .Returns(pcTrackingInfo);
+
+            // Capture the reload action from keyboard shortcut registration
+            Action reloadAction = null;
+            _keyboardInputHandlerMock
+                .Setup(x => x.RegisterShortcut(
+                    ConsoleKey.K,
+                    ConsoleModifiers.Alt,
+                    It.IsAny<Action>(),
+                    It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+
+            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+
+            // Act - First tracking data should initialize color service
+            bool firstEventTriggered = await RunWithTimeoutAndEventTrigger(firstTrackingData, TimeSpan.FromMilliseconds(100));
+            
+            // Trigger config reload using captured action
+            reloadAction.Should().NotBeNull("Reload action should be registered");
+            reloadAction();
+            
+            // Small delay to allow config reload to complete
+            await Task.Delay(100);
+            
+            // Second tracking data should reinitialize color service after config reload
+            bool secondEventTriggered = await RunWithTimeoutAndEventTrigger(secondTrackingData, TimeSpan.FromMilliseconds(100));
+
+            // Assert
+            Assert.True(firstEventTriggered, "First event should have been triggered");
+            Assert.True(secondEventTriggered, "Second event should have been triggered");
+            
+            // Verify color service was initialized twice - once for each tracking data after config reload
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>()), 
+                Times.Exactly(2));
+                
+            // Verify first initialization with first set of blend shapes
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.Is<IEnumerable<string>>(names => 
+                    names.Contains("eyeBlinkLeft") && 
+                    names.Contains("eyeBlinkRight") && 
+                    names.Count() == 2)), 
+                Times.Once);
+                
+            // Verify second initialization with second set of blend shapes after config reload
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<Dictionary<string, string>>(),
+                It.Is<IEnumerable<string>>(names => 
+                    names.Contains("jawOpen") && 
+                    names.Contains("mouthSmile") && 
+                    names.Count() == 2)), 
+                Times.Once);
+                
+            // Verify debug log for color service reset
+            _loggerMock.Verify(x => x.Debug("Color service initialization flag reset for config reload"), 
+                Times.Once);
+        }
     }
 }
