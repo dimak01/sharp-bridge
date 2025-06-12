@@ -10,9 +10,9 @@ namespace SharpBridge.Interfaces
     public interface IParameterColorService
     {
         /// <summary>
-        /// Initialize color mappings from transformation configuration data.
+        /// Initialize the service with transformation configuration data.
         /// This method is called once when configuration is loaded to set up
-        /// color assignments for blend shapes and calculated parameters.
+        /// the known parameter names for expression coloring.
         /// </summary>
         /// <param name="expressions">Dictionary of parameter names to their transformation expressions</param>
         /// <param name="blendShapeNames">Collection of blend shape names from iPhone tracking data</param>
@@ -20,20 +20,27 @@ namespace SharpBridge.Interfaces
         
         /// <summary>
         /// Gets a color-coded version of a transformation expression.
-        /// Parameter names within the expression are colored according to their type
-        /// (blend shapes vs calculated parameters). Results are cached for performance.
+        /// Calculated parameters are colored yellow, blend shapes are colored cyan (with priority).
+        /// Results are cached for performance.
         /// </summary>
         /// <param name="expression">The transformation expression to colorize</param>
         /// <returns>Expression with parameter names color-coded using ANSI escape sequences</returns>
         string GetColoredExpression(string expression);
         
         /// <summary>
-        /// Gets a color-coded version of a parameter name.
-        /// Colors are assigned based on parameter type: blend shapes (light cyan) 
-        /// vs calculated parameters (light yellow).
+        /// Gets a color-coded version of a blend shape name (iPhone source data).
+        /// Always returns the name in light cyan color.
         /// </summary>
-        /// <param name="parameterName">The parameter name to colorize</param>
-        /// <returns>Parameter name with appropriate color coding using ANSI escape sequences</returns>
-        string GetColoredParameterName(string parameterName);
+        /// <param name="blendShapeName">The blend shape name to colorize</param>
+        /// <returns>Blend shape name in light cyan with ANSI escape sequences</returns>
+        string GetColoredBlendShapeName(string blendShapeName);
+        
+        /// <summary>
+        /// Gets a color-coded version of a calculated parameter name (PC derived data).
+        /// Always returns the name in light yellow color.
+        /// </summary>
+        /// <param name="parameterName">The calculated parameter name to colorize</param>
+        /// <returns>Parameter name in light yellow with ANSI escape sequences</returns>
+        string GetColoredCalculatedParameterName(string parameterName);
     }
 } 

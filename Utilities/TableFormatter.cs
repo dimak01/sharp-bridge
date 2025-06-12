@@ -82,11 +82,11 @@ namespace SharpBridge.Utilities
             for (int i = 0; i < columns.Count; i++)
             {
                 var column = columns[i];
-                var headerWidth = column.Header.Length;
+                var headerWidth = ConsoleColors.GetVisualLength(column.Header);
                 var minWidth = column.MinWidth;
                 
-                // Use ValueFormatter to get natural content width
-                var maxContentWidth = rows.Max(r => column.ValueFormatter(r).Length);
+                // Use ValueFormatter to get natural content width (accounting for ANSI sequences)
+                var maxContentWidth = rows.Max(r => ConsoleColors.GetVisualLength(column.ValueFormatter(r)));
                 
                 var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
                 
@@ -127,11 +127,11 @@ namespace SharpBridge.Utilities
             for (int i = 0; i < columns.Count; i++)
             {
                 var column = columns[i];
-                var headerWidth = column.Header.Length;
+                var headerWidth = ConsoleColors.GetVisualLength(column.Header);
                 var minWidth = column.MinWidth;
                 
-                // Use ValueFormatter to get natural content width
-                var maxContentWidth = rows.Max(r => column.ValueFormatter(r).Length);
+                // Use ValueFormatter to get natural content width (accounting for ANSI sequences)
+                var maxContentWidth = rows.Max(r => ConsoleColors.GetVisualLength(column.ValueFormatter(r)));
                 
                 var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
                 
