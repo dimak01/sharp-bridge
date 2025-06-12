@@ -25,6 +25,7 @@ namespace SharpBridge.Tests.Services
         private Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
         private Mock<IRecoveryPolicy> _recoveryPolicyMock;
         private Mock<IConsole> _consoleMock;
+        private Mock<IParameterColorService> _colorServiceMock;
         private ApplicationOrchestrator _orchestrator;
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
@@ -45,6 +46,7 @@ namespace SharpBridge.Tests.Services
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
             _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
             _consoleMock = new Mock<IConsole>();
+            _colorServiceMock = new Mock<IParameterColorService>();
             
             // Configure recovery policy to return 2 second delay
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
@@ -90,7 +92,8 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object
+                _consoleMock.Object,
+                _colorServiceMock.Object
             );
                 
             // Create temp config file for tests
@@ -109,7 +112,8 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object
+                _consoleMock.Object,
+                _colorServiceMock.Object
             );
         }
         
@@ -797,7 +801,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -814,7 +818,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -831,7 +835,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -848,7 +852,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
 
@@ -866,7 +870,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -883,7 +887,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -899,7 +903,7 @@ namespace SharpBridge.Tests.Services
                 null,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -915,7 +919,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 null,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -931,7 +935,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 null,
-                _consoleMock.Object));
+                _consoleMock.Object, Mock.Of<IParameterColorService>()));
         }
 
         [Fact]
@@ -947,7 +951,8 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                null));
+                null,
+                Mock.Of<IParameterColorService>()));
         }
 
         // Additional Initialization Tests

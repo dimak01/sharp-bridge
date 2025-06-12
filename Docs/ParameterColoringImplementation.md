@@ -28,19 +28,24 @@ This document tracks the implementation of color-coded parameter names and expre
 
 #### Step 1.3: Integration Points ✅
 - [x] Register service in `ServiceRegistration.cs`
-- [x] Update `PCTrackingInfoFormatter` constructor to inject `IParameterColorService`
-- [x] Update `PhoneTrackingInfoFormatter` constructor to inject `IParameterColorService`
-- [x] Update `TransformationEngine` constructor to optionally inject `IParameterColorService`
-- [x] Modify column definitions to use color service methods:
-  - [x] Parameter names: `_colorService.GetColoredParameterName(param.Id)`
-  - [x] Expressions: `_colorService.GetColoredExpression(expression)`
-  - [x] Blend shape names: `_colorService.GetColoredParameterName(shape.Key)`
+- [x] Update `PCTrackingInfoFormatter` constructor and column definitions
+- [x] Update `PhoneTrackingInfoFormatter` constructor and column definitions
+- [x] Add color service to `ApplicationOrchestrator` (moved from TransformationEngine)
+- [x] Add color service initialization in `OnTrackingDataReceived` on first successful data
 
-#### Step 1.4: Integration Testing ✅
-- [x] Build application successfully
-- [x] Run all unit tests (should pass with pass-through behavior)
-- [x] Update test mocks to include color service parameter
+#### Step 1.4: Testing & Verification ✅
+- [x] Update all test constructors to include mock color service
+- [x] Run build - ✅ Success
+- [x] Run all tests - ✅ All 437 tests pass
 - [x] Verify no regressions in existing functionality
+
+#### Step 1.5: Architecture Cleanup ✅
+- [x] Remove color service from `TransformationEngine` (moved to `ApplicationOrchestrator`)
+- [x] Clean up unused color service initialization methods
+- [x] Update all test files to use new constructor signatures
+- [x] Verify all builds and tests pass after cleanup
+
+**Phase 1 Status: ✅ COMPLETE**
 
 ### Phase 2: Basic Color Implementation
 
@@ -51,29 +56,28 @@ This document tracks the implementation of color-coded parameter names and expre
 - [ ] Implement color assignment in `ParameterColorService`:
   - [ ] `_blendShapeColors` dictionary for blend shape → color mapping
   - [ ] `_parameterColors` dictionary for parameter → color mapping
-  - [ ] `AssignColors()` method called from `InitializeFromConfiguration`
 
-#### Step 2.2: Blend Shape Caching Strategy ⬜
-- [ ] Add blend shape extraction logic to `TransformationEngine`
-- [ ] Implement aggressive caching - extract once, reuse forever
-- [ ] Add `ExtractBlendShapeNames()` method that:
-  - [ ] Gets blend shape names from first successful transformation
-  - [ ] Caches result in private field
-  - [ ] Returns cached result on subsequent calls
-
-#### Step 2.3: Basic Parameter Name Coloring ⬜
+#### Step 2.2: Basic Parameter Name Coloring ⬜
 - [ ] Implement `GetColoredParameterName`:
   - [ ] Check if parameter is blend shape → return cyan colored
   - [ ] Check if parameter is calculated parameter → return yellow colored  
   - [ ] Fallback to uncolored if not found
 - [ ] Add unit tests for parameter name coloring
 
-#### Step 2.4: Basic Expression Coloring ⬜
+#### Step 2.3: Basic Expression Coloring ⬜
 - [ ] Implement `GetColoredExpression` with simple token replacement:
   - [ ] Use regex to find parameter names in expressions
   - [ ] Replace each found parameter with its colored version
   - [ ] Cache colored expressions in `_coloredExpressionCache`
 - [ ] Add unit tests for expression coloring
+
+#### Step 2.4: ApplicationOrchestrator Integration ⬜
+- [ ] Add `IParameterColorService` injection to `ApplicationOrchestrator`
+- [ ] Initialize color service in `OnTrackingDataReceived` on first successful data:
+  - [ ] Extract blend shape names from `trackingData.BlendShapes`
+  - [ ] Get transformation expressions from `TransformationEngine`
+  - [ ] Call `_colorService.InitializeFromConfiguration(expressions, blendShapeNames)`
+- [ ] Add one-time initialization flag to prevent repeated calls
 
 #### Step 2.5: Testing & Verification ⬜
 - [ ] Run application with sample configuration
