@@ -18,7 +18,7 @@ namespace SharpBridge.Tests.Services
         public ParameterColorServiceTests()
         {
             _loggerMock = new Mock<IAppLogger>();
-            _colorService = new ParameterColorService(_loggerMock.Object);
+            _colorService = new ParameterColorService(_loggerMock.Object!);
         }
 
         [Fact]

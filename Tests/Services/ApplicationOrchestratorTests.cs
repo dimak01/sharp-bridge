@@ -218,9 +218,9 @@ namespace SharpBridge.Tests.Services
 
         // Helper method to run an event-triggered test with timeout protection
         private async Task<bool> RunWithTimeoutAndEventTrigger(
-            PhoneTrackingInfo trackingData, 
+            PhoneTrackingInfo? trackingData, 
             TimeSpan timeout,
-            Func<Task> additionalSetup = null)
+            Func<Task>? additionalSetup = null)
         {
             // Create cancellation tokens with timeout
             using var cts = new CancellationTokenSource();
@@ -565,7 +565,7 @@ namespace SharpBridge.Tests.Services
         public async Task OnTrackingDataReceived_WhenTrackingDataIsNull_DoesNotProcessOrSend()
         {
             // Arrange
-            PhoneTrackingInfo nullTrackingData = null;
+            PhoneTrackingInfo nullTrackingData = null!;
             
             // Setup basic orchestrator requirements
             SetupOrchestratorTest();
@@ -1597,14 +1597,14 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             _consoleRendererMock.Setup(x => x.GetFormatter<PCTrackingInfo>())
-                .Returns((IFormatter)null);
+                .Returns((IFormatter?)null);
                 
             _consoleRendererMock.Setup(x => x.GetFormatter<PhoneTrackingInfo>())
-                .Returns((IFormatter)null);
+                .Returns((IFormatter?)null);
             
             // Get the registered actions
-            Action pcCycleAction = null;
-            Action phoneCycleAction = null;
+            Action pcCycleAction = null!;
+            Action phoneCycleAction = null!;
             
             _keyboardInputHandlerMock
                 .Setup(x => x.RegisterShortcut(
