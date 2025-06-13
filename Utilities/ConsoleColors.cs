@@ -91,6 +91,11 @@ namespace SharpBridge.Utilities
         public const string CalculatedParameterColor = "\u001b[93m";
         
         /// <summary>
+        /// Light red color for rule error names (used in error tables)
+        /// </summary>
+        public const string RuleErrorNameColor = "\u001b[91m"; // Bright red
+        
+        /// <summary>
         /// Wraps text with the specified color and resets afterward
         /// </summary>
         /// <param name="text">Text to colorize</param>
@@ -132,6 +137,16 @@ namespace SharpBridge.Utilities
         public static string ColorizeCalculatedParameter(string parameterName)
         {
             return Colorize(parameterName, CalculatedParameterColor);
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize rule error names
+        /// </summary>
+        /// <param name="ruleName">Rule name to colorize</param>
+        /// <returns>Rule name in light red with reset</returns>
+        public static string ColorizeRuleErrorName(string ruleName)
+        {
+            return Colorize(ruleName, RuleErrorNameColor);
         }
         
         /// <summary>
