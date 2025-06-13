@@ -193,5 +193,17 @@ namespace SharpBridge.Utilities
             // Strip all ANSI escape sequences and return visible character count
             return AnsiEscapeRegex.Replace(text, "").Length;
         }
+        
+        /// <summary>
+        /// Removes ANSI escape codes from a string (for test assertions and plain output)
+        /// </summary>
+        /// <param name="text">Text that may contain ANSI escape sequences</param>
+        /// <returns>String with all ANSI escape codes removed</returns>
+        public static string RemoveAnsiEscapeCodes(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+            return AnsiEscapeRegex.Replace(text, "");
+        }
     }
 } 
