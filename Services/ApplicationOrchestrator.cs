@@ -487,18 +487,19 @@ namespace SharpBridge.Services
             
             try
             {
-                // Get transformation expressions from the transformation engine
-                // We'll need to add a method to get the expressions - for now, we'll use an empty dictionary
-                var expressions = new Dictionary<string, string>();
+                // Get calculated parameter names from the transformation engine
+                var calculatedParameterNames = _transformationEngine.GetParameterDefinitions()
+                    .Select(p => p.Name)
+                    .Where(name => !string.IsNullOrEmpty(name));
                 
                 // Extract blend shape names from the tracking data
                 var blendShapeNames = trackingData.BlendShapes.Select(bs => bs.Key).Where(key => !string.IsNullOrEmpty(key));
                 
                 // Initialize the color service
-                _colorService.InitializeFromConfiguration(expressions, blendShapeNames);
+                _colorService.InitializeFromConfiguration(blendShapeNames, calculatedParameterNames);
                 _colorServiceInitialized = true;
                 
-                _logger.Debug($"Color service initialized with {expressions.Count} expressions and {blendShapeNames.Count()} blend shapes");
+                _logger.Debug($"Color service initialized with {calculatedParameterNames.Count()} calculated parameters and {blendShapeNames.Count()} blend shapes");
             }
             catch (Exception ex)
             {

@@ -39,22 +39,22 @@ namespace SharpBridge.Services
         }
         
         /// <summary>
-        /// Initialize the service with transformation configuration data.
+        /// Initialize the service with blend shape names and calculated parameter names.
         /// Stores parameter names for expression coloring.
         /// </summary>
-        /// <param name="expressions">Dictionary of parameter names to their transformation expressions</param>
         /// <param name="blendShapeNames">Collection of blend shape names from iPhone tracking data</param>
-        public void InitializeFromConfiguration(Dictionary<string, string> expressions, IEnumerable<string> blendShapeNames)
+        /// <param name="calculatedParameterNames">Collection of calculated parameter names from transformation engine</param>
+        public void InitializeFromConfiguration(IEnumerable<string> blendShapeNames, IEnumerable<string> calculatedParameterNames)
         {
-            if (expressions == null)
-            {
-                _logger.Warning("ParameterColorService initialized with null expressions dictionary");
-                return;
-            }
-            
             if (blendShapeNames == null)
             {
                 _logger.Warning("ParameterColorService initialized with null blend shape names");
+                return;
+            }
+
+            if (calculatedParameterNames == null)
+            {
+                _logger.Warning("ParameterColorService initialized with null calculated parameter names");
                 return;
             }
             
@@ -63,8 +63,8 @@ namespace SharpBridge.Services
             _calculatedParameterNames.Clear();
             _coloredExpressionCache.Clear();
             
-            var expressionCount = expressions.Count;
             var blendShapeCount = blendShapeNames.Count();
+            var calculatedParameterCount = calculatedParameterNames.Count();
             
             // Store blend shape names for expression coloring
             foreach (var blendShapeName in blendShapeNames)
@@ -76,7 +76,7 @@ namespace SharpBridge.Services
             }
             
             // Store calculated parameter names for expression coloring
-            foreach (var parameterName in expressions.Keys)
+            foreach (var parameterName in calculatedParameterNames)
             {
                 if (!string.IsNullOrEmpty(parameterName))
                 {
@@ -84,12 +84,12 @@ namespace SharpBridge.Services
                 }
             }
             
-            _logger.Info($"ParameterColorService initialized with {expressionCount} calculated parameters and {blendShapeCount} blend shapes");
+            _logger.Info($"ParameterColorService initialized with {calculatedParameterCount} calculated parameters and {blendShapeCount} blend shapes");
             _logger.Debug($"Parameter sets: {_calculatedParameterNames.Count} calculated parameters, {_blendShapeNames.Count} blend shapes");
             
-            if (expressionCount > 0)
+            if (calculatedParameterCount > 0)
             {
-                _logger.Debug($"Sample calculated parameters: {string.Join(", ", expressions.Keys.Take(3))}");
+                _logger.Debug($"Sample calculated parameters: {string.Join(", ", calculatedParameterNames.Take(3))}");
             }
             
             if (blendShapeCount > 0)

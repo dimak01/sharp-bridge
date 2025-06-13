@@ -10,13 +10,13 @@ namespace SharpBridge.Interfaces
     public interface IParameterColorService
     {
         /// <summary>
-        /// Initialize the service with transformation configuration data.
+        /// Initialize the service with blend shape names and calculated parameter names.
         /// This method is called once when configuration is loaded to set up
         /// the known parameter names for expression coloring.
         /// </summary>
-        /// <param name="expressions">Dictionary of parameter names to their transformation expressions</param>
         /// <param name="blendShapeNames">Collection of blend shape names from iPhone tracking data</param>
-        void InitializeFromConfiguration(Dictionary<string, string> expressions, IEnumerable<string> blendShapeNames);
+        /// <param name="calculatedParameterNames">Collection of calculated parameter names from transformation engine</param>
+        void InitializeFromConfiguration(IEnumerable<string> blendShapeNames, IEnumerable<string> calculatedParameterNames);
         
         /// <summary>
         /// Gets a color-coded version of a transformation expression.

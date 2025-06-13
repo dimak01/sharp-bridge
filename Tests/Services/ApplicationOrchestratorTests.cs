@@ -1943,17 +1943,17 @@ namespace SharpBridge.Tests.Services
             
             // Verify color service was initialized exactly once with the blend shape names
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
                 It.Is<IEnumerable<string>>(names => 
                     names.Contains("eyeBlinkLeft") && 
                     names.Contains("eyeBlinkRight") && 
-                    names.Contains("jawOpen"))), 
+                    names.Contains("jawOpen")),
+                It.IsAny<IEnumerable<string>>()), 
                 Times.Once);
                 
             // Verify debug log was written
             _loggerMock.Verify(x => x.Debug(It.Is<string>(msg => 
                 msg.Contains("Color service initialized with") && 
-                msg.Contains("expressions and") && 
+                msg.Contains("calculated parameters and") && 
                 msg.Contains("blend shapes"))), 
                 Times.Once);
         }
@@ -1984,7 +1984,7 @@ namespace SharpBridge.Tests.Services
             
             // Verify color service was NOT initialized
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>(),
                 It.IsAny<IEnumerable<string>>()), 
                 Times.Never);
         }
@@ -2015,7 +2015,7 @@ namespace SharpBridge.Tests.Services
             
             // Verify color service was NOT initialized
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>(),
                 It.IsAny<IEnumerable<string>>()), 
                 Times.Never);
         }
@@ -2042,7 +2042,7 @@ namespace SharpBridge.Tests.Services
 
             // Setup color service to throw exception during initialization
             _colorServiceMock.Setup(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>(),
                 It.IsAny<IEnumerable<string>>()))
                 .Throws(new InvalidOperationException("Color service initialization failed"));
 
@@ -2090,6 +2090,10 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.TransformData(trackingData))
                 .Returns(pcTrackingInfo);
 
+            // Setup transformation engine to return empty calculated parameters
+            _transformationEngineMock.Setup(x => x.GetParameterDefinitions())
+                .Returns(new List<VTSParameter>());
+
             await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
 
             // Act
@@ -2100,11 +2104,11 @@ namespace SharpBridge.Tests.Services
             
             // Verify color service was initialized with only valid blend shape names (empty/null keys filtered out)
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
                 It.Is<IEnumerable<string>>(names => 
                     names.Contains("eyeBlinkLeft") && 
                     names.Contains("jawOpen") && 
-                    names.Count() == 2)), // Only 2 valid names, empty and null filtered out
+                    names.Count() == 2), // Only 2 valid names, empty and null filtered out
+                It.IsAny<IEnumerable<string>>()),
                 Times.Once);
         }
 
@@ -2150,18 +2154,18 @@ namespace SharpBridge.Tests.Services
             
             // Verify color service was initialized exactly once (with the first tracking data)
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
                 It.Is<IEnumerable<string>>(names => 
                     names.Contains("eyeBlinkLeft") && 
                     names.Contains("eyeBlinkRight") && 
-                    names.Count() == 2)), 
+                    names.Count() == 2),
+                It.IsAny<IEnumerable<string>>()), 
                 Times.Once);
                 
             // Verify it was NOT called with the second set of blend shapes
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
                 It.Is<IEnumerable<string>>(names => 
-                    names.Contains("jawOpen") || names.Contains("mouthSmile"))), 
+                    names.Contains("jawOpen") || names.Contains("mouthSmile")),
+                It.IsAny<IEnumerable<string>>()), 
                 Times.Never);
         }
 
@@ -2226,26 +2230,26 @@ namespace SharpBridge.Tests.Services
             
             // Verify color service was initialized twice - once for each tracking data after config reload
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<IEnumerable<string>>(),
                 It.IsAny<IEnumerable<string>>()), 
                 Times.Exactly(2));
                 
             // Verify first initialization with first set of blend shapes
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
                 It.Is<IEnumerable<string>>(names => 
                     names.Contains("eyeBlinkLeft") && 
                     names.Contains("eyeBlinkRight") && 
-                    names.Count() == 2)), 
+                    names.Count() == 2),
+                It.IsAny<IEnumerable<string>>()), 
                 Times.Once);
                 
             // Verify second initialization with second set of blend shapes after config reload
             _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
-                It.IsAny<Dictionary<string, string>>(),
                 It.Is<IEnumerable<string>>(names => 
                     names.Contains("jawOpen") && 
                     names.Contains("mouthSmile") && 
-                    names.Count() == 2)), 
+                    names.Count() == 2),
+                It.IsAny<IEnumerable<string>>()), 
                 Times.Once);
                 
             // Verify debug log for color service reset
