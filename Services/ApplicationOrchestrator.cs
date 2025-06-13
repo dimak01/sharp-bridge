@@ -5,6 +5,7 @@ using SharpBridge.Utilities;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -26,6 +27,7 @@ namespace SharpBridge.Services
         private readonly IRecoveryPolicy _recoveryPolicy;
         private readonly IConsole _console;
         private readonly ConsoleWindowManager _consoleWindowManager;
+        private readonly IParameterColorService _colorService;
         
         // Preferred console dimensions
         private const int PREFERRED_CONSOLE_WIDTH = 150;
@@ -34,6 +36,7 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private string _transformConfigPath = string.Empty; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
+        private bool _colorServiceInitialized = false; // Track if color service has been initialized
         
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -48,6 +51,7 @@ namespace SharpBridge.Services
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
         /// <param name="console">Console abstraction for window management</param>
+        /// <param name="colorService">Parameter color service for colored console output</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -58,7 +62,8 @@ namespace SharpBridge.Services
             IKeyboardInputHandler keyboardInputHandler,
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
-            IConsole console)
+            IConsole console,
+            IParameterColorService colorService)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -70,6 +75,7 @@ namespace SharpBridge.Services
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
             _console = console ?? throw new ArgumentNullException(nameof(console));
+            _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             
             // Initialize console window manager
             _consoleWindowManager = new ConsoleWindowManager(_console);
@@ -413,6 +419,10 @@ namespace SharpBridge.Services
                 // Use a lock or semaphore here if there are concurrency concerns
                 await InitializeTransformationEngine(_transformConfigPath);
                 
+                // Reset color service initialization flag so it will be reinitialized with new config
+                _colorServiceInitialized = false;
+                _logger.Debug("Color service initialization flag reset for config reload");
+                
                 // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
                 var parameterSyncSuccess = await TrySynchronizeParametersAsync(CancellationToken.None);
                 if (!parameterSyncSuccess)
@@ -440,6 +450,9 @@ namespace SharpBridge.Services
                     return;
                 }
                 
+                // Initialize color service on first successful tracking data with blend shapes
+                InitializeColorServiceIfNeeded(trackingData);
+                
                 // Transform tracking data
                 PCTrackingInfo pcTrackingInfo = _transformationEngine.TransformData(trackingData);
                 
@@ -456,6 +469,42 @@ namespace SharpBridge.Services
             catch (Exception ex)
             {
                 _logger.ErrorWithException("Error processing tracking data", ex);
+            }
+        }
+        
+        /// <summary>
+        /// Initializes the color service with transformation expressions and blend shape names
+        /// from the first successful tracking data. This is called once per application run.
+        /// </summary>
+        /// <param name="trackingData">Phone tracking data containing blend shapes</param>
+        private void InitializeColorServiceIfNeeded(PhoneTrackingInfo trackingData)
+        {
+            // Only initialize once and only if we have valid tracking data with blend shapes
+            if (_colorServiceInitialized || trackingData?.BlendShapes == null || trackingData.BlendShapes.Count == 0)
+            {
+                return;
+            }
+            
+            try
+            {
+                // Get calculated parameter names from the transformation engine
+                var calculatedParameterNames = _transformationEngine.GetParameterDefinitions()
+                    .Select(p => p.Name)
+                    .Where(name => !string.IsNullOrEmpty(name));
+                
+                // Extract blend shape names from the tracking data
+                var blendShapeNames = trackingData.BlendShapes.Select(bs => bs.Key).Where(key => !string.IsNullOrEmpty(key));
+                
+                // Initialize the color service
+                _colorService.InitializeFromConfiguration(blendShapeNames, calculatedParameterNames);
+                _colorServiceInitialized = true;
+                
+                _logger.Debug($"Color service initialized with {calculatedParameterNames.Count()} calculated parameters and {blendShapeNames.Count()} blend shapes");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Failed to initialize color service: {ex.Message}");
+                // Color service failure is not critical - continue without coloring
             }
         }
 

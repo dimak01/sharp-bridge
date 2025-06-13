@@ -72,14 +72,5 @@ namespace SharpBridge.Utilities
         {
             return Header.PadRight(width); // Progress bars typically left-align headers
         }
-
-        private string FormatCell(object? value, int width)
-        {
-            if (value == null) return new string('░', width);
-            var normalizedValue = Convert.ToDouble(value);
-            var filledCount = (int)(normalizedValue * width);
-            var emptyCount = width - filledCount;
-            return new string('█', filledCount) + new string('░', emptyCount);
-        }
     }
 } 

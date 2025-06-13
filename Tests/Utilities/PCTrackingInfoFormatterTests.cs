@@ -61,6 +61,7 @@ namespace SharpBridge.Tests.Utilities
         
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
+        private readonly Mock<IParameterColorService> _mockColorService;
         private readonly PCTrackingInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -76,7 +77,13 @@ namespace SharpBridge.Tests.Utilities
             _mockConsole.Setup(c => c.WindowHeight).Returns(25);
             
             _mockTableFormatter = new Mock<ITableFormatter>();
-            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            
+            _mockColorService = new Mock<IParameterColorService>();
+            // Setup default pass-through behavior for color service
+            _mockColorService.Setup(x => x.GetColoredCalculatedParameterName(It.IsAny<string>())).Returns<string>(s => s);
+            _mockColorService.Setup(x => x.GetColoredExpression(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
         }
 
         #region Helper Methods
@@ -923,14 +930,14 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(null, _mockTableFormatter.Object));
+            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(null, _mockTableFormatter.Object, _mockColorService.Object));
         }
 
         [Fact]
         public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(_mockConsole.Object, null));
+            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(_mockConsole.Object, null, _mockColorService.Object));
         }
 
         [Fact]

@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace SharpBridge.Utilities
 {
     /// <summary>
@@ -5,6 +7,8 @@ namespace SharpBridge.Utilities
     /// </summary>
     public static class ConsoleColors
     {
+        // Cache the compiled regex for ANSI escape sequence removal
+        private static readonly Regex AnsiEscapeRegex = new Regex(@"\u001b\[[0-9;]*m", RegexOptions.Compiled, System.TimeSpan.FromSeconds(0.1));
         // Reset and formatting
         /// <summary>
         /// ANSI escape code to reset all formatting and colors
@@ -69,6 +73,29 @@ namespace SharpBridge.Utilities
         public const string Initializing = "\u001b[36m"; // Cyan
         
         /// <summary>
+        /// Light cyan color for blend shape names (iPhone source data)
+        /// Color-blind friendly and visually distinct
+        /// </summary>
+        public const string BlendShapeColor = "\u001b[96m";
+        
+        /// <summary>
+        /// Very bright magenta color for head rotation/position parameters (iPhone source data)
+        /// Color-blind friendly and visually distinct from blend shapes
+        /// </summary>
+        public const string HeadParameterColor = "\u001b[38;5;213m"; // Very bright magenta (256-color)
+        
+        /// <summary>
+        /// Light yellow color for calculated parameter names (PC derived parameters)
+        /// Color-blind friendly and visually distinct from blend shapes
+        /// </summary>
+        public const string CalculatedParameterColor = "\u001b[93m";
+        
+        /// <summary>
+        /// Light red color for rule error names (used in error tables)
+        /// </summary>
+        public const string RuleErrorNameColor = "\u001b[91m"; // Bright red
+        
+        /// <summary>
         /// Wraps text with the specified color and resets afterward
         /// </summary>
         /// <param name="text">Text to colorize</param>
@@ -76,7 +103,50 @@ namespace SharpBridge.Utilities
         /// <returns>Colorized text with reset</returns>
         public static string Colorize(string text, string color)
         {
+            if (string.IsNullOrEmpty(text))
+                return text;
+                
             return $"{color}{text}{Reset}";
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize blend shape names
+        /// </summary>
+        /// <param name="blendShapeName">Blend shape name to colorize</param>
+        /// <returns>Blend shape name in light cyan with reset</returns>
+        public static string ColorizeBlendShape(string blendShapeName)
+        {
+            return Colorize(blendShapeName, BlendShapeColor);
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize head rotation/position parameters
+        /// </summary>
+        /// <param name="parameterName">Head parameter name to colorize</param>
+        /// <returns>Parameter name in very bright magenta with reset</returns>
+        public static string ColorizeHeadParameter(string parameterName)
+        {
+            return Colorize(parameterName, HeadParameterColor);
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize calculated parameter names
+        /// </summary>
+        /// <param name="parameterName">Parameter name to colorize</param>
+        /// <returns>Parameter name in light yellow with reset</returns>
+        public static string ColorizeCalculatedParameter(string parameterName)
+        {
+            return Colorize(parameterName, CalculatedParameterColor);
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize rule error names
+        /// </summary>
+        /// <param name="ruleName">Rule name to colorize</param>
+        /// <returns>Rule name in light red with reset</returns>
+        public static string ColorizeRuleErrorName(string ruleName)
+        {
+            return Colorize(ruleName, RuleErrorNameColor);
         }
         
         /// <summary>
@@ -107,6 +177,33 @@ namespace SharpBridge.Utilities
                 var s when s.Contains("initializ") => Initializing,
                 _ => Info
             };
+        }
+        
+        /// <summary>
+        /// Calculates the visual length of a string, excluding ANSI escape sequences.
+        /// This is essential for proper padding and alignment when using colored text.
+        /// </summary>
+        /// <param name="text">Text that may contain ANSI escape sequences</param>
+        /// <returns>The number of visible characters (excluding ANSI sequences)</returns>
+        public static int GetVisualLength(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0;
+            
+            // Strip all ANSI escape sequences and return visible character count
+            return AnsiEscapeRegex.Replace(text, "").Length;
+        }
+        
+        /// <summary>
+        /// Removes ANSI escape codes from a string (for test assertions and plain output)
+        /// </summary>
+        /// <param name="text">Text that may contain ANSI escape sequences</param>
+        /// <returns>String with all ANSI escape codes removed</returns>
+        public static string RemoveAnsiEscapeCodes(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+            return AnsiEscapeRegex.Replace(text, "");
         }
     }
 } 
