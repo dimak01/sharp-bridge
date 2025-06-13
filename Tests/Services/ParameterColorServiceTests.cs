@@ -30,48 +30,40 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
-        public void InitializeFromConfiguration_WithNullExpressions_LogsWarningAndReturns()
-        {
-            // Arrange
-            var blendShapes = new[] { "eyeBlinkLeft", "eyeBlinkRight" };
-
-            // Act
-            _colorService.InitializeFromConfiguration(null, blendShapes);
-
-            // Assert
-            _loggerMock.Verify(x => x.Warning("ParameterColorService initialized with null expressions dictionary"), Times.Once);
-        }
-
-        [Fact]
         public void InitializeFromConfiguration_WithNullBlendShapes_LogsWarningAndReturns()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>
-            {
-                { "param1", "expression1" },
-                { "param2", "expression2" }
-            };
+            var calculatedParameters = new[] { "param1", "param2" };
 
             // Act
-            _colorService.InitializeFromConfiguration(expressions, null);
+            _colorService.InitializeFromConfiguration(null, calculatedParameters);
 
             // Assert
             _loggerMock.Verify(x => x.Warning("ParameterColorService initialized with null blend shape names"), Times.Once);
         }
 
         [Fact]
+        public void InitializeFromConfiguration_WithNullCalculatedParameters_LogsWarningAndReturns()
+        {
+            // Arrange
+            var blendShapes = new[] { "eyeBlinkLeft", "eyeBlinkRight" };
+
+            // Act
+            _colorService.InitializeFromConfiguration(blendShapes, null);
+
+            // Assert
+            _loggerMock.Verify(x => x.Warning("ParameterColorService initialized with null calculated parameter names"), Times.Once);
+        }
+
+        [Fact]
         public void InitializeFromConfiguration_WithValidData_AssignsColorsCorrectly()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>
-            {
-                { "calculatedParam1", "eyeBlinkLeft * 2" },
-                { "calculatedParam2", "eyeBlinkRight + jawOpen" }
-            };
+            var calculatedParameters = new[] { "calculatedParam1", "calculatedParam2" };
             var blendShapes = new[] { "eyeBlinkLeft", "eyeBlinkRight", "jawOpen" };
 
             // Act
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
 
             // Assert
             _loggerMock.Verify(x => x.Info("ParameterColorService initialized with 2 calculated parameters and 3 blend shapes"), Times.Once);
@@ -82,19 +74,14 @@ namespace SharpBridge.Tests.Services
         public void InitializeFromConfiguration_WithEmptyStrings_FiltersOutEmptyValues()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>
-            {
-                { "validParam", "expression" },
-                { "", "emptyKeyExpression" },
-                { "anotherParam", "anotherExpression" }
-            };
+            var calculatedParameters = new[] { "validParam", "", "anotherParam", null };
             var blendShapes = new[] { "validBlendShape", "", "anotherBlendShape", null };
 
             // Act
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
 
-            // Assert - Should only count non-empty keys
-            _loggerMock.Verify(x => x.Info("ParameterColorService initialized with 3 calculated parameters and 4 blend shapes"), Times.Once);
+            // Assert - Should only count non-empty values
+            _loggerMock.Verify(x => x.Info("ParameterColorService initialized with 4 calculated parameters and 4 blend shapes"), Times.Once);
             _loggerMock.Verify(x => x.Debug("Parameter sets: 2 calculated parameters, 2 blend shapes"), Times.Once);
         }
 
@@ -144,9 +131,9 @@ namespace SharpBridge.Tests.Services
         public void GetColoredExpression_WithBlendShapeReferences_ColorsBlendShapes()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>();
+            var calculatedParameters = new string[0];
             var blendShapes = new[] { "eyeBlinkLeft", "jawOpen" };
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
             var expression = "eyeBlinkLeft * 2 + jawOpen";
 
             // Act
@@ -162,13 +149,9 @@ namespace SharpBridge.Tests.Services
         public void GetColoredExpression_WithCalculatedParameterReferences_ColorsCalculatedParameters()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>
-            {
-                { "param1", "expression1" },
-                { "param2", "expression2" }
-            };
+            var calculatedParameters = new[] { "param1", "param2" };
             var blendShapes = new string[0];
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
             var expression = "param1 + param2 * 0.5";
 
             // Act
@@ -185,12 +168,9 @@ namespace SharpBridge.Tests.Services
         public void GetColoredExpression_WithMixedReferences_BlendShapesTakePriority()
         {
             // Arrange - Same name exists as both blend shape and calculated parameter
-            var expressions = new Dictionary<string, string>
-            {
-                { "conflictingName", "someExpression" }
-            };
+            var calculatedParameters = new[] { "conflictingName" };
             var blendShapes = new[] { "conflictingName" };
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
             var expression = "conflictingName * 2";
 
             // Act
@@ -207,9 +187,9 @@ namespace SharpBridge.Tests.Services
         public void GetColoredExpression_WithPartialMatches_OnlyColorsWholeWords()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>();
+            var calculatedParameters = new string[0];
             var blendShapes = new[] { "eye" };
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
             var expression = "eyeBlinkLeft + eye + eyebrow";
 
             // Act
@@ -225,9 +205,9 @@ namespace SharpBridge.Tests.Services
         public void GetColoredExpression_CachesResults()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>();
+            var calculatedParameters = new string[0];
             var blendShapes = new[] { "eyeBlinkLeft" };
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
             var expression = "eyeBlinkLeft * 2";
 
             // Act - Call twice
@@ -243,9 +223,9 @@ namespace SharpBridge.Tests.Services
         public void GetColoredExpression_WithNullOrEmpty_ReturnsEmpty()
         {
             // Arrange
-            var expressions = new Dictionary<string, string>();
+            var calculatedParameters = new string[0];
             var blendShapes = new string[0];
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
 
             // Act & Assert
             _colorService.GetColoredExpression(null).Should().Be(string.Empty);
@@ -256,20 +236,14 @@ namespace SharpBridge.Tests.Services
         public void InitializeFromConfiguration_CalledMultipleTimes_ClearsPreviousMappings()
         {
             // Arrange - First initialization
-            var firstExpressions = new Dictionary<string, string>
-            {
-                { "oldParam", "oldExpression" }
-            };
+            var firstCalculatedParameters = new[] { "oldParam" };
             var firstBlendShapes = new[] { "oldBlendShape" };
-            _colorService.InitializeFromConfiguration(firstExpressions, firstBlendShapes);
+            _colorService.InitializeFromConfiguration(firstBlendShapes, firstCalculatedParameters);
 
             // Act - Second initialization with different data
-            var secondExpressions = new Dictionary<string, string>
-            {
-                { "newParam", "newExpression" }
-            };
+            var secondCalculatedParameters = new[] { "newParam" };
             var secondBlendShapes = new[] { "newBlendShape" };
-            _colorService.InitializeFromConfiguration(secondExpressions, secondBlendShapes);
+            _colorService.InitializeFromConfiguration(secondBlendShapes, secondCalculatedParameters);
 
             // Assert - Methods always return colored versions regardless of initialization
             // (The simplified approach doesn't track which parameters are "known")
@@ -283,17 +257,17 @@ namespace SharpBridge.Tests.Services
         public void InitializeFromConfiguration_WithLargeDataSet_HandlesEfficiently()
         {
             // Arrange - Large dataset to test performance
-            var expressions = new Dictionary<string, string>();
+            var calculatedParameters = new List<string>();
             var blendShapes = new List<string>();
 
             for (int i = 0; i < 1000; i++)
             {
-                expressions[$"param_{i}"] = $"expression_{i}";
+                calculatedParameters.Add($"param_{i}");
                 blendShapes.Add($"blendShape_{i}");
             }
 
             // Act
-            _colorService.InitializeFromConfiguration(expressions, blendShapes);
+            _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
 
             // Assert - Should handle large datasets without issues
             _colorService.GetColoredCalculatedParameterName("param_500").Should().Contain(ConsoleColors.CalculatedParameterColor);

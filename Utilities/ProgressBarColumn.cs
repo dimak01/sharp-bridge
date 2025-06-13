@@ -47,10 +47,8 @@ namespace SharpBridge.Utilities
             MaxWidth = maxWidth;
             _valueSelector = valueSelector ?? throw new ArgumentNullException(nameof(valueSelector));
             _tableFormatter = tableFormatter ?? new TableFormatter(); // Default fallback
-            // ValueFormatter returns a representative bar for width calculation
-            // Use a reasonable default width that represents typical progress bar size
-            var representativeWidth = Math.Max(MinWidth, 10);
-            ValueFormatter = item => _tableFormatter.CreateProgressBar(_valueSelector(item), representativeWidth);
+            // ValueFormatter returns a sample bar for width calculation
+            ValueFormatter = item => FormatCell(item, MinWidth);
         }
         
         /// <summary>
