@@ -559,7 +559,10 @@ namespace SharpBridge.Tests.Utilities
             var rule1 = invalidRules[0];
             var rule2 = invalidRules[1];
             
-            capturedColumns[0].ValueFormatter(rule1).Should().Be("TestRule1");
+            var colorizedRuleName = capturedColumns[0].ValueFormatter(rule1);
+            var strippedRuleName = ConsoleColors.RemoveAnsiEscapeCodes(colorizedRuleName);
+            strippedRuleName.Should().Be("TestRule1");
+            
             capturedColumns[1].ValueFormatter(rule1).Should().Be("invalid_expression_1");
             capturedColumns[2].ValueFormatter(rule1).Should().Be("Syntax error in rule 1");
             
