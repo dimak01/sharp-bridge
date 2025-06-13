@@ -8,7 +8,7 @@ namespace SharpBridge.Utilities
     public static class ConsoleColors
     {
         // Cache the compiled regex for ANSI escape sequence removal
-        private static readonly Regex AnsiEscapeRegex = new Regex(@"\u001b\[[0-9;]*m", RegexOptions.Compiled);
+        private static readonly Regex AnsiEscapeRegex = new Regex(@"\u001b\[[0-9;]*m", RegexOptions.Compiled, System.TimeSpan.FromSeconds(0.1));
         // Reset and formatting
         /// <summary>
         /// ANSI escape code to reset all formatting and colors

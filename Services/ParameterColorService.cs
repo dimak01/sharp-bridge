@@ -168,7 +168,7 @@ namespace SharpBridge.Services
         /// <param name="parameterName">The parameter name to find and replace</param>
         /// <param name="coloredParameterName">The colored version to replace with</param>
         /// <returns>Expression with the parameter name replaced</returns>
-        private string ReplaceParameterInExpression(string expression, string parameterName, string coloredParameterName)
+        private static string ReplaceParameterInExpression(string expression, string parameterName, string coloredParameterName)
         {
             if (string.IsNullOrEmpty(parameterName))
                 return expression;
@@ -179,7 +179,7 @@ namespace SharpBridge.Services
             // - At the end of string or followed by non-alphanumeric character
             var pattern = $@"\b{System.Text.RegularExpressions.Regex.Escape(parameterName)}\b";
             
-            return System.Text.RegularExpressions.Regex.Replace(expression, pattern, coloredParameterName);
+            return System.Text.RegularExpressions.Regex.Replace(expression, pattern, coloredParameterName, System.Text.RegularExpressions.RegexOptions.None, System.TimeSpan.FromSeconds(0.1));
         }
         
         /// <summary>
@@ -220,7 +220,7 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="parameterName">The head parameter name to colorize</param>
         /// <returns>Parameter name in bright cyan with ANSI escape sequences</returns>
-        public string GetColoredHeadParameterName(string parameterName)
+        public static string GetColoredHeadParameterName(string parameterName)
         {
             if (string.IsNullOrEmpty(parameterName))
             {
