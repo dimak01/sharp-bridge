@@ -207,7 +207,7 @@ namespace SharpBridge.Utilities
             // Define columns for failed rules table
             var columns = new List<ITableColumn<RuleInfo>>
             {
-                new TextColumn<RuleInfo>("Rule Name", rule => rule.Name, 
+                new TextColumn<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name), 
                     minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
                 new TextColumn<RuleInfo>("Function", 
                     rule => TruncateText(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH, "[empty]"), 

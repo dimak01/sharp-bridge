@@ -26,6 +26,7 @@ namespace SharpBridge.Utilities
         
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
+        private readonly IParameterColorService _colorService;
         
         /// <summary>
         /// Gets or sets the current time for testing purposes. If null, DateTime.UtcNow is used.
@@ -42,10 +43,12 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
-        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter)
+        /// <param name="colorService">Parameter color service for colored display</param>
+        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
+            _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         }
         
         /// <summary>
@@ -249,7 +252,7 @@ namespace SharpBridge.Utilities
         {
             return new List<ITableColumn<BlendShape>>
             {
-                new TextColumn<BlendShape>("Expression", shape => shape.Key, minWidth: 10, maxWidth: 20),
+                new TextColumn<BlendShape>("Expression", shape => _colorService.GetColoredBlendShapeName(shape.Key), minWidth: 10, maxWidth: 20),
                 new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
                 new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
             };

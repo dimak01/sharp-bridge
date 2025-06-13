@@ -101,6 +101,7 @@ namespace SharpBridge.Tests.Utilities
         
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
+        private readonly Mock<IParameterColorService> _mockColorService;
         private readonly PhoneTrackingInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -116,7 +117,13 @@ namespace SharpBridge.Tests.Utilities
             _mockConsole.Setup(c => c.WindowHeight).Returns(25);
             
             _mockTableFormatter = new Mock<ITableFormatter>();
-            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            
+            _mockColorService = new Mock<IParameterColorService>();
+            // Setup default pass-through behavior for color service
+            _mockColorService.Setup(x => x.GetColoredBlendShapeName(It.IsAny<string>())).Returns<string>(s => s);
+            _mockColorService.Setup(x => x.GetColoredExpression(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
         }
 
         #region Constructor Tests
@@ -125,7 +132,7 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithValidParameters_InitializesSuccessfully()
         {
             // Arrange & Act
-            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
 
             // Assert
             formatter.Should().NotBeNull();
@@ -137,7 +144,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new PhoneTrackingInfoFormatter(null, _mockTableFormatter.Object));
+                new PhoneTrackingInfoFormatter(null, _mockTableFormatter.Object, _mockColorService.Object));
         }
 
         [Fact]
@@ -145,7 +152,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => 
-                new PhoneTrackingInfoFormatter(_mockConsole.Object, null));
+                new PhoneTrackingInfoFormatter(_mockConsole.Object, null, _mockColorService.Object));
         }
 
         #endregion
@@ -195,7 +202,7 @@ namespace SharpBridge.Tests.Utilities
         public void CycleVerbosity_WithInvalidVerbosityLevel_ResetsToNormal()
         {
             // Arrange
-            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
+            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
             
             // Use reflection to set an invalid verbosity level
             var property = typeof(PhoneTrackingInfoFormatter).GetProperty("CurrentVerbosity");
