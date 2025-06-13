@@ -67,7 +67,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _loggerMock.Verify(x => x.Info("ParameterColorService initialized with 2 calculated parameters and 3 blend shapes"), Times.Once);
-            _loggerMock.Verify(x => x.Debug("Parameter sets: 2 calculated parameters, 3 blend shapes"), Times.Once);
+            _loggerMock.Verify(x => x.Debug("Parameter sets: 2 calculated parameters, 3 blend shapes, 6 head parameters"), Times.Once);
         }
 
         [Fact]
@@ -82,7 +82,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert - Should only count non-empty values
             _loggerMock.Verify(x => x.Info("ParameterColorService initialized with 4 calculated parameters and 4 blend shapes"), Times.Once);
-            _loggerMock.Verify(x => x.Debug("Parameter sets: 2 calculated parameters, 2 blend shapes"), Times.Once);
+            _loggerMock.Verify(x => x.Debug("Parameter sets: 2 calculated parameters, 2 blend shapes, 6 head parameters"), Times.Once);
         }
 
         [Fact]
