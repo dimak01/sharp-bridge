@@ -79,6 +79,12 @@ namespace SharpBridge.Utilities
         public const string BlendShapeColor = "\u001b[96m";
         
         /// <summary>
+        /// Very bright magenta color for head rotation/position parameters (iPhone source data)
+        /// Color-blind friendly and visually distinct from blend shapes
+        /// </summary>
+        public const string HeadParameterColor = "\u001b[38;5;213m"; // Very bright magenta (256-color)
+        
+        /// <summary>
         /// Light yellow color for calculated parameter names (PC derived parameters)
         /// Color-blind friendly and visually distinct from blend shapes
         /// </summary>
@@ -106,6 +112,16 @@ namespace SharpBridge.Utilities
         public static string ColorizeBlendShape(string blendShapeName)
         {
             return Colorize(blendShapeName, BlendShapeColor);
+        }
+        
+        /// <summary>
+        /// Convenience method to colorize head rotation/position parameters
+        /// </summary>
+        /// <param name="parameterName">Head parameter name to colorize</param>
+        /// <returns>Parameter name in very bright magenta with reset</returns>
+        public static string ColorizeHeadParameter(string parameterName)
+        {
+            return Colorize(parameterName, HeadParameterColor);
         }
         
         /// <summary>

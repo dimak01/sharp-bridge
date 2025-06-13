@@ -8,7 +8,10 @@ namespace SharpBridge.Services
 {
     /// <summary>
     /// Service implementation for providing color-coded parameter names and expressions.
-    /// Provides color coding to visually distinguish blend shapes (cyan) from calculated parameters (yellow).
+    /// Provides color coding to visually distinguish:
+    /// - Head rotation/position parameters (bright cyan)
+    /// - Blend shapes (cyan)
+    /// - Calculated parameters (yellow)
     /// </summary>
     public class ParameterColorService : IParameterColorService
     {
@@ -23,6 +26,15 @@ namespace SharpBridge.Services
         /// Set of known calculated parameter names for expression coloring
         /// </summary>
         private readonly HashSet<string> _calculatedParameterNames = new HashSet<string>();
+
+        /// <summary>
+        /// Set of head rotation and position parameter names
+        /// </summary>
+        private readonly HashSet<string> _headParameters = new HashSet<string>
+        {
+            "HeadRotX", "HeadRotY", "HeadRotZ",
+            "HeadPosX", "HeadPosY", "HeadPosZ"
+        };
         
         /// <summary>
         /// Cache for colored expressions to avoid repeated processing
@@ -85,7 +97,7 @@ namespace SharpBridge.Services
             }
             
             _logger.Info($"ParameterColorService initialized with {calculatedParameterCount} calculated parameters and {blendShapeCount} blend shapes");
-            _logger.Debug($"Parameter sets: {_calculatedParameterNames.Count} calculated parameters, {_blendShapeNames.Count} blend shapes");
+            _logger.Debug($"Parameter sets: {_calculatedParameterNames.Count} calculated parameters, {_blendShapeNames.Count} blend shapes, {_headParameters.Count} head parameters");
             
             if (calculatedParameterCount > 0)
             {
@@ -100,7 +112,9 @@ namespace SharpBridge.Services
         
         /// <summary>
         /// Gets a color-coded version of a transformation expression.
-        /// Calculated parameters are colored yellow, blend shapes are colored cyan (with priority).
+        /// Head parameters are colored bright cyan (highest priority),
+        /// Blend shapes are colored cyan (medium priority),
+        /// Calculated parameters are colored yellow (lowest priority).
         /// Results are cached for performance.
         /// </summary>
         /// <param name="expression">The transformation expression to colorize</param>
@@ -120,14 +134,21 @@ namespace SharpBridge.Services
             
             var coloredExpression = expression;
             
-            // Step 1: Color blend shapes first (cyan) - these get priority
+            // Step 1: Color head parameters first (bright cyan) - highest priority
+            foreach (var headParam in _headParameters)
+            {
+                coloredExpression = ReplaceParameterInExpression(coloredExpression, headParam, 
+                    ConsoleColors.ColorizeHeadParameter(headParam));
+            }
+            
+            // Step 2: Color blend shapes second (cyan) - medium priority
             foreach (var blendShapeName in _blendShapeNames)
             {
                 coloredExpression = ReplaceParameterInExpression(coloredExpression, blendShapeName, 
                     ConsoleColors.ColorizeBlendShape(blendShapeName));
             }
             
-            // Step 2: Color calculated parameters second (yellow) - only affects uncolored parameters
+            // Step 3: Color calculated parameters last (yellow) - lowest priority
             foreach (var parameterName in _calculatedParameterNames)
             {
                 coloredExpression = ReplaceParameterInExpression(coloredExpression, parameterName, 
@@ -191,6 +212,22 @@ namespace SharpBridge.Services
             }
             
             return ConsoleColors.ColorizeCalculatedParameter(parameterName);
+        }
+
+        /// <summary>
+        /// Gets a color-coded version of a head parameter name (iPhone source data).
+        /// Always returns the name in bright cyan color.
+        /// </summary>
+        /// <param name="parameterName">The head parameter name to colorize</param>
+        /// <returns>Parameter name in bright cyan with ANSI escape sequences</returns>
+        public string GetColoredHeadParameterName(string parameterName)
+        {
+            if (string.IsNullOrEmpty(parameterName))
+            {
+                return string.Empty;
+            }
+            
+            return ConsoleColors.ColorizeHeadParameter(parameterName);
         }
     }
 } 
