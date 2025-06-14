@@ -19,7 +19,7 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== iPhone Tracking Data ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
+            return $"=== [INFO] iPhone Tracking Data ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
         }
 
         public static string FormatHealthStatus(bool isHealthy, string timeAgo, string error = null, int timeWidth = 6)
@@ -277,14 +277,15 @@ namespace SharpBridge.Tests.Utilities
         public void Format_ShowsCurrentVerbosityLevel()
         {
             // Arrange
-            var serviceStats = CreateMockServiceStats("Running");
+            var phoneInfo = CreatePhoneTrackingInfo();
+            var serviceStats = CreateMockServiceStats("Running", phoneInfo);
             _formatter.CycleVerbosity(); // Normal -> Detailed
 
             // Act
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Verbosity: Detailed");
+            result.Should().Contain($"=== [DEBUG] iPhone Tracking Data ({ConsoleColors.Colorize("Running", ConsoleColors.GetStatusColor("Running"))}) === [Alt+O]");
         }
 
         #endregion
