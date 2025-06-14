@@ -82,7 +82,6 @@ namespace SharpBridge.Utilities
             
             // Header with service status
             builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", stats.Status, "Alt+O"));
-            builder.AppendLine();
             
             // Health status
             builder.AppendLine(FormatHealthStatus(

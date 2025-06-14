@@ -632,7 +632,7 @@ namespace SharpBridge.Tests.Services
                 
                 // Assert - Check that service stats reflect partial loading
                 var stats = engine.GetServiceStats();
-                stats.Status.Should().Be("SomeRulesActive"); // 2 valid rules, 2 invalid rules
+                stats.Status.Should().Be("RulesPartiallyValid"); // 2 valid rules, 2 invalid rules
                 stats.Counters["Valid Rules"].Should().Be(2);
                 stats.Counters["Invalid Rules"].Should().Be(2);
                 
@@ -697,7 +697,7 @@ namespace SharpBridge.Tests.Services
                 
                 // Assert - Check that service stats reflect partial loading
                 var stats = engine.GetServiceStats();
-                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule
+                stats.Status.Should().Be("RulesPartiallyValid"); // 1 valid rule, 1 invalid rule
                 stats.Counters["Valid Rules"].Should().Be(1);
                 stats.Counters["Invalid Rules"].Should().Be(1);
                 
@@ -795,7 +795,7 @@ namespace SharpBridge.Tests.Services
                 
                 // Assert - Check that service stats reflect partial loading
                 var stats = engine.GetServiceStats();
-                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule
+                stats.Status.Should().Be("RulesPartiallyValid"); // 1 valid rule, 1 invalid rule
                 stats.Counters["Valid Rules"].Should().Be(1);
                 stats.Counters["Invalid Rules"].Should().Be(1);
                 
@@ -1065,7 +1065,7 @@ namespace SharpBridge.Tests.Services
                 
                 // Assert - Check that service stats reflect partial loading
                 var stats = engine.GetServiceStats();
-                stats.Status.Should().Be("SomeRulesActive"); // 1 valid rule, 1 invalid rule due to exception
+                stats.Status.Should().Be("RulesPartiallyValid"); // 1 valid rule, 1 invalid rule due to exception
                 stats.Counters["Valid Rules"].Should().Be(1);
                 stats.Counters["Invalid Rules"].Should().Be(1);
                 

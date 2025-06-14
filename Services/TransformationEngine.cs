@@ -234,11 +234,11 @@ namespace SharpBridge.Services
             
             if (abandonedRules.Count == 0)
             {
-                _currentStatus = TransformationEngineStatus.AllRulesActive;
+                _currentStatus = TransformationEngineStatus.AllRulesValid;
             }
             else if (successfulRules.Count > 0)
             {
-                _currentStatus = TransformationEngineStatus.SomeRulesActive;
+                _currentStatus = TransformationEngineStatus.RulesPartiallyValid;
             }
             
             _successfulTransformations++;
@@ -351,12 +351,12 @@ namespace SharpBridge.Services
         {
             if (validRules > 0 && invalidRules == 0)
             {
-                _currentStatus = TransformationEngineStatus.AllRulesActive;
+                _currentStatus = TransformationEngineStatus.AllRulesValid;
                 _lastError = string.Empty;
             }
             else if (validRules > 0 && invalidRules > 0)
             {
-                _currentStatus = TransformationEngineStatus.SomeRulesActive;
+                _currentStatus = TransformationEngineStatus.RulesPartiallyValid;
                 _lastError = string.Empty;
             }
             else
@@ -521,8 +521,8 @@ namespace SharpBridge.Services
                 validRulesCount: _rules.Count,
                 invalidRules: _invalidRules.AsReadOnly());
             
-            bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesActive || 
-                           _currentStatus == TransformationEngineStatus.SomeRulesActive;
+            bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesValid || 
+                           _currentStatus == TransformationEngineStatus.RulesPartiallyValid;
             
             return new ServiceStats(
                 serviceName: "Transformation Engine",

@@ -304,9 +304,10 @@ namespace SharpBridge.Tests.Utilities
 
             // Act
             var result = _formatter.Format(serviceStats);
+            var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            result.Should().Contain("Config File - Path: Configs/custom_rules.json, Status: Loaded");
+            plainResult.Should().Contain("Config File Path: Configs/custom_rules.json");
         }
 
         [Fact]
@@ -320,9 +321,10 @@ namespace SharpBridge.Tests.Utilities
 
             // Act
             var result = _formatter.Format(serviceStats);
+            var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            result.Should().Contain("Config file loads count - Attempts: 5, Successful: 4");
+            plainResult.Should().Contain("Load Attempts: 5, Successful: 4");
         }
 
         [Fact]
@@ -338,8 +340,8 @@ namespace SharpBridge.Tests.Utilities
             // Act
             var result = _formatter.Format(serviceStats);
 
-            // Assert
-            result.Should().Contain("Transformations - Total: 2500, Successful: 2495, Failed: 5");
+            // Assert - Transformation metrics are no longer displayed
+            result.Should().NotContain("Transformations - Total:");
         }
 
         [Fact]
@@ -354,6 +356,57 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
+            result.Should().NotContain("Transformations - Total:");
+        }
+
+        [Fact]
+        public void Format_WithMissingSuccessfulTransformationsCounter_DoesNotShowTransformationLine()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters.Remove("Successful Transformations"); // Remove the key to test fallback
+            serviceStats.Counters["Total Transformations"] = 100;
+            serviceStats.Counters["Failed Transformations"] = 5;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Transformation metrics are no longer displayed
+            result.Should().NotContain("Transformations - Total:");
+        }
+
+        [Fact]
+        public void Format_WithMissingFailedTransformationsCounter_DoesNotShowTransformationLine()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters.Remove("Failed Transformations"); // Remove the key to test fallback
+            serviceStats.Counters["Total Transformations"] = 100;
+            serviceStats.Counters["Successful Transformations"] = 95;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Transformation metrics are no longer displayed
+            result.Should().NotContain("Transformations - Total:");
+        }
+
+        [Fact]
+        public void Format_WithBothSuccessfulAndFailedTransformationsCountersMissing_DoesNotShowTransformationLine()
+        {
+            // Arrange
+            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
+            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            serviceStats.Counters.Remove("Successful Transformations"); // Remove both keys to test fallback
+            serviceStats.Counters.Remove("Failed Transformations");
+            serviceStats.Counters["Total Transformations"] = 100;
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert - Transformation metrics are no longer displayed
             result.Should().NotContain("Transformations - Total:");
         }
 
@@ -584,14 +637,14 @@ namespace SharpBridge.Tests.Utilities
         #region Configuration Status Tests
 
         [Theory]
-        [InlineData("AllRulesActive", "Loaded")]
-        [InlineData("SomeRulesActive", "Loaded")]
-        [InlineData("ConfigErrorCached", "Error (Using Cached)")]
-        [InlineData("NoValidRules", "Loaded (No Valid Rules)")]
-        [InlineData("ConfigMissing", "Not Found")]
-        [InlineData("NeverLoaded", "Never Loaded")]
+        [InlineData("AllRulesActive", "Unknown")]
+        [InlineData("SomeRulesActive", "Unknown")]
+        [InlineData("ConfigErrorCached", "No")]
+        [InlineData("NoValidRules", "Yes")]
+        [InlineData("ConfigMissing", "No")]
+        [InlineData("NeverLoaded", "No")]
         [InlineData("UnknownStatus", "Unknown")]
-        public void Format_WithDifferentEngineStatuses_ShowsCorrectConfigStatus(string engineStatus, string expectedConfigStatus)
+        public void Format_WithDifferentEngineStatuses_ShowsCorrectConfigStatus(string engineStatus, string expectedUpToDateStatus)
         {
             // Arrange
             var engineInfo = CreateTransformationEngineInfo("Configs/test_rules.json");
@@ -599,9 +652,11 @@ namespace SharpBridge.Tests.Utilities
 
             // Act
             var result = _formatter.Format(serviceStats);
+            var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            result.Should().Contain($"Config File - Path: Configs/test_rules.json, Status: {expectedConfigStatus}");
+            plainResult.Should().Contain("Config File Path: Configs/test_rules.json");
+            plainResult.Should().Contain($"Up to Date: {expectedUpToDateStatus}");
         }
 
         #endregion
@@ -625,19 +680,18 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithMissingHotReloadCounters_HandlesGracefully()
+        public void Format_WithMissingHotReloadCounters_ThrowsKeyNotFoundException()
         {
             // Arrange
             var engineInfo = CreateTransformationEngineInfo();
-            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
+            var serviceStats = CreateMockServiceStats("AllRulesValid", engineInfo);
             serviceStats.Counters.Remove("Hot Reload Attempts");
             serviceStats.Counters.Remove("Hot Reload Successes");
 
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().NotContain("Config file loads count");
+            // Act & Assert
+            var action = () => _formatter.Format(serviceStats);
+            action.Should().Throw<KeyNotFoundException>()
+                .WithMessage("*Hot Reload Attempts*");
         }
 
         [Fact]
@@ -667,7 +721,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var invalidRules = CreateInvalidRules(2);
             var engineInfo = CreateTransformationEngineInfo(invalidRules: invalidRules);
-            var serviceStats = CreateMockServiceStats("SomeRulesActive", engineInfo);
+            var serviceStats = CreateMockServiceStats("RulesPartiallyValid", engineInfo);
 
             // Act
             var result = _formatter.Format(serviceStats);
@@ -679,13 +733,13 @@ namespace SharpBridge.Tests.Utilities
             var headerIndex = Array.FindIndex(lines, line => line.Contains("=== [INFO] Transformation Engine"));
             var rulesLoadedIndex = Array.FindIndex(lines, line => line.Contains("Rules Loaded"));
             var configFileIndex = Array.FindIndex(lines, line => line.Contains("Config File"));
-            var transformationsIndex = Array.FindIndex(lines, line => line.Contains("Transformations"));
+            var upToDateIndex = Array.FindIndex(lines, line => line.Contains("Up to Date"));
             
-            // Verify order
+            // Verify order (Note: Transformations section was removed as per refactoring goals)
             headerIndex.Should().BeGreaterThanOrEqualTo(0);
             rulesLoadedIndex.Should().BeGreaterThan(headerIndex);
             configFileIndex.Should().BeGreaterThan(rulesLoadedIndex);
-            transformationsIndex.Should().BeGreaterThan(configFileIndex);
+            upToDateIndex.Should().BeGreaterThan(configFileIndex);
         }
 
         [Fact]
@@ -694,7 +748,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var invalidRules = CreateInvalidRules(2);
             var engineInfo = CreateTransformationEngineInfo(invalidRules: invalidRules);
-            var serviceStats = CreateMockServiceStats("SomeRulesActive", engineInfo);
+            var serviceStats = CreateMockServiceStats("RulesPartiallyValid", engineInfo);
 
             // Act
             var result = _formatter.Format(serviceStats);
@@ -709,57 +763,6 @@ namespace SharpBridge.Tests.Utilities
         #endregion
 
         #region Edge Cases and Coverage Gaps
-
-        [Fact]
-        public void Format_WithMissingSuccessfulTransformationsCounter_UsesFallbackValue()
-        {
-            // Arrange
-            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
-            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
-            serviceStats.Counters.Remove("Successful Transformations"); // Remove the key to test fallback
-            serviceStats.Counters["Total Transformations"] = 100;
-            serviceStats.Counters["Failed Transformations"] = 5;
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert - Should use fallback value of 0 for successful transformations
-            result.Should().Contain("Transformations - Total: 100, Successful: 0, Failed: 5");
-        }
-
-        [Fact]
-        public void Format_WithMissingFailedTransformationsCounter_UsesFallbackValue()
-        {
-            // Arrange
-            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
-            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
-            serviceStats.Counters.Remove("Failed Transformations"); // Remove the key to test fallback
-            serviceStats.Counters["Total Transformations"] = 100;
-            serviceStats.Counters["Successful Transformations"] = 95;
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert - Should use fallback value of 0 for failed transformations
-            result.Should().Contain("Transformations - Total: 100, Successful: 95, Failed: 0");
-        }
-
-        [Fact]
-        public void Format_WithBothSuccessfulAndFailedTransformationsCountersMissing_UsesFallbackValues()
-        {
-            // Arrange
-            var engineInfo = new TransformationEngineInfo("test.json", 5, new List<RuleInfo>());
-            var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
-            serviceStats.Counters.Remove("Successful Transformations"); // Remove both keys to test fallback
-            serviceStats.Counters.Remove("Failed Transformations");
-            serviceStats.Counters["Total Transformations"] = 100;
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert - Should use fallback value of 0 for both successful and failed transformations
-            result.Should().Contain("Transformations - Total: 100, Successful: 0, Failed: 0");
-        }
 
         [Fact]
         public void Format_WithZeroTotalTransformations_DoesNotShowTransformationLine()
