@@ -33,11 +33,14 @@ namespace SharpBridge.Services
         private const int PREFERRED_CONSOLE_WIDTH = 150;
         private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
+        public double CONSOLE_UPDATE_INTERVAL_SECONDS { get; set; } = 0.1;
+
         private bool _isDisposed;
         private string _transformConfigPath = string.Empty; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
-        
+
+
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
         /// </summary>
@@ -312,7 +315,7 @@ namespace SharpBridge.Services
             if (DateTime.UtcNow >= nextStatusUpdateTime)
             {
                 UpdateConsoleStatus();
-                return DateTime.UtcNow.AddSeconds(0.1f); // Update status every 0.1 seconds
+                return DateTime.UtcNow.AddSeconds(CONSOLE_UPDATE_INTERVAL_SECONDS);
             }
             
             return nextStatusUpdateTime;
