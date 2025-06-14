@@ -154,7 +154,8 @@ namespace SharpBridge.Utilities
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
                 var colorizedStatus = DetermineConfigStatus(serviceStats.Status, engineInfo.ConfigFilePath);
-                builder.AppendLine($"Config File Path: {engineInfo.ConfigFilePath}");
+                var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
+                builder.AppendLine($"Config File Path: {colorized_config_path}");
                 builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
             }
         }

@@ -61,11 +61,18 @@ namespace SharpBridge.Utilities
             var builder = new StringBuilder();
             
             // Header with service status
-            AppendServiceHeader(builder, stats);
+            builder.AppendLine(FormatServiceHeader("PC Client", stats.Status, "Alt+P"));
             
             // Tracking data details
             if (stats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
             {
+                // Face detection status
+                var faceIcon = pcTrackingInfo.FaceFound ? "√" : "X";
+                var faceColor = pcTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
+                builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(pcTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
+                
+                builder.AppendLine();
+                
                 var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
             
                 if (CurrentVerbosity >= VerbosityLevel.Normal)
@@ -87,44 +94,6 @@ namespace SharpBridge.Utilities
         }
         
 
-        
-        /// <summary>
-        /// Appends the service header information to the string builder
-        /// </summary>
-        private void AppendServiceHeader(StringBuilder builder, IServiceStats serviceStats)
-        {
-            // Header with service status
-            builder.AppendLine(FormatServiceHeader("PC Client", serviceStats.Status, "Alt+P"));
-            
-            // Health status
-            builder.AppendLine(FormatHealthStatus(
-                serviceStats.IsHealthy, 
-                serviceStats.LastSuccessfulOperation, 
-                serviceStats.LastError));
-            
-            // Connection metrics if available
-            if (serviceStats.Counters.ContainsKey("MessagesSent"))
-            {
-                var messagesSent = serviceStats.Counters["MessagesSent"];
-                var connectionAttempts = serviceStats.Counters.ContainsKey("ConnectionAttempts") ? serviceStats.Counters["ConnectionAttempts"] : 0;
-                var uptimeSeconds = serviceStats.Counters.ContainsKey("UptimeSeconds") ? serviceStats.Counters["UptimeSeconds"] : 0;
-                
-                builder.AppendLine(FormatConnectionMetrics(messagesSent, connectionAttempts, uptimeSeconds));
-            }
-            
-            // Show tracking data info if available
-            if (serviceStats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
-            {
-                var faceIcon = pcTrackingInfo.FaceFound ? "√" : "X";
-                var faceColor = pcTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
-                builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(pcTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
-            
-                var parameterCount = pcTrackingInfo.Parameters?.Count() ?? 0;
-            builder.AppendLine($"Parameter Count: {parameterCount}");
-            }
-            
-            builder.AppendLine();
-        }
         
         /// <summary>
         /// Appends the parameter information to the string builder using the new table format
@@ -151,6 +120,9 @@ namespace SharpBridge.Utilities
             // Use the new generic table formatter - let it handle display limits
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
             _tableFormatter.AppendTable(builder, "=== Parameters ===", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
+            
+            builder.AppendLine();
+            builder.AppendLine($"Total Parameters: {parameters.Count}");
         }
         
         /// <summary>
@@ -216,73 +188,7 @@ namespace SharpBridge.Utilities
             return "[no expression]";
         }
         
-        /// <summary>
-        /// Formats connection metrics for PC client
-        /// </summary>
-        /// <param name="messagesSent">Number of messages sent</param>
-        /// <param name="connectionAttempts">Number of connection attempts</param>
-        /// <param name="uptimeSeconds">Uptime in seconds</param>
-        /// <returns>Formatted connection metrics string</returns>
-        private string FormatConnectionMetrics(long messagesSent, long connectionAttempts, long uptimeSeconds)
-        {
-            var uptimeFormatted = FormatUptime(uptimeSeconds);
-            return $"Connection: {messagesSent} msgs sent | {connectionAttempts} attempts | {uptimeFormatted} uptime";
-        }
-        
-        /// <summary>
-        /// Formats uptime into a human-readable string
-        /// </summary>
-        /// <param name="uptimeSeconds">Uptime in seconds</param>
-        /// <returns>Formatted uptime string</returns>
-        private string FormatUptime(long uptimeSeconds)
-        {
-            return DisplayFormatting.FormatDuration(TimeSpan.FromSeconds(uptimeSeconds));
-        }
-        
-        /// <summary>
-        /// Formats a time span into a human-readable string
-        /// </summary>
-        /// <param name="timeSpan">Time span to format</param>
-        /// <returns>Formatted time string</returns>
-        private string FormatTimeAgo(TimeSpan timeSpan)
-        {
-            return DisplayFormatting.FormatDuration(timeSpan);
-        }
-        
-        /// <summary>
-        /// Formats health status for PC client
-        /// </summary>
-        /// <param name="isHealthy">Whether the service is healthy</param>
-        /// <param name="lastSuccess">Last successful operation timestamp</param>
-        /// <param name="lastError">Last error message (optional)</param>
-        /// <returns>Formatted health status string</returns>
-        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string? lastError = null)
-        {
-            var healthIcon = isHealthy ? "√" : "X";
-            var healthText = (isHealthy ? "Healthy" : "Unhealthy");
-            var healthColor = ConsoleColors.GetHealthColor(isHealthy);
-            
-            var timeAgo = lastSuccess != DateTime.MinValue
-                ? FormatTimeAgo(DateTime.UtcNow - lastSuccess)
-                : "Never";
-            
-            var healthContent = $"{healthIcon} {healthText}";
-            var colorizedHealth = ConsoleColors.Colorize(healthContent, healthColor);
 
-            var result = $"Health: {colorizedHealth}";
-            result += Environment.NewLine;
-            result += $"Last Success: {timeAgo}";
-            
-            // Add error information if unhealthy and error is provided
-            if (!isHealthy && !string.IsNullOrEmpty(lastError))
-            {
-                var errorText = lastError.Length > 50 ? lastError.Substring(0, 47) + "..." : lastError;
-                result += Environment.NewLine;
-                result += $"Error: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}";
-            }
-            
-            return result;
-        }
         
         /// <summary>
         /// Formats a service header with status and color coding

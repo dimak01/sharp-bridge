@@ -94,6 +94,11 @@ namespace SharpBridge.Utilities
         /// Light red color for rule error names (used in error tables)
         /// </summary>
         public const string RuleErrorNameColor = "\u001b[91m"; // Bright red
+
+        /// <summary>
+        /// Light Cyan color for config path display
+        /// </summary>
+        public const string ConfigPathColor = "\u001b[96m"; // Light Cyan
         
         /// <summary>
         /// Wraps text with the specified color and resets afterward

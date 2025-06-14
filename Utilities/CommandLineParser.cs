@@ -18,7 +18,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Default transform configuration filename
         /// </summary>
-        public const string TransformConfigFilename = "vts_transforms_ja.json";
+        public const string TransformConfigFilename = "vts_transforms.json";
         
         /// <summary>
         /// Default PC configuration filename

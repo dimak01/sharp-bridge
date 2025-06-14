@@ -25,7 +25,7 @@ SharpBridge.exe [options]
 
 Options:
   --config-dir <path>           Configuration directory (default: Configs)
-  --transform-config <file>     Transform rules filename (default: vts_transforms_ja.json)
+  --transform-config <file>     Transform rules filename (default: vts_transforms.json)
   --pc-config <file>           PC VTube Studio config (default: VTubeStudioPCConfig.json)
   --phone-config <file>        Phone config (default: VTubeStudioPhoneConfig.json)
   --help                       Show help information
