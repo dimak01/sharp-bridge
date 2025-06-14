@@ -91,10 +91,18 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-        private string FormatServiceHeader(string status)
+        public static string FormatServiceHeader(string status, VerbosityLevel verbosity = VerbosityLevel.Normal)
         {
-            var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== Transformation Engine ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+T]";
+            var statusColor = status == "Running" ? ConsoleColors.Success : ConsoleColors.Error;
+            var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
+            var verbosityTag = verbosity switch
+            {
+                VerbosityLevel.Basic => "[BASIC]",
+                VerbosityLevel.Normal => "[INFO]",
+                VerbosityLevel.Detailed => "[DEBUG]",
+                _ => "[INFO]"
+            };
+            return $"=== {verbosityTag} Transformation Engine ({colorizedStatus}) === [Alt+T]";
         }
 
         #endregion
@@ -201,7 +209,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain(FormatServiceHeader("AllRulesActive"));
+            result.Should().Contain(FormatServiceHeader("AllRulesActive", _formatter.CurrentVerbosity));
         }
 
         [Fact]
@@ -215,7 +223,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain(FormatServiceHeader("SomeRulesActive"));
+            result.Should().Contain(FormatServiceHeader("SomeRulesActive", _formatter.CurrentVerbosity));
         }
 
         [Fact]
@@ -230,7 +238,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Verbosity: Detailed");
+            result.Should().Contain(FormatServiceHeader("AllRulesActive", _formatter.CurrentVerbosity));
         }
 
         #endregion
@@ -668,16 +676,14 @@ namespace SharpBridge.Tests.Utilities
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             
             // Find key sections in order
-            var headerIndex = Array.FindIndex(lines, line => line.Contains("=== Transformation Engine"));
-            var verbosityIndex = Array.FindIndex(lines, line => line.Contains("Verbosity:"));
+            var headerIndex = Array.FindIndex(lines, line => line.Contains("=== [INFO] Transformation Engine"));
             var rulesLoadedIndex = Array.FindIndex(lines, line => line.Contains("Rules Loaded"));
             var configFileIndex = Array.FindIndex(lines, line => line.Contains("Config File"));
             var transformationsIndex = Array.FindIndex(lines, line => line.Contains("Transformations"));
             
             // Verify order
             headerIndex.Should().BeGreaterThanOrEqualTo(0);
-            verbosityIndex.Should().BeGreaterThan(headerIndex);
-            rulesLoadedIndex.Should().BeGreaterThan(verbosityIndex);
+            rulesLoadedIndex.Should().BeGreaterThan(headerIndex);
             configFileIndex.Should().BeGreaterThan(rulesLoadedIndex);
             transformationsIndex.Should().BeGreaterThan(configFileIndex);
         }

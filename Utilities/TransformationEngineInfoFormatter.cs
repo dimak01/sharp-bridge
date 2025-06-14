@@ -288,6 +288,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         private string FormatServiceHeader(string serviceName, string status, string shortcut)
         {
+            var statusColor = status == "Running" ? ConsoleColors.Success : ConsoleColors.Error;
             var verbosity = CurrentVerbosity switch
             {
                 VerbosityLevel.Basic => "[BASIC]",
@@ -295,9 +296,7 @@ namespace SharpBridge.Utilities
                 VerbosityLevel.Detailed => "[DEBUG]",
                 _ => "[INFO]"
             };
-            var statusColor = ConsoleColors.GetStatusColor(status);
-            var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
-            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            return $"=== {verbosity} {serviceName} ({statusColor}{status}{ConsoleColors.Reset}) === [{shortcut}]";
         }
     }
 } 

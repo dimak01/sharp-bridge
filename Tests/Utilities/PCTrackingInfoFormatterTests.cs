@@ -19,7 +19,7 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== PC Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+P]";
+            return $"=== [INFO] PC Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+P]";
         }
 
         public static string FormatHealthStatus(bool isHealthy, string timeAgo, string error = null)

@@ -151,7 +151,7 @@ namespace SharpBridge.Utilities
             
             if (_formatters.TryGetValue(entityType, out var formatter))
             {
-                return GetFormattedOutputFromFormatter(formatter, stat);
+                return formatter.Format(stat);
             }
             else
             {
@@ -168,26 +168,12 @@ namespace SharpBridge.Utilities
             
             if (formatter != null)
             {
-                return GetFormattedOutputFromFormatter(formatter, stat);
+                return formatter.Format(stat);
             }
             else
             {
                 return CreateNoDataOutput(stat);
             }
-        }
-
-        /// <summary>
-        /// Gets formatted output from a specific formatter
-        /// </summary>
-        private string GetFormattedOutputFromFormatter(IFormatter formatter, IServiceStats stat)
-        {
-            return formatter switch
-            {
-                PhoneTrackingInfoFormatter phoneFormatter => phoneFormatter.Format(stat),
-                PCTrackingInfoFormatter pcFormatter => pcFormatter.Format(stat),
-                TransformationEngineInfoFormatter transformationFormatter => transformationFormatter.Format(stat),
-                _ => CreateBasicFormatterOutput(formatter, stat)
-            };
         }
 
         /// <summary>
@@ -209,23 +195,6 @@ namespace SharpBridge.Utilities
             }
             
             return null;
-        }
-
-        /// <summary>
-        /// Creates output for basic formatters that don't support service stats
-        /// </summary>
-        private static string CreateBasicFormatterOutput(IFormatter formatter, IServiceStats stat)
-        {
-            var verbosity = formatter.CurrentVerbosity switch
-            {
-                VerbosityLevel.Basic => "[BASIC]",
-                VerbosityLevel.Normal => "[INFO]",
-                VerbosityLevel.Detailed => "[DEBUG]",
-                _ => "[INFO]"
-            };
-            var header = $"=== {stat.ServiceName} {verbosity} ({stat.Status}) ==={Environment.NewLine}";
-            var content = formatter.Format(stat);
-            return header + content;
         }
 
         /// <summary>
