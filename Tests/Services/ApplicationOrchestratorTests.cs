@@ -50,10 +50,10 @@ namespace SharpBridge.Tests.Services
             
             // Configure recovery policy to return 2 second delay
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
-                .Returns(TimeSpan.FromMilliseconds(50));
+                .Returns(TimeSpan.FromMilliseconds(5));
             
-            _defaultCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
-            _longTimeout = TimeSpan.FromMilliseconds(500);
+            _defaultCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10));
+            _longTimeout = TimeSpan.FromMilliseconds(30);
             _longTimeoutCts = new CancellationTokenSource(_longTimeout);
             
             // Create a simple phone config for testing
@@ -1529,11 +1529,15 @@ namespace SharpBridge.Tests.Services
             
             await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
             
+            // Set console update interval to 5ms (much tighter)
+            _orchestrator.CONSOLE_UPDATE_INTERVAL_SECONDS = 0.005;
+            
             // Act
             await RunWithCustomTimeout(async () => 
             {
                 await _orchestrator.RunAsync(_longTimeoutCts.Token);
-            }, _longTimeout);
+                // Add a small delay
+            }, TimeSpan.FromMilliseconds(20)); // Using _longTimeout value
             
             // Assert
             _consoleRendererMock.Verify(x => x.Update(It.IsAny<List<IServiceStats>>()), Times.AtLeast(2));
