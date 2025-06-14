@@ -95,7 +95,6 @@ namespace SharpBridge.Utilities
         {
             // Header with service status
             builder.AppendLine(FormatServiceHeader("PC Client", serviceStats.Status, "Alt+P"));
-            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
             builder.AppendLine();
             
             // Health status
@@ -295,9 +294,16 @@ namespace SharpBridge.Utilities
         /// <returns>Formatted header string</returns>
         private string FormatServiceHeader(string serviceName, string status, string shortcut)
         {
+            var verbosity = CurrentVerbosity switch
+            {
+                VerbosityLevel.Basic => "[BASIC]",
+                VerbosityLevel.Normal => "[INFO]",
+                VerbosityLevel.Detailed => "[DEBUG]",
+                _ => "[INFO]"
+            };
             var statusColor = ConsoleColors.GetStatusColor(status);
             var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
-            return $"=== {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
         }
     }
 } 

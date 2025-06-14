@@ -100,10 +100,9 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Adds header lines to the display
         /// </summary>
-        private void AddHeaderLines(List<string> lines)
+        private static void AddHeaderLines(List<string> lines)
         {
-            lines.Add($"=== SharpBridge Status ===");
-            lines.Add($"Current Time: {DateTime.Now:HH:mm:ss}");
+            lines.Add($"=== SharpBridge Status at {DateTime.Now:HH:mm:ss} ===");
             lines.Add(string.Empty);
         }
 
@@ -215,9 +214,16 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Creates output for basic formatters that don't support service stats
         /// </summary>
-        private string CreateBasicFormatterOutput(IFormatter formatter, IServiceStats stat)
+        private static string CreateBasicFormatterOutput(IFormatter formatter, IServiceStats stat)
         {
-            var header = $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}";
+            var verbosity = formatter.CurrentVerbosity switch
+            {
+                VerbosityLevel.Basic => "[BASIC]",
+                VerbosityLevel.Normal => "[INFO]",
+                VerbosityLevel.Detailed => "[DEBUG]",
+                _ => "[INFO]"
+            };
+            var header = $"=== {stat.ServiceName} {verbosity} ({stat.Status}) ==={Environment.NewLine}";
             var content = formatter.Format(stat);
             return header + content;
         }
@@ -225,7 +231,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Creates output when no formatter is registered
         /// </summary>
-        private string CreateNoFormatterOutput(IServiceStats stat, Type entityType)
+        private static string CreateNoFormatterOutput(IServiceStats stat, Type entityType)
         {
             return $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}" +
                    $"[No formatter registered for {entityType.Name}]";
@@ -234,7 +240,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Creates output when no data is available
         /// </summary>
-        private string CreateNoDataOutput(IServiceStats stat)
+        private static string CreateNoDataOutput(IServiceStats stat)
         {
             return $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}" +
                    "No current data available";
@@ -243,7 +249,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Adds formatted output lines to the display list
         /// </summary>
-        private void AddFormattedOutputLines(List<string> lines, string formattedOutput)
+        private static void AddFormattedOutputLines(List<string> lines, string formattedOutput)
         {
             foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
             {
@@ -254,7 +260,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Adds footer lines to the display
         /// </summary>
-        private void AddFooterLines(List<string> lines)
+        private static void AddFooterLines(List<string> lines)
         {
             lines.Add("Press Ctrl+C to exit | Alt+T for Transformation Engine verbosity | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
         }
