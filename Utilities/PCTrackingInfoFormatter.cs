@@ -95,7 +95,6 @@ namespace SharpBridge.Utilities
         {
             // Header with service status
             builder.AppendLine(FormatServiceHeader("PC Client", serviceStats.Status, "Alt+P"));
-            builder.AppendLine();
             
             // Health status
             builder.AppendLine(FormatHealthStatus(
