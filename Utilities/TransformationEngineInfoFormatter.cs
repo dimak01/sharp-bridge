@@ -18,9 +18,7 @@ namespace SharpBridge.Utilities
         private const string UPTIME_SINCE_RULES_LOADED_KEY = "Uptime Since Rules Loaded (seconds)";
         private const string HOT_RELOAD_ATTEMPTS_KEY = "Hot Reload Attempts";
         private const string HOT_RELOAD_SUCCESSES_KEY = "Hot Reload Successes";
-        private const string TOTAL_TRANSFORMATIONS_KEY = "Total Transformations";
-        private const string SUCCESSFUL_TRANSFORMATIONS_KEY = "Successful Transformations";
-        private const string FAILED_TRANSFORMATIONS_KEY = "Failed Transformations";
+
         
         // Display Limits
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
@@ -157,7 +155,7 @@ namespace SharpBridge.Utilities
             {
                 var colorizedStatus = DetermineConfigStatus(serviceStats.Status, engineInfo.ConfigFilePath);
                 builder.AppendLine($"Config File Path: {engineInfo.ConfigFilePath}");
-                builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters["Hot Reload Attempts"]}, Successful: {serviceStats.Counters["Hot Reload Successes"]}");
+                builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
             }
         }
         
