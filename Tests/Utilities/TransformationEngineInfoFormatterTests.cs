@@ -37,8 +37,8 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-        private ServiceStats CreateMockServiceStats(string status, TransformationEngineInfo currentEntity = null, 
-            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null)
+                private ServiceStats CreateMockServiceStats(string status, TransformationEngineInfo currentEntity = null!,
+            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
             {

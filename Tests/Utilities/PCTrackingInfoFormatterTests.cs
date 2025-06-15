@@ -64,8 +64,8 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-        private ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null, 
-            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null)
+                private ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null!,
+            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
             {
@@ -84,7 +84,7 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null)
+        private PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!)
         {
             var trackingInfo = new PCTrackingInfo
             {
@@ -176,7 +176,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -237,7 +237,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -572,7 +572,7 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null;
+                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
@@ -644,7 +644,7 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null;
+                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
@@ -729,7 +729,7 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -824,7 +824,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -867,7 +867,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -904,7 +904,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -948,7 +948,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -984,7 +984,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
