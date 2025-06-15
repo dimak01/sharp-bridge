@@ -890,8 +890,8 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-        private ServiceStats CreateMockServiceStats(string status, PhoneTrackingInfo currentEntity = null, 
-            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null)
+                private ServiceStats CreateMockServiceStats(string status, PhoneTrackingInfo currentEntity = null!,
+            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
             {
@@ -910,7 +910,7 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private PhoneTrackingInfo CreatePhoneTrackingInfo(bool faceFound = true, List<BlendShape> blendShapes = null)
+        private PhoneTrackingInfo CreatePhoneTrackingInfo(bool faceFound = true, List<BlendShape> blendShapes = null!)
         {
             return new PhoneTrackingInfo
             {
@@ -936,7 +936,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            IList<ITableColumn<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1003,7 +1003,7 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            IList<ITableColumn<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1064,7 +1064,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            IList<ITableColumn<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),

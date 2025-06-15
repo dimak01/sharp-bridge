@@ -25,7 +25,7 @@ namespace SharpBridge.Tests.Services
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new ParameterColorService(null));
+            var exception = Assert.Throws<ArgumentNullException>(() => new ParameterColorService(null!));
             Assert.Equal("logger", exception.ParamName);
         }
 
@@ -36,7 +36,7 @@ namespace SharpBridge.Tests.Services
             var calculatedParameters = new[] { "param1", "param2" };
 
             // Act
-            _colorService.InitializeFromConfiguration(null, calculatedParameters);
+            _colorService.InitializeFromConfiguration(null!, calculatedParameters);
 
             // Assert
             _loggerMock.Verify(x => x.Warning("ParameterColorService initialized with null blend shape names"), Times.Once);
@@ -49,7 +49,7 @@ namespace SharpBridge.Tests.Services
             var blendShapes = new[] { "eyeBlinkLeft", "eyeBlinkRight" };
 
             // Act
-            _colorService.InitializeFromConfiguration(blendShapes, null);
+            _colorService.InitializeFromConfiguration(blendShapes, null!);
 
             // Assert
             _loggerMock.Verify(x => x.Warning("ParameterColorService initialized with null calculated parameter names"), Times.Once);
