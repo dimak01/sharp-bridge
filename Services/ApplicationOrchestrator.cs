@@ -33,6 +33,9 @@ namespace SharpBridge.Services
         private const int PREFERRED_CONSOLE_WIDTH = 150;
         private const int PREFERRED_CONSOLE_HEIGHT = 60;
         
+        /// <summary>
+        /// Gets or sets the interval in seconds between console status updates
+        /// </summary>
         public double CONSOLE_UPDATE_INTERVAL_SECONDS { get; set; } = 0.1;
 
         private bool _isDisposed;

@@ -25,14 +25,9 @@ namespace SharpBridge.Utilities
         private readonly IParameterColorService _colorService;
         
         /// <summary>
-        /// Gets or sets the current time for testing purposes. If null, DateTime.UtcNow is used.
+        /// Gets or sets the current time for testing purposes. If null, uses DateTime.UtcNow.
         /// </summary>
-        internal DateTime? CurrentTime { get; set; }
-        
-        /// <summary>
-        /// Gets the current time, using the test time if set, otherwise DateTime.UtcNow
-        /// </summary>
-        private DateTime GetCurrentTime() => CurrentTime ?? DateTime.UtcNow;
+        public DateTime? CurrentTime { get; set; }
         
         /// <summary>
         /// Initializes a new instance of the PhoneTrackingInfoFormatter

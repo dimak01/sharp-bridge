@@ -1382,7 +1382,7 @@ namespace SharpBridge.Tests.Services
         
         // Tests for error handling in RunAsync phone client operations
         
-        //[Fact] Temporary disabled flaky test TODO: Review and fix
+        [Fact]
         public async Task RunAsync_WhenPhoneClientSendThrowsException_ContinuesWithRecovery()
         {
             // Arrange

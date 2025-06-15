@@ -890,7 +890,7 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-                private ServiceStats CreateMockServiceStats(string status, PhoneTrackingInfo currentEntity = null!,
+        private static ServiceStats CreateMockServiceStats(string status, PhoneTrackingInfo currentEntity = null!,
             bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
