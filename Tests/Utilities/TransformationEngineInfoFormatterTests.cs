@@ -579,7 +579,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("SomeRulesActive", engineInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<RuleInfo>> capturedColumns = null;
+            IList<ITableColumn<RuleInfo>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
