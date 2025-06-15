@@ -92,13 +92,9 @@ namespace SharpBridge.Utilities
             // Transformation engine details
             if (stats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
-                if (CurrentVerbosity >= VerbosityLevel.Normal)
+                if (CurrentVerbosity >= VerbosityLevel.Normal && engineInfo.InvalidRules.Any())
                 {
-                    // Show failed rules if any
-                    if (engineInfo.InvalidRules.Any())
-                    {
-                        AppendFailedRules(builder, engineInfo.InvalidRules);
-                    }
+                    AppendFailedRules(builder, engineInfo.InvalidRules);
                 }
             }
             else if (stats.CurrentEntity != null)
@@ -149,7 +145,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends the configuration information section to the string builder
         /// </summary>
-        private void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
+        private static void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
         {
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {

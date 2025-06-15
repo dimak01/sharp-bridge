@@ -910,7 +910,7 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private PhoneTrackingInfo CreatePhoneTrackingInfo(bool faceFound = true, List<BlendShape> blendShapes = null!)
+        private static PhoneTrackingInfo CreatePhoneTrackingInfo(bool faceFound = true, List<BlendShape> blendShapes = null!)
         {
             return new PhoneTrackingInfo
             {
