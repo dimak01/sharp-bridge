@@ -84,7 +84,7 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!)
+        private static PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!)
         {
             var trackingInfo = new PCTrackingInfo
             {
