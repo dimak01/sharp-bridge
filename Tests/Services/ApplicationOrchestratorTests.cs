@@ -52,7 +52,7 @@ namespace SharpBridge.Tests.Services
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
                 .Returns(TimeSpan.FromMilliseconds(5));
             
-            _defaultCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10));
+            _defaultCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50)); // Increased from 10ms to 50ms
             _longTimeout = TimeSpan.FromMilliseconds(70);
             _longTimeoutCts = new CancellationTokenSource(_longTimeout);
             
@@ -62,7 +62,7 @@ namespace SharpBridge.Tests.Services
                 IphoneIpAddress = "127.0.0.1",
                 IphonePort = 1234,
                 LocalPort = 5678,
-                RequestIntervalSeconds = 1.0,
+                RequestIntervalSeconds = 0.001, // 1ms interval to ensure requests happen within test timeout
                 ReceiveTimeoutMs = 100,
                 SendForSeconds = 5,
                 ErrorDelayMs = 10 // Fast error retry for tests
@@ -168,22 +168,28 @@ namespace SharpBridge.Tests.Services
                 .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
                 
-            // Configure phone client basic behavior
+            // Default setup for SendTrackingRequestAsync (can be overridden by test-specific setups)
             _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
                 .Returns(Task.CompletedTask);
-                
+            
             _vtubeStudioPhoneClientMock.Setup(x => x.ReceiveResponseAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false);
 
-            // Setup Phone client service stats
+            // Setup Phone client service stats - simulate realistic health behavior
+            // Phone client starts healthy after successful initialization (like TryInitializeAsync returning true)
             var phoneStats = new ServiceStats(
                 serviceName: "PhoneClient",
                 status: "Connected",
                 currentEntity: new PhoneTrackingInfo(),
-                isHealthy: true,
-                lastSuccessfulOperation: DateTime.UtcNow,
+                isHealthy: true, // Healthy after successful initialization
+                lastSuccessfulOperation: DateTime.UtcNow, // Recent successful operation
                 lastError: null,
-                counters: new Dictionary<string, long>()
+                counters: new Dictionary<string, long>
+                {
+                    ["Total Frames"] = 1, // Simulate having received at least one frame
+                    ["Failed Frames"] = 0,
+                    ["Uptime (seconds)"] = 1
+                }
             );
             _vtubeStudioPhoneClientMock.Setup(x => x.GetServiceStats())
                 .Returns(phoneStats);
