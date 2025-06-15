@@ -89,6 +89,7 @@ namespace SharpBridge.Services
         private DateTime _rulesLoadedTime;
         private string _lastError = string.Empty;
         private string _configFilePath = string.Empty;
+        private DateTime _lastFileModificationTime;
         private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;
         private readonly List<RuleInfo> _invalidRules = new();
         
@@ -126,6 +127,9 @@ namespace SharpBridge.Services
                 throw new FileNotFoundException(_lastError);
             }
             
+            // Store file modification time
+            _lastFileModificationTime = File.GetLastWriteTimeUtc(filePath);
+            
             var json = await File.ReadAllTextAsync(filePath);
             
             var rules = JsonSerializer.Deserialize<List<TransformRule>>(json) ?? 
@@ -134,6 +138,37 @@ namespace SharpBridge.Services
             var (validRules, invalidRules, validationErrors) = ValidateAndCreateRules(rules);
             
             UpdateRulesLoadedStatus(validRules, invalidRules, validationErrors);
+        }
+        
+        /// <summary>
+        /// Checks if the currently loaded configuration is up to date with the file on disk
+        /// </summary>
+        /// <returns>True if the configuration is up to date, false otherwise</returns>
+        public bool IsConfigUpToDate()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_configFilePath) || !File.Exists(_configFilePath))
+                {
+                    _logger.Debug("Config file not found or path is empty");
+                    return false;
+                }
+                
+                var currentModTime = File.GetLastWriteTimeUtc(_configFilePath);
+                var isUpToDate = currentModTime <= _lastFileModificationTime;
+                
+                if (!isUpToDate)
+                {
+                    _logger.Debug($"Config file has been modified. Last loaded: {_lastFileModificationTime:O}, Current: {currentModTime:O}");
+                }
+                
+                return isUpToDate;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error checking if config is up to date: {ex.Message}");
+                return false;
+            }
         }
         
         /// <summary>
@@ -377,8 +412,6 @@ namespace SharpBridge.Services
             }
         }
         
-
-        
         private void LogValidationErrors(int validRules, int invalidRules, List<string> validationErrors)
         {
             string errorDetails = string.Join($"{Environment.NewLine}- ", validationErrors);
@@ -519,7 +552,8 @@ namespace SharpBridge.Services
             var currentEntity = new TransformationEngineInfo(
                 configFilePath: _configFilePath ?? string.Empty,
                 validRulesCount: _rules.Count,
-                invalidRules: _invalidRules.AsReadOnly());
+                invalidRules: _invalidRules.AsReadOnly(),
+                isConfigUpToDate: IsConfigUpToDate());
             
             bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesValid || 
                            _currentStatus == TransformationEngineStatus.RulesPartiallyValid;
