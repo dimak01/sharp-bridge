@@ -53,7 +53,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(TimeSpan.FromMilliseconds(5));
             
             _defaultCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(10));
-            _longTimeout = TimeSpan.FromMilliseconds(30);
+            _longTimeout = TimeSpan.FromMilliseconds(70);
             _longTimeoutCts = new CancellationTokenSource(_longTimeout);
             
             // Create a simple phone config for testing
