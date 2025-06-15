@@ -19,30 +19,10 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== iPhone Tracking Data ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
+            return $"=== [INFO] iPhone Tracking Data ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
         }
 
-        public static string FormatHealthStatus(bool isHealthy, string timeAgo, string error = null, int timeWidth = 6)
-        {
-            var healthIcon = isHealthy ? "√" : "X";
-            var healthText = isHealthy ? "Healthy" : "Unhealthy";
-            var healthColor = isHealthy ? ConsoleColors.Healthy : ConsoleColors.Error;
-            var healthContent = $"{healthIcon} {healthText}";
-            var colorizedHealth = $"{healthColor}{healthContent}{ConsoleColors.Reset}";
 
-            // Pad the time string to the specified width, right-aligned
-            var paddedTimeAgo = timeAgo.PadLeft(timeWidth);
-
-            var result = $"Health: {colorizedHealth}{Environment.NewLine}Last Success: {paddedTimeAgo}";
-            
-            if (!isHealthy && error != null)
-            {
-                var colorizedError = $"{ConsoleColors.Error}{error}{ConsoleColors.Reset}";
-                result += $"{Environment.NewLine}Error: {colorizedError}";
-            }
-            
-            return result;
-        }
 
         public static string FormatFaceStatus(bool faceFound)
         {
@@ -52,13 +32,7 @@ namespace SharpBridge.Tests.Utilities
             return $"Face Status: {color}{icon} {text}{ConsoleColors.Reset}";
         }
 
-        public static string FormatMetrics(long totalFrames, long failedFrames, long fps)
-        {
-            var failedStr = failedFrames.ToString().PadLeft(4);
-            var fpsStr = fps.ToString().PadLeft(3);
-            var framesContent = $"{totalFrames:N0} frames";
-            return $"Metrics: {framesContent.PadLeft(6)} | {failedStr} failed | {fpsStr} FPS";
-        }
+
 
         public static string FormatHeadRotation(float x, float y, float z) =>
             $"Head Rotation (X,Y,Z): {x:F1}°, {y:F1}°, {z:F1}°";
@@ -277,199 +251,20 @@ namespace SharpBridge.Tests.Utilities
         public void Format_ShowsCurrentVerbosityLevel()
         {
             // Arrange
-            var serviceStats = CreateMockServiceStats("Running");
+            var phoneInfo = CreatePhoneTrackingInfo();
+            var serviceStats = CreateMockServiceStats("Running", phoneInfo);
             _formatter.CycleVerbosity(); // Normal -> Detailed
 
             // Act
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Verbosity: Detailed");
+            result.Should().Contain($"=== [DEBUG] iPhone Tracking Data ({ConsoleColors.Colorize("Running", ConsoleColors.GetStatusColor("Running"))}) === [Alt+O]");
         }
 
         #endregion
 
-        #region Health Status Tests
 
-        [Fact]
-        public void Format_WithHealthyService_ShowsHealthyStatus()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: true, lastSuccess: DateTime.UtcNow.AddMinutes(-1));
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(true, "1m"));
-        }
-
-        [Fact]
-        public void Format_WithUnhealthyService_ShowsUnhealthyStatus()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: false, lastSuccess: DateTime.UtcNow.AddMinutes(-1));
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(false, "1m"));
-        }
-
-        [Fact]
-        public void Format_WithRecentSuccess_ShowsFormattedTime()
-        {
-            // Arrange
-            var lastSuccess = DateTime.UtcNow.AddSeconds(-30);
-            var serviceStats = CreateMockServiceStats("Running", lastSuccess: lastSuccess);
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(true, "30s"));
-        }
-
-        [Fact]
-        public void Format_WithNoLastSuccess_ShowsNever()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", lastSuccess: DateTime.MinValue);
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(true, "Never", null, 6));
-        }
-
-        [Fact]
-        public void Format_WithUnhealthyServiceAndError_ShowsErrorMessage()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: false, lastSuccess: DateTime.UtcNow.AddMinutes(-1), lastError: "Connection timeout");
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(false, "1m", "Connection timeout"));
-        }
-
-        [Fact]
-        public void Format_WithUnhealthyServiceAndError_ShowsColoredErrorMessage()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: false, lastError: "Connection timeout");
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain($"Error: {ConsoleColors.Error}Connection timeout{ConsoleColors.Reset}");
-            result.Should().Contain(ConsoleColors.Error); // Red color for error message
-        }
-
-        [Fact]
-        public void Format_WithHealthyService_ShowsColoredHealthStatus()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: true, lastSuccess: DateTime.UtcNow.AddMinutes(-1));
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(true, "1m"));
-            result.Should().Contain(ConsoleColors.Healthy); // Green color for healthy status
-        }
-
-        [Fact]
-        public void Format_WithUnhealthyService_ShowsColoredHealthStatus()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: false, lastSuccess: DateTime.UtcNow.AddMinutes(-1));
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(TestFormattingHelpers.FormatHealthStatus(false, "1m"));
-            result.Should().Contain(ConsoleColors.Error); // Red color for unhealthy status
-        }
-
-        [Fact]
-        public void Format_WithUnhealthyServiceAndLongError_TruncatesErrorMessage()
-        {
-            // Arrange
-            var longError = new string('X', 60) + "_END";
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: false, lastSuccess: DateTime.UtcNow.AddMinutes(-1), lastError: longError);
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain("Error: ");
-            result.Should().Contain("XXX"); // Should contain part of the error
-            result.Should().Contain("..."); // Should be truncated
-            result.Should().NotContain("_END"); // The ending should be truncated
-        }
-
-        #endregion
-
-        #region Metrics Formatting Tests
-
-        [Fact]
-        public void Format_WithMetrics_ShowsFormattedMetrics()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running");
-            serviceStats.Counters["Total Frames"] = 12345;
-            serviceStats.Counters["Failed Frames"] = 42;
-            serviceStats.Counters["FPS"] = 60;
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain("Metrics:");
-            result.Should().Contain("12,345 frames");
-            result.Should().Contain("42 failed");
-            result.Should().Contain("60 FPS");
-        }
-
-        [Fact]
-        public void Format_WithoutFPSCounter_ShowsZeroFPS()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running");
-            serviceStats.Counters["Total Frames"] = 1000;
-            serviceStats.Counters["Failed Frames"] = 5;
-            serviceStats.Counters.Remove("FPS"); // Remove FPS counter
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().MatchRegex("Metrics:.*\\|\\s*0\\s*FPS");
-        }
-
-        [Fact]
-        public void Format_WithoutFrameCounters_DoesNotShowMetrics()
-        {
-            // Arrange
-            var serviceStats = CreateMockServiceStats("Running");
-            serviceStats.Counters.Clear(); // No frame counters
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().NotContain("Metrics:");
-        }
-
-        #endregion
 
         #region Face Detection Tests
 
@@ -1091,64 +886,12 @@ namespace SharpBridge.Tests.Utilities
 
         #endregion
 
-        #region FormatTimeAgo Tests
 
-        [Theory]
-        [InlineData(0, "0s")]
-        [InlineData(1, "1s")]
-        [InlineData(59, "59s")]
-        [InlineData(60, "1m")]
-        [InlineData(61, "1m")]
-        [InlineData(119, "2m")]  // 1.98 minutes rounds up to 2m
-        [InlineData(120, "2m")]
-        [InlineData(3599, "60m")]  // 59.98 minutes rounds up to 60m
-        [InlineData(3600, "1h")]
-        [InlineData(3601, "1h")]
-        [InlineData(7199, "2h")]  // 1.999 hours rounds up to 2h
-        [InlineData(7200, "2h")]
-        [InlineData(86399, "24h")]  // 23.999 hours rounds up to 24h
-        [InlineData(86400, "1d")]
-        [InlineData(86401, "1d")]
-        [InlineData(172799, "2d")]  // 1.999 days rounds up to 2d
-        [InlineData(172800, "2d")]
-        public void Format_WithDifferentLastSuccessTimes_ShowsCorrectTimeAgo(int seconds, string expected)
-        {
-            // Arrange
-            var currentTime = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
-            _formatter.CurrentTime = currentTime;
-            var lastSuccess = currentTime.AddSeconds(-seconds);
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: true, lastSuccess: lastSuccess);
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            // The time is padded to 6 characters and may include color codes
-            result.Should().MatchRegex($"Last Success:\\s*{expected}");
-        }
-
-        [Fact]
-        public void Format_WithFutureLastSuccessTime_ShowsZeroSeconds()
-        {
-            // Arrange
-            var currentTime = new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc);
-            _formatter.CurrentTime = currentTime;
-            var lastSuccess = currentTime.AddSeconds(1); // Future time
-            var serviceStats = CreateMockServiceStats("Running", isHealthy: true, lastSuccess: lastSuccess);
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().MatchRegex("Last Success:\\s*0s");
-        }
-
-        #endregion
 
         #region Helper Methods
 
-        private ServiceStats CreateMockServiceStats(string status, PhoneTrackingInfo currentEntity = null, 
-            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null)
+        private static ServiceStats CreateMockServiceStats(string status, PhoneTrackingInfo currentEntity = null!,
+            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
             {
@@ -1167,7 +910,7 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private PhoneTrackingInfo CreatePhoneTrackingInfo(bool faceFound = true, List<BlendShape> blendShapes = null)
+        private static PhoneTrackingInfo CreatePhoneTrackingInfo(bool faceFound = true, List<BlendShape> blendShapes = null!)
         {
             return new PhoneTrackingInfo
             {
@@ -1193,7 +936,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            IList<ITableColumn<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1260,7 +1003,7 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            IList<ITableColumn<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1321,7 +1064,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null;
+            IList<ITableColumn<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),

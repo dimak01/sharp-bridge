@@ -22,7 +22,7 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new KeyboardInputHandler(null);
+            Action act = () => new KeyboardInputHandler(null!);
             act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
         }
         
@@ -51,7 +51,7 @@ namespace SharpBridge.Tests.Utilities
         public void RegisterShortcut_WithNullAction_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => _handler.RegisterShortcut(ConsoleKey.A, ConsoleModifiers.Alt, null, "Test");
+            Action act = () => _handler.RegisterShortcut(ConsoleKey.A, ConsoleModifiers.Alt, null!, "Test");
             act.Should().Throw<ArgumentNullException>().WithParameterName("action");
         }
         

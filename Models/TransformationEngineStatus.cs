@@ -8,12 +8,12 @@ namespace SharpBridge.Models
         /// <summary>
         /// All loaded rules are valid and actively processing data
         /// </summary>
-        AllRulesActive,
+        AllRulesValid,
         
         /// <summary>
         /// Some rules are active and working, others have issues
         /// </summary>
-        SomeRulesActive,
+        RulesPartiallyValid,
         
         /// <summary>
         /// Hot-reload failed, continuing with previously loaded rules

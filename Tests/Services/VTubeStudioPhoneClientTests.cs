@@ -78,7 +78,7 @@ namespace SharpBridge.Tests.Services
                 RequestIntervalSeconds = 1 // Requests should be sent every 1 second
             };
 
-            byte[] sentData = null;
+            byte[] sentData = null!;
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
                 .Callback<byte[], int, string, int>((data, bytes, host, port) => 
@@ -203,7 +203,7 @@ namespace SharpBridge.Tests.Services
             // Create the receiver and track event raising
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
             var eventWasRaised = false;
-            PhoneTrackingInfo receivedData = null;
+            PhoneTrackingInfo receivedData = null!;
             
             client.TrackingDataReceived += (sender, data) => 
             {
@@ -782,7 +782,7 @@ namespace SharpBridge.Tests.Services
             var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
             
             bool eventInvoked = false;
-            PhoneTrackingInfo receivedData = null;
+            PhoneTrackingInfo receivedData = null!;
             
             client.TrackingDataReceived += (sender, data) => 
             {

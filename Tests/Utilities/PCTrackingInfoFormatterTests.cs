@@ -19,26 +19,7 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== PC Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+P]";
-        }
-
-        public static string FormatHealthStatus(bool isHealthy, string timeAgo, string error = null)
-        {
-            var healthIcon = isHealthy ? "√" : "X";
-            var healthText = isHealthy ? "Healthy" : "Unhealthy";
-            var healthColor = isHealthy ? ConsoleColors.Healthy : ConsoleColors.Error;
-            var healthContent = $"{healthIcon} {healthText}";
-            var colorizedHealth = $"{healthColor}{healthContent}{ConsoleColors.Reset}";
-
-            var result = $"Health: {colorizedHealth}{Environment.NewLine}Last Success: {timeAgo}";
-            
-            if (!isHealthy && error != null)
-            {
-                var colorizedError = $"{ConsoleColors.Error}{error}{ConsoleColors.Reset}";
-                result += $"{Environment.NewLine}Error: {colorizedError}";
-            }
-            
-            return result;
+            return $"=== [INFO] PC Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+P]";
         }
 
         public static string FormatFaceStatus(bool faceFound)
@@ -47,11 +28,6 @@ namespace SharpBridge.Tests.Utilities
             var text = faceFound ? "Detected" : "Not Found";
             var color = faceFound ? ConsoleColors.Success : ConsoleColors.Warning;
             return $"Face Status: {color}{icon} {text}{ConsoleColors.Reset}";
-        }
-
-        public static string FormatConnectionMetrics(long messagesSent, long connectionAttempts, string uptime)
-        {
-            return $"Connection: {messagesSent} msgs sent | {connectionAttempts} attempts | {uptime} uptime";
         }
     }
 
@@ -88,8 +64,8 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-        private ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null, 
-            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null)
+        private static ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null!,
+            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
             {
@@ -108,7 +84,7 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null)
+        private static PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!)
         {
             var trackingInfo = new PCTrackingInfo
             {
@@ -200,7 +176,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -261,7 +237,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -387,28 +363,6 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithUnhealthyService_ShowsError()
-        {
-            // Arrange
-            var trackingInfo = CreatePCTrackingInfo();
-            var serviceStats = new ServiceStats(
-                serviceName: "PC Client",
-                status: "Error",
-                currentEntity: trackingInfo,
-                isHealthy: false,
-                lastSuccessfulOperation: DateTime.UtcNow.AddHours(-1),
-                lastError: "Connection failed",
-                counters: new Dictionary<string, long>()
-            );
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain(PCTestFormattingHelpers.FormatHealthStatus(false, "1:00:00", "Connection failed"));
-        }
-
-        [Fact]
         public void Format_WithNullServiceStats_ReturnsNoDataMessage()
         {
             // Act
@@ -497,33 +451,6 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithConnectionMetrics_ShowsCorrectMetrics()
-        {
-            // Arrange
-            var trackingInfo = CreatePCTrackingInfo();
-            var serviceStats = new ServiceStats(
-                serviceName: "PC Client",
-                status: "Connected",
-                currentEntity: trackingInfo,
-                isHealthy: true,
-                lastSuccessfulOperation: DateTime.UtcNow,
-                lastError: null,
-                counters: new Dictionary<string, long>
-                {
-                    ["MessagesSent"] = 100,
-                    ["ConnectionAttempts"] = 1,
-                    ["UptimeSeconds"] = 3600
-                }
-            );
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain("Connection: 100 msgs sent | 1 attempts | 1:00:00 uptime");
-        }
-
-        [Fact]
         public void Format_WithNoConnectionMetrics_DoesNotShowMetrics()
         {
             // Arrange
@@ -605,83 +532,6 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void Format_WithDifferentUptimes_ShowsCorrectFormat()
-        {
-            // Arrange
-            var testCases = new[]
-            {
-                (seconds: 0L, expected: "0:00:00 uptime"),
-                (seconds: 30L, expected: "0:00:30 uptime"),
-                (seconds: 60L, expected: "0:01:00 uptime"),
-                (seconds: 90L, expected: "0:01:30 uptime"),
-                (seconds: 3600L, expected: "1:00:00 uptime"),
-                (seconds: 3660L, expected: "1:01:00 uptime"),
-                (seconds: 86400L, expected: "24:00:00 uptime"),
-                (seconds: 86460L, expected: "24:01:00 uptime"),
-                (seconds: 90000L, expected: "25:00:00 uptime")
-            };
-
-            foreach (var (seconds, expected) in testCases)
-            {
-                var serviceStats = new ServiceStats(
-                    serviceName: "PC Client",
-                    status: "Connected",
-                    currentEntity: null,
-                    isHealthy: true,
-                    lastSuccessfulOperation: DateTime.UtcNow,
-                    lastError: null,
-                    counters: new Dictionary<string, long>
-                    {
-                        ["MessagesSent"] = 100,
-                        ["ConnectionAttempts"] = 1,
-                        ["UptimeSeconds"] = seconds
-                    }
-                );
-
-                // Act
-                var result = _formatter.Format(serviceStats);
-
-                // Assert
-                result.Should().Contain(expected);
-            }
-        }
-
-        [Fact]
-        public void Format_WithDifferentLastSuccessTimes_ShowsCorrectFormat()
-        {
-            // Arrange
-            var now = DateTime.UtcNow;
-            var testCases = new[]
-            {
-                (time: now.AddSeconds(-30), expected: "0:00:30"),
-                (time: now.AddMinutes(-1), expected: "0:01:00"),
-                (time: now.AddMinutes(-90), expected: "1:30:00"),
-                (time: now.AddHours(-2), expected: "2:00:00"),
-                (time: now.AddDays(-1), expected: "24:00:00"),
-                (time: now.AddDays(-2), expected: "48:00:00")
-            };
-
-            foreach (var (time, expected) in testCases)
-            {
-                var serviceStats = new ServiceStats(
-                    serviceName: "PC Client",
-                    status: "Connected",
-                    currentEntity: null,
-                    isHealthy: true,
-                    lastSuccessfulOperation: time,
-                    lastError: null,
-                    counters: new Dictionary<string, long>()
-                );
-
-                // Act
-                var result = _formatter.Format(serviceStats);
-
-                // Assert
-                result.Should().Contain($"Last Success: {expected}");
-            }
-        }
-
-        [Fact]
         public void Format_WithDifferentExpressions_ShowsCorrectFormat()
         {
             // Arrange
@@ -714,7 +564,7 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null;
+                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
@@ -786,7 +636,7 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null;
+                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
@@ -871,7 +721,7 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -966,7 +816,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1009,7 +859,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1046,7 +896,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1075,79 +925,6 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void FormatHealthStatus_WithLongErrorMessage_TruncatesCorrectly()
-        {
-            // Arrange
-            var longError = new string('x', 60); // 60 characters, should be truncated to 47 + "..."
-            var trackingInfo = CreatePCTrackingInfo();
-            var serviceStats = new ServiceStats(
-                serviceName: "PC Client",
-                status: "Error",
-                currentEntity: trackingInfo,
-                isHealthy: false,
-                lastSuccessfulOperation: DateTime.UtcNow.AddHours(-1),
-                lastError: longError,
-                counters: new Dictionary<string, long>()
-            );
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain("...");
-            // The truncated error should be 47 characters + "..." = 50 characters total
-            result.Should().MatchRegex(@"Error:.*\.\.\..*");
-        }
-
-        [Fact]
-        public void FormatHealthStatus_WithMinValueLastSuccess_ShowsNever()
-        {
-            // Arrange
-            var trackingInfo = CreatePCTrackingInfo();
-            var serviceStats = new ServiceStats(
-                serviceName: "PC Client",
-                status: "Connected",
-                currentEntity: trackingInfo,
-                isHealthy: true,
-                lastSuccessfulOperation: DateTime.MinValue, // This should show "Never"
-                lastError: null,
-                counters: new Dictionary<string, long>()
-            );
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain("Last Success: Never");
-        }
-
-        [Fact]
-        public void FormatConnectionMetrics_WithMissingCounters_UsesZeroValues()
-        {
-            // Arrange
-            var trackingInfo = CreatePCTrackingInfo();
-            var serviceStats = new ServiceStats(
-                serviceName: "PC Client",
-                status: "Connected",
-                currentEntity: trackingInfo,
-                isHealthy: true,
-                lastSuccessfulOperation: DateTime.UtcNow,
-                lastError: null,
-                counters: new Dictionary<string, long>
-                {
-                    ["MessagesSent"] = 100
-                    // Missing "ConnectionAttempts" and "UptimeSeconds"
-                }
-            );
-
-            // Act
-            var result = _formatter.Format(serviceStats);
-
-            // Assert
-            result.Should().Contain("Connection: 100 msgs sent | 0 attempts | 0:00:00 uptime");
-        }
-
-        [Fact]
         public void Format_WithParametersButNullParameterDefinitions_UsesEmptyDefinitions()
         {
             // Arrange
@@ -1157,7 +934,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
@@ -1193,7 +970,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
-            IList<ITableColumn<TrackingParam>> capturedColumns = null;
+            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),

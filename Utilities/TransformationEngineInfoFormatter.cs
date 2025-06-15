@@ -18,9 +18,7 @@ namespace SharpBridge.Utilities
         private const string UPTIME_SINCE_RULES_LOADED_KEY = "Uptime Since Rules Loaded (seconds)";
         private const string HOT_RELOAD_ATTEMPTS_KEY = "Hot Reload Attempts";
         private const string HOT_RELOAD_SUCCESSES_KEY = "Hot Reload Successes";
-        private const string TOTAL_TRANSFORMATIONS_KEY = "Total Transformations";
-        private const string SUCCESSFUL_TRANSFORMATIONS_KEY = "Successful Transformations";
-        private const string FAILED_TRANSFORMATIONS_KEY = "Failed Transformations";
+
         
         // Display Limits
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
@@ -94,13 +92,9 @@ namespace SharpBridge.Utilities
             // Transformation engine details
             if (stats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
-                if (CurrentVerbosity >= VerbosityLevel.Normal)
+                if (CurrentVerbosity >= VerbosityLevel.Normal && engineInfo.InvalidRules.Any())
                 {
-                    // Show failed rules if any
-                    if (engineInfo.InvalidRules.Count > 0)
-                    {
-                        AppendFailedRules(builder, engineInfo.InvalidRules);
-                    }
+                    AppendFailedRules(builder, engineInfo.InvalidRules);
                 }
             }
             else if (stats.CurrentEntity != null)
@@ -124,17 +118,9 @@ namespace SharpBridge.Utilities
         {
             // Header with service status
             builder.AppendLine(FormatServiceHeader(SERVICE_NAME, serviceStats.Status, KEYBOARD_SHORTCUT));
-            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
-            builder.AppendLine();
-            
+
             AppendRulesOverview(builder, serviceStats);
-            builder.AppendLine();
-            
             AppendConfigurationInfo(builder, serviceStats);
-            AppendTransformationMetrics(builder, serviceStats);
-            
-            // Empty line before Problem Details section
-            builder.AppendLine();
         }
         
         /// <summary>
@@ -159,41 +145,14 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends the configuration information section to the string builder
         /// </summary>
-        private void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
+        private static void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
         {
-            // Config file info
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
-                var configStatus = DetermineConfigStatus(serviceStats.Status, engineInfo.ConfigFilePath);
-                builder.AppendLine(
-                    $"Config File - Path: {engineInfo.ConfigFilePath}, Status: {configStatus}");
-            }
-            
-            // Config file load stats (includes initial load + hot reloads)
-            var attempts = GetCounterValue(serviceStats.Counters, HOT_RELOAD_ATTEMPTS_KEY);
-            var successes = GetCounterValue(serviceStats.Counters, HOT_RELOAD_SUCCESSES_KEY);
-            
-            if (attempts > 0)
-            {
-                builder.AppendLine(
-                    $"Config file loads count - Attempts: {attempts}, Successful: {successes}");
-            }
-        }
-        
-        /// <summary>
-        /// Appends the transformation metrics section to the string builder
-        /// </summary>
-        private void AppendTransformationMetrics(StringBuilder builder, IServiceStats serviceStats)
-        {
-            var total = GetCounterValue(serviceStats.Counters, TOTAL_TRANSFORMATIONS_KEY);
-            
-            if (total > 0)
-            {
-                var successful = GetCounterValue(serviceStats.Counters, SUCCESSFUL_TRANSFORMATIONS_KEY);
-                var failed = GetCounterValue(serviceStats.Counters, FAILED_TRANSFORMATIONS_KEY);
-                
-                builder.AppendLine(
-                    $"Transformations - Total: {total}, Successful: {successful}, Failed: {failed}");
+                var colorizedStatus = DetermineConfigStatus(serviceStats.Status);
+                var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
+                builder.AppendLine($"Config File Path: {colorized_config_path}");
+                builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
             }
         }
         
@@ -203,7 +162,9 @@ namespace SharpBridge.Utilities
         private void AppendFailedRules(StringBuilder builder, IReadOnlyList<RuleInfo> failedRules)
         {
             var rulesToShow = failedRules.ToList();
-            
+
+            if (!rulesToShow.Any()) return;
+
             // Define columns for failed rules table
             var columns = new List<ITableColumn<RuleInfo>>
             {
@@ -219,9 +180,10 @@ namespace SharpBridge.Utilities
             
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? 
                 (int?)null : RULE_DISPLAY_COUNT_NORMAL;
-                
+
+            builder.AppendLine();
             _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, 
-                TABLE_MINIMUM_ROWS, _console.WindowWidth, TABLE_MINIMUM_WIDTH, singleColumnLimit);
+                                        TABLE_MINIMUM_ROWS, _console.WindowWidth, TABLE_MINIMUM_WIDTH, singleColumnLimit);
         }
         
         /// <summary>
@@ -242,20 +204,21 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Determines the config file status based on engine status and file path
+        /// Determines the config file status based on service status and file path
         /// </summary>
-        private string DetermineConfigStatus(string engineStatus, string configFilePath)
+        private static string DetermineConfigStatus(string serviceStatus)
         {
-            return engineStatus switch
+            var status = serviceStatus switch
             {
-                "AllRulesActive" => "Loaded",
-                "SomeRulesActive" => "Loaded",
-                "ConfigErrorCached" => "Error (Using Cached)",
-                "NoValidRules" => "Loaded (No Valid Rules)",
-                "ConfigMissing" => "Not Found",
-                "NeverLoaded" => "Never Loaded",
+                "AllRulesValid" => "Yes",
+                "RulesPartiallyValid" => "Yes",
+                "ConfigErrorCached" => "No",
+                "NoValidRules" => "Yes",
+                "ConfigMissing" => "No",
+                "NeverLoaded" => "No",
                 _ => "Unknown"
             };
+            return status == "Yes" ? ConsoleColors.Colorize(status, ConsoleColors.Success) : ConsoleColors.Colorize(status, ConsoleColors.Warning);
         }
         
         /// <summary>
@@ -289,9 +252,26 @@ namespace SharpBridge.Utilities
         /// </summary>
         private string FormatServiceHeader(string serviceName, string status, string shortcut)
         {
-            var statusColor = ConsoleColors.GetStatusColor(status);
+            var statusColor = GetStatusColor(status);
             var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
-            return $"=== {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            var verbosity = CurrentVerbosity switch
+            {
+                VerbosityLevel.Basic => "[BASIC]",
+                VerbosityLevel.Normal => "[INFO]",
+                VerbosityLevel.Detailed => "[DEBUG]",
+                _ => "[INFO]"
+            };
+            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
+        }
+        
+        private static string GetStatusColor(string status)
+        {
+            return status switch
+            {
+                "AllRulesValid" => ConsoleColors.Success,
+                "RulesPartiallyValid" or "NoValidRules" or "NeverLoaded" => ConsoleColors.Warning,
+                _ => ConsoleColors.Error
+            };
         }
     }
 } 

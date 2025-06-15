@@ -87,7 +87,7 @@ namespace SharpBridge.Tests.Services
         /// <summary>
         /// Sends a request and receives a response
         /// </summary>
-        public async Task<TResponse> SendRequestAsync<TRequest, TResponse>(
+        public Task<TResponse> SendRequestAsync<TRequest, TResponse>(
             string messageType,
             TRequest requestData,
             CancellationToken cancellationToken)
@@ -107,12 +107,12 @@ namespace SharpBridge.Tests.Services
             var responseJson = Encoding.UTF8.GetString(responseBytes);
             var response = JsonSerializer.Deserialize<VTSApiResponse<TResponse>>(responseJson);
             
-            if (response.Data == null)
+            if (response?.Data == null)
             {
                 throw new InvalidOperationException($"Response data was null for message type {messageType}");
             }
             
-            return response.Data;
+            return Task.FromResult(response.Data);
         }
         
         /// <summary>
