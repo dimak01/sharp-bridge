@@ -457,7 +457,7 @@ namespace SharpBridge.Tests.Utilities
         /// <summary>
         /// Helper method to create mock service stats
         /// </summary>
-        private static IServiceStats CreateMockServiceStats(string serviceName, string status, bool isHealthy, IFormattableObject entity = null)
+        private static IServiceStats CreateMockServiceStats(string serviceName, string status, bool isHealthy, IFormattableObject entity = null!)
         {
             return new ServiceStats(
                 serviceName: serviceName,

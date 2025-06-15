@@ -18,25 +18,16 @@ namespace SharpBridge.Utilities
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
         
-        // Define expected maximum widths for consistent formatting
-        private const int FAILED_COUNT_WIDTH = 4;   // Up to 9,999 failed
-        private const int FPS_WIDTH = 3;            // Up to 999 FPS
-        private const int TIME_WIDTH = 6;           // "999.9s" format
-        private const int FRAMES_WIDTH = 6;         // Up to 999999 frames
+
         
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
         private readonly IParameterColorService _colorService;
         
         /// <summary>
-        /// Gets or sets the current time for testing purposes. If null, DateTime.UtcNow is used.
+        /// Gets or sets the current time for testing purposes. If null, uses DateTime.UtcNow.
         /// </summary>
-        internal DateTime? CurrentTime { get; set; }
-        
-        /// <summary>
-        /// Gets the current time, using the test time if set, otherwise DateTime.UtcNow
-        /// </summary>
-        private DateTime GetCurrentTime() => CurrentTime ?? DateTime.UtcNow;
+        public DateTime? CurrentTime { get; set; }
         
         /// <summary>
         /// Initializes a new instance of the PhoneTrackingInfoFormatter
@@ -82,30 +73,10 @@ namespace SharpBridge.Utilities
             
             // Header with service status
             builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", stats.Status, "Alt+O"));
-            builder.AppendLine($"Verbosity: {CurrentVerbosity}");
-            builder.AppendLine();
-            
-            // Health status
-            builder.AppendLine(FormatHealthStatus(
-                stats.IsHealthy, 
-                stats.LastSuccessfulOperation, 
-                stats.LastError));
-            
-            // Metrics with proper padding
-            if (stats.Counters.ContainsKey("Total Frames") && 
-                stats.Counters.ContainsKey("Failed Frames"))
-            {
-                var totalFrames = stats.Counters["Total Frames"];
-                var failedFrames = stats.Counters["Failed Frames"];
-                var fps = stats.Counters.ContainsKey("FPS") ? stats.Counters["FPS"] : 0;
-                
-                builder.AppendLine(FormatMetrics(totalFrames, failedFrames, fps));
-            }
             
             // Tracking data details
             if (stats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
             {
-                builder.AppendLine();
                 AppendTrackingDetails(builder, phoneTrackingInfo);
             }
             else if (stats.CurrentEntity != null)
@@ -266,80 +237,9 @@ namespace SharpBridge.Utilities
             return CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
         }
         
-        /// <summary>
-        /// Formats service metrics with consistent padding
-        /// </summary>
-        /// <param name="totalFrames">Total frames received</param>
-        /// <param name="failedFrames">Failed frame count</param>
-        /// <param name="fps">Frames per second</param>
-        /// <returns>Formatted metrics string</returns>
-        private string FormatMetrics(long totalFrames, long failedFrames, long fps)
-        {
-            var failedStr = failedFrames.ToString().PadLeft(FAILED_COUNT_WIDTH);
-            var fpsStr = fps.ToString().PadLeft(FPS_WIDTH);
-            
-            var framesContent = $"{totalFrames:N0} frames";
-            
-            return $"Metrics: {framesContent.PadLeft(FRAMES_WIDTH)} | {failedStr} failed | {fpsStr} FPS";
-        }
-        
-        /// <summary>
-        /// Formats health status with consistent padding
-        /// </summary>
-        /// <param name="isHealthy">Whether the service is healthy</param>
-        /// <param name="lastSuccess">Last successful operation timestamp</param>
-        /// <param name="lastError">Last error message (optional)</param>
-        /// <returns>Formatted health status string</returns>
-        private string FormatHealthStatus(bool isHealthy, DateTime lastSuccess, string? lastError = null)
-        {
-            var healthIcon = isHealthy ? "√" : "X";
-            var healthText = (isHealthy ? "Healthy" : "Unhealthy");
-            var healthColor = ConsoleColors.GetHealthColor(isHealthy);
-            
-            var timeAgo = lastSuccess != DateTime.MinValue
-                ? FormatTimeAgo(GetCurrentTime() - lastSuccess)
-                : "Never".PadLeft(TIME_WIDTH);
 
-            var healthContent = $"{healthIcon} {healthText}";
-            var colorizedHealth = ConsoleColors.Colorize(healthContent, healthColor);
-
-            // Note: We need to account for the invisible color codes when padding
-            var result = $"Health: {healthContent}";
-            result += Environment.NewLine;
-            result += $"Last Success: {timeAgo}";
-            
-            // Apply color to the health content after padding calculation
-            result = result.Replace(healthContent, colorizedHealth);
-            
-            // Add error information if unhealthy and error is provided
-            if (!isHealthy && !string.IsNullOrEmpty(lastError))
-            {
-                var errorText = lastError.Length > 50 ? lastError.Substring(0, 47) + "..." : lastError;
-                result += Environment.NewLine;
-                result += $"Error: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}";
-            }
-            
-            return result;
-        }
         
-        /// <summary>
-        /// Formats a time span into a human-readable string with consistent width
-        /// </summary>
-        /// <param name="timeSpan">Time span to format</param>
-        /// <returns>Formatted time string</returns>
-        private string FormatTimeAgo(TimeSpan timeSpan)
-        {
-            if (timeSpan.TotalSeconds < 0)
-                return "0s".PadLeft(TIME_WIDTH);
-            else if (timeSpan.TotalSeconds < 60)
-                return $"{timeSpan.TotalSeconds:F0}s".PadLeft(TIME_WIDTH);
-            else if (timeSpan.TotalMinutes < 60)
-                return $"{timeSpan.TotalMinutes:F0}m".PadLeft(TIME_WIDTH);
-            else if (timeSpan.TotalHours < 24)
-                return $"{timeSpan.TotalHours:F0}h".PadLeft(TIME_WIDTH);
-            else
-                return $"{timeSpan.TotalDays:F0}d".PadLeft(TIME_WIDTH);
-        }
+
         
         /// <summary>
         /// Formats a service header with status and color coding
@@ -350,9 +250,16 @@ namespace SharpBridge.Utilities
         /// <returns>Formatted header string</returns>
         private string FormatServiceHeader(string serviceName, string status, string shortcut)
         {
+            var verbosity = CurrentVerbosity switch
+            {
+                VerbosityLevel.Basic => "[BASIC]",
+                VerbosityLevel.Normal => "[INFO]",
+                VerbosityLevel.Detailed => "[DEBUG]",
+                _ => "[INFO]"
+            };
             var statusColor = ConsoleColors.GetStatusColor(status);
             var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
-            return $"=== {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
         }
     }
 } 
