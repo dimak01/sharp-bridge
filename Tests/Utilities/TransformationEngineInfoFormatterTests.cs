@@ -65,12 +65,14 @@ namespace SharpBridge.Tests.Utilities
         private TransformationEngineInfo CreateTransformationEngineInfo(
             string configFilePath = "Configs/test_rules.json",
             int validRulesCount = 10,
-            List<RuleInfo> invalidRules = null)
+            List<RuleInfo> invalidRules = null,
+            bool isConfigUpToDate = true)
         {
             return new TransformationEngineInfo(
                 configFilePath: configFilePath,
                 validRulesCount: validRulesCount,
-                invalidRules: invalidRules ?? new List<RuleInfo>());
+                invalidRules: invalidRules ?? new List<RuleInfo>(),
+                isConfigUpToDate: isConfigUpToDate);
         }
 
         private List<RuleInfo> CreateInvalidRules(int count = 2)
@@ -637,17 +639,17 @@ namespace SharpBridge.Tests.Utilities
         #region Configuration Status Tests
 
         [Theory]
-        [InlineData("AllRulesActive", "Unknown")]
-        [InlineData("SomeRulesActive", "Unknown")]
-        [InlineData("ConfigErrorCached", "No")]
-        [InlineData("NoValidRules", "Yes")]
-        [InlineData("ConfigMissing", "No")]
-        [InlineData("NeverLoaded", "No")]
-        [InlineData("UnknownStatus", "Unknown")]
-        public void Format_WithDifferentEngineStatuses_ShowsCorrectConfigStatus(string engineStatus, string expectedUpToDateStatus)
+        [InlineData("AllRulesActive", true)]
+        [InlineData("SomeRulesActive", true)]
+        [InlineData("ConfigErrorCached", false)]
+        [InlineData("NoValidRules", true)]
+        [InlineData("ConfigMissing", false)]
+        [InlineData("NeverLoaded", false)]
+        [InlineData("UnknownStatus", true)]
+        public void Format_WithDifferentEngineStatuses_ShowsCorrectConfigStatus(string engineStatus, bool isConfigUpToDate)
         {
             // Arrange
-            var engineInfo = CreateTransformationEngineInfo("Configs/test_rules.json");
+            var engineInfo = CreateTransformationEngineInfo(isConfigUpToDate: isConfigUpToDate);
             var serviceStats = CreateMockServiceStats(engineStatus, engineInfo);
 
             // Act
@@ -656,7 +658,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             plainResult.Should().Contain("Config File Path: Configs/test_rules.json");
-            plainResult.Should().Contain($"Up to Date: {expectedUpToDateStatus}");
+            plainResult.Should().Contain($"Up to Date: {(isConfigUpToDate ? "Yes" : "No")}");
         }
 
         #endregion

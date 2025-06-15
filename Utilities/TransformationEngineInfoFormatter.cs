@@ -149,9 +149,14 @@ namespace SharpBridge.Utilities
         {
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
-                var colorizedStatus = DetermineConfigStatus(serviceStats.Status);
                 var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
                 builder.AppendLine($"Config File Path: {colorized_config_path}");
+                
+                var upToDateStatus = engineInfo.IsConfigUpToDate ? "Yes" : "No";
+                var colorizedStatus = engineInfo.IsConfigUpToDate 
+                    ? ConsoleColors.Colorize(upToDateStatus, ConsoleColors.Success)
+                    : ConsoleColors.Colorize(upToDateStatus, ConsoleColors.Warning);
+                    
                 builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
             }
         }
@@ -204,42 +209,6 @@ namespace SharpBridge.Utilities
         }
         
         /// <summary>
-        /// Determines the config file status based on service status and file path
-        /// </summary>
-        private static string DetermineConfigStatus(string serviceStatus)
-        {
-            var status = serviceStatus switch
-            {
-                "AllRulesValid" => "Yes",
-                "RulesPartiallyValid" => "Yes",
-                "ConfigErrorCached" => "No",
-                "NoValidRules" => "Yes",
-                "ConfigMissing" => "No",
-                "NeverLoaded" => "No",
-                _ => "Unknown"
-            };
-            return status == "Yes" ? ConsoleColors.Colorize(status, ConsoleColors.Success) : ConsoleColors.Colorize(status, ConsoleColors.Warning);
-        }
-        
-        /// <summary>
-        /// Truncates text for display in tables with customizable empty placeholder
-        /// </summary>
-        private string TruncateText(string text, int maxLength, string emptyPlaceholder = "[empty]")
-        {
-            if (string.IsNullOrEmpty(text))
-                return emptyPlaceholder;
-                
-            if (text.Length <= maxLength)
-                return text;
-                
-            // Guard against maxLength being too small for ellipsis
-            if (maxLength <= ELLIPSIS_LENGTH)
-                return text.Substring(0, Math.Max(0, maxLength));
-                
-            return text.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
-        }
-        
-        /// <summary>
         /// Formats uptime into a human-readable string
         /// </summary>
         private string FormatUptime(long uptimeSeconds)
@@ -272,6 +241,24 @@ namespace SharpBridge.Utilities
                 "RulesPartiallyValid" or "NoValidRules" or "NeverLoaded" => ConsoleColors.Warning,
                 _ => ConsoleColors.Error
             };
+        }
+        
+        /// <summary>
+        /// Truncates text for display in tables with customizable empty placeholder
+        /// </summary>
+        private string TruncateText(string text, int maxLength, string emptyPlaceholder = "[empty]")
+        {
+            if (string.IsNullOrEmpty(text))
+                return emptyPlaceholder;
+                
+            if (text.Length <= maxLength)
+                return text;
+                
+            // Guard against maxLength being too small for ellipsis
+            if (maxLength <= ELLIPSIS_LENGTH)
+                return text.Substring(0, Math.Max(0, maxLength));
+                
+            return text.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
         }
     }
 } 
