@@ -64,7 +64,7 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-                private ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null!,
+        private static ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null!,
             bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
         {
             var counters = new Dictionary<string, long>
@@ -362,8 +362,6 @@ namespace SharpBridge.Tests.Utilities
                 It.Is<int?>(limit => limit == null)), Times.Once);
         }
 
-
-
         [Fact]
         public void Format_WithNullServiceStats_ReturnsNoDataMessage()
         {
@@ -452,8 +450,6 @@ namespace SharpBridge.Tests.Utilities
             result.Should().Contain(PCTestFormattingHelpers.FormatServiceHeader("Stopped"));
         }
 
-
-
         [Fact]
         public void Format_WithNoConnectionMetrics_DoesNotShowMetrics()
         {
@@ -534,10 +530,6 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             result.Should().Contain("No current tracking data available");
         }
-
-
-
-
 
         [Fact]
         public void Format_WithDifferentExpressions_ShowsCorrectFormat()
@@ -931,12 +923,6 @@ namespace SharpBridge.Tests.Utilities
             result.Should().EndWith("...");
             result.Length.Should().Be(90); // 87 characters + "..."
         }
-
-
-
-
-
-
 
         [Fact]
         public void Format_WithParametersButNullParameterDefinitions_UsesEmptyDefinitions()

@@ -95,7 +95,7 @@ namespace SharpBridge.Utilities
                 if (CurrentVerbosity >= VerbosityLevel.Normal)
                 {
                     // Show failed rules if any
-                    if (engineInfo.InvalidRules.Count > 0)
+                    if (engineInfo.InvalidRules.Any())
                     {
                         AppendFailedRules(builder, engineInfo.InvalidRules);
                     }
@@ -153,7 +153,7 @@ namespace SharpBridge.Utilities
         {
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
-                var colorizedStatus = DetermineConfigStatus(serviceStats.Status, engineInfo.ConfigFilePath);
+                var colorizedStatus = DetermineConfigStatus(serviceStats.Status);
                 var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
                 builder.AppendLine($"Config File Path: {colorized_config_path}");
                 builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
@@ -210,7 +210,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Determines the config file status based on service status and file path
         /// </summary>
-        private string DetermineConfigStatus(string serviceStatus, string configFilePath)
+        private static string DetermineConfigStatus(string serviceStatus)
         {
             var status = serviceStatus switch
             {
@@ -268,7 +268,7 @@ namespace SharpBridge.Utilities
             return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
         }
         
-        private string GetStatusColor(string status)
+        private static string GetStatusColor(string status)
         {
             return status switch
             {
