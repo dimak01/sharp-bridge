@@ -247,11 +247,11 @@ namespace SharpBridge.Tests.Services
                 result.Should().NotBeNull();
                 result.Parameters.Should().HaveCount(2);
                 
-                var headMovement = result.Parameters.FirstOrDefault(p => p.Id == "HeadMovement");
+                var headMovement = result.Parameters.FirstOrDefault(p => p.Id == "HeadMovement")!;
                 headMovement.Should().NotBeNull();
                 headMovement.Value.Should().BeApproximately(20, 0.001); // 0.1 * 100 + 0.2 * 50 = 20
                 
-                var eyeBlink = result.Parameters.FirstOrDefault(p => p.Id == "EyeBlink");
+                var eyeBlink = result.Parameters.FirstOrDefault(p => p.Id == "EyeBlink")!;
                 eyeBlink.Should().NotBeNull();
                 eyeBlink.Value.Should().BeApproximately(40, 0.001); // (0.3 + 0.5) * 50 = 40
                 
@@ -427,11 +427,11 @@ namespace SharpBridge.Tests.Services
                 result.Should().NotBeNull();
                 result.Parameters.Should().HaveCount(2);
                 
-                var eyeLeftParam = result.Parameters.FirstOrDefault(p => p.Id == "EyeLeftParam");
+                var eyeLeftParam = result.Parameters.FirstOrDefault(p => p.Id == "EyeLeftParam")!;
                 eyeLeftParam.Should().NotBeNull();
                 eyeLeftParam.Value.Should().BeApproximately(0.1 + 0.2 + 0.3, 0.001); // 0.6
                 
-                var eyeRightParam = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightParam");
+                var eyeRightParam = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightParam")!;
                 eyeRightParam.Should().NotBeNull();
                 eyeRightParam.Value.Should().BeApproximately(0.4 + 0.5 + 0.6, 0.001); // 1.5
                 
