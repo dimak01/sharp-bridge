@@ -17,10 +17,17 @@ namespace SharpBridge.Tests.Services
     {
         private readonly string _configPath = Path.Combine("Tests", "TestData", "transform-config.json");
         private readonly Mock<IAppLogger> _mockLogger;
+        private readonly Mock<IFileChangeWatcher> _mockFileWatcher;
 
         public TransformConfigTests()
         {
             _mockLogger = new Mock<IAppLogger>();
+            _mockFileWatcher = new Mock<IFileChangeWatcher>();
+        }
+        
+        private TransformationEngine CreateEngine()
+        {
+            return new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
         }
         
         [Fact]
@@ -31,7 +38,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -58,7 +65,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -87,7 +94,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -114,7 +121,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -150,7 +157,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -182,7 +189,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             // Create extreme values that should trigger max clamping
@@ -227,7 +234,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             // Create extreme values that should trigger min clamping
@@ -272,7 +279,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             // Create tracking data with missing values required by expressions
@@ -316,7 +323,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -345,7 +352,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -372,7 +379,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -399,7 +406,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -434,7 +441,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -467,7 +474,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -500,7 +507,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -537,7 +544,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -567,7 +574,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -597,7 +604,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -633,7 +640,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -663,7 +670,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -693,7 +700,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -728,7 +735,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -762,7 +769,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -792,7 +799,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -830,7 +837,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -866,7 +873,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -896,7 +903,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -931,7 +938,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -966,7 +973,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1001,7 +1008,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1039,7 +1046,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1067,7 +1074,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1101,7 +1108,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1129,7 +1136,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1157,7 +1164,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo
@@ -1185,7 +1192,7 @@ namespace SharpBridge.Tests.Services
                 return;
             
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = CreateEngine();
             await engine.LoadRulesAsync(_configPath);
             
             var trackingData = new PhoneTrackingInfo

@@ -78,6 +78,8 @@ namespace SharpBridge.Services
         
         private readonly List<TransformationRule> _rules = new();
         private readonly IAppLogger _logger;
+        private readonly IFileChangeWatcher _fileWatcher;
+        private bool _isConfigUpToDate = true;
         
         // Statistics tracking fields
         private long _totalTransformations = 0;
@@ -89,7 +91,6 @@ namespace SharpBridge.Services
         private DateTime _rulesLoadedTime;
         private string _lastError = string.Empty;
         private string _configFilePath = string.Empty;
-        private DateTime _lastFileModificationTime;
         private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;
         private readonly List<RuleInfo> _invalidRules = new();
         
@@ -97,11 +98,28 @@ namespace SharpBridge.Services
         /// Initializes a new instance of the <see cref="TransformationEngine"/> class
         /// </summary>
         /// <param name="logger">The logger instance for logging transformation operations</param>
-        /// <exception cref="ArgumentNullException">Thrown when logger is null</exception>
-        public TransformationEngine(IAppLogger logger)
+        /// <param name="fileWatcher">The file watcher instance for monitoring config file changes</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger or fileWatcher is null</exception>
+        public TransformationEngine(IAppLogger logger, IFileChangeWatcher fileWatcher)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _fileWatcher = fileWatcher ?? throw new ArgumentNullException(nameof(fileWatcher));
+            _fileWatcher.FileChanged += OnFileChanged;
         }
+
+        private void OnFileChanged(object? sender, FileChangeEventArgs e)
+        {
+            if (e.FilePath == _configFilePath)
+            {
+                _isConfigUpToDate = false;
+                _logger.Debug($"Config file changed: {e.FilePath}");
+            }
+        }
+        
+        /// <summary>
+        /// Gets whether the currently loaded configuration is up to date with the file on disk
+        /// </summary>
+        public bool IsConfigUpToDate => _isConfigUpToDate;
         
         /// <summary>
         /// Loads transformation rules from the specified file
@@ -116,21 +134,30 @@ namespace SharpBridge.Services
             // Track hot reload attempts
             _hotReloadAttempts++;
             
-            // Store config file path
-            _configFilePath = filePath;
-            
-            if (!File.Exists(filePath))
+            // Stop watching previous file if any
+            if (!string.IsNullOrEmpty(_configFilePath))
             {
-                _lastError = $"Transformation rules file not found: {filePath}";
+                _fileWatcher.StopWatching();
+            }
+            
+            // Store config file path as full path
+            _configFilePath = Path.GetFullPath(filePath);
+            
+            if (!File.Exists(_configFilePath))
+            {
+                _lastError = $"Transformation rules file not found: {_configFilePath}";
                 _currentStatus = TransformationEngineStatus.ConfigMissing;
                 _logger.Error(_lastError);
                 throw new FileNotFoundException(_lastError);
             }
             
-            // Store file modification time
-            _lastFileModificationTime = File.GetLastWriteTimeUtc(filePath);
+            // Start watching the new file
+            _fileWatcher.StartWatching(_configFilePath);
             
-            var json = await File.ReadAllTextAsync(filePath);
+            // Reset up-to-date status
+            _isConfigUpToDate = true;
+            
+            var json = await File.ReadAllTextAsync(_configFilePath);
             
             var rules = JsonSerializer.Deserialize<List<TransformRule>>(json) ?? 
                 throw new JsonException("Failed to deserialize transformation rules");
@@ -138,37 +165,6 @@ namespace SharpBridge.Services
             var (validRules, invalidRules, validationErrors) = ValidateAndCreateRules(rules);
             
             UpdateRulesLoadedStatus(validRules, invalidRules, validationErrors);
-        }
-        
-        /// <summary>
-        /// Checks if the currently loaded configuration is up to date with the file on disk
-        /// </summary>
-        /// <returns>True if the configuration is up to date, false otherwise</returns>
-        public bool IsConfigUpToDate()
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(_configFilePath) || !File.Exists(_configFilePath))
-                {
-                    _logger.Debug("Config file not found or path is empty");
-                    return false;
-                }
-                
-                var currentModTime = File.GetLastWriteTimeUtc(_configFilePath);
-                var isUpToDate = currentModTime <= _lastFileModificationTime;
-                
-                if (!isUpToDate)
-                {
-                    _logger.Debug($"Config file has been modified. Last loaded: {_lastFileModificationTime:O}, Current: {currentModTime:O}");
-                }
-                
-                return isUpToDate;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Error checking if config is up to date: {ex.Message}");
-                return false;
-            }
         }
         
         /// <summary>
@@ -553,7 +549,7 @@ namespace SharpBridge.Services
                 configFilePath: _configFilePath ?? string.Empty,
                 validRulesCount: _rules.Count,
                 invalidRules: _invalidRules.AsReadOnly(),
-                isConfigUpToDate: IsConfigUpToDate());
+                isConfigUpToDate: IsConfigUpToDate);
             
             bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesValid || 
                            _currentStatus == TransformationEngineStatus.RulesPartiallyValid;

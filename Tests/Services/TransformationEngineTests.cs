@@ -18,10 +18,12 @@ namespace SharpBridge.Tests.Services
     public class TransformationEngineTests
     {
         private readonly Mock<IAppLogger> _mockLogger;
+        private readonly Mock<IFileChangeWatcher> _mockFileWatcher;
 
         public TransformationEngineTests()
         {
             _mockLogger = new Mock<IAppLogger>();
+            _mockFileWatcher = new Mock<IFileChangeWatcher>();
         }
         
         private string CreateTempRuleFile(string content)
@@ -66,7 +68,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act
                 await engine.LoadRulesAsync(filePath);
@@ -107,7 +109,7 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_ThrowsException_WhenFileNotFound()
         {
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
             var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             
             // Act & Assert
@@ -123,7 +125,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act & Assert
                 await Assert.ThrowsAsync<JsonException>(async () => 
@@ -140,7 +142,7 @@ namespace SharpBridge.Tests.Services
         public void TransformData_ReturnsEmptyCollection_WhenNoRulesLoaded()
         {
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -175,7 +177,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -225,7 +227,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -290,7 +292,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -347,7 +349,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -410,7 +412,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -477,7 +479,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -537,7 +539,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -574,7 +576,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act & Assert
                 var exception = await Assert.ThrowsAsync<JsonException>(() => engine.LoadRulesAsync(filePath));
@@ -625,7 +627,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act - should succeed with graceful degradation
                 await engine.LoadRulesAsync(filePath);
@@ -690,7 +692,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act - should succeed with graceful degradation
                 await engine.LoadRulesAsync(filePath);
@@ -748,7 +750,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act & Assert - should not throw, should handle gracefully
                 await engine.LoadRulesAsync(filePath);
@@ -788,7 +790,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act - should succeed with graceful degradation
                 await engine.LoadRulesAsync(filePath);
@@ -832,8 +834,16 @@ namespace SharpBridge.Tests.Services
         public void Constructor_ThrowsArgumentNullException_WhenLoggerIsNull()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null));
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null, _mockFileWatcher.Object));
             exception.ParamName.Should().Be("logger");
+        }
+        
+        [Fact]
+        public void Constructor_WithNullFileWatcher_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(_mockLogger.Object, null));
+            exception.ParamName.Should().Be("fileWatcher");
         }
         
         [Fact]
@@ -867,7 +877,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act - should succeed even with all invalid rules
                 await engine.LoadRulesAsync(filePath);
@@ -930,7 +940,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 // Act
@@ -960,7 +970,7 @@ namespace SharpBridge.Tests.Services
         public void GetParameterDefinitions_NoRules_ReturnsEmptyCollection()
         {
             // Arrange
-            var engine = new TransformationEngine(_mockLogger.Object);
+            var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
             
             // Act
             var parameters = engine.GetParameterDefinitions();
@@ -993,7 +1003,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 var trackingData = new PhoneTrackingInfo
@@ -1058,7 +1068,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 
                 // Act - should not throw, should handle gracefully
                 await engine.LoadRulesAsync(filePath);
@@ -1116,7 +1126,7 @@ namespace SharpBridge.Tests.Services
             
             try
             {
-                var engine = new TransformationEngine(_mockLogger.Object);
+                var engine = new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
                 await engine.LoadRulesAsync(filePath);
                 
                 // Create tracking data with a BlendShape that has a null Key to cause an exception
@@ -1154,6 +1164,127 @@ namespace SharpBridge.Tests.Services
                 // Cleanup
                 File.Delete(filePath);
             }
+        }
+
+        private TransformationEngine CreateEngine()
+        {
+            return new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_StartsWatchingNewFile()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var filePath = CreateTempRuleFile(GetValidRuleContent());
+            
+            try
+            {
+                // Act
+                await engine.LoadRulesAsync(filePath);
+                
+                // Assert
+                _mockFileWatcher.Verify(w => w.StartWatching(filePath), Times.Once);
+            }
+            finally
+            {
+                File.Delete(filePath);
+            }
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_StopsWatchingPreviousFile()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var firstFilePath = CreateTempRuleFile(GetValidRuleContent());
+            var secondFilePath = CreateTempRuleFile(GetValidRuleContent());
+            
+            try
+            {
+                // Act
+                await engine.LoadRulesAsync(firstFilePath);
+                await engine.LoadRulesAsync(secondFilePath);
+                
+                // Assert
+                _mockFileWatcher.Verify(w => w.StopWatching(), Times.Once);
+                _mockFileWatcher.Verify(w => w.StartWatching(secondFilePath), Times.Once);
+            }
+            finally
+            {
+                File.Delete(firstFilePath);
+                File.Delete(secondFilePath);
+            }
+        }
+        
+        [Fact]
+        public void OnFileChanged_UpdatesConfigStatus()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var filePath = "test.json";
+            
+            // Act
+            _mockFileWatcher.Raise(w => w.FileChanged += null, 
+                new FileChangeEventArgs(filePath));
+            
+            // Assert
+            engine.IsConfigUpToDate.Should().BeFalse();
+        }
+        
+        [Fact]
+        public void OnFileChanged_IgnoresUnrelatedFiles()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var watchedFilePath = "test.json";
+            var unrelatedFilePath = "other.json";
+
+            // Simulate that the engine is watching 'test.json' and is up to date
+            var configFilePathField = typeof(TransformationEngine).GetField("_configFilePath", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var isConfigUpToDateField = typeof(TransformationEngine).GetField("_isConfigUpToDate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            configFilePathField.SetValue(engine, watchedFilePath);
+            isConfigUpToDateField.SetValue(engine, true);
+
+            // Act
+            _mockFileWatcher.Raise(w => w.FileChanged += null, new FileChangeEventArgs(unrelatedFilePath));
+
+            // Assert
+            engine.IsConfigUpToDate.Should().BeTrue();
+        }
+        
+        [Fact]
+        public async Task LoadRulesAsync_ResetsConfigStatus()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var filePath = CreateTempRuleFile(GetValidRuleContent());
+            
+            try
+            {
+                // Act
+                await engine.LoadRulesAsync(filePath);
+                
+                // Assert
+                engine.IsConfigUpToDate.Should().BeTrue();
+            }
+            finally
+            {
+                File.Delete(filePath);
+            }
+        }
+
+        private string GetValidRuleContent()
+        {
+            return @"[
+                {
+                    ""name"": ""TestParam"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
         }
     }
 } 
