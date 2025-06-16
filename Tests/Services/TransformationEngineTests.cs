@@ -1224,6 +1224,10 @@ namespace SharpBridge.Tests.Services
             var engine = CreateEngine();
             var filePath = "test.json";
             
+            // Set up the engine to watch the file
+            var configFilePathField = typeof(TransformationEngine).GetField("_configFilePath", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            configFilePathField.SetValue(engine, filePath);
+            
             // Act
             _mockFileWatcher.Raise(w => w.FileChanged += null, 
                 new FileChangeEventArgs(filePath));

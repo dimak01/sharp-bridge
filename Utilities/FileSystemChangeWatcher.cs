@@ -1,10 +1,9 @@
 using System;
 using System.IO;
 using System.Threading;
-using SharpBridge.Services;
 using SharpBridge.Interfaces;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Watches a file for changes using FileSystemWatcher and raises events.
