@@ -73,7 +73,7 @@ namespace SharpBridge
             });
             
             // Register file change watcher
-            services.AddSingleton<IFileChangeWatcher, FileSystemChangeWatcher>();
+            services.AddSingleton<IFileChangeWatcher, SharpBridge.Utilities.FileSystemChangeWatcher>();
             
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             

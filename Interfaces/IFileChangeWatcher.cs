@@ -1,6 +1,6 @@
 using System;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Interfaces
 {
     /// <summary>
     /// Interface for watching file changes in a testable way.
