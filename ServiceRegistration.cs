@@ -72,6 +72,9 @@ namespace SharpBridge
                 );
             });
             
+            // Register file change watcher
+            services.AddSingleton<IFileChangeWatcher, FileSystemChangeWatcher>();
+            
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
             // Register VTubeStudioPCClient as a singleton
