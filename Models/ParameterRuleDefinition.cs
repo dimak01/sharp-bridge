@@ -6,7 +6,7 @@ namespace SharpBridge.Models
     /// <summary>
     /// Parameter transformation configuration
     /// </summary>
-    public class TransformRule
+    public class ParameterRuleDefinition
     {
         /// <summary>Name of the parameter this rule targets</summary>
         [JsonPropertyName("name")]

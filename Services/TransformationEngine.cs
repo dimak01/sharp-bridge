@@ -11,62 +11,6 @@ using SharpBridge.Models;
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Represents a single transformation rule with its expression and constraints
-    /// </summary>
-    public class TransformationRule
-    {
-        /// <summary>
-        /// Gets the name of the transformation rule
-        /// </summary>
-        public string Name { get; }
-        
-        /// <summary>
-        /// Gets the compiled mathematical expression for this rule
-        /// </summary>
-        public Expression Expression { get; }
-        
-        /// <summary>
-        /// Gets the original string representation of the expression
-        /// </summary>
-        public string ExpressionString { get; }
-        
-        /// <summary>
-        /// Gets the minimum allowed value for the transformation result
-        /// </summary>
-        public double Min { get; }
-        
-        /// <summary>
-        /// Gets the maximum allowed value for the transformation result
-        /// </summary>
-        public double Max { get; }
-        
-        /// <summary>
-        /// Gets the default value to use when the transformation fails
-        /// </summary>
-        public double DefaultValue { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TransformationRule"/> class
-        /// </summary>
-        /// <param name="name">The name of the transformation rule</param>
-        /// <param name="expression">The compiled mathematical expression</param>
-        /// <param name="expressionString">The original string representation of the expression</param>
-        /// <param name="min">The minimum allowed value for the transformation result</param>
-        /// <param name="max">The maximum allowed value for the transformation result</param>
-        /// <param name="defaultValue">The default value to use when the transformation fails</param>
-        public TransformationRule(string name, Expression expression, string expressionString, 
-            double min, double max, double defaultValue)
-        {
-            Name = name;
-            Expression = expression;
-            ExpressionString = expressionString;
-            Min = min;
-            Max = max;
-            DefaultValue = defaultValue;
-        }
-    }
-
-    /// <summary>
     /// Transforms tracking data into VTube Studio parameters according to transformation rules
     /// </summary>
     public class TransformationEngine : ITransformationEngine, IServiceStatsProvider
@@ -76,7 +20,7 @@ namespace SharpBridge.Services
         private const string EVALUATION_ERROR_TYPE = "Evaluation";
         private const string VALIDATION_ERROR_TYPE = "Validation";
         
-        private readonly List<TransformationRule> _rules = new();
+        private readonly List<ParameterTransformation> _rules = new();
         private readonly IAppLogger _logger;
         private readonly IFileChangeWatcher _fileWatcher;
         private bool _isConfigUpToDate = true;
@@ -159,7 +103,7 @@ namespace SharpBridge.Services
             
             var json = await File.ReadAllTextAsync(_configFilePath);
             
-            var rules = JsonSerializer.Deserialize<List<TransformRule>>(json) ?? 
+            var rules = JsonSerializer.Deserialize<List<ParameterRuleDefinition>>(json) ?? 
                 throw new JsonException("Failed to deserialize transformation rules");
             
             var (validRules, invalidRules, validationErrors) = ValidateAndCreateRules(rules);
@@ -207,11 +151,11 @@ namespace SharpBridge.Services
             return BuildTransformationResult(trackingData, successfulRules);
         }
         
-        private (List<TransformationRule> successful, List<TransformationRule> abandoned) 
+        private (List<ParameterTransformation> successful, List<ParameterTransformation> abandoned) 
             EvaluateRulesMultiPass(Dictionary<string, object> trackingParameters)
         {
-            var remainingRules = new List<TransformationRule>(_rules);
-            var successfulRules = new List<TransformationRule>();
+            var remainingRules = new List<ParameterTransformation>(_rules);
+            var successfulRules = new List<ParameterTransformation>();
             int currentIteration = 0;
             
             while (remainingRules.Count > 0 && currentIteration < MAX_EVALUATION_ITERATIONS)
@@ -230,8 +174,8 @@ namespace SharpBridge.Services
             return (successfulRules, remainingRules);
         }
         
-        private void ProcessSingleEvaluationPass(List<TransformationRule> remainingRules, 
-            List<TransformationRule> successfulRules, Dictionary<string, object> trackingParameters)
+        private void ProcessSingleEvaluationPass(List<ParameterTransformation> remainingRules, 
+            List<ParameterTransformation> successfulRules, Dictionary<string, object> trackingParameters)
         {
             for (int i = remainingRules.Count - 1; i >= 0; i--)
             {
@@ -254,7 +198,7 @@ namespace SharpBridge.Services
             }
         }
         
-        private void UpdateTransformationStatus(List<TransformationRule> successfulRules, List<TransformationRule> abandonedRules)
+        private void UpdateTransformationStatus(List<ParameterTransformation> successfulRules, List<ParameterTransformation> abandonedRules)
         {
             _invalidRules.RemoveAll(rule => rule.Type == EVALUATION_ERROR_TYPE);
             
@@ -276,7 +220,7 @@ namespace SharpBridge.Services
             _lastSuccessfulTransformation = DateTime.UtcNow;
         }
         
-        private PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<TransformationRule> successfulRules)
+        private PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<ParameterTransformation> successfulRules)
         {
             var paramValues = new List<TrackingParam>();
             var paramDefinitions = new List<VTSParameter>();
@@ -298,7 +242,7 @@ namespace SharpBridge.Services
             };
         }
         
-        private double GetRuleValue(TransformationRule rule)
+        private double GetRuleValue(ParameterTransformation rule)
         {
             var evaluatedValue = Convert.ToDouble(rule.Expression.Evaluate());
             return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
@@ -313,7 +257,7 @@ namespace SharpBridge.Services
         }
         
         private (int validRules, int invalidRules, List<string> validationErrors) 
-            ValidateAndCreateRules(List<TransformRule> rules)
+            ValidateAndCreateRules(List<ParameterRuleDefinition> rules)
         {
             _rules.Clear();
             _invalidRules.Clear();
@@ -324,7 +268,7 @@ namespace SharpBridge.Services
             
             foreach (var rule in rules)
             {
-                if (TryCreateTransformationRule(rule, out TransformationRule transformationRule, out string error))
+                if (TryCreateTransformationRule(rule, out ParameterTransformation transformationRule, out string error))
                 {
                     _rules.Add(transformationRule);
                     validRules++;
@@ -341,7 +285,7 @@ namespace SharpBridge.Services
             return (validRules, invalidRules, validationErrors);
         }
         
-        private bool TryCreateTransformationRule(TransformRule rule, out TransformationRule transformationRule, out string error)
+        private bool TryCreateTransformationRule(ParameterRuleDefinition rule, out ParameterTransformation transformationRule, out string error)
         {
             transformationRule = null!;
             error = string.Empty;
@@ -368,7 +312,7 @@ namespace SharpBridge.Services
                     return false;
                 }
                 
-                transformationRule = new TransformationRule(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue);
+                transformationRule = new ParameterTransformation(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue);
                 return true;
             }
             catch (Exception ex)
