@@ -389,6 +389,35 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
+        #region Statistics Tests
+
+        [Fact]
+        public async Task LoadRulesAsync_SuccessfulLoad_IncrementsHotReloadSuccessesOnlyOnce()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var rule = CreateTestTransformation("TestParam", "eyeBlinkLeft * 100", 0, 100, 0);
+            SetupRepositoryWithRules(rule);
+
+            // Get initial stats
+            var initialStats = engine.GetServiceStats();
+            var initialSuccesses = initialStats.Counters["Hot Reload Successes"];
+
+            // Act - perform one successful load
+            await engine.LoadRulesAsync("test.json");
+
+            // Assert - success counter should be incremented by exactly 1
+            var finalStats = engine.GetServiceStats();
+            var finalSuccesses = finalStats.Counters["Hot Reload Successes"];
+            
+            // This test should FAIL with current buggy code (increments by 2)
+            // but PASS after we fix the double increment bug
+            (finalSuccesses - initialSuccesses).Should().Be(1, 
+                "Hot reload success counter should be incremented by exactly 1 per successful load");
+        }
+
+        #endregion
+
         #region Parameter Definition Tests
 
         [Fact]
