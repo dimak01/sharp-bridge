@@ -97,7 +97,6 @@ namespace SharpBridge.Services
             else
             {
                 // Normal success path
-                _hotReloadSuccesses++;
                 UpdateRulesLoadedStatus(result.ValidRules.Count, result.InvalidRules.Count, result.ValidationErrors);
             }
         }
