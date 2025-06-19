@@ -59,8 +59,7 @@ jobs:
           ./.sonar/scanner/dotnet-sonarscanner begin \
             /k:"dimak01_sharp-bridge" \
             /o:"dimak01" \
-            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
-            /d:project.settings="sonar-project.properties"
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" 
 
       - name: Build
         run: dotnet build sharp-bridge.sln --no-restore --configuration Release
