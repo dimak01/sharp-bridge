@@ -7,7 +7,7 @@ using NCalc;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Repositories
 {
     /// <summary>
     /// File-based implementation of transformation rules repository with caching and graceful error handling

@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.IO;
 using System.Collections.Generic;
+using SharpBridge.Repositories;
 
 namespace SharpBridge.Tests.Services
 {

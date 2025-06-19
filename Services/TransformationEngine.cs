@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using NCalc;
 using SharpBridge.Interfaces;
@@ -22,8 +20,7 @@ namespace SharpBridge.Services
         
         private readonly List<ParameterTransformation> _rules = new();
         private readonly IAppLogger _logger;
-        private readonly IFileChangeWatcher _fileWatcher;
-        private bool _isConfigUpToDate = true;
+        private readonly ITransformationRulesRepository _rulesRepository;
         
         // Statistics tracking fields
         private long _totalTransformations = 0;
@@ -42,73 +39,67 @@ namespace SharpBridge.Services
         /// Initializes a new instance of the <see cref="TransformationEngine"/> class
         /// </summary>
         /// <param name="logger">The logger instance for logging transformation operations</param>
-        /// <param name="fileWatcher">The file watcher instance for monitoring config file changes</param>
-        /// <exception cref="ArgumentNullException">Thrown when logger or fileWatcher is null</exception>
-        public TransformationEngine(IAppLogger logger, IFileChangeWatcher fileWatcher)
+        /// <param name="rulesRepository">The repository for loading and managing transformation rules</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger or rulesRepository is null</exception>
+        public TransformationEngine(IAppLogger logger, ITransformationRulesRepository rulesRepository)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _fileWatcher = fileWatcher ?? throw new ArgumentNullException(nameof(fileWatcher));
-            _fileWatcher.FileChanged += OnFileChanged;
+            _rulesRepository = rulesRepository ?? throw new ArgumentNullException(nameof(rulesRepository));
+            _rulesRepository.RulesChanged += OnRulesChanged;
         }
 
-        private void OnFileChanged(object? sender, FileChangeEventArgs e)
+        private void OnRulesChanged(object? sender, RulesChangedEventArgs e)
         {
-            if (e.FilePath == _configFilePath)
-            {
-                _isConfigUpToDate = false;
-                _logger.Debug($"Config file changed: {e.FilePath}");
-            }
+            _logger.Debug($"Rules file changed: {e.FilePath}");
         }
         
         /// <summary>
         /// Gets whether the currently loaded configuration is up to date with the file on disk
         /// </summary>
-        public bool IsConfigUpToDate => _isConfigUpToDate;
+        public bool IsConfigUpToDate => _rulesRepository.IsUpToDate;
         
         /// <summary>
         /// Loads transformation rules from the specified file
         /// </summary>
         /// <param name="filePath">Path to the transformation rules JSON file</param>
         /// <returns>An asynchronous operation that completes when rules are loaded</returns>
-        /// <exception cref="FileNotFoundException">Thrown when the specified file doesn't exist</exception>
-        /// <exception cref="JsonException">Thrown when the file contains invalid JSON</exception>
-        /// <exception cref="InvalidOperationException">Thrown when one or more rules fail validation</exception>
         public async Task LoadRulesAsync(string filePath)
         {
             // Track hot reload attempts
             _hotReloadAttempts++;
             
-            // Stop watching previous file if any
-            if (!string.IsNullOrEmpty(_configFilePath))
+            var result = await _rulesRepository.LoadRulesAsync(filePath);
+            
+            // Update config file path for stats
+            _configFilePath = _rulesRepository.CurrentFilePath;
+            
+            // Always update rules with whatever we got (cached or fresh)
+            _rules.Clear();
+            _rules.AddRange(result.ValidRules);
+            
+            _invalidRules.Clear();
+            _invalidRules.AddRange(result.InvalidRules);
+            
+            // Update status tracking
+            if (result.LoadedFromCache)
             {
-                _fileWatcher.StopWatching();
+                _currentStatus = TransformationEngineStatus.ConfigErrorCached;
+                _lastError = result.LoadError ?? "Unknown loading error";
+                _logger.Warning($"Using cached rules due to loading error: {_lastError}");
             }
-            
-            // Store config file path as full path
-            _configFilePath = Path.GetFullPath(filePath);
-            
-            if (!File.Exists(_configFilePath))
+            else if (!string.IsNullOrEmpty(result.LoadError))
             {
-                _lastError = $"Transformation rules file not found: {_configFilePath}";
-                _currentStatus = TransformationEngineStatus.ConfigMissing;
-                _logger.Error(_lastError);
-                throw new FileNotFoundException(_lastError);
+                // Repository error without cache - use repository's error message
+                _currentStatus = TransformationEngineStatus.NoValidRules;
+                _lastError = result.LoadError;
+                _logger.Error($"Failed to load rules: {_lastError}");
             }
-            
-            // Start watching the new file
-            _fileWatcher.StartWatching(_configFilePath);
-            
-            // Reset up-to-date status
-            _isConfigUpToDate = true;
-            
-            var json = await File.ReadAllTextAsync(_configFilePath);
-            
-            var rules = JsonSerializer.Deserialize<List<ParameterRuleDefinition>>(json) ?? 
-                throw new JsonException("Failed to deserialize transformation rules");
-            
-            var (validRules, invalidRules, validationErrors) = ValidateAndCreateRules(rules);
-            
-            UpdateRulesLoadedStatus(validRules, invalidRules, validationErrors);
+            else
+            {
+                // Normal success path
+                _hotReloadSuccesses++;
+                UpdateRulesLoadedStatus(result.ValidRules.Count, result.InvalidRules.Count, result.ValidationErrors);
+            }
         }
         
         /// <summary>
@@ -256,71 +247,7 @@ namespace SharpBridge.Services
             return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
         }
         
-        private (int validRules, int invalidRules, List<string> validationErrors) 
-            ValidateAndCreateRules(List<ParameterRuleDefinition> rules)
-        {
-            _rules.Clear();
-            _invalidRules.Clear();
-            
-            int validRules = 0;
-            int invalidRules = 0;
-            var validationErrors = new List<string>();
-            
-            foreach (var rule in rules)
-            {
-                if (TryCreateTransformationRule(rule, out ParameterTransformation transformationRule, out string error))
-                {
-                    _rules.Add(transformationRule);
-                    validRules++;
-                }
-                else
-                {
-                    validationErrors.Add(error);
-                    _invalidRules.Add(new RuleInfo(rule.Name, rule.Func ?? string.Empty, error, VALIDATION_ERROR_TYPE));
-                    invalidRules++;
-                }
-            }
-            
-            _logger.Info($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
-            return (validRules, invalidRules, validationErrors);
-        }
-        
-        private bool TryCreateTransformationRule(ParameterRuleDefinition rule, out ParameterTransformation transformationRule, out string error)
-        {
-            transformationRule = null!;
-            error = string.Empty;
-            
-            if (string.IsNullOrWhiteSpace(rule.Func))
-            {
-                error = $"Rule '{rule.Name}' has an empty expression";
-                return false;
-            }
-            
-            try
-            {
-                var expression = new Expression(rule.Func);
-                
-                if (expression.HasErrors())
-                {
-                    error = $"Syntax error in rule '{rule.Name}': {expression.Error}";
-                    return false;
-                }
-                
-                if (rule.Min > rule.Max)
-                {
-                    error = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
-                    return false;
-                }
-                
-                transformationRule = new ParameterTransformation(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                error = $"Error parsing expression '{rule.Func}': {ex.Message}";
-                return false;
-            }
-        }
+
         
         private void UpdateRulesLoadedStatus(int validRules, int invalidRules, List<string> validationErrors)
         {
