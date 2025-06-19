@@ -17,17 +17,17 @@ namespace SharpBridge.Tests.Services
     {
         private readonly string _configPath = Path.Combine("Tests", "TestData", "transform-config.json");
         private readonly Mock<IAppLogger> _mockLogger;
-        private readonly Mock<IFileChangeWatcher> _mockFileWatcher;
+        private readonly Mock<ITransformationRulesRepository> _mockRepository;
 
         public TransformConfigTests()
         {
             _mockLogger = new Mock<IAppLogger>();
-            _mockFileWatcher = new Mock<IFileChangeWatcher>();
+            _mockRepository = new Mock<ITransformationRulesRepository>();
         }
         
         private TransformationEngine CreateEngine()
         {
-            return new TransformationEngine(_mockLogger.Object, _mockFileWatcher.Object);
+            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object);
         }
         
         [Fact]
