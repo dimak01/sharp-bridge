@@ -2,29 +2,29 @@
   <!-- SonarQube configuration for MSBuild scanner -->
   <PropertyGroup>
     <!-- SonarQube/SonarCloud server configuration -->
-    <SonarQubeHostUrl>https://sonarcloud.io</SonarQubeHostUrl>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     
     <!-- Code coverage configuration -->
-    <SonarQubeCoverageReportPaths>TestResults/CoverageReport/SonarQube.xml</SonarQubeCoverageReportPaths>
+    <sonar.coverageReportPaths>TestResults/CoverageReport/SonarQube.xml</sonar.coverageReportPaths>
     
     <!-- Quality gate configuration -->
-    <SonarQubeQualityGateWait>true</SonarQubeQualityGateWait>
+    <sonar.qualitygate.wait>true</sonar.qualitygate.wait>
     
     <!-- Source code inclusion patterns -->
-    <SonarQubeInclusions>**/*.cs</SonarQubeInclusions>
+    <sonar.inclusions>**/*.cs</sonar.inclusions>
     
-    <!-- Exclusion patterns for analysis -->
-    <SonarQubeExclusions>**/bin/**,**/obj/**,**/Tests/**</SonarQubeExclusions>
+    <!-- Exclusion patterns for analysis - updated to catch both Tests/ and SharpBridge.Tests/ -->
+    <sonar.exclusions>**/bin/**,**/obj/**,**/Tests/**,**/*.Tests/**</sonar.exclusions>
     
     <!-- Coverage exclusions - files to exclude from coverage analysis -->
-    <SonarQubeCoverageExclusions>**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/CommandLineParser.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**</SonarQubeCoverageExclusions>
+    <sonar.coverage.exclusions>**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/CommandLineParser.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**,**/*.Tests/**</sonar.coverage.exclusions>
     
     <!-- Additional SonarQube settings -->
-    <SonarQubeSourceEncoding>UTF-8</SonarQubeSourceEncoding>
-    <SonarQubeScmProvider>git</SonarQubeScmProvider>
+    <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
+    <sonar.scm.provider>git</sonar.scm.provider>
     
     <!-- Language-specific settings -->
-    <SonarQubeCSharpOpenCoverReportsPaths>TestResults/**/coverage.opencover.xml</SonarQubeCSharpOpenCoverReportsPaths>
-    <SonarQubeCSharpVSTestReportsPaths>TestResults/**/*.trx</SonarQubeCSharpVSTestReportsPaths>
+    <sonar.cs.opencover.reportsPaths>TestResults/**/coverage.opencover.xml</sonar.cs.opencover.reportsPaths>
+    <sonar.cs.vstest.reportsPaths>TestResults/**/*.trx</sonar.cs.vstest.reportsPaths>
   </PropertyGroup>
 </Project> 
