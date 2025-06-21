@@ -46,6 +46,8 @@ namespace SharpBridge.Tests.Utilities
                     try { Directory.Delete(dir, true); } catch { /* ignore */ }
                 }
             }
+            
+            GC.SuppressFinalize(this);
         }
 
         #region Helper Methods
@@ -74,7 +76,7 @@ namespace SharpBridge.Tests.Utilities
             return filePath;
         }
 
-        private async Task<bool> WaitForEventAsync(Func<bool> condition, int timeoutMs = 2000)
+        private static async Task<bool> WaitForEventAsync(Func<bool> condition, int timeoutMs = 2000)
         {
             var endTime = DateTime.UtcNow.AddMilliseconds(timeoutMs);
             while (DateTime.UtcNow < endTime)
@@ -181,6 +183,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert - Should not throw
             _watcher.StopWatching();
+            
+            // Assert - Verify no exception was thrown and no log messages were generated
+            _mockLogger.Verify(l => l.Info(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -410,6 +415,9 @@ namespace SharpBridge.Tests.Utilities
             _watcher.Dispose();
             _watcher.Dispose();
             _watcher.Dispose();
+            
+            // Assert - Verify no exception was thrown and stop watching was called only once
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
         }
 
         [Fact]
@@ -473,8 +481,8 @@ namespace SharpBridge.Tests.Utilities
             {
                 try
                 {
-                    // Simulate some work in the event handler
-                    Thread.Sleep(10);
+                    // Simulate some work in the event handler without Thread.Sleep
+                    Task.Delay(10).Wait(); // Use Task.Delay instead of Thread.Sleep
                     Interlocked.Increment(ref eventCount);
                 }
                 catch (Exception ex)

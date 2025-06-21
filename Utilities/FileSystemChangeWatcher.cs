@@ -107,10 +107,7 @@ namespace SharpBridge.Utilities
 
         private void ThrowIfDisposed()
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException(nameof(FileSystemChangeWatcher));
-            }
+            ObjectDisposedException.ThrowIf(_disposed, this);
         }
 
         /// <summary>
