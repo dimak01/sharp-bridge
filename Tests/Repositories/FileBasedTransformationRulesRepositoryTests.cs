@@ -35,6 +35,7 @@ namespace SharpBridge.Tests.Repositories
                     File.Delete(file);
                 }
             }
+            GC.SuppressFinalize(this);
         }
 
         #region Helper Methods
@@ -47,7 +48,7 @@ namespace SharpBridge.Tests.Repositories
             return filePath;
         }
 
-        private string GetValidRuleContent()
+        private static string GetValidRuleContent()
         {
             return @"[
                 {
@@ -60,7 +61,7 @@ namespace SharpBridge.Tests.Repositories
             ]";
         }
 
-        private string GetMixedValidityRuleContent()
+        private static string GetMixedValidityRuleContent()
         {
             return @"[
                 {
