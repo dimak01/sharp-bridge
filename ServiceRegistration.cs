@@ -8,6 +8,7 @@ using System.Net.WebSockets;
 using System.Threading.Tasks;
 using Serilog;
 using System.IO;
+using SharpBridge.Repositories;
 
 namespace SharpBridge
 {
@@ -71,6 +72,12 @@ namespace SharpBridge
                     provider.GetRequiredService<IAppLogger>()
                 );
             });
+            
+            // Register file change watcher
+            services.AddSingleton<IFileChangeWatcher, SharpBridge.Utilities.FileSystemChangeWatcher>();
+            
+            // Register transformation rules repository
+            services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
             
             services.AddTransient<ITransformationEngine, TransformationEngine>();
             
