@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using NCalc;
 using SharpBridge.Interfaces;
@@ -11,62 +9,6 @@ using SharpBridge.Models;
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Represents a single transformation rule with its expression and constraints
-    /// </summary>
-    public class TransformationRule
-    {
-        /// <summary>
-        /// Gets the name of the transformation rule
-        /// </summary>
-        public string Name { get; }
-        
-        /// <summary>
-        /// Gets the compiled mathematical expression for this rule
-        /// </summary>
-        public Expression Expression { get; }
-        
-        /// <summary>
-        /// Gets the original string representation of the expression
-        /// </summary>
-        public string ExpressionString { get; }
-        
-        /// <summary>
-        /// Gets the minimum allowed value for the transformation result
-        /// </summary>
-        public double Min { get; }
-        
-        /// <summary>
-        /// Gets the maximum allowed value for the transformation result
-        /// </summary>
-        public double Max { get; }
-        
-        /// <summary>
-        /// Gets the default value to use when the transformation fails
-        /// </summary>
-        public double DefaultValue { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TransformationRule"/> class
-        /// </summary>
-        /// <param name="name">The name of the transformation rule</param>
-        /// <param name="expression">The compiled mathematical expression</param>
-        /// <param name="expressionString">The original string representation of the expression</param>
-        /// <param name="min">The minimum allowed value for the transformation result</param>
-        /// <param name="max">The maximum allowed value for the transformation result</param>
-        /// <param name="defaultValue">The default value to use when the transformation fails</param>
-        public TransformationRule(string name, Expression expression, string expressionString, 
-            double min, double max, double defaultValue)
-        {
-            Name = name;
-            Expression = expression;
-            ExpressionString = expressionString;
-            Min = min;
-            Max = max;
-            DefaultValue = defaultValue;
-        }
-    }
-
-    /// <summary>
     /// Transforms tracking data into VTube Studio parameters according to transformation rules
     /// </summary>
     public class TransformationEngine : ITransformationEngine, IServiceStatsProvider
@@ -74,10 +16,10 @@ namespace SharpBridge.Services
         private const int MAX_EVALUATION_ITERATIONS = 10;
         private const string EVALUATION_ERROR_MESSAGE = "Failed to evaluate - missing dependencies or evaluation error";
         private const string EVALUATION_ERROR_TYPE = "Evaluation";
-        private const string VALIDATION_ERROR_TYPE = "Validation";
         
-        private readonly List<TransformationRule> _rules = new();
+        private readonly List<ParameterTransformation> _rules = new();
         private readonly IAppLogger _logger;
+        private readonly ITransformationRulesRepository _rulesRepository;
         
         // Statistics tracking fields
         private long _totalTransformations = 0;
@@ -96,44 +38,66 @@ namespace SharpBridge.Services
         /// Initializes a new instance of the <see cref="TransformationEngine"/> class
         /// </summary>
         /// <param name="logger">The logger instance for logging transformation operations</param>
-        /// <exception cref="ArgumentNullException">Thrown when logger is null</exception>
-        public TransformationEngine(IAppLogger logger)
+        /// <param name="rulesRepository">The repository for loading and managing transformation rules</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger or rulesRepository is null</exception>
+        public TransformationEngine(IAppLogger logger, ITransformationRulesRepository rulesRepository)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _rulesRepository = rulesRepository ?? throw new ArgumentNullException(nameof(rulesRepository));
+            _rulesRepository.RulesChanged += OnRulesChanged;
         }
+
+        private void OnRulesChanged(object? sender, RulesChangedEventArgs e)
+        {
+            _logger.Debug($"Rules file changed: {e.FilePath}");
+        }
+        
+        /// <summary>
+        /// Gets whether the currently loaded configuration is up to date with the file on disk
+        /// </summary>
+        public bool IsConfigUpToDate => _rulesRepository.IsUpToDate;
         
         /// <summary>
         /// Loads transformation rules from the specified file
         /// </summary>
         /// <param name="filePath">Path to the transformation rules JSON file</param>
         /// <returns>An asynchronous operation that completes when rules are loaded</returns>
-        /// <exception cref="FileNotFoundException">Thrown when the specified file doesn't exist</exception>
-        /// <exception cref="JsonException">Thrown when the file contains invalid JSON</exception>
-        /// <exception cref="InvalidOperationException">Thrown when one or more rules fail validation</exception>
         public async Task LoadRulesAsync(string filePath)
         {
             // Track hot reload attempts
             _hotReloadAttempts++;
             
-            // Store config file path
-            _configFilePath = filePath;
+            var result = await _rulesRepository.LoadRulesAsync(filePath);
             
-            if (!File.Exists(filePath))
+            // Update config file path for stats
+            _configFilePath = _rulesRepository.CurrentFilePath;
+            
+            // Always update rules with whatever we got (cached or fresh)
+            _rules.Clear();
+            _rules.AddRange(result.ValidRules);
+            
+            _invalidRules.Clear();
+            _invalidRules.AddRange(result.InvalidRules);
+            
+            // Update status tracking
+            if (result.LoadedFromCache)
             {
-                _lastError = $"Transformation rules file not found: {filePath}";
-                _currentStatus = TransformationEngineStatus.ConfigMissing;
-                _logger.Error(_lastError);
-                throw new FileNotFoundException(_lastError);
+                _currentStatus = TransformationEngineStatus.ConfigErrorCached;
+                _lastError = result.LoadError ?? "Unknown loading error";
+                _logger.Warning($"Using cached rules due to loading error: {_lastError}");
             }
-            
-            var json = await File.ReadAllTextAsync(filePath);
-            
-            var rules = JsonSerializer.Deserialize<List<TransformRule>>(json) ?? 
-                throw new JsonException("Failed to deserialize transformation rules");
-            
-            var (validRules, invalidRules, validationErrors) = ValidateAndCreateRules(rules);
-            
-            UpdateRulesLoadedStatus(validRules, invalidRules, validationErrors);
+            else if (!string.IsNullOrEmpty(result.LoadError))
+            {
+                // Repository error without cache - use repository's error message
+                _currentStatus = TransformationEngineStatus.NoValidRules;
+                _lastError = result.LoadError;
+                _logger.Error($"Failed to load rules: {_lastError}");
+            }
+            else
+            {
+                // Normal success path
+                UpdateRulesLoadedStatus(result.ValidRules.Count, result.InvalidRules.Count, result.ValidationErrors);
+            }
         }
         
         /// <summary>
@@ -176,11 +140,11 @@ namespace SharpBridge.Services
             return BuildTransformationResult(trackingData, successfulRules);
         }
         
-        private (List<TransformationRule> successful, List<TransformationRule> abandoned) 
+        private (List<ParameterTransformation> successful, List<ParameterTransformation> abandoned) 
             EvaluateRulesMultiPass(Dictionary<string, object> trackingParameters)
         {
-            var remainingRules = new List<TransformationRule>(_rules);
-            var successfulRules = new List<TransformationRule>();
+            var remainingRules = new List<ParameterTransformation>(_rules);
+            var successfulRules = new List<ParameterTransformation>();
             int currentIteration = 0;
             
             while (remainingRules.Count > 0 && currentIteration < MAX_EVALUATION_ITERATIONS)
@@ -199,8 +163,8 @@ namespace SharpBridge.Services
             return (successfulRules, remainingRules);
         }
         
-        private void ProcessSingleEvaluationPass(List<TransformationRule> remainingRules, 
-            List<TransformationRule> successfulRules, Dictionary<string, object> trackingParameters)
+        private void ProcessSingleEvaluationPass(List<ParameterTransformation> remainingRules, 
+            List<ParameterTransformation> successfulRules, Dictionary<string, object> trackingParameters)
         {
             for (int i = remainingRules.Count - 1; i >= 0; i--)
             {
@@ -223,7 +187,7 @@ namespace SharpBridge.Services
             }
         }
         
-        private void UpdateTransformationStatus(List<TransformationRule> successfulRules, List<TransformationRule> abandonedRules)
+        private void UpdateTransformationStatus(List<ParameterTransformation> successfulRules, List<ParameterTransformation> abandonedRules)
         {
             _invalidRules.RemoveAll(rule => rule.Type == EVALUATION_ERROR_TYPE);
             
@@ -245,7 +209,7 @@ namespace SharpBridge.Services
             _lastSuccessfulTransformation = DateTime.UtcNow;
         }
         
-        private PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<TransformationRule> successfulRules)
+        private static PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<ParameterTransformation> successfulRules)
         {
             var paramValues = new List<TrackingParam>();
             var paramDefinitions = new List<VTSParameter>();
@@ -267,7 +231,7 @@ namespace SharpBridge.Services
             };
         }
         
-        private double GetRuleValue(TransformationRule rule)
+        private static double GetRuleValue(ParameterTransformation rule)
         {
             var evaluatedValue = Convert.ToDouble(rule.Expression.Evaluate());
             return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
@@ -281,71 +245,7 @@ namespace SharpBridge.Services
             return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
         }
         
-        private (int validRules, int invalidRules, List<string> validationErrors) 
-            ValidateAndCreateRules(List<TransformRule> rules)
-        {
-            _rules.Clear();
-            _invalidRules.Clear();
-            
-            int validRules = 0;
-            int invalidRules = 0;
-            var validationErrors = new List<string>();
-            
-            foreach (var rule in rules)
-            {
-                if (TryCreateTransformationRule(rule, out TransformationRule transformationRule, out string error))
-                {
-                    _rules.Add(transformationRule);
-                    validRules++;
-                }
-                else
-                {
-                    validationErrors.Add(error);
-                    _invalidRules.Add(new RuleInfo(rule.Name, rule.Func ?? string.Empty, error, VALIDATION_ERROR_TYPE));
-                    invalidRules++;
-                }
-            }
-            
-            _logger.Info($"Loaded {validRules} valid transformation rules, skipped {invalidRules} invalid rules");
-            return (validRules, invalidRules, validationErrors);
-        }
-        
-        private bool TryCreateTransformationRule(TransformRule rule, out TransformationRule transformationRule, out string error)
-        {
-            transformationRule = null!;
-            error = string.Empty;
-            
-            if (string.IsNullOrWhiteSpace(rule.Func))
-            {
-                error = $"Rule '{rule.Name}' has an empty expression";
-                return false;
-            }
-            
-            try
-            {
-                var expression = new Expression(rule.Func);
-                
-                if (expression.HasErrors())
-                {
-                    error = $"Syntax error in rule '{rule.Name}': {expression.Error}";
-                    return false;
-                }
-                
-                if (rule.Min > rule.Max)
-                {
-                    error = $"Rule '{rule.Name}' has Min value ({rule.Min}) greater than Max value ({rule.Max})";
-                    return false;
-                }
-                
-                transformationRule = new TransformationRule(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                error = $"Error parsing expression '{rule.Func}': {ex.Message}";
-                return false;
-            }
-        }
+
         
         private void UpdateRulesLoadedStatus(int validRules, int invalidRules, List<string> validationErrors)
         {
@@ -376,8 +276,6 @@ namespace SharpBridge.Services
                 LogValidationErrors(validRules, invalidRules, validationErrors);
             }
         }
-        
-
         
         private void LogValidationErrors(int validRules, int invalidRules, List<string> validationErrors)
         {
@@ -519,7 +417,8 @@ namespace SharpBridge.Services
             var currentEntity = new TransformationEngineInfo(
                 configFilePath: _configFilePath ?? string.Empty,
                 validRulesCount: _rules.Count,
-                invalidRules: _invalidRules.AsReadOnly());
+                invalidRules: _invalidRules.AsReadOnly(),
+                isConfigUpToDate: IsConfigUpToDate);
             
             bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesValid || 
                            _currentStatus == TransformationEngineStatus.RulesPartiallyValid;
