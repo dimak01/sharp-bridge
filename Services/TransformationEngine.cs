@@ -16,7 +16,6 @@ namespace SharpBridge.Services
         private const int MAX_EVALUATION_ITERATIONS = 10;
         private const string EVALUATION_ERROR_MESSAGE = "Failed to evaluate - missing dependencies or evaluation error";
         private const string EVALUATION_ERROR_TYPE = "Evaluation";
-        private const string VALIDATION_ERROR_TYPE = "Validation";
         
         private readonly List<ParameterTransformation> _rules = new();
         private readonly IAppLogger _logger;
@@ -232,7 +231,7 @@ namespace SharpBridge.Services
             };
         }
         
-        private double GetRuleValue(ParameterTransformation rule)
+        private static double GetRuleValue(ParameterTransformation rule)
         {
             var evaluatedValue = Convert.ToDouble(rule.Expression.Evaluate());
             return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
