@@ -189,7 +189,7 @@ namespace SharpBridge.Repositories
         /// <summary>
         /// Attempts to create a transformation rule from a rule definition
         /// </summary>
-        private bool TryCreateTransformationRule(ParameterRuleDefinition rule, out ParameterTransformation transformationRule, out string error)
+        private static bool TryCreateTransformationRule(ParameterRuleDefinition rule, out ParameterTransformation transformationRule, out string error)
         {
             transformationRule = null!;
             error = string.Empty;
@@ -244,10 +244,7 @@ namespace SharpBridge.Repositories
         /// </summary>
         private void ThrowIfDisposed()
         {
-            if (_disposed)
-            {
-                throw new ObjectDisposedException(nameof(FileBasedTransformationRulesRepository));
-            }
+            ObjectDisposedException.ThrowIf(_disposed, this);
         }
         
         /// <summary>
@@ -258,7 +255,7 @@ namespace SharpBridge.Repositories
             if (!_disposed)
             {
                 _fileWatcher.FileChanged -= OnFileChanged;
-                _fileWatcher?.Dispose();
+                _fileWatcher.Dispose();
                 _disposed = true;
             }
         }
