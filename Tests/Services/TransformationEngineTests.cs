@@ -48,7 +48,7 @@ namespace SharpBridge.Tests.Services
             };
         }
 
-        private ParameterTransformation CreateTestTransformation(string name, string expression, double min = 0, double max = 100, double defaultValue = 0)
+        private static ParameterTransformation CreateTestTransformation(string name, string expression, double min = 0, double max = 100, double defaultValue = 0)
         {
             return new ParameterTransformation(name, new Expression(expression), expression, min, max, defaultValue);
         }

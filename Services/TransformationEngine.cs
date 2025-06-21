@@ -209,7 +209,7 @@ namespace SharpBridge.Services
             _lastSuccessfulTransformation = DateTime.UtcNow;
         }
         
-        private PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<ParameterTransformation> successfulRules)
+        private static PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<ParameterTransformation> successfulRules)
         {
             var paramValues = new List<TrackingParam>();
             var paramDefinitions = new List<VTSParameter>();
