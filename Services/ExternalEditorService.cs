@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
@@ -14,16 +13,19 @@ namespace SharpBridge.Services
     {
         private readonly ApplicationConfig _config;
         private readonly IAppLogger _logger;
+        private readonly IProcessLauncher _processLauncher;
 
         /// <summary>
         /// Initializes a new instance of the ExternalEditorService
         /// </summary>
         /// <param name="config">Application configuration containing editor command</param>
         /// <param name="logger">Logger for recording operations and errors</param>
-        public ExternalEditorService(ApplicationConfig config, IAppLogger logger)
+        /// <param name="processLauncher">Process launcher for starting external processes</param>
+        public ExternalEditorService(ApplicationConfig config, IAppLogger logger, IProcessLauncher processLauncher)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _processLauncher = processLauncher ?? throw new ArgumentNullException(nameof(processLauncher));
         }
 
         /// <summary>
@@ -63,19 +65,8 @@ namespace SharpBridge.Services
                 // Parse command and arguments
                 var (executable, arguments) = ParseCommand(commandWithFile);
 
-                // Execute the command asynchronously
-                var processStartInfo = new ProcessStartInfo
-                {
-                    FileName = executable,
-                    Arguments = arguments,
-                    UseShellExecute = true,
-                    CreateNoWindow = false
-                };
-
-                // Start the process and don't wait for it to complete
-                using var process = Process.Start(processStartInfo);
-                
-                if (process != null)
+                // Execute the command using the process launcher
+                if (_processLauncher.TryStartProcess(executable, arguments))
                 {
                     _logger.Info("External editor launched successfully: {0}", executable);
                     return Task.FromResult(true);
