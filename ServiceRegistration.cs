@@ -123,6 +123,9 @@ namespace SharpBridge
             // Register parameter color service
             services.AddSingleton<IParameterColorService, ParameterColorService>();
             
+            // Register process launcher
+            services.AddSingleton<IProcessLauncher, ProcessLauncher>();
+            
             // Register external editor service
             services.AddSingleton<IExternalEditorService, ExternalEditorService>();
             
