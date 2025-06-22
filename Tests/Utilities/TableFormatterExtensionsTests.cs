@@ -219,7 +219,7 @@ namespace Tests.Utilities
             };
 
             // Act
-            _tableFormatter.AppendTable(builder, "Null Test", null, columns, 1, 80, 20);
+            _tableFormatter.AppendTable(builder, "Null Test", null!, columns, 1, 80, 20);
 
             // Assert
             builder.ToString().Should().Be($"Null Test{Environment.NewLine}");
@@ -309,4 +309,4 @@ namespace Tests.Utilities
             public double Value { get; set; }
         }
     }
-} 
+}

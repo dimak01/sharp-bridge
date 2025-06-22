@@ -20,40 +20,39 @@ namespace SharpBridge
         public static async Task<int> Main(string[] args)
         {
             Console.WriteLine("SharpBridge Application");
-            
+
             // Parse command line arguments
-            var commandLineParser = new CommandLineParser();
-            var options = await commandLineParser.ParseAsync(args);
-            
+            var options = await CommandLineParser.ParseAsync(args);
+
             // Setup DI container
             var services = new ServiceCollection();
             services.AddSharpBridgeServices(
-                options.ConfigDirectory, 
-                options.PCConfigFilename, 
+                options.ConfigDirectory,
+                options.PCConfigFilename,
                 options.PhoneConfigFilename);
-            
+
             using var serviceProvider = services.BuildServiceProvider();
-            
+
             // Create cancellation token for application shutdown
             using var cts = new CancellationTokenSource();
-            
+
             // Handle Ctrl+C
-            Console.CancelKeyPress += (sender, e) => 
+            Console.CancelKeyPress += (sender, e) =>
             {
                 Console.WriteLine("Shutting down...");
                 cts.Cancel();
                 e.Cancel = true; // Prevent default process termination
             };
-            
+
             try
             {
                 // Get orchestrator from DI container
                 var orchestrator = serviceProvider.GetRequiredService<IApplicationOrchestrator>();
-                
+
                 // Initialize and run the application
                 await orchestrator.InitializeAsync(options.TransformConfigPath, cts.Token);
                 await orchestrator.RunAsync(cts.Token);
-                
+
                 return 0;
             }
             catch (OperationCanceledException)
@@ -69,4 +68,4 @@ namespace SharpBridge
             }
         }
     }
-} 
+}
