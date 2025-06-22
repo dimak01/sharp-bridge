@@ -309,7 +309,7 @@ namespace SharpBridge.Tests.Utilities
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path: Configs/custom_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit): Configs/custom_rules.json");
         }
 
         [Fact]
@@ -657,7 +657,7 @@ namespace SharpBridge.Tests.Utilities
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path: Configs/test_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit): Configs/test_rules.json");
             plainResult.Should().Contain($"Up to Date: {(isConfigUpToDate ? "Yes" : "No")}");
         }
 
