@@ -26,6 +26,7 @@ namespace SharpBridge.Tests.Services
         private Mock<IRecoveryPolicy> _recoveryPolicyMock;
         private Mock<IConsole> _consoleMock;
         private Mock<IParameterColorService> _colorServiceMock;
+        private Mock<IExternalEditorService> _externalEditorServiceMock;
         private ApplicationOrchestrator _orchestrator;
         private string _tempConfigPath;
         private VTubeStudioPhoneClientConfig _phoneConfig;
@@ -47,6 +48,7 @@ namespace SharpBridge.Tests.Services
             _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
             _consoleMock = new Mock<IConsole>();
             _colorServiceMock = new Mock<IParameterColorService>();
+            _externalEditorServiceMock = new Mock<IExternalEditorService>();
             
             // Configure recovery policy to return 2 second delay
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
@@ -93,7 +95,8 @@ namespace SharpBridge.Tests.Services
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
-                _colorServiceMock.Object
+                _colorServiceMock.Object,
+                _externalEditorServiceMock.Object
             );
                 
             // Create temp config file for tests
@@ -113,7 +116,8 @@ namespace SharpBridge.Tests.Services
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
-                _colorServiceMock.Object
+                _colorServiceMock.Object,
+                _externalEditorServiceMock.Object
             );
         }
         
@@ -807,7 +811,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -824,7 +830,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -841,7 +849,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -858,7 +868,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
 
@@ -876,7 +888,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -893,7 +907,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -909,7 +925,9 @@ namespace SharpBridge.Tests.Services
                 null,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -925,7 +943,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 null,
                 _recoveryPolicyMock.Object,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -941,7 +961,9 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 null,
-                _consoleMock.Object, Mock.Of<IParameterColorService>()));
+                _consoleMock.Object,
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         [Fact]
@@ -958,7 +980,8 @@ namespace SharpBridge.Tests.Services
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 null,
-                Mock.Of<IParameterColorService>()));
+                Mock.Of<IParameterColorService>(),
+                Mock.Of<IExternalEditorService>()));
         }
 
         // Additional Initialization Tests
@@ -1915,9 +1938,32 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
-                    null));
+                    null,
+                    Mock.Of<IExternalEditorService>()));
 
             Assert.Equal("colorService", exception.ParamName);
+        }
+
+        [Fact]
+        public void Constructor_WithNullExternalEditorService_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    Mock.Of<IParameterColorService>(),
+                    null));
+
+            Assert.Equal("externalEditorService", exception.ParamName);
         }
 
         [Fact]
