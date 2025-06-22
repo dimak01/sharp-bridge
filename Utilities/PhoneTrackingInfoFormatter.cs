@@ -17,18 +17,18 @@ namespace SharpBridge.Utilities
     {
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
-        
 
-        
+
+
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
         private readonly IParameterColorService _colorService;
-        
+
         /// <summary>
         /// Gets or sets the current time for testing purposes. If null, uses DateTime.UtcNow.
         /// </summary>
         public DateTime? CurrentTime { get; set; }
-        
+
         /// <summary>
         /// Initializes a new instance of the PhoneTrackingInfoFormatter
         /// </summary>
@@ -41,12 +41,12 @@ namespace SharpBridge.Utilities
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         }
-        
+
         /// <summary>
         /// Current verbosity level for this formatter
         /// </summary>
         public VerbosityLevel CurrentVerbosity { get; private set; } = VerbosityLevel.Normal;
-        
+
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
@@ -60,20 +60,20 @@ namespace SharpBridge.Utilities
                 _ => VerbosityLevel.Normal
             };
         }
-        
+
         /// <summary>
         /// Formats a PhoneTrackingInfo object with service statistics into a display string
         /// </summary>
         public string Format(IServiceStats stats)
         {
-            if (stats == null) 
+            if (stats == null)
                 return "No service data available";
-            
+
             var builder = new StringBuilder();
-            
+
             // Header with service status
             builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", stats.Status, "Alt+O"));
-            
+
             // Tracking data details
             if (stats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
             {
@@ -88,10 +88,10 @@ namespace SharpBridge.Utilities
                 builder.AppendLine();
                 builder.AppendLine("No current tracking data available");
             }
-            
+
             return builder.ToString();
         }
-        
+
         /// <summary>
         /// Appends tracking data details to the string builder
         /// </summary>
@@ -105,12 +105,12 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends face detection status to the string builder
         /// </summary>
-        private void AppendFaceStatus(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
+        private static void AppendFaceStatus(StringBuilder builder, PhoneTrackingInfo phoneTrackingInfo)
         {
             var faceIcon = phoneTrackingInfo.FaceFound ? "√" : "X";
             var faceColor = phoneTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
             var faceText = phoneTrackingInfo.FaceFound ? "Detected" : "Not Found";
-            
+
             builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {faceText}", faceColor)}");
         }
 
@@ -137,7 +137,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends rotation data if available
         /// </summary>
-        private void AppendRotationData(StringBuilder builder, Coordinates rotation)
+        private static void AppendRotationData(StringBuilder builder, Coordinates rotation)
         {
             if (rotation != null)
             {
@@ -151,7 +151,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends position data if available
         /// </summary>
-        private void AppendPositionData(StringBuilder builder, Coordinates position)
+        private static void AppendPositionData(StringBuilder builder, Coordinates position)
         {
             if (position != null)
             {
@@ -184,7 +184,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Checks if there are no blend shapes available
         /// </summary>
-        private bool HasNoBlendShapes(PhoneTrackingInfo phoneTrackingInfo)
+        private static bool HasNoBlendShapes(PhoneTrackingInfo phoneTrackingInfo)
         {
             return phoneTrackingInfo.BlendShapes == null || phoneTrackingInfo.BlendShapes.Count == 0;
         }
@@ -198,7 +198,7 @@ namespace SharpBridge.Utilities
             var columns = CreateBlendShapeColumns();
             var singleColumnLimit = GetBlendShapeDisplayLimit();
 
-            _tableFormatter.AppendTable(builder, "=== BlendShapes ===", sortedShapes, columns, 
+            _tableFormatter.AppendTable(builder, "=== BlendShapes ===", sortedShapes, columns,
                 TARGET_COLUMN_COUNT, _console.WindowWidth, 20, singleColumnLimit);
 
             builder.AppendLine();
@@ -208,7 +208,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets sorted blend shapes for display
         /// </summary>
-        private List<BlendShape> GetSortedBlendShapes(PhoneTrackingInfo phoneTrackingInfo)
+        private static List<BlendShape> GetSortedBlendShapes(PhoneTrackingInfo phoneTrackingInfo)
         {
             return phoneTrackingInfo.BlendShapes
                 .Where(s => s != null)
@@ -236,11 +236,11 @@ namespace SharpBridge.Utilities
         {
             return CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
         }
-        
 
-        
 
-        
+
+
+
         /// <summary>
         /// Formats a service header with status and color coding
         /// </summary>
@@ -262,4 +262,4 @@ namespace SharpBridge.Utilities
             return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
         }
     }
-} 
+}

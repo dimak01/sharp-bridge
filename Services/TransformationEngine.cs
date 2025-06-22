@@ -163,7 +163,7 @@ namespace SharpBridge.Services
             return (successfulRules, remainingRules);
         }
 
-        private void ProcessSingleEvaluationPass(List<ParameterTransformation> remainingRules,
+        private static void ProcessSingleEvaluationPass(List<ParameterTransformation> remainingRules,
             List<ParameterTransformation> successfulRules, Dictionary<string, object> trackingParameters)
         {
             for (int i = remainingRules.Count - 1; i >= 0; i--)
@@ -172,7 +172,7 @@ namespace SharpBridge.Services
                 rule.Expression.Parameters.Clear();
                 SetParametersOnExpression(rule.Expression, trackingParameters);
 
-                if (TryEvaluateExpression(rule.Expression, out double evaluatedValue, out Exception evaluationError))
+                if (TryEvaluateExpression(rule.Expression, out double evaluatedValue, out _))
                 {
                     var value = Math.Clamp(evaluatedValue, rule.Min, rule.Max);
 
@@ -287,7 +287,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Gets parameters from tracking data as a dictionary
         /// </summary>
-        private Dictionary<string, object> GetParametersFromTrackingData(PhoneTrackingInfo trackingData)
+        private static Dictionary<string, object> GetParametersFromTrackingData(PhoneTrackingInfo trackingData)
         {
             var parameters = new Dictionary<string, object>();
 
@@ -299,7 +299,7 @@ namespace SharpBridge.Services
             return parameters;
         }
 
-        private void AddPositionParameters(Dictionary<string, object> parameters, Coordinates position)
+        private static void AddPositionParameters(Dictionary<string, object> parameters, Coordinates position)
         {
             if (position != null)
             {
@@ -309,7 +309,7 @@ namespace SharpBridge.Services
             }
         }
 
-        private void AddRotationParameters(Dictionary<string, object> parameters, Coordinates rotation)
+        private static void AddRotationParameters(Dictionary<string, object> parameters, Coordinates rotation)
         {
             if (rotation != null)
             {
@@ -319,7 +319,7 @@ namespace SharpBridge.Services
             }
         }
 
-        private void AddEyeParameters(Dictionary<string, object> parameters, Coordinates eyeLeft, Coordinates eyeRight)
+        private static void AddEyeParameters(Dictionary<string, object> parameters, Coordinates eyeLeft, Coordinates eyeRight)
         {
             if (eyeLeft != null)
             {
@@ -336,7 +336,7 @@ namespace SharpBridge.Services
             }
         }
 
-        private void AddBlendShapeParameters(Dictionary<string, object> parameters, List<BlendShape> blendShapes)
+        private static void AddBlendShapeParameters(Dictionary<string, object> parameters, List<BlendShape> blendShapes)
         {
             if (blendShapes != null)
             {
@@ -353,7 +353,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Sets parameters on an expression from a dictionary
         /// </summary>
-        private void SetParametersOnExpression(Expression expression, Dictionary<string, object> parameters)
+        private static void SetParametersOnExpression(Expression expression, Dictionary<string, object> parameters)
         {
             foreach (var param in parameters)
             {
@@ -364,7 +364,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Attempts to evaluate an expression, returning success/failure and any error
         /// </summary>
-        private bool TryEvaluateExpression(Expression expression, out double result, out Exception error)
+        private static bool TryEvaluateExpression(Expression expression, out double result, out Exception error)
         {
             var requiredParameters = expression.GetParameterNames();
             var availableParameters = expression.Parameters.Keys;

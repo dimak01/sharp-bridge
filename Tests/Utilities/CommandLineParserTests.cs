@@ -19,8 +19,8 @@ namespace SharpBridge.Tests.Utilities
         public async Task ParseAsync_WithNoArgs_UsesDefaultValues()
         {
             // Act
-            var options = await _parser.ParseAsync(Array.Empty<string>());
-            
+            var options = await CommandLineParser.ParseAsync(Array.Empty<string>());
+
             // Assert
             options.ConfigDirectory.Should().Be(CommandLineDefaults.ConfigDirectory);
             options.TransformConfigFilename.Should().Be(CommandLineDefaults.TransformConfigFilename);
@@ -36,7 +36,7 @@ namespace SharpBridge.Tests.Utilities
             var customTransform = "custom_transform.json";
             var customPC = "custom_pc.json";
             var customPhone = "custom_phone.json";
-            
+
             var args = new[]
             {
                 "--config-dir", customDir,
@@ -44,10 +44,10 @@ namespace SharpBridge.Tests.Utilities
                 "--pc-config", customPC,
                 "--phone-config", customPhone
             };
-            
+
             // Act
-            var options = await _parser.ParseAsync(args);
-            
+            var options = await CommandLineParser.ParseAsync(args);
+
             // Assert
             options.ConfigDirectory.Should().Be(customDir);
             options.TransformConfigFilename.Should().Be(customTransform);
@@ -60,9 +60,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var args = new[] { "--config-dir", "" };
-            
+
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _parser.ParseAsync(args));
+            await Assert.ThrowsAsync<ArgumentException>(() => CommandLineParser.ParseAsync(args));
         }
 
         [Fact]
@@ -70,9 +70,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var args = new[] { "--transform-config", "" };
-            
+
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _parser.ParseAsync(args));
+            await Assert.ThrowsAsync<ArgumentException>(() => CommandLineParser.ParseAsync(args));
         }
 
         [Fact]
@@ -80,9 +80,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var args = new[] { "--pc-config", "" };
-            
+
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _parser.ParseAsync(args));
+            await Assert.ThrowsAsync<ArgumentException>(() => CommandLineParser.ParseAsync(args));
         }
 
         [Fact]
@@ -90,9 +90,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var args = new[] { "--phone-config", "" };
-            
+
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() => _parser.ParseAsync(args));
+            await Assert.ThrowsAsync<ArgumentException>(() => CommandLineParser.ParseAsync(args));
         }
     }
-} 
+}

@@ -29,17 +29,17 @@ namespace SharpBridge.Utilities
         {
             // Add title first, regardless of whether we have rows
             builder.AppendLine(title);
-            
+
             var rowList = rows?.ToList() ?? new List<T>();
             if (!rowList.Any()) return;
-            
+
             int itemsDisplayed;
-            
+
             // Single column or fallback case
             if (targetColumnCount <= 1)
             {
-                var singleColumnRows = singleColumnMaxItems.HasValue 
-                    ? rowList.Take(singleColumnMaxItems.Value).ToList() 
+                var singleColumnRows = singleColumnMaxItems.HasValue
+                    ? rowList.Take(singleColumnMaxItems.Value).ToList()
                     : rowList;
                 AppendSingleColumnTable(builder, singleColumnRows, columns, singleColumnBarWidth);
                 itemsDisplayed = singleColumnRows.Count;
@@ -54,56 +54,56 @@ namespace SharpBridge.Utilities
                 else
                 {
                     // Fallback to single column
-                    var fallbackRows = singleColumnMaxItems.HasValue 
-                        ? rowList.Take(singleColumnMaxItems.Value).ToList() 
+                    var fallbackRows = singleColumnMaxItems.HasValue
+                        ? rowList.Take(singleColumnMaxItems.Value).ToList()
                         : rowList;
                     AppendSingleColumnTable(builder, fallbackRows, columns, singleColumnBarWidth);
                     itemsDisplayed = fallbackRows.Count;
                 }
             }
-            
+
             // Add "more items" message if items were truncated
             if (rowList.Count > itemsDisplayed)
             {
                 builder.AppendLine($"  ... and {rowList.Count - itemsDisplayed} more");
             }
         }
-        
+
         /// <summary>
         /// Appends a single-column table using strongly-typed column definitions
         /// </summary>
-        private void AppendSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumn<T>> columns, int barWidth)
+        private static void AppendSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumn<T>> columns, int barWidth)
         {
             if (!rows.Any() || !columns.Any()) return;
-            
+
             // Calculate column widths using the new clean approach
             var columnWidths = new int[columns.Count];
-            
+
             for (int i = 0; i < columns.Count; i++)
             {
                 var column = columns[i];
                 var headerWidth = ConsoleColors.GetVisualLength(column.Header);
                 var minWidth = column.MinWidth;
-                
+
                 // Use ValueFormatter to get natural content width (accounting for ANSI sequences)
                 var maxContentWidth = rows.Max(r => ConsoleColors.GetVisualLength(column.ValueFormatter(r)));
-                
+
                 var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
-                
+
                 // Apply MaxWidth if specified
-                columnWidths[i] = column.MaxWidth.HasValue 
-                    ? Math.Min(naturalWidth, column.MaxWidth.Value) 
+                columnWidths[i] = column.MaxWidth.HasValue
+                    ? Math.Min(naturalWidth, column.MaxWidth.Value)
                     : naturalWidth;
             }
-            
+
             // Add header row using column's FormatHeader method
             var headerParts = columns.Select((c, i) => c.FormatHeader(columnWidths[i]));
             builder.AppendLine(string.Join(" ", headerParts));
-            
+
             // Add separator line
             var separatorLength = columnWidths.Sum() + (columns.Count - 1);
             builder.AppendLine(new string('-', separatorLength));
-            
+
             // Add data rows using column's FormatCell method
             foreach (var row in rows)
             {
@@ -111,61 +111,61 @@ namespace SharpBridge.Utilities
                 builder.AppendLine(string.Join(" ", cellParts));
             }
         }
-        
+
         /// <summary>
         /// Attempts to append a multi-column table using generic column definitions
         /// </summary>
-        private bool TryAppendMultiColumnTable<T>(StringBuilder builder, List<T> rows, 
+        private static bool TryAppendMultiColumnTable<T>(StringBuilder builder, List<T> rows,
             IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth)
         {
             if (!rows.Any() || !columns.Any()) return false;
-            
+
             // Calculate column widths using the new clean approach
             var columnWidths = new int[columns.Count];
             var totalContentWidth = 0;
-            
+
             for (int i = 0; i < columns.Count; i++)
             {
                 var column = columns[i];
                 var headerWidth = ConsoleColors.GetVisualLength(column.Header);
                 var minWidth = column.MinWidth;
-                
+
                 // Use ValueFormatter to get natural content width (accounting for ANSI sequences)
                 var maxContentWidth = rows.Max(r => ConsoleColors.GetVisualLength(column.ValueFormatter(r)));
-                
+
                 var naturalWidth = Math.Max(Math.Max(headerWidth, minWidth), maxContentWidth);
-                
+
                 // Apply MaxWidth if specified
-                columnWidths[i] = column.MaxWidth.HasValue 
-                    ? Math.Min(naturalWidth, column.MaxWidth.Value) 
+                columnWidths[i] = column.MaxWidth.HasValue
+                    ? Math.Min(naturalWidth, column.MaxWidth.Value)
                     : naturalWidth;
-                    
+
                 totalContentWidth += columnWidths[i];
             }
-            
+
             // Add spaces between columns within each table column
             var spacesPerTableColumn = columns.Count - 1;
             var minWidthPerTableColumn = totalContentWidth + spacesPerTableColumn;
-            
+
             // Calculate available width per table column
             var columnPadding = 3; // Space between table columns
             var totalPadding = columnPadding * (targetColumnCount - 1);
             var availableWidth = consoleWidth - totalPadding;
             var widthPerTableColumn = availableWidth / targetColumnCount;
-            
+
             // Check if content can fit
             if (minWidthPerTableColumn > widthPerTableColumn)
             {
                 return false; // Cannot fit, need fallback
             }
-            
+
             // Build headers using new FormatHeader method
             AppendMultiColumnHeaders(builder, targetColumnCount, columns, columnWidths, columnPadding);
-            
+
             // Split rows into table columns
             var rowsPerTableColumn = (int)Math.Ceiling((double)rows.Count / targetColumnCount);
             var tableColumnData = new List<List<T>>();
-            
+
             for (int col = 0; col < targetColumnCount; col++)
             {
                 var startIndex = col * rowsPerTableColumn;
@@ -173,22 +173,22 @@ namespace SharpBridge.Utilities
                 var tableColumnRows = rows.Skip(startIndex).Take(endIndex - startIndex).ToList();
                 tableColumnData.Add(tableColumnRows);
             }
-            
+
             // Build data rows using new FormatCell method
             var maxRowsInAnyTableColumn = tableColumnData.Max(col => col.Count);
             for (int rowIndex = 0; rowIndex < maxRowsInAnyTableColumn; rowIndex++)
             {
-                AppendMultiColumnDataRow(builder, tableColumnData, rowIndex, targetColumnCount, 
+                AppendMultiColumnDataRow(builder, tableColumnData, rowIndex, targetColumnCount,
                     columns, columnWidths, columnPadding);
             }
-            
+
             return true; // Success
         }
-        
+
         /// <summary>
         /// Appends the header rows for generic multi-column layout
         /// </summary>
-        private void AppendMultiColumnHeaders<T>(StringBuilder builder, int targetColumnCount, 
+        private static void AppendMultiColumnHeaders<T>(StringBuilder builder, int targetColumnCount,
             IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
         {
             // Header row using column's FormatHeader method
@@ -196,42 +196,42 @@ namespace SharpBridge.Utilities
             for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
             {
                 if (tableCol > 0) headerBuilder.Append(new string(' ', columnPadding));
-                
+
                 // Build header for this table column
                 var headerParts = columns.Select((c, i) => c.FormatHeader(columnWidths[i]));
                 headerBuilder.Append(string.Join(" ", headerParts));
             }
             builder.AppendLine(headerBuilder.ToString());
-            
+
             // Separator row
             var separatorBuilder = new StringBuilder();
             for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
             {
                 if (tableCol > 0) separatorBuilder.Append(new string(' ', columnPadding));
-                
+
                 var separatorLength = columnWidths.Sum() + (columns.Count - 1);
                 separatorBuilder.Append(new string('-', separatorLength));
             }
             builder.AppendLine(separatorBuilder.ToString());
         }
-        
+
         /// <summary>
         /// Appends a single data row across all table columns for generic tables
         /// </summary>
-        private void AppendMultiColumnDataRow<T>(StringBuilder builder, 
+        private static void AppendMultiColumnDataRow<T>(StringBuilder builder,
             List<List<T>> tableColumnData, int rowIndex, int targetColumnCount,
             IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
         {
             var lineBuilder = new StringBuilder();
-            
+
             for (int tableCol = 0; tableCol < targetColumnCount; tableCol++)
             {
                 if (tableCol > 0) lineBuilder.Append(new string(' ', columnPadding));
-                
+
                 if (rowIndex < tableColumnData[tableCol].Count)
                 {
                     var row = tableColumnData[tableCol][rowIndex];
-                    
+
                     // Build content for this table column using FormatCell method
                     var cellParts = columns.Select((c, i) => c.FormatCell(row, columnWidths[i]));
                     lineBuilder.Append(string.Join(" ", cellParts));
@@ -243,10 +243,10 @@ namespace SharpBridge.Utilities
                     lineBuilder.Append(new string(' ', emptyWidth));
                 }
             }
-            
+
             builder.AppendLine(lineBuilder.ToString());
         }
-        
+
         /// <summary>
         /// Creates a progress bar visualization for a value between 0 and 1
         /// </summary>
@@ -259,7 +259,7 @@ namespace SharpBridge.Utilities
             var barLength = (int)(clampedValue * width);
             return new string('█', barLength) + new string('░', width - barLength);
         }
-        
+
         /// <summary>
         /// Creates a progress bar visualization for a value within a custom range
         /// </summary>
@@ -271,9 +271,9 @@ namespace SharpBridge.Utilities
         public string CreateProgressBar(double value, double min, double max, int width = 20)
         {
             if (max <= min) return new string('░', width); // Invalid range
-            
+
             var normalizedValue = (value - min) / (max - min);
             return CreateProgressBar(normalizedValue, width);
         }
     }
-} 
+}

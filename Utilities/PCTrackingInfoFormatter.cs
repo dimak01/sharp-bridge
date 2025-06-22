@@ -73,8 +73,6 @@ namespace SharpBridge.Utilities
 
                 builder.AppendLine();
 
-                var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
-
                 if (CurrentVerbosity >= VerbosityLevel.Normal)
                 {
                     AppendParameters(builder, pcTrackingInfo);
@@ -92,8 +90,6 @@ namespace SharpBridge.Utilities
 
             return builder.ToString();
         }
-
-
 
         /// <summary>
         /// Appends the parameter information to the string builder using the new table format
@@ -128,7 +124,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Calculates the normalized value (0.0 to 1.0) for a parameter based on its definition
         /// </summary>
-        private double CalculateNormalizedValue(TrackingParam param, PCTrackingInfo trackingInfo)
+        private static double CalculateNormalizedValue(TrackingParam param, PCTrackingInfo trackingInfo)
         {
             if (trackingInfo.ParameterDefinitions?.TryGetValue(param.Id, out var definition) == true)
             {
@@ -146,7 +142,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats the compact range information for a parameter
         /// </summary>
-        private string FormatCompactRange(TrackingParam param, PCTrackingInfo trackingInfo)
+        private static string FormatCompactRange(TrackingParam param, PCTrackingInfo trackingInfo)
         {
             var weight = param.Weight?.ToString("0.##") ?? "1";
 
@@ -165,7 +161,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats the transformation expression for a parameter
         /// </summary>
-        private string FormatExpression(TrackingParam param, PCTrackingInfo trackingInfo)
+        private static string FormatExpression(TrackingParam param, PCTrackingInfo trackingInfo)
         {
             if (trackingInfo?.ParameterCalculationExpressions == null)
                 return "[no expression]";
@@ -187,8 +183,6 @@ namespace SharpBridge.Utilities
             // Fallback for parameters without expressions
             return "[no expression]";
         }
-
-
 
         /// <summary>
         /// Formats a service header with status and color coding

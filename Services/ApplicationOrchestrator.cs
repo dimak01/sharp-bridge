@@ -29,11 +29,11 @@ namespace SharpBridge.Services
         private readonly ConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
-        
+
         // Preferred console dimensions
         private const int PREFERRED_CONSOLE_WIDTH = 150;
         private const int PREFERRED_CONSOLE_HEIGHT = 60;
-        
+
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
         /// </summary>
@@ -86,7 +86,7 @@ namespace SharpBridge.Services
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
-            
+
             // Initialize console window manager
             _consoleWindowManager = new ConsoleWindowManager(_console);
         }
@@ -100,32 +100,32 @@ namespace SharpBridge.Services
         public async Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken)
         {
             ValidateInitializationParameters(transformConfigPath);
-            
+
             // Set preferred console window size
             SetupConsoleWindow();
-            
+
             _logger.Info("Using transformation config: {0}", transformConfigPath);
-            
+
             // Store the config path for reloading
             _transformConfigPath = transformConfigPath;
-            
+
             await InitializeTransformationEngine(transformConfigPath);
-            
+
             // Initialize clients directly during startup
             _logger.Info("Attempting initial client connections...");
             await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
             await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
-            
+
             // Register keyboard shortcuts
             RegisterKeyboardShortcuts();
-            
+
             // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
             var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
             if (!parameterSyncSuccess)
             {
                 _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
             }
-            
+
             _logger.Info("Application initialized successfully");
         }
 
@@ -138,7 +138,7 @@ namespace SharpBridge.Services
             {
                 var currentSize = _consoleWindowManager.GetCurrentSize();
                 _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
-                
+
                 bool success = _consoleWindowManager.SetTemporarySize(PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
                 if (success)
                 {
@@ -146,7 +146,7 @@ namespace SharpBridge.Services
                 }
                 else
                 {
-                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}", 
+                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}",
                         currentSize.width, currentSize.height);
                 }
             }
@@ -164,7 +164,7 @@ namespace SharpBridge.Services
         public async Task RunAsync(CancellationToken cancellationToken)
         {
             _logger.Info("Starting application...");
-            
+
             try
             {
                 SubscribeToEvents();
@@ -178,28 +178,28 @@ namespace SharpBridge.Services
             {
                 await PerformCleanup(cancellationToken);
             }
-            
+
             _logger.Info("Application stopped");
         }
 
-        private void ValidateInitializationParameters(string transformConfigPath)
+        private static void ValidateInitializationParameters(string transformConfigPath)
         {
             if (string.IsNullOrWhiteSpace(transformConfigPath))
             {
                 throw new ArgumentException("Transform configuration path cannot be null or empty", nameof(transformConfigPath));
             }
-            
+
             if (!File.Exists(transformConfigPath))
             {
                 throw new FileNotFoundException($"Transform configuration file not found: {transformConfigPath}");
             }
         }
-        
+
         private async Task InitializeTransformationEngine(string transformConfigPath)
         {
             await _transformationEngine.LoadRulesAsync(transformConfigPath);
         }
-        
+
         /// <summary>
         /// Attempts to synchronize VTube Studio parameters based on loaded transformation rules
         /// </summary>
@@ -209,7 +209,7 @@ namespace SharpBridge.Services
         {
             var requiredParameters = _transformationEngine.GetParameterDefinitions();
             var success = await _parameterManager.TrySynchronizeParametersAsync(requiredParameters, cancellationToken);
-            
+
             if (success)
             {
                 _logger.Info("VTube Studio parameters synchronized successfully");
@@ -218,28 +218,28 @@ namespace SharpBridge.Services
             {
                 _logger.Warning("Failed to synchronize VTube Studio parameters");
             }
-            
+
             return success;
         }
-        
+
         private void SubscribeToEvents()
         {
             _vtubeStudioPhoneClient.TrackingDataReceived += OnTrackingDataReceived;
         }
-        
+
         private void UnsubscribeFromEvents()
         {
             _vtubeStudioPhoneClient.TrackingDataReceived -= OnTrackingDataReceived;
         }
-        
+
         private async Task RunUntilCancelled(CancellationToken cancellationToken)
         {
             _logger.Info("Starting main application loop...");
-            
+
             // Initialize timing variables
             var nextRequestTime = DateTime.UtcNow;
             var nextStatusUpdateTime = DateTime.UtcNow;
-            
+
             _consoleRenderer.ClearConsole();
 
             // Send initial tracking request                
@@ -290,11 +290,11 @@ namespace SharpBridge.Services
                 {
                     await _vtubeStudioPhoneClient.SendTrackingRequestAsync();
                 }
-                
+
                 // Set the next request time based on phone configuration
                 return DateTime.UtcNow.AddSeconds(_phoneConfig.RequestIntervalSeconds);
             }
-            
+
             return nextRequestTime;
         }
 
@@ -324,14 +324,14 @@ namespace SharpBridge.Services
                 UpdateConsoleStatus();
                 return DateTime.UtcNow.AddSeconds(CONSOLE_UPDATE_INTERVAL_SECONDS);
             }
-            
+
             return nextStatusUpdateTime;
         }
 
         /// <summary>
         /// Processes idle delay if no data was received to prevent CPU spinning
         /// </summary>
-        private async Task ProcessIdleDelayIfNeeded(bool dataReceived, CancellationToken cancellationToken)
+        private static async Task ProcessIdleDelayIfNeeded(bool dataReceived, CancellationToken cancellationToken)
         {
             if (!dataReceived)
             {
@@ -347,12 +347,12 @@ namespace SharpBridge.Services
             _logger.Error("Error in application loop: {0}", ex.Message);
             await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken);
         }
-        
+
         private async Task PerformCleanup(CancellationToken cancellationToken)
         {
             UnsubscribeFromEvents();
             await CloseVTubeStudioConnection();
-            
+
             // Restore original console window size
             try
             {
@@ -364,7 +364,7 @@ namespace SharpBridge.Services
                 _logger.ErrorWithException("Error restoring console window size", ex);
             }
         }
-        
+
         private async Task CloseVTubeStudioConnection()
         {
             try
@@ -391,15 +391,15 @@ namespace SharpBridge.Services
                 var transformationStats = _transformationEngine.GetServiceStats();
                 var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
                 var pcStats = _vtubeStudioPCClient.GetServiceStats();
-                
+
                 // Create a list of all service stats to display
                 var allStats = new List<IServiceStats>();
-                
+
                 // Add stats to the list - transformation engine first, then clients
                 if (transformationStats != null) allStats.Add(transformationStats);
                 if (phoneStats != null) allStats.Add(phoneStats);
                 if (pcStats != null) allStats.Add(pcStats);
-                
+
                 // Display all stats using our new covariance-enabled Update method
                 _consoleRenderer.Update(allStats);
             }
@@ -416,30 +416,30 @@ namespace SharpBridge.Services
         {
             _keyboardInputHandler.CheckForKeyboardInput();
         }
-        
+
         /// <summary>
         /// Reloads the transformation configuration
         /// </summary>
         private async Task ReloadTransformationConfig()
         {
             try
-            {      
+            {
                 _logger.Info("Reloading transformation config...");
-                
+
                 // Use a lock or semaphore here if there are concurrency concerns
                 await InitializeTransformationEngine(_transformConfigPath);
-                
+
                 // Reset color service initialization flag so it will be reinitialized with new config
                 _colorServiceInitialized = false;
                 _logger.Debug("Color service initialization flag reset for config reload");
-                
+
                 // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
                 var parameterSyncSuccess = await TrySynchronizeParametersAsync(CancellationToken.None);
                 if (!parameterSyncSuccess)
                 {
                     _logger.Warning("Parameter synchronization failed during config reload");
                 }
-                
+
                 _logger.Info("Transformation config reloaded successfully");
             }
             catch (Exception ex)
@@ -456,9 +456,9 @@ namespace SharpBridge.Services
             try
             {
                 _logger.Info("Opening transformation config in external editor...");
-                
+
                 var success = await _externalEditorService.TryOpenFileAsync(_transformConfigPath);
-                
+
                 if (success)
                 {
                     _logger.Info("External editor launched successfully");
@@ -485,16 +485,16 @@ namespace SharpBridge.Services
                 {
                     return;
                 }
-                
+
                 // Initialize color service on first successful tracking data with blend shapes
                 InitializeColorServiceIfNeeded(trackingData);
-                
+
                 // Transform tracking data
                 PCTrackingInfo pcTrackingInfo = _transformationEngine.TransformData(trackingData);
-                
+
                 // Copy the FaceFound property from the original data
                 pcTrackingInfo.FaceFound = trackingData.FaceFound;
-                
+
                 // Send to VTube Studio if PC client is healthy
                 var pcStats = _vtubeStudioPCClient.GetServiceStats();
                 if (pcStats.IsHealthy)
@@ -507,7 +507,7 @@ namespace SharpBridge.Services
                 _logger.ErrorWithException("Error processing tracking data", ex);
             }
         }
-        
+
         /// <summary>
         /// Initializes the color service with transformation expressions and blend shape names
         /// from the first successful tracking data. This is called once per application run.
@@ -520,21 +520,21 @@ namespace SharpBridge.Services
             {
                 return;
             }
-            
+
             try
             {
                 // Get calculated parameter names from the transformation engine
                 var calculatedParameterNames = _transformationEngine.GetParameterDefinitions()
                     .Select(p => p.Name)
                     .Where(name => !string.IsNullOrEmpty(name));
-                
+
                 // Extract blend shape names from the tracking data
                 var blendShapeNames = trackingData.BlendShapes.Select(bs => bs.Key).Where(key => !string.IsNullOrEmpty(key));
-                
+
                 // Initialize the color service
                 _colorService.InitializeFromConfiguration(blendShapeNames, calculatedParameterNames);
                 _colorServiceInitialized = true;
-                
+
                 _logger.Debug($"Color service initialized with {calculatedParameterNames.Count()} calculated parameters and {blendShapeNames.Count()} blend shapes");
             }
             catch (Exception ex)
@@ -551,9 +551,10 @@ namespace SharpBridge.Services
         {
             // Register Alt+T to cycle Transformation Engine verbosity
             _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.T, 
-                ConsoleModifiers.Alt, 
-                () => {
+                ConsoleKey.T,
+                ConsoleModifiers.Alt,
+                () =>
+                {
                     var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
                     if (transformationFormatter != null)
                     {
@@ -562,12 +563,13 @@ namespace SharpBridge.Services
                 },
                 "Cycle Transformation Engine verbosity"
             );
-            
+
             // Register Alt+P to cycle PC client verbosity
             _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.P, 
-                ConsoleModifiers.Alt, 
-                () => {
+                ConsoleKey.P,
+                ConsoleModifiers.Alt,
+                () =>
+                {
                     var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
                     if (pcFormatter != null)
                     {
@@ -576,12 +578,13 @@ namespace SharpBridge.Services
                 },
                 "Cycle PC client verbosity"
             );
-            
+
             // Register Alt+O to cycle Phone client verbosity
             _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.O, 
-                ConsoleModifiers.Alt, 
-                () => {
+                ConsoleKey.O,
+                ConsoleModifiers.Alt,
+                () =>
+                {
                     var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
                     if (phoneFormatter != null)
                     {
@@ -590,19 +593,19 @@ namespace SharpBridge.Services
                 },
                 "Cycle Phone client verbosity"
             );
-            
+
             // Register Alt+K to reload transformation config
             _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.K, 
-                ConsoleModifiers.Alt, 
+                ConsoleKey.K,
+                ConsoleModifiers.Alt,
                 () => _ = ReloadTransformationConfig(),
                 "Reload transformation configuration"
             );
-            
+
             // Register Ctrl+Alt+E to open transformation config in external editor
             _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.E, 
-                ConsoleModifiers.Control | ConsoleModifiers.Alt, 
+                ConsoleKey.E,
+                ConsoleModifiers.Control | ConsoleModifiers.Alt,
                 () => _ = OpenTransformationConfigInEditor(),
                 "Open transformation config in external editor"
             );
@@ -615,7 +618,7 @@ namespace SharpBridge.Services
         {
             bool recoveryAttempted = false;
             bool pcClientRecovered = false;
-            
+
             // Check PC client health
             var pcStats = _vtubeStudioPCClient.GetServiceStats();
             if (!pcStats.IsHealthy)
@@ -623,12 +626,12 @@ namespace SharpBridge.Services
                 _logger.Info("Attempting to recover PC client...");
                 await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
                 recoveryAttempted = true;
-                
+
                 // Check if PC client recovery was successful
                 var newPcStats = _vtubeStudioPCClient.GetServiceStats();
                 pcClientRecovered = newPcStats.IsHealthy;
             }
-            
+
             // Check Phone client health
             var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
             if (!phoneStats.IsHealthy)
@@ -637,7 +640,7 @@ namespace SharpBridge.Services
                 await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
                 recoveryAttempted = true;
             }
-            
+
             // If PC client was successfully recovered, try to synchronize parameters
             if (pcClientRecovered)
             {
@@ -648,7 +651,7 @@ namespace SharpBridge.Services
                     _logger.Warning("Parameter synchronization failed after PC client recovery");
                 }
             }
-            
+
             return recoveryAttempted;
         }
 
@@ -660,7 +663,7 @@ namespace SharpBridge.Services
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         /// <summary>
         /// Disposes managed and unmanaged resources
         /// </summary>
@@ -673,13 +676,13 @@ namespace SharpBridge.Services
                 {
                     // Dispose console window manager first to restore window size
                     _consoleWindowManager?.Dispose();
-                    
+
                     _vtubeStudioPCClient.Dispose();
                     _vtubeStudioPhoneClient.Dispose();
                 }
-                
+
                 _isDisposed = true;
             }
         }
     }
-} 
+}
