@@ -48,7 +48,7 @@ namespace SharpBridge.Tests.Utilities
             }
 
             var result = new StringBuilder();
-            
+
             if (blendShapes is List<BlendShape> blendShapeList)
             {
                 foreach (var blendShape in blendShapeList)
@@ -63,7 +63,7 @@ namespace SharpBridge.Tests.Utilities
                     result.Append($"{blendShape.Key}: {blendShape.Value:F1} ");
                 }
             }
-            
+
             return result.ToString().Trim();
         }
     }
@@ -72,7 +72,7 @@ namespace SharpBridge.Tests.Utilities
     {
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
-        
+
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
         private readonly Mock<IParameterColorService> _mockColorService;
@@ -89,14 +89,14 @@ namespace SharpBridge.Tests.Utilities
             _mockConsole = new Mock<IConsole>();
             _mockConsole.Setup(c => c.WindowWidth).Returns(80);
             _mockConsole.Setup(c => c.WindowHeight).Returns(25);
-            
+
             _mockTableFormatter = new Mock<ITableFormatter>();
-            
+
             _mockColorService = new Mock<IParameterColorService>();
             // Setup default pass-through behavior for color service
             _mockColorService.Setup(x => x.GetColoredBlendShapeName(It.IsAny<string>())).Returns<string>(s => s);
             _mockColorService.Setup(x => x.GetColoredExpression(It.IsAny<string>())).Returns<string>(s => s);
-            
+
             _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
         }
 
@@ -117,16 +117,16 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new PhoneTrackingInfoFormatter(null, _mockTableFormatter.Object, _mockColorService.Object));
+            Assert.Throws<ArgumentNullException>(() =>
+                new PhoneTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object));
         }
 
         [Fact]
         public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new PhoneTrackingInfoFormatter(_mockConsole.Object, null, _mockColorService.Object));
+            Assert.Throws<ArgumentNullException>(() =>
+                new PhoneTrackingInfoFormatter(_mockConsole.Object, null!, _mockColorService.Object));
         }
 
         #endregion
@@ -177,10 +177,10 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
-            
+
             // Use reflection to set an invalid verbosity level
             var property = typeof(PhoneTrackingInfoFormatter).GetProperty("CurrentVerbosity");
-            property.SetValue(formatter, (VerbosityLevel)999); // Set to an invalid enum value
+            property!.SetValue(formatter, (VerbosityLevel)999); // Set to an invalid enum value
 
             // Act
             formatter.CycleVerbosity();
@@ -397,7 +397,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithFaceFound_ShowsFaceFoundStatus()
         {
             // Arrange
-            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: null);
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: null!);
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Act
@@ -411,7 +411,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNoFaceFound_ShowsNoFaceFoundStatus()
         {
             // Arrange
-            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: false, blendShapes: null);
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: false, blendShapes: null!);
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Act
@@ -441,7 +441,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 2),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols => 
+                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -457,7 +457,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNoBlendShapes_ShowsNoBlendShapes()
         {
             // Arrange
-            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: null);
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: null!);
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Act
@@ -499,7 +499,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols => 
+                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -533,7 +533,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols => 
+                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -661,8 +661,8 @@ namespace SharpBridge.Tests.Utilities
             _mockTableFormatter.Verify(tf => tf.AppendTable(
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
-                It.Is<IEnumerable<BlendShape>>(shapes => 
-                    shapes.First().Key == "aaaFirst" && 
+                It.Is<IEnumerable<BlendShape>>(shapes =>
+                    shapes.First().Key == "aaaFirst" &&
                     shapes.Last().Key == "zzzLast"),
                 It.IsAny<IList<ITableColumn<BlendShape>>>(),
                 It.IsAny<int>(),
@@ -692,7 +692,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols => 
+                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -758,7 +758,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullBlendShapes_DoesNotCallTableFormatter()
         {
             // Arrange
-            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: null);
+            var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: null!);
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
             // _formatter starts at Normal verbosity
 
@@ -810,7 +810,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullServiceStats_ReturnsErrorMessage()
         {
             // Act
-            var result = _formatter.Format(null);
+            var result = _formatter.Format(null!);
 
             // Assert
             result.Should().Be("No service data available");
@@ -820,7 +820,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullCurrentEntity_ShowsNoTrackingDataMessage()
         {
             // Arrange
-            var serviceStats = CreateMockServiceStats("Running", currentEntity: null);
+            var serviceStats = CreateMockServiceStats("Running", currentEntity: null!);
 
             // Act
             var result = _formatter.Format(serviceStats);
@@ -861,7 +861,7 @@ namespace SharpBridge.Tests.Utilities
             var blendShapes = new List<BlendShape>
             {
                 new BlendShape { Key = "eyeBlinkLeft", Value = 0.75f },
-                null, // This should be filtered out
+                null!, // This should be filtered out
                 new BlendShape { Key = "jawOpen", Value = 0.25f }
             };
             var phoneTrackingInfo = CreatePhoneTrackingInfo(faceFound: true, blendShapes: blendShapes);
@@ -916,8 +916,8 @@ namespace SharpBridge.Tests.Utilities
             {
                 FaceFound = faceFound,
                 BlendShapes = blendShapes ?? new List<BlendShape>(),
-                Rotation = faceFound ? new Coordinates { X = 0, Y = 0, Z = 0 } : null,
-                Position = faceFound ? new Coordinates { X = 0, Y = 0, Z = 0 } : null
+                Rotation = faceFound ? new Coordinates { X = 0, Y = 0, Z = 0 } : null!,
+                Position = faceFound ? new Coordinates { X = 0, Y = 0, Z = 0 } : null!
             };
         }
 
@@ -967,7 +967,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(3);
-            
+
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Expression");
             capturedColumns[1].Header.Should().Be(""); // Progress bar column
@@ -1026,7 +1026,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(3);
-            
+
             // Verify progress bar column behavior
             var progressBarColumn = capturedColumns[1];
             progressBarColumn.Header.Should().Be(""); // Progress bar column has no header
@@ -1087,7 +1087,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(3);
-            
+
             // Verify numeric column behavior
             var numericColumn = capturedColumns[2];
             numericColumn.Header.Should().Be("Value");

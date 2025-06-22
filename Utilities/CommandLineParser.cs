@@ -14,17 +14,17 @@ namespace SharpBridge.Utilities
         /// Default configuration directory name
         /// </summary>
         public const string ConfigDirectory = "Configs";
-        
+
         /// <summary>
         /// Default transform configuration filename
         /// </summary>
         public const string TransformConfigFilename = "vts_transforms.json";
-        
+
         /// <summary>
         /// Default PC configuration filename
         /// </summary>
         public const string PCConfigFilename = "VTubeStudioPCConfig.json";
-        
+
         /// <summary>
         /// Default phone configuration filename
         /// </summary>
@@ -40,32 +40,32 @@ namespace SharpBridge.Utilities
         /// Gets or sets the configuration directory path
         /// </summary>
         public string ConfigDirectory { get; set; } = CommandLineDefaults.ConfigDirectory;
-        
+
         /// <summary>
         /// Gets or sets the transform configuration filename
         /// </summary>
         public string TransformConfigFilename { get; set; } = CommandLineDefaults.TransformConfigFilename;
-        
+
         /// <summary>
         /// Gets or sets the PC configuration filename
         /// </summary>
         public string PCConfigFilename { get; set; } = CommandLineDefaults.PCConfigFilename;
-        
+
         /// <summary>
         /// Gets or sets the phone configuration filename
         /// </summary>
         public string PhoneConfigFilename { get; set; } = CommandLineDefaults.PhoneConfigFilename;
-        
+
         /// <summary>
         /// Gets the full path to the transform configuration file
         /// </summary>
         public string TransformConfigPath => Path.Combine(ConfigDirectory, TransformConfigFilename);
-        
+
         /// <summary>
         /// Gets the full path to the PC configuration file
         /// </summary>
         public string PCConfigPath => Path.Combine(ConfigDirectory, PCConfigFilename);
-        
+
         /// <summary>
         /// Gets the full path to the phone configuration file
         /// </summary>
@@ -79,13 +79,13 @@ namespace SharpBridge.Utilities
         {
             if (string.IsNullOrWhiteSpace(ConfigDirectory))
                 throw new ArgumentException("Configuration directory cannot be empty", nameof(ConfigDirectory));
-                
+
             if (string.IsNullOrWhiteSpace(TransformConfigFilename))
                 throw new ArgumentException("Transform configuration filename cannot be empty", nameof(TransformConfigFilename));
-                
+
             if (string.IsNullOrWhiteSpace(PCConfigFilename))
                 throw new ArgumentException("PC configuration filename cannot be empty", nameof(PCConfigFilename));
-                
+
             if (string.IsNullOrWhiteSpace(PhoneConfigFilename))
                 throw new ArgumentException("Phone configuration filename cannot be empty", nameof(PhoneConfigFilename));
         }
@@ -101,7 +101,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="args">Command-line arguments</param>
         /// <returns>The parsed command line options</returns>
-        public async Task<CommandLineOptions> ParseAsync(string[] args)
+        public static async Task<CommandLineOptions> ParseAsync(string[] args)
         {
             // Create command line options
             var configDirOption = new Option<string>(
@@ -143,11 +143,11 @@ namespace SharpBridge.Utilities
             configDirOption, transformOption, pcConfigOption, phoneConfigOption);
 
             await rootCommand.InvokeAsync(args);
-            
+
             // Validate the options
             options.Validate();
 
             return options;
         }
     }
-} 
+}
