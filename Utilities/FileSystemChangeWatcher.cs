@@ -11,7 +11,8 @@ namespace SharpBridge.Utilities
     public sealed class FileSystemChangeWatcher : IFileChangeWatcher
     {
         private readonly IAppLogger _logger;
-        private FileSystemWatcher? _watcher;
+        private readonly IFileSystemWatcherFactory _watcherFactory;
+        private IFileSystemWatcherWrapper? _watcher;
         private string? _currentFilePath;
         private DateTime _lastEventTime;
         private readonly TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(200);
@@ -27,10 +28,12 @@ namespace SharpBridge.Utilities
         /// Initializes a new instance of the FileSystemChangeWatcher class.
         /// </summary>
         /// <param name="logger">The logger to use for recording file system events.</param>
-        /// <exception cref="ArgumentNullException">Thrown when logger is null.</exception>
-        public FileSystemChangeWatcher(IAppLogger logger)
+        /// <param name="watcherFactory">The factory to create file system watcher instances.</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger or watcherFactory is null.</exception>
+        public FileSystemChangeWatcher(IAppLogger logger, IFileSystemWatcherFactory watcherFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _watcherFactory = watcherFactory ?? throw new ArgumentNullException(nameof(watcherFactory));
         }
 
         /// <summary>
@@ -50,12 +53,10 @@ namespace SharpBridge.Utilities
             _currentFilePath = Path.GetFullPath(filePath);
             var directory = Path.GetDirectoryName(_currentFilePath);
             var fileName = Path.GetFileName(_currentFilePath);
-            _watcher = new FileSystemWatcher(directory ?? ".", fileName)
-            {
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
-                EnableRaisingEvents = true,
-                IncludeSubdirectories = false
-            };
+            _watcher = _watcherFactory.Create(directory ?? ".", fileName);
+            _watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName;
+            _watcher.EnableRaisingEvents = true;
+            _watcher.IncludeSubdirectories = false;
             _watcher.Changed += OnFileChanged;
             _watcher.Renamed += OnFileChanged;
             _watcher.Deleted += OnFileChanged;
