@@ -1144,7 +1144,7 @@ namespace SharpBridge.Tests.Services
 
             // Verify WebSocket recreation was called and logged
             mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
-            mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("WebSocket is in closed/aborted state, recreating")), It.IsAny<object[]>()), Times.Once);
+            mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("WebSocket is in an invalid state, recreating")), It.IsAny<object[]>()), Times.Once);
 
             // Cleanup
             if (File.Exists(config.TokenFilePath))
