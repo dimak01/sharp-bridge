@@ -34,7 +34,7 @@ namespace SharpBridge.Tests.Utilities
     public class PCTrackingInfoFormatterTests
     {
         private const int PARAM_DISPLAY_COUNT_NORMAL = 25;
-        
+
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
         private readonly Mock<IParameterColorService> _mockColorService;
@@ -51,14 +51,14 @@ namespace SharpBridge.Tests.Utilities
             _mockConsole = new Mock<IConsole>();
             _mockConsole.Setup(c => c.WindowWidth).Returns(80);
             _mockConsole.Setup(c => c.WindowHeight).Returns(25);
-            
+
             _mockTableFormatter = new Mock<ITableFormatter>();
-            
+
             _mockColorService = new Mock<IParameterColorService>();
             // Setup default pass-through behavior for color service
             _mockColorService.Setup(x => x.GetColoredCalculatedParameterName(It.IsAny<string>())).Returns<string>(s => s);
             _mockColorService.Setup(x => x.GetColoredExpression(It.IsAny<string>())).Returns<string>(s => s);
-            
+
             _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
         }
 
@@ -111,7 +111,7 @@ namespace SharpBridge.Tests.Utilities
             return trackingInfo;
         }
 
-        private ServiceStats CreateServiceStats(PCTrackingInfo trackingInfo)
+        private static ServiceStats CreateServiceStats(PCTrackingInfo trackingInfo)
         {
             return new ServiceStats(
                 serviceName: "PC Client",
@@ -202,12 +202,12 @@ namespace SharpBridge.Tests.Utilities
                     });
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(5);
-            
+
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Parameter");
             capturedColumns[1].Header.Should().Be(""); // Progress bar column
@@ -263,12 +263,12 @@ namespace SharpBridge.Tests.Utilities
                     });
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(5);
-            
+
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Parameter");
             capturedColumns[1].Header.Should().Be(""); // Progress bar column
@@ -293,7 +293,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
@@ -321,7 +321,7 @@ namespace SharpBridge.Tests.Utilities
             _formatter.CycleVerbosity(); // Detailed -> Basic
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
@@ -348,7 +348,7 @@ namespace SharpBridge.Tests.Utilities
             _formatter.CycleVerbosity(); // Normal -> Detailed
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
@@ -366,7 +366,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullServiceStats_ReturnsNoDataMessage()
         {
             // Act
-            var result = _formatter.Format(null);
+            var result = _formatter.Format(null!);
 
             // Assert
             result.Should().Be("No service data available");
@@ -490,14 +490,14 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.Is<IList<ITableColumn<TrackingParam>>>(cols => 
+                It.Is<IList<ITableColumn<TrackingParam>>>(cols =>
                     cols.Count == 5 &&
                     cols[0].Header == "Parameter" &&
                     cols[1].Header == "" && // Progress bar column
@@ -550,7 +550,7 @@ namespace SharpBridge.Tests.Utilities
                 {
                     new TrackingParam { Id = "TestParam", Value = 0.5 }
                 };
-                trackingInfo.ParameterCalculationExpressions["TestParam"] = expression;
+                trackingInfo.ParameterCalculationExpressions["TestParam"] = expression!;
                 trackingInfo.ParameterDefinitions["TestParam"] = new VTSParameter("TestParam", -1, 1, 0);
 
                 var serviceStats = new ServiceStats(
@@ -590,12 +590,12 @@ namespace SharpBridge.Tests.Utilities
                         });
 
                 // Act
-                var result = _formatter.Format(serviceStats);
+                _formatter.Format(serviceStats);
 
                 // Assert
                 capturedColumns.Should().NotBeNull();
                 capturedColumns.Count.Should().Be(5);
-                
+
                 // Verify expression column behavior
                 var expressionColumn = capturedColumns[4];
                 expressionColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be(expected);
@@ -662,12 +662,12 @@ namespace SharpBridge.Tests.Utilities
                         });
 
                 // Act
-                var result = _formatter.Format(serviceStats);
+                _formatter.Format(serviceStats);
 
                 // Assert
                 capturedColumns.Should().NotBeNull();
                 capturedColumns.Count.Should().Be(5);
-                
+
                 // Verify value column behavior
                 var valueColumn = capturedColumns[2];
                 valueColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be(expected);
@@ -747,12 +747,12 @@ namespace SharpBridge.Tests.Utilities
                     });
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(5);
-            
+
             // Verify progress bar column behavior
             var progressBarColumn = capturedColumns[1];
             progressBarColumn.Header.Should().Be(""); // Progress bar column has no header
@@ -780,23 +780,23 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(null, _mockTableFormatter.Object, _mockColorService.Object));
+            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object));
         }
 
         [Fact]
         public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(_mockConsole.Object, null, _mockColorService.Object));
+            Assert.Throws<ArgumentNullException>(() => new PCTrackingInfoFormatter(_mockConsole.Object, null!, _mockColorService.Object));
         }
 
         [Fact]
         public void CycleVerbosity_WithInvalidEnum_ResetsToNormal()
         {
             // Arrange - Force an invalid enum value using reflection
-            var field = typeof(PCTrackingInfoFormatter).GetField("<CurrentVerbosity>k__BackingField", 
+            var field = typeof(PCTrackingInfoFormatter).GetField("<CurrentVerbosity>k__BackingField",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field.SetValue(_formatter, (VerbosityLevel)999); // Invalid enum value
+            field!.SetValue(_formatter, (VerbosityLevel)999); // Invalid enum value
 
             // Act
             _formatter.CycleVerbosity();
@@ -839,7 +839,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert - The normalized value calculation should be called via the progress bar column
             capturedColumns.Should().NotBeNull();
             var progressBarColumn = capturedColumns[1]; // Progress bar column
-            
+
             // This will trigger the CalculateNormalizedValue method with zero range
             // The method should handle this gracefully and not crash
             progressBarColumn.ValueFormatter.Should().NotBeNull();
@@ -851,10 +851,10 @@ namespace SharpBridge.Tests.Utilities
             // This is difficult to test directly since FormatExpression is private,
             // but we can test it indirectly by creating a scenario where trackingInfo is null
             // and verifying the behavior through the formatter
-            
+
             // Arrange
             var trackingInfo = CreatePCTrackingInfo();
-            trackingInfo.ParameterCalculationExpressions = null; // This will trigger the null check
+            trackingInfo.ParameterCalculationExpressions = null!; // This will trigger the null check
             trackingInfo.Parameters = new List<TrackingParam> { new TrackingParam { Id = "TestParam", Value = 0.5 } };
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -930,7 +930,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var trackingInfo = CreatePCTrackingInfo();
             trackingInfo.Parameters = new List<TrackingParam> { new TrackingParam { Id = "TestParam", Value = 0.5, Weight = 2.5 } };
-            trackingInfo.ParameterDefinitions = null; // This should be handled gracefully
+            trackingInfo.ParameterDefinitions = null!; // This should be handled gracefully
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Setup the mock to capture columns
@@ -952,7 +952,7 @@ namespace SharpBridge.Tests.Utilities
                     });
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             capturedColumns.Should().NotBeNull();
@@ -988,7 +988,7 @@ namespace SharpBridge.Tests.Utilities
                     });
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             capturedColumns.Should().NotBeNull();
@@ -996,4 +996,4 @@ namespace SharpBridge.Tests.Utilities
             rangeColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be("1 x [-1; 0; 1]");
         }
     }
-} 
+}

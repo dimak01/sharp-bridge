@@ -14,7 +14,7 @@ namespace SharpBridge.Tests.Utilities
     public class TransformationEngineInfoFormatterTests
     {
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
-        
+
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
         private readonly TransformationEngineInfoFormatter _formatter;
@@ -30,7 +30,7 @@ namespace SharpBridge.Tests.Utilities
             _mockConsole = new Mock<IConsole>();
             _mockConsole.Setup(c => c.WindowWidth).Returns(80);
             _mockConsole.Setup(c => c.WindowHeight).Returns(25);
-            
+
             _mockTableFormatter = new Mock<ITableFormatter>();
             _formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
         }
@@ -62,10 +62,10 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private TransformationEngineInfo CreateTransformationEngineInfo(
+        private static TransformationEngineInfo CreateTransformationEngineInfo(
             string configFilePath = "Configs/test_rules.json",
             int validRulesCount = 10,
-            List<RuleInfo> invalidRules = null,
+            List<RuleInfo> invalidRules = null!,
             bool isConfigUpToDate = true)
         {
             return new TransformationEngineInfo(
@@ -75,7 +75,7 @@ namespace SharpBridge.Tests.Utilities
                 isConfigUpToDate: isConfigUpToDate);
         }
 
-        private List<RuleInfo> CreateInvalidRules(int count = 2)
+        private static List<RuleInfo> CreateInvalidRules(int count = 2)
         {
             var rules = new List<RuleInfo>();
             for (int i = 0; i < count; i++)
@@ -126,16 +126,16 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new TransformationEngineInfoFormatter(null, _mockTableFormatter.Object));
+            Assert.Throws<ArgumentNullException>(() =>
+                new TransformationEngineInfoFormatter(null!, _mockTableFormatter.Object));
         }
 
         [Fact]
         public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                new TransformationEngineInfoFormatter(_mockConsole.Object, null));
+            Assert.Throws<ArgumentNullException>(() =>
+                new TransformationEngineInfoFormatter(_mockConsole.Object, null!));
         }
 
         #endregion
@@ -185,9 +185,9 @@ namespace SharpBridge.Tests.Utilities
         public void CycleVerbosity_WithInvalidVerbosityLevel_ResetsToNormal()
         {
             // Arrange - Force an invalid enum value using reflection
-            var field = typeof(TransformationEngineInfoFormatter).GetField("<CurrentVerbosity>k__BackingField", 
+            var field = typeof(TransformationEngineInfoFormatter).GetField("<CurrentVerbosity>k__BackingField",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field.SetValue(_formatter, (VerbosityLevel)999); // Invalid enum value
+            field!.SetValue(_formatter, (VerbosityLevel)999); // Invalid enum value
 
             // Act
             _formatter.CycleVerbosity();
@@ -309,7 +309,7 @@ namespace SharpBridge.Tests.Utilities
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path: Configs/custom_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit): Configs/custom_rules.json");
         }
 
         [Fact]
@@ -420,7 +420,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullServiceStats_ReturnsErrorMessage()
         {
             // Act
-            var result = _formatter.Format(null);
+            var result = _formatter.Format(null!);
 
             // Assert
             result.Should().Be("No service data available");
@@ -430,7 +430,7 @@ namespace SharpBridge.Tests.Utilities
         public void Format_WithNullCurrentEntity_ShowsNoDataMessage()
         {
             // Arrange
-            var serviceStats = CreateMockServiceStats("AllRulesActive", currentEntity: null);
+            var serviceStats = CreateMockServiceStats("AllRulesActive", currentEntity: null!);
 
             // Act
             var result = _formatter.Format(serviceStats);
@@ -475,7 +475,7 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
@@ -499,14 +499,14 @@ namespace SharpBridge.Tests.Utilities
             // _formatter starts at Normal verbosity
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
                 "=== Failed Rules ===",
                 It.Is<IEnumerable<RuleInfo>>(rules => rules.Count() == 3),
-                It.Is<IList<ITableColumn<RuleInfo>>>(cols => 
+                It.Is<IList<ITableColumn<RuleInfo>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Rule Name" &&
                     cols[1].Header == "Function" &&
@@ -528,7 +528,7 @@ namespace SharpBridge.Tests.Utilities
             _formatter.CycleVerbosity(); // Normal -> Detailed
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
@@ -554,7 +554,7 @@ namespace SharpBridge.Tests.Utilities
             _formatter.CycleVerbosity(); // Detailed -> Basic
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
@@ -607,12 +607,12 @@ namespace SharpBridge.Tests.Utilities
                     });
 
             // Act
-            var result = _formatter.Format(serviceStats);
+            _formatter.Format(serviceStats);
 
             // Assert
             capturedColumns.Should().NotBeNull();
             capturedColumns.Count.Should().Be(3);
-            
+
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Rule Name");
             capturedColumns[1].Header.Should().Be("Function");
@@ -621,14 +621,14 @@ namespace SharpBridge.Tests.Utilities
             // Verify column formatter behavior
             var rule1 = invalidRules[0];
             var rule2 = invalidRules[1];
-            
+
             var colorizedRuleName = capturedColumns[0].ValueFormatter(rule1);
             var strippedRuleName = ConsoleColors.RemoveAnsiEscapeCodes(colorizedRuleName);
             strippedRuleName.Should().Be("TestRule1");
-            
+
             capturedColumns[1].ValueFormatter(rule1).Should().Be("invalid_expression_1");
             capturedColumns[2].ValueFormatter(rule1).Should().Be("Syntax error in rule 1");
-            
+
             // Test truncation behavior
             capturedColumns[1].ValueFormatter(rule2).Should().Contain("this_is_a_very_long_expression").And.EndWith("...");
             capturedColumns[2].ValueFormatter(rule2).Should().Contain("This is a very long error").And.EndWith("...");
@@ -657,7 +657,7 @@ namespace SharpBridge.Tests.Utilities
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path: Configs/test_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit): Configs/test_rules.json");
             plainResult.Should().Contain($"Up to Date: {(isConfigUpToDate ? "Yes" : "No")}");
         }
 
@@ -730,13 +730,13 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var lines = result.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            
+
             // Find key sections in order
             var headerIndex = Array.FindIndex(lines, line => line.Contains("=== [INFO] Transformation Engine"));
             var rulesLoadedIndex = Array.FindIndex(lines, line => line.Contains("Rules Loaded"));
             var configFileIndex = Array.FindIndex(lines, line => line.Contains("Config File"));
             var upToDateIndex = Array.FindIndex(lines, line => line.Contains("Up to Date"));
-            
+
             // Verify order (Note: Transformations section was removed as per refactoring goals)
             headerIndex.Should().BeGreaterThanOrEqualTo(0);
             rulesLoadedIndex.Should().BeGreaterThan(headerIndex);
@@ -790,15 +790,12 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void TruncateText_WithNullText_ReturnsEmptyPlaceholder()
         {
-            // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
-            
-            // Use reflection to access the private TruncateText method
+            // Arrange & Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { null, 50, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { null, 50, "[empty]" })!;
 
             // Assert
             result.Should().Be("[empty]");
@@ -807,15 +804,12 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void TruncateText_WithEmptyText_ReturnsEmptyPlaceholder()
         {
-            // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
-            
-            // Use reflection to access the private TruncateText method
+            // Arrange & Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { "", 50, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { "", 50, "[empty]" })!;
 
             // Assert
             result.Should().Be("[empty]");
@@ -825,15 +819,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithShortText_ReturnsOriginalText()
         {
             // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var shortText = "short";
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { shortText, 50, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { shortText, 50, "[empty]" })!;
 
             // Assert
             result.Should().Be("short");
@@ -843,15 +836,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithTextEqualToMaxLength_ReturnsOriginalText()
         {
             // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var text = "exactly10!"; // 10 characters
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { text, 10, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { text, 10, "[empty]" })!;
 
             // Assert
             result.Should().Be("exactly10!");
@@ -861,15 +853,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithLongText_TruncatesWithEllipsis()
         {
             // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var longText = "This is a very long text that should be truncated";
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { longText, 20, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { longText, 20, "[empty]" })!;
 
             // Assert
             result.Should().Be("This is a very lo...");
@@ -880,15 +871,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithMaxLengthEqualToEllipsisLength_ReturnsPartialTextWithoutEllipsis()
         {
             // Arrange - This tests the edge case fix
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var text = "This is a test";
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { text, 3, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { text, 3, "[empty]" })!;
 
             // Assert
             result.Should().Be("Thi");
@@ -899,15 +889,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithMaxLengthLessThanEllipsisLength_ReturnsPartialTextWithoutEllipsis()
         {
             // Arrange - This tests the edge case fix with very small maxLength
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var text = "This is a test";
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { text, 2, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { text, 2, "[empty]" })!;
 
             // Assert
             result.Should().Be("Th");
@@ -918,15 +907,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithMaxLengthOne_ReturnsFirstCharacterOnly()
         {
             // Arrange - This tests the edge case fix with maxLength = 1
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var text = "Test";
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { text, 1, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { text, 1, "[empty]" })!;
 
             // Assert
             result.Should().Be("T");
@@ -937,15 +925,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithMaxLengthZero_ReturnsEmptyString()
         {
             // Arrange - This tests the edge case fix with maxLength = 0
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var text = "Test";
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { text, 0, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { text, 0, "[empty]" })!;
 
             // Assert
             result.Should().Be("");
@@ -955,15 +942,12 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void TruncateText_WithCustomEmptyPlaceholder_UsesCustomPlaceholder()
         {
-            // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
-            
-            // Use reflection to access the private TruncateText method
+            // Arrange & Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { null, 50, "[no data]" });
+            var result = (string)method!.Invoke(null, new object?[] { null, 50, "[no data]" })!;
 
             // Assert
             result.Should().Be("[no data]");
@@ -973,15 +957,14 @@ namespace SharpBridge.Tests.Utilities
         public void TruncateText_WithNormalTruncation_PreservesCorrectLength()
         {
             // Arrange
-            var formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object);
             var text = "This is exactly 25 chars!"; // 25 characters
-            
-            // Use reflection to access the private TruncateText method
+
+            // Use reflection to access the private static TruncateText method
             var method = typeof(TransformationEngineInfoFormatter)
-                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("TruncateText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act
-            var result = (string)method.Invoke(formatter, new object[] { text, 15, "[empty]" });
+            var result = (string)method!.Invoke(null, new object?[] { text, 15, "[empty]" })!;
 
             // Assert
             result.Should().Be("This is exac..."); // 12 chars + 3 ellipsis = 15 total
@@ -990,4 +973,4 @@ namespace SharpBridge.Tests.Utilities
 
         #endregion
     }
-} 
+}

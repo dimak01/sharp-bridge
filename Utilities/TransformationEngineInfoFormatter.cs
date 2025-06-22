@@ -19,10 +19,10 @@ namespace SharpBridge.Utilities
         private const string HOT_RELOAD_ATTEMPTS_KEY = "Hot Reload Attempts";
         private const string HOT_RELOAD_SUCCESSES_KEY = "Hot Reload Successes";
 
-        
+
         // Display Limits
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
-        
+
         // Column Width Constants
         private const int RULE_NAME_COLUMN_MIN_WIDTH = 8;
         private const int RULE_NAME_COLUMN_MAX_WIDTH = 20;
@@ -30,22 +30,22 @@ namespace SharpBridge.Utilities
         private const int FUNCTION_COLUMN_MAX_WIDTH = 80;
         private const int ERROR_COLUMN_MIN_WIDTH = 15;
         private const int ERROR_COLUMN_MAX_WIDTH = 80;
-        
+
         // Text Truncation Constants
         private const int DEFAULT_TEXT_TRUNCATION_LENGTH = 80;
         private const int ELLIPSIS_LENGTH = 3;
-        
+
         // Table Formatting Constants
         private const int TABLE_MINIMUM_ROWS = 1;
         private const int TABLE_MINIMUM_WIDTH = 20;
-        
+
         // Service Display Constants
         private const string SERVICE_NAME = "Transformation Engine";
         private const string KEYBOARD_SHORTCUT = "Alt+T";
-        
+
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
-        
+
         /// <summary>
         /// Initializes a new instance of the TransformationEngineInfoFormatter
         /// </summary>
@@ -56,12 +56,12 @@ namespace SharpBridge.Utilities
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
         }
-        
+
         /// <summary>
         /// Current verbosity level for this formatter
         /// </summary>
         public VerbosityLevel CurrentVerbosity { get; private set; } = VerbosityLevel.Normal;
-        
+
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
@@ -75,20 +75,20 @@ namespace SharpBridge.Utilities
                 _ => VerbosityLevel.Normal
             };
         }
-        
+
         /// <summary>
         /// Formats a TransformationEngineInfo object with service statistics into a display string
         /// </summary>
         public string Format(IServiceStats stats)
         {
-            if (stats == null) 
+            if (stats == null)
                 return "No service data available";
-            
+
             var builder = new StringBuilder();
-            
+
             // Header with service status
             AppendServiceHeader(builder, stats);
-            
+
             // Transformation engine details
             if (stats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
@@ -107,10 +107,10 @@ namespace SharpBridge.Utilities
                 builder.AppendLine();
                 builder.AppendLine("No transformation engine data available");
             }
-            
+
             return builder.ToString();
         }
-        
+
         /// <summary>
         /// Appends the service header information to the string builder
         /// </summary>
@@ -122,26 +122,26 @@ namespace SharpBridge.Utilities
             AppendRulesOverview(builder, serviceStats);
             AppendConfigurationInfo(builder, serviceStats);
         }
-        
+
         /// <summary>
         /// Appends the rules overview section to the string builder
         /// </summary>
-        private void AppendRulesOverview(StringBuilder builder, IServiceStats serviceStats)
+        private static void AppendRulesOverview(StringBuilder builder, IServiceStats serviceStats)
         {
             var validRules = GetCounterValue(serviceStats.Counters, VALID_RULES_KEY);
             var invalidRules = GetCounterValue(serviceStats.Counters, INVALID_RULES_KEY);
-            
+
             if (validRules > 0 || invalidRules > 0)
             {
                 var totalRules = validRules + invalidRules;
                 var uptimeText = GetUptimeText(serviceStats.Counters);
-                
+
                 builder.AppendLine(
                     $"Rules Loaded - Total: {totalRules}, Valid: {validRules}, " +
                     $"Invalid: {invalidRules}{uptimeText}");
             }
         }
-        
+
         /// <summary>
         /// Appends the configuration information section to the string builder
         /// </summary>
@@ -150,17 +150,17 @@ namespace SharpBridge.Utilities
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
                 var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
-                builder.AppendLine($"Config File Path: {colorized_config_path}");
-                
+                builder.AppendLine($"Config File Path (Ctrl+Alt+E to edit): {colorized_config_path}");
+
                 var upToDateStatus = engineInfo.IsConfigUpToDate ? "Yes" : "No";
-                var colorizedStatus = engineInfo.IsConfigUpToDate 
+                var colorizedStatus = engineInfo.IsConfigUpToDate
                     ? ConsoleColors.Colorize(upToDateStatus, ConsoleColors.Success)
                     : ConsoleColors.Colorize(upToDateStatus, ConsoleColors.Warning);
-                    
+
                 builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
             }
         }
-        
+
         /// <summary>
         /// Appends failed rules table to the string builder (includes validation failures and evaluation failures)
         /// </summary>
@@ -173,49 +173,49 @@ namespace SharpBridge.Utilities
             // Define columns for failed rules table
             var columns = new List<ITableColumn<RuleInfo>>
             {
-                new TextColumn<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name), 
+                new TextColumn<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name),
                     minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Function", 
-                    rule => TruncateText(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH, "[empty]"), 
+                new TextColumn<RuleInfo>("Function",
+                    rule => TruncateText(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH, "[empty]"),
                     minWidth: FUNCTION_COLUMN_MIN_WIDTH, maxWidth: FUNCTION_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Error", 
-                    rule => TruncateText(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH, "[no error]"), 
+                new TextColumn<RuleInfo>("Error",
+                    rule => TruncateText(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH, "[no error]"),
                     minWidth: ERROR_COLUMN_MIN_WIDTH, maxWidth: ERROR_COLUMN_MAX_WIDTH)
             };
-            
-            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? 
+
+            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ?
                 (int?)null : RULE_DISPLAY_COUNT_NORMAL;
 
             builder.AppendLine();
-            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns, 
+            _tableFormatter.AppendTable(builder, "=== Failed Rules ===", rulesToShow, columns,
                                         TABLE_MINIMUM_ROWS, _console.WindowWidth, TABLE_MINIMUM_WIDTH, singleColumnLimit);
         }
-        
+
         /// <summary>
         /// Safely gets a counter value with a default fallback
         /// </summary>
-        private long GetCounterValue(IReadOnlyDictionary<string, long> counters, string key, long defaultValue = 0)
+        private static long GetCounterValue(IReadOnlyDictionary<string, long> counters, string key, long defaultValue = 0)
         {
             return counters.TryGetValue(key, out var value) ? value : defaultValue;
         }
-        
+
         /// <summary>
         /// Gets the uptime text from counters if available
         /// </summary>
-        private string GetUptimeText(IReadOnlyDictionary<string, long> counters)
+        private static string GetUptimeText(IReadOnlyDictionary<string, long> counters)
         {
             var uptimeSeconds = GetCounterValue(counters, UPTIME_SINCE_RULES_LOADED_KEY);
             return uptimeSeconds > 0 ? $", Uptime: {FormatUptime(uptimeSeconds)}" : string.Empty;
         }
-        
+
         /// <summary>
         /// Formats uptime into a human-readable string
         /// </summary>
-        private string FormatUptime(long uptimeSeconds)
+        private static string FormatUptime(long uptimeSeconds)
         {
             return DisplayFormatting.FormatDuration(TimeSpan.FromSeconds(uptimeSeconds));
         }
-        
+
         /// <summary>
         /// Formats a service header with status and color coding
         /// </summary>
@@ -232,7 +232,7 @@ namespace SharpBridge.Utilities
             };
             return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
         }
-        
+
         private static string GetStatusColor(string status)
         {
             return status switch
@@ -242,23 +242,23 @@ namespace SharpBridge.Utilities
                 _ => ConsoleColors.Error
             };
         }
-        
+
         /// <summary>
         /// Truncates text for display in tables with customizable empty placeholder
         /// </summary>
-        private string TruncateText(string text, int maxLength, string emptyPlaceholder = "[empty]")
+        private static string TruncateText(string text, int maxLength, string emptyPlaceholder = "[empty]")
         {
             if (string.IsNullOrEmpty(text))
                 return emptyPlaceholder;
-                
+
             if (text.Length <= maxLength)
                 return text;
-                
+
             // Guard against maxLength being too small for ellipsis
             if (maxLength <= ELLIPSIS_LENGTH)
                 return text.Substring(0, Math.Max(0, maxLength));
-                
+
             return text.Substring(0, maxLength - ELLIPSIS_LENGTH) + "...";
         }
     }
-} 
+}

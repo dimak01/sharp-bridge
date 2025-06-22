@@ -1,0 +1,51 @@
+#!/bin/bash
+# Pre-commit hook for Sharp Bridge
+# Runs code quality checks before allowing commit
+
+echo "🔍 Running pre-commit quality checks..."
+
+# Run build to catch compilation errors
+echo "Building solution..."
+dotnet build --no-restore --verbosity quiet
+if [ $? -ne 0 ]; then
+    echo "❌ Build failed. Please fix compilation errors before committing."
+    exit 1
+fi
+
+# Run tests to ensure nothing is broken
+echo "Running tests..."
+dotnet test --no-build --verbosity quiet --logger "console;verbosity=minimal"
+if [ $? -ne 0 ]; then
+    echo "❌ Tests failed. Please fix failing tests before committing."
+    exit 1
+fi
+
+# Check for common SonarQube issues in staged files
+echo "Checking for common SonarQube violations..."
+
+# Get list of staged .cs files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$')
+
+if [ -n "$STAGED_FILES" ]; then
+    for FILE in $STAGED_FILES; do
+        # Check for null without null-forgiving operator in tests
+        if [[ $FILE == *"Tests/"* ]]; then
+            if grep -q "new.*null)" "$FILE" && ! grep -q "null!" "$FILE"; then
+                echo "⚠️  Warning: $FILE may have null parameters without null-forgiving operator"
+            fi
+        fi
+        
+        # Check for missing GC.SuppressFinalize in Dispose methods
+        if grep -q "public void Dispose()" "$FILE" && ! grep -q "GC.SuppressFinalize" "$FILE"; then
+            echo "⚠️  Warning: $FILE has Dispose() method but missing GC.SuppressFinalize(this)"
+        fi
+        
+        # Check for unused variables (basic check)
+        if grep -q "var.*=" "$FILE" && grep -q "CS0219\|is assigned but its value is never used" "$FILE"; then
+            echo "⚠️  Warning: $FILE may have unused variables"
+        fi
+    done
+fi
+
+echo "✅ Pre-commit checks completed"
+echo "💡 Tip: Run 'dotnet build' locally to catch SonarQube issues early" 

@@ -113,7 +113,7 @@ namespace SharpBridge.Tests.Services
         public void GetColoredBlendShapeName_WithNullOrEmpty_ReturnsEmpty()
         {
             // Act & Assert
-            _colorService.GetColoredBlendShapeName(null).Should().Be(string.Empty);
+            _colorService.GetColoredBlendShapeName(null!).Should().Be(string.Empty);
             _colorService.GetColoredBlendShapeName("").Should().Be(string.Empty);
             _colorService.GetColoredBlendShapeName("   ").Should().Be(ConsoleColors.ColorizeBlendShape("   ")); // Whitespace preserved but colored
         }
@@ -122,7 +122,7 @@ namespace SharpBridge.Tests.Services
         public void GetColoredCalculatedParameterName_WithNullOrEmpty_ReturnsEmpty()
         {
             // Act & Assert
-            _colorService.GetColoredCalculatedParameterName(null).Should().Be(string.Empty);
+            _colorService.GetColoredCalculatedParameterName(null!).Should().Be(string.Empty);
             _colorService.GetColoredCalculatedParameterName("").Should().Be(string.Empty);
             _colorService.GetColoredCalculatedParameterName("   ").Should().Be(ConsoleColors.ColorizeCalculatedParameter("   ")); // Whitespace preserved but colored
         }
@@ -228,7 +228,7 @@ namespace SharpBridge.Tests.Services
             _colorService.InitializeFromConfiguration(blendShapes, calculatedParameters);
 
             // Act & Assert
-            _colorService.GetColoredExpression(null).Should().Be(string.Empty);
+            _colorService.GetColoredExpression(null!).Should().Be(string.Empty);
             _colorService.GetColoredExpression("").Should().Be(string.Empty);
         }
 
@@ -275,4 +275,4 @@ namespace SharpBridge.Tests.Services
             _colorService.GetColoredCalculatedParameterName("nonexistent").Should().Contain(ConsoleColors.CalculatedParameterColor);
         }
     }
-} 
+}

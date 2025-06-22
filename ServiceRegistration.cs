@@ -56,6 +56,13 @@ namespace SharpBridge
                 return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
             });
             
+            // Register ApplicationConfig
+            services.AddSingleton(provider => 
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
+            });
+            
             // Register clients
             services.AddSingleton<IWebSocketWrapper, WebSocketWrapper>();
             
@@ -72,6 +79,9 @@ namespace SharpBridge
                     provider.GetRequiredService<IAppLogger>()
                 );
             });
+            
+            // Register file system watcher factory
+            services.AddSingleton<IFileSystemWatcherFactory, FileSystemWatcherFactory>();
             
             // Register file change watcher
             services.AddSingleton<IFileChangeWatcher, SharpBridge.Utilities.FileSystemChangeWatcher>();
@@ -115,6 +125,12 @@ namespace SharpBridge
             
             // Register parameter color service
             services.AddSingleton<IParameterColorService, ParameterColorService>();
+            
+            // Register process launcher
+            services.AddSingleton<IProcessLauncher, ProcessLauncher>();
+            
+            // Register external editor service
+            services.AddSingleton<IExternalEditorService, ExternalEditorService>();
             
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();

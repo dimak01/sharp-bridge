@@ -29,15 +29,15 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => 
-                new PortDiscoveryService(null, _mockUdpClient.Object));
+            Assert.Throws<ArgumentNullException>(() =>
+                new PortDiscoveryService(null!, _mockUdpClient.Object));
         }
 
         [Fact]
         public void Constructor_WithNullUdpClient_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => 
-                new PortDiscoveryService(_mockLogger.Object, null));
+            Assert.Throws<ArgumentNullException>(() =>
+                new PortDiscoveryService(_mockLogger.Object, null!));
         }
 
         [Fact]
@@ -67,7 +67,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             result.Should().NotBeNull();
-            result.Active.Should().BeTrue();
+            result!.Active.Should().BeTrue();
             result.Port.Should().Be(8001);
             result.InstanceId.Should().Be("test-instance");
             result.WindowTitle.Should().Be("VTube Studio - Test Instance");
@@ -250,4 +250,4 @@ namespace SharpBridge.Tests.Services
             _mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("doesn't appear to be VTube Studio")), It.IsAny<object[]>()), Times.Once);
         }
     }
-} 
+}
