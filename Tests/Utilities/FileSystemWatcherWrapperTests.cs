@@ -43,6 +43,7 @@ namespace SharpBridge.Tests.Utilities
                     // Ignore cleanup errors
                 }
             }
+            GC.SuppressFinalize(this);
         }
 
         #region Factory Tests (integrated into wrapper tests)
@@ -366,12 +367,14 @@ namespace SharpBridge.Tests.Utilities
             _wrapper.EnableRaisingEvents = true;
 
             // Act
-            _wrapper.Dispose();
+            var exception = Record.Exception(() => _wrapper.Dispose());
 
             // Assert - Should not throw and should be in disposed state
-            // We can't easily verify the internal FileSystemWatcher is disposed,
-            // but we can verify the wrapper handles disposal gracefully
-            _wrapper.Dispose(); // Should not throw on multiple dispose calls
+            exception.Should().BeNull("Dispose should not throw any exceptions");
+            
+            // Verify multiple dispose calls don't throw
+            var secondDisposeException = Record.Exception(() => _wrapper.Dispose());
+            secondDisposeException.Should().BeNull("Multiple dispose calls should not throw exceptions");
         }
 
         [Fact]
@@ -381,9 +384,14 @@ namespace SharpBridge.Tests.Utilities
             _wrapper = new FileSystemWatcherWrapper(_tempDirectory, _testFileName);
 
             // Act & Assert - Should not throw
-            _wrapper.Dispose();
-            _wrapper.Dispose();
-            _wrapper.Dispose();
+            var firstException = Record.Exception(() => _wrapper.Dispose());
+            var secondException = Record.Exception(() => _wrapper.Dispose());
+            var thirdException = Record.Exception(() => _wrapper.Dispose());
+            
+            // Assert
+            firstException.Should().BeNull("First dispose should not throw");
+            secondException.Should().BeNull("Second dispose should not throw");
+            thirdException.Should().BeNull("Third dispose should not throw");
         }
 
         #endregion
