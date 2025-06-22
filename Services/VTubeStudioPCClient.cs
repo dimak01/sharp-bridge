@@ -252,7 +252,7 @@ namespace SharpBridge.Services
                 // Recreate WebSocket if it's in a closed or aborted state
                 if (_webSocket.State == WebSocketState.Closed || _webSocket.State == WebSocketState.Aborted || _webSocket.State == WebSocketState.Open)
                 {
-                    _logger.Info("WebSocket is in closed/aborted state, recreating...");
+                    _logger.Info("WebSocket is in an invalid state, recreating...");
                     _webSocket.RecreateWebSocket();
                 }
                 
