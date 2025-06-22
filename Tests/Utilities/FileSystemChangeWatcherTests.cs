@@ -120,7 +120,7 @@ namespace SharpBridge.Tests.Utilities
                 _watcher.StartWatching(validPath);
 
                 // Assert
-                _mockWatcherFactory.Verify(f => f.Create(Path.GetDirectoryName(validPath), Path.GetFileName(validPath)), Times.Once);
+                _mockWatcherFactory.Verify(f => f.Create(Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath)), Times.Once);
                 _mockWatcher.VerifySet(w => w.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName, Times.Once);
                 _mockWatcher.VerifySet(w => w.EnableRaisingEvents = true, Times.Once);
                 _mockWatcher.VerifySet(w => w.IncludeSubdirectories = false, Times.Once);
@@ -250,7 +250,7 @@ namespace SharpBridge.Tests.Utilities
 
                 // Act - Simulate file change event
                 _mockWatcher.Raise(w => w.Changed += null, 
-                    new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath)));
+                    new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath)));
 
                 // Assert - Event should be raised immediately
                 eventRaised.Should().BeTrue();
@@ -285,7 +285,7 @@ namespace SharpBridge.Tests.Utilities
 
                 // Act - Simulate file deletion event
                 _mockWatcher.Raise(w => w.Deleted += null, 
-                    new FileSystemEventArgs(WatcherChangeTypes.Deleted, Path.GetDirectoryName(validPath), Path.GetFileName(validPath)));
+                    new FileSystemEventArgs(WatcherChangeTypes.Deleted, Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath)));
 
                 // Assert - Event should be raised immediately
                 eventRaised.Should().BeTrue();
@@ -319,7 +319,7 @@ namespace SharpBridge.Tests.Utilities
 
                 // Act - Simulate file rename event
                 _mockWatcher.Raise(w => w.Renamed += null, 
-                    new RenamedEventArgs(WatcherChangeTypes.Renamed, Path.GetDirectoryName(validPath), "newname.txt", Path.GetFileName(validPath)));
+                    new RenamedEventArgs(WatcherChangeTypes.Renamed, Path.GetDirectoryName(validPath)!, "newname.txt", Path.GetFileName(validPath)));
 
                 // Assert - Event should be raised immediately
                 eventRaised.Should().BeTrue();
@@ -350,7 +350,7 @@ namespace SharpBridge.Tests.Utilities
                 _watcher.StartWatching(validPath);
 
                 // Act - Simulate multiple rapid changes (within debounce interval)
-                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath));
+                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath));
                 
                 _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
                 _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
@@ -380,7 +380,7 @@ namespace SharpBridge.Tests.Utilities
             try
             {
                 _watcher.StartWatching(validPath);
-                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath));
+                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath));
 
                 // Act - Simulate changes with intervals longer than debounce period
                 _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
@@ -446,7 +446,7 @@ namespace SharpBridge.Tests.Utilities
                 
                 // Simulate file change after disposal
                 _mockWatcher.Raise(w => w.Changed += null, 
-                    new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath)));
+                    new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath)));
 
                 // Assert - No events should be raised after disposal
                 eventRaised.Should().BeFalse("No events should be raised after disposal");
@@ -570,7 +570,7 @@ namespace SharpBridge.Tests.Utilities
             try
             {
                 _watcher.StartWatching(validPath);
-                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath));
+                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath)!, Path.GetFileName(validPath));
 
                 // Act - Simulate concurrent file changes
                 _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
