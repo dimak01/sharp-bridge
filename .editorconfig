@@ -1,0 +1,21 @@
+# EditorConfig for SonarQube compliance
+root = true
+
+# C# files - Focus only on SonarQube-related rules
+[*.cs]
+
+# SonarQube-aligned nullable reference type rules - TURN THESE INTO ERRORS
+dotnet_diagnostic.CS8600.severity = error  # Converting null literal or possible null value to non-nullable type
+dotnet_diagnostic.CS8601.severity = error  # Possible null reference assignment
+dotnet_diagnostic.CS8602.severity = error  # Dereference of a possibly null reference
+dotnet_diagnostic.CS8603.severity = error  # Possible null reference return
+dotnet_diagnostic.CS8604.severity = error  # Possible null reference argument for parameter
+dotnet_diagnostic.CS8625.severity = error  # Cannot convert null literal to non-nullable reference type
+dotnet_diagnostic.S2325.severity = error  # Make method static
+
+# Other SonarQube-related warnings as errors
+dotnet_diagnostic.CS0219.severity = error  # Variable is assigned but its value is never used
+
+# SonarQube rules (when SonarAnalyzer is active)
+dotnet_diagnostic.S2699.severity = error    # Tests should include assertions
+dotnet_diagnostic.S1481.severity = error    # Unused local variables should be removed 

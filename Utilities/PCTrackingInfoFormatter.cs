@@ -13,11 +13,11 @@ namespace SharpBridge.Utilities
     public class PCTrackingInfoFormatter : IFormatter
     {
         private const int PARAM_DISPLAY_COUNT_NORMAL = 25;
-        
+
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
         private readonly IParameterColorService _colorService;
-        
+
         /// <summary>
         /// Initializes a new instance of the PCTrackingInfoFormatter
         /// </summary>
@@ -30,12 +30,12 @@ namespace SharpBridge.Utilities
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         }
-        
+
         /// <summary>
         /// Current verbosity level for this formatter
         /// </summary>
         public VerbosityLevel CurrentVerbosity { get; private set; } = VerbosityLevel.Normal;
-        
+
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
@@ -49,20 +49,20 @@ namespace SharpBridge.Utilities
                 _ => VerbosityLevel.Normal
             };
         }
-        
+
         /// <summary>
         /// Formats a PCTrackingInfo object with service statistics into a display string
         /// </summary>
         public string Format(IServiceStats stats)
         {
-            if (stats == null) 
+            if (stats == null)
                 return "No service data available";
-            
+
             var builder = new StringBuilder();
-            
+
             // Header with service status
             builder.AppendLine(FormatServiceHeader("PC Client", stats.Status, "Alt+P"));
-            
+
             // Tracking data details
             if (stats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
             {
@@ -70,11 +70,11 @@ namespace SharpBridge.Utilities
                 var faceIcon = pcTrackingInfo.FaceFound ? "√" : "X";
                 var faceColor = pcTrackingInfo.FaceFound ? ConsoleColors.Success : ConsoleColors.Warning;
                 builder.AppendLine($"Face Status: {ConsoleColors.Colorize($"{faceIcon} {(pcTrackingInfo.FaceFound ? "Detected" : "Not Found")}", faceColor)}");
-                
+
                 builder.AppendLine();
-                
+
                 var parameters = pcTrackingInfo.Parameters?.ToList() ?? new List<TrackingParam>();
-            
+
                 if (CurrentVerbosity >= VerbosityLevel.Normal)
                 {
                     AppendParameters(builder, pcTrackingInfo);
@@ -89,24 +89,24 @@ namespace SharpBridge.Utilities
                 builder.AppendLine();
                 builder.AppendLine("No current tracking data available");
             }
-            
+
             return builder.ToString();
         }
-        
 
-        
+
+
         /// <summary>
         /// Appends the parameter information to the string builder using the new table format
         /// </summary>
         private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo)
         {
             var parameters = trackingInfo.Parameters.ToList();
-            
+
             // Sort parameters by ID - let TableFormatter handle display limits
             var parametersToShow = parameters
                 .OrderBy(p => p.Id)
                 .ToList();
-            
+
             // Define columns for the generic table
             var columns = new List<ITableColumn<TrackingParam>>
             {
@@ -120,11 +120,11 @@ namespace SharpBridge.Utilities
             // Use the new generic table formatter - let it handle display limits
             var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
             _tableFormatter.AppendTable(builder, "=== Parameters ===", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
-            
+
             builder.AppendLine();
             builder.AppendLine($"Total Parameters: {parameters.Count}");
         }
-        
+
         /// <summary>
         /// Calculates the normalized value (0.0 to 1.0) for a parameter based on its definition
         /// </summary>
@@ -138,18 +138,18 @@ namespace SharpBridge.Utilities
                     return Math.Max(0, Math.Min(1, (param.Value - definition.Min) / range));
                 }
             }
-            
+
             // Fallback: assume range of -1 to 1
             return Math.Max(0, Math.Min(1, (param.Value + 1) / 2));
         }
-        
+
         /// <summary>
         /// Formats the compact range information for a parameter
         /// </summary>
         private string FormatCompactRange(TrackingParam param, PCTrackingInfo trackingInfo)
         {
             var weight = param.Weight?.ToString("0.##") ?? "1";
-            
+
             if (trackingInfo.ParameterDefinitions?.TryGetValue(param.Id, out var definition) == true)
             {
                 var min = definition.Min.ToString("0.##");
@@ -157,11 +157,11 @@ namespace SharpBridge.Utilities
                 var max = definition.Max.ToString("0.##");
                 return $"{weight} x [{min}; {defaultVal}; {max}]";
             }
-            
+
             // Fallback for parameters without definitions
             return $"{weight} x [no definition]";
         }
-        
+
         /// <summary>
         /// Formats the transformation expression for a parameter
         /// </summary>
@@ -183,13 +183,13 @@ namespace SharpBridge.Utilities
                 }
                 return expression;
             }
-            
+
             // Fallback for parameters without expressions
             return "[no expression]";
         }
-        
 
-        
+
+
         /// <summary>
         /// Formats a service header with status and color coding
         /// </summary>
@@ -211,4 +211,4 @@ namespace SharpBridge.Utilities
             return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
         }
     }
-} 
+}
