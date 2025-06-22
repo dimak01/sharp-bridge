@@ -44,6 +44,7 @@ namespace SharpBridge.Tests.Services
             {
                 File.Delete(_tempFilePath);
             }
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -82,7 +83,7 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(null, _loggerMock.Object, _processLauncherMock.Object));
+                new ExternalEditorService(null!, _loggerMock.Object, _processLauncherMock.Object));
 
             exception.ParamName.Should().Be("config");
         }
@@ -92,7 +93,7 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(_config, null, _processLauncherMock.Object));
+                new ExternalEditorService(_config, null!, _processLauncherMock.Object));
 
             exception.ParamName.Should().Be("logger");
         }
@@ -102,7 +103,7 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(_config, _loggerMock.Object, null));
+                new ExternalEditorService(_config, _loggerMock.Object, null!));
 
             exception.ParamName.Should().Be("processLauncher");
         }
@@ -115,7 +116,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithNullFilePath_ReturnsFalseAndLogsWarning()
         {
             // Act
-            var result = await _service.TryOpenFileAsync(null);
+            var result = await _service.TryOpenFileAsync(null!);
 
             // Assert
             result.Should().BeFalse();
@@ -181,7 +182,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithNullEditorCommand_ReturnsFalseAndLogsWarning()
         {
             // Arrange
-            var configWithNullCommand = new ApplicationConfig { EditorCommand = null };
+            var configWithNullCommand = new ApplicationConfig { EditorCommand = null! };
             var service = CreateService(configWithNullCommand);
 
             // Act
@@ -230,7 +231,6 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_ReplacesPlaceholderWithFilePath()
         {
             // Arrange
-            var testPath = @"C:\test\file.json";
             var configWithPlaceholder = new ApplicationConfig { EditorCommand = "editor.exe --file \"%f\" --readonly" };
             var service = CreateService(configWithPlaceholder);
 
@@ -632,7 +632,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithNullCommandLine_HandlesGracefully()
         {
             // Arrange - This will test the ParseCommand method with null input indirectly
-            var configWithNullCommand = new ApplicationConfig { EditorCommand = null };
+            var configWithNullCommand = new ApplicationConfig { EditorCommand = null! };
             var service = CreateService(configWithNullCommand);
 
             // Act
@@ -699,20 +699,20 @@ namespace SharpBridge.Tests.Services
                 .GetMethod("ParseCommand", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act & Assert - Test null command
-            var nullResult = parseCommandMethod.Invoke(null, new object[] { null });
-            var nullTuple = ((string executable, string arguments))nullResult;
+            var nullResult = parseCommandMethod!.Invoke(null, new object[] { null! });
+            var nullTuple = ((string executable, string arguments))nullResult!;
             nullTuple.executable.Should().Be(string.Empty);
             nullTuple.arguments.Should().Be(string.Empty);
 
             // Act & Assert - Test empty command
             var emptyResult = parseCommandMethod.Invoke(null, new object[] { "" });
-            var emptyTuple = ((string executable, string arguments))emptyResult;
+            var emptyTuple = ((string executable, string arguments))emptyResult!;
             emptyTuple.executable.Should().Be(string.Empty);
             emptyTuple.arguments.Should().Be(string.Empty);
 
             // Act & Assert - Test whitespace command
             var whitespaceResult = parseCommandMethod.Invoke(null, new object[] { "   " });
-            var whitespaceTuple = ((string executable, string arguments))whitespaceResult;
+            var whitespaceTuple = ((string executable, string arguments))whitespaceResult!;
             whitespaceTuple.executable.Should().Be(string.Empty);
             whitespaceTuple.arguments.Should().Be(string.Empty);
         }
