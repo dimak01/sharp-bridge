@@ -2312,5 +2312,226 @@ namespace SharpBridge.Tests.Services
             _loggerMock.Verify(x => x.Debug("Color service initialization flag reset for config reload"), 
                 Times.Once);
         }
+
+        #region External Editor Tests
+
+        [Fact]
+        public async Task OpenTransformationConfigInEditor_CallsExternalEditorService()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(true);
+
+            // Act - Use reflection to call the private method
+            var method = typeof(ApplicationOrchestrator).GetMethod("OpenTransformationConfigInEditor", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = (Task)method.Invoke(orchestrator, null);
+            await task;
+
+            // Assert
+            _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(
+                It.Is<string>(path => path == _tempConfigPath)), Times.Once);
+        }
+
+        [Fact]
+        public async Task OpenTransformationConfigInEditor_WhenServiceFails_LogsError()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(false);
+
+            // Act - Use reflection to call the private method
+            var method = typeof(ApplicationOrchestrator).GetMethod("OpenTransformationConfigInEditor", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = (Task)method.Invoke(orchestrator, null);
+            await task;
+
+            // Assert
+            _loggerMock.Verify(x => x.Warning("Failed to launch external editor"), Times.Once);
+        }
+
+        #endregion
+
+        #region Keyboard Shortcut Coverage Tests
+
+        [Fact]
+        public void RegisterKeyboardShortcuts_AltT_CyclesTransformationEngineVerbosity()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var transformationFormatter = new Mock<IFormatter>();
+            _consoleRendererMock.Setup(x => x.GetFormatter<TransformationEngineInfo>())
+                .Returns(transformationFormatter.Object);
+
+            // Trigger keyboard shortcut registration
+            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+
+            // Act - Simulate Alt+T keyboard shortcut
+            var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.T, ConsoleModifiers.Alt);
+            shortcutAction?.Invoke();
+
+            // Assert
+            transformationFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public void RegisterKeyboardShortcuts_AltP_CyclesPCClientVerbosity()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var pcFormatter = new Mock<IFormatter>();
+            _consoleRendererMock.Setup(x => x.GetFormatter<PCTrackingInfo>())
+                .Returns(pcFormatter.Object);
+
+            // Trigger keyboard shortcut registration
+            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+
+            // Act - Simulate Alt+P keyboard shortcut
+            var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.P, ConsoleModifiers.Alt);
+            shortcutAction?.Invoke();
+
+            // Assert
+            pcFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public void RegisterKeyboardShortcuts_AltO_CyclesPhoneClientVerbosity()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var phoneFormatter = new Mock<IFormatter>();
+            _consoleRendererMock.Setup(x => x.GetFormatter<PhoneTrackingInfo>())
+                .Returns(phoneFormatter.Object);
+
+            // Trigger keyboard shortcut registration
+            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+
+            // Act - Simulate Alt+O keyboard shortcut
+            var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.O, ConsoleModifiers.Alt);
+            shortcutAction?.Invoke();
+
+            // Assert
+            phoneFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public void RegisterKeyboardShortcuts_CtrlAltE_OpensExternalEditor()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+            
+            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(true);
+
+            // Act - Simulate Ctrl+Alt+E keyboard shortcut
+            var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.E, 
+                ConsoleModifiers.Control | ConsoleModifiers.Alt);
+            shortcutAction?.Invoke();
+
+            // Give async operation time to complete
+            Thread.Sleep(100);
+
+            // Assert
+            _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(It.IsAny<string>()), Times.Once);
+        }
+
+        /// <summary>
+        /// Helper method to get registered keyboard shortcut action for testing
+        /// </summary>
+        private Action GetRegisteredShortcutAction(ConsoleKey key, ConsoleModifiers modifiers)
+        {
+            return _keyboardInputHandlerMock.Invocations
+                .Where(inv => inv.Method.Name == "RegisterShortcut" && 
+                             inv.Arguments.Count >= 3 &&
+                             (ConsoleKey)inv.Arguments[0] == key &&
+                             (ConsoleModifiers)inv.Arguments[1] == modifiers)
+                .Select(inv => inv.Arguments[2] as Action)
+                .FirstOrDefault();
+        }
+
+        #endregion
+
+        #region Additional Coverage Tests
+
+        [Fact]
+        public async Task ReloadTransformationConfig_WhenTransformationEngineThrows_LogsError()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            
+            _transformationEngineMock.Setup(x => x.LoadRulesAsync(It.IsAny<string>()))
+                .ThrowsAsync(new InvalidOperationException("Config load failed"));
+
+            // Act - Use reflection to call the private method
+            var method = typeof(ApplicationOrchestrator).GetMethod("ReloadTransformationConfig", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = (Task)method.Invoke(orchestrator, null);
+            await task;
+
+            // Assert - The actual log message is "Error reloading transformation config"
+            _loggerMock.Verify(x => x.ErrorWithException(
+                "Error reloading transformation config",
+                It.IsAny<Exception>()), Times.Once);
+        }
+
+        [Fact]
+        public void InitializeColorServiceIfNeeded_WhenColorServiceInitialized_DoesNotReinitialize()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var trackingData = new PhoneTrackingInfo
+            {
+                BlendShapes = new List<BlendShape> { new BlendShape { Key = "EyeBlinkLeft", Value = 0.5 } }
+            };
+
+            // Initialize the service first time
+            var method = typeof(ApplicationOrchestrator).GetMethod("InitializeColorServiceIfNeeded", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method.Invoke(orchestrator, new object[] { trackingData });
+
+            // Reset mock to verify second call behavior
+            _colorServiceMock.Reset();
+
+            // Act - Try to initialize again
+            method.Invoke(orchestrator, new object[] { trackingData });
+
+            // Assert - Should not call InitializeFromConfiguration again
+            _colorServiceMock.Verify(x => x.InitializeFromConfiguration(
+                It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+        }
+
+        [Fact]
+        public void Dispose_WhenConsoleWindowManagerIsNull_DoesNotThrow()
+        {
+            // Arrange - Create orchestrator with null console window manager
+            var orchestrator = new ApplicationOrchestrator(
+                _vtubeStudioPCClientMock.Object,
+                _vtubeStudioPhoneClientMock.Object,
+                _transformationEngineMock.Object,
+                _phoneConfig,
+                _loggerMock.Object,
+                _consoleRendererMock.Object,
+                _keyboardInputHandlerMock.Object,
+                _parameterManagerMock.Object,
+                _recoveryPolicyMock.Object,
+                _consoleMock.Object,
+                _colorServiceMock.Object,
+                _externalEditorServiceMock.Object);
+
+            // Act & Assert - Should not throw
+            orchestrator.Dispose();
+        }
+
+        #endregion
+
+        // ... existing code ...
     }
 }
