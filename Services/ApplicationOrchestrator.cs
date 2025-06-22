@@ -28,6 +28,7 @@ namespace SharpBridge.Services
         private readonly IConsole _console;
         private readonly ConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
+        private readonly IExternalEditorService _externalEditorService;
         
         // Preferred console dimensions
         private const int PREFERRED_CONSOLE_WIDTH = 150;
@@ -58,6 +59,7 @@ namespace SharpBridge.Services
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
         /// <param name="console">Console abstraction for window management</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
+        /// <param name="externalEditorService">Service for opening files in external editors</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -69,7 +71,8 @@ namespace SharpBridge.Services
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
             IConsole console,
-            IParameterColorService colorService)
+            IParameterColorService colorService,
+            IExternalEditorService externalEditorService)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -82,6 +85,7 @@ namespace SharpBridge.Services
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
+            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             
             // Initialize console window manager
             _consoleWindowManager = new ConsoleWindowManager(_console);
@@ -445,6 +449,32 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
+        /// Opens the transformation configuration file in the configured external editor
+        /// </summary>
+        private async Task OpenTransformationConfigInEditor()
+        {
+            try
+            {
+                _logger.Info("Opening transformation config in external editor...");
+                
+                var success = await _externalEditorService.TryOpenFileAsync(_transformConfigPath);
+                
+                if (success)
+                {
+                    _logger.Info("External editor launched successfully");
+                }
+                else
+                {
+                    _logger.Warning("Failed to launch external editor");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error opening transformation config in external editor", ex);
+            }
+        }
+
+        /// <summary>
         /// Handles tracking data received from the iPhone
         /// </summary>
         private async void OnTrackingDataReceived(object? sender, PhoneTrackingInfo trackingData)
@@ -567,6 +597,14 @@ namespace SharpBridge.Services
                 ConsoleModifiers.Alt, 
                 () => _ = ReloadTransformationConfig(),
                 "Reload transformation configuration"
+            );
+            
+            // Register Ctrl+Alt+E to open transformation config in external editor
+            _keyboardInputHandler.RegisterShortcut(
+                ConsoleKey.E, 
+                ConsoleModifiers.Control | ConsoleModifiers.Alt, 
+                () => _ = OpenTransformationConfigInEditor(),
+                "Open transformation config in external editor"
             );
         }
 

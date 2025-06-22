@@ -15,6 +15,7 @@ namespace SharpBridge.Utilities
         private readonly string _configDirectory;
         private readonly string _pcConfigFilename;
         private readonly string _phoneConfigFilename;
+        private readonly string _applicationConfigFilename = "ApplicationConfig.json";
         
         /// <summary>
         /// Initializes a new instance of the ConfigManager class with specified paths.
@@ -46,6 +47,11 @@ namespace SharpBridge.Utilities
         /// Gets the path to the Phone configuration file.
         /// </summary>
         public string PhoneConfigPath => Path.Combine(_configDirectory, _phoneConfigFilename);
+        
+        /// <summary>
+        /// Gets the path to the Application configuration file.
+        /// </summary>
+        public string ApplicationConfigPath => Path.Combine(_configDirectory, _applicationConfigFilename);
         
         /// <summary>
         /// Loads the PC configuration from file or creates a default one if it doesn't exist.
@@ -83,6 +89,25 @@ namespace SharpBridge.Utilities
         public async Task SavePhoneConfigAsync(VTubeStudioPhoneClientConfig config)
         {
             await SaveConfigAsync(PhoneConfigPath, config);
+        }
+        
+        /// <summary>
+        /// Loads the Application configuration from file or creates a default one if it doesn't exist.
+        /// </summary>
+        /// <returns>The Application configuration.</returns>
+        public async Task<ApplicationConfig> LoadApplicationConfigAsync()
+        {
+            return await LoadConfigAsync<ApplicationConfig>(ApplicationConfigPath, () => new ApplicationConfig());
+        }
+        
+        /// <summary>
+        /// Saves the Application configuration to file.
+        /// </summary>
+        /// <param name="config">The configuration to save.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        public async Task SaveApplicationConfigAsync(ApplicationConfig config)
+        {
+            await SaveConfigAsync(ApplicationConfigPath, config);
         }
         
         private async Task<T> LoadConfigAsync<T>(string path, Func<T> defaultConfigFactory) where T : class

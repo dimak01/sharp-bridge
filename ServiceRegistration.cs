@@ -56,6 +56,13 @@ namespace SharpBridge
                 return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
             });
             
+            // Register ApplicationConfig
+            services.AddSingleton(provider => 
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
+            });
+            
             // Register clients
             services.AddSingleton<IWebSocketWrapper, WebSocketWrapper>();
             
@@ -115,6 +122,9 @@ namespace SharpBridge
             
             // Register parameter color service
             services.AddSingleton<IParameterColorService, ParameterColorService>();
+            
+            // Register external editor service
+            services.AddSingleton<IExternalEditorService, ExternalEditorService>();
             
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();
