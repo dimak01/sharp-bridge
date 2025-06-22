@@ -80,6 +80,9 @@ namespace SharpBridge
                 );
             });
             
+            // Register file system watcher factory
+            services.AddSingleton<IFileSystemWatcherFactory, FileSystemWatcherFactory>();
+            
             // Register file change watcher
             services.AddSingleton<IFileChangeWatcher, SharpBridge.Utilities.FileSystemChangeWatcher>();
             

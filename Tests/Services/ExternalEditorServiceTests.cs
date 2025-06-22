@@ -694,25 +694,24 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public void ParseCommand_WithNullOrEmptyCommand_ReturnsEmptyStrings()
         {
-            // Arrange
-            var service = CreateService(_config);
+            // Arrange - ParseCommand is now static, so we use Static binding flags and don't need an instance
             var parseCommandMethod = typeof(ExternalEditorService)
-                .GetMethod("ParseCommand", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                .GetMethod("ParseCommand", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
             // Act & Assert - Test null command
-            var nullResult = parseCommandMethod.Invoke(service, new object[] { null });
+            var nullResult = parseCommandMethod.Invoke(null, new object[] { null });
             var nullTuple = ((string executable, string arguments))nullResult;
             nullTuple.executable.Should().Be(string.Empty);
             nullTuple.arguments.Should().Be(string.Empty);
 
             // Act & Assert - Test empty command
-            var emptyResult = parseCommandMethod.Invoke(service, new object[] { "" });
+            var emptyResult = parseCommandMethod.Invoke(null, new object[] { "" });
             var emptyTuple = ((string executable, string arguments))emptyResult;
             emptyTuple.executable.Should().Be(string.Empty);
             emptyTuple.arguments.Should().Be(string.Empty);
 
             // Act & Assert - Test whitespace command
-            var whitespaceResult = parseCommandMethod.Invoke(service, new object[] { "   " });
+            var whitespaceResult = parseCommandMethod.Invoke(null, new object[] { "   " });
             var whitespaceTuple = ((string executable, string arguments))whitespaceResult;
             whitespaceTuple.executable.Should().Be(string.Empty);
             whitespaceTuple.arguments.Should().Be(string.Empty);

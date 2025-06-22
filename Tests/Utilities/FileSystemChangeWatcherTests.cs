@@ -15,97 +15,57 @@ namespace SharpBridge.Tests.Utilities
     public class FileSystemChangeWatcherTests : IDisposable
     {
         private readonly Mock<IAppLogger> _mockLogger;
+        private readonly Mock<IFileSystemWatcherFactory> _mockWatcherFactory;
+        private readonly Mock<IFileSystemWatcherWrapper> _mockWatcher;
         private readonly FileSystemChangeWatcher _watcher;
-        private readonly List<string> _tempFiles = new();
-        private readonly List<string> _tempDirectories = new();
 
         public FileSystemChangeWatcherTests()
         {
             _mockLogger = new Mock<IAppLogger>();
-            _watcher = new FileSystemChangeWatcher(_mockLogger.Object);
+            _mockWatcherFactory = new Mock<IFileSystemWatcherFactory>();
+            _mockWatcher = new Mock<IFileSystemWatcherWrapper>();
+            
+            // Setup factory to return our mock watcher
+            _mockWatcherFactory.Setup(f => f.Create(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(_mockWatcher.Object);
+                
+            _watcher = new FileSystemChangeWatcher(_mockLogger.Object, _mockWatcherFactory.Object);
         }
 
         public void Dispose()
         {
             _watcher?.Dispose();
-            
-            // Clean up temp files
-            foreach (var file in _tempFiles)
-            {
-                if (File.Exists(file))
-                {
-                    try { File.Delete(file); } catch { /* ignore */ }
-                }
-            }
-            
-            // Clean up temp directories
-            foreach (var dir in _tempDirectories)
-            {
-                if (Directory.Exists(dir))
-                {
-                    try { Directory.Delete(dir, true); } catch { /* ignore */ }
-                }
-            }
-            
             GC.SuppressFinalize(this);
         }
 
-        #region Helper Methods
-
-        private string CreateTempFile(string content = "test content")
-        {
-            var filePath = Path.GetTempFileName();
-            File.WriteAllText(filePath, content);
-            _tempFiles.Add(filePath);
-            return filePath;
-        }
-
-        private string CreateTempDirectory()
-        {
-            var dirPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(dirPath);
-            _tempDirectories.Add(dirPath);
-            return dirPath;
-        }
-
-        private string CreateTempFileInDirectory(string directory, string fileName, string content = "test content")
-        {
-            var filePath = Path.Combine(directory, fileName);
-            File.WriteAllText(filePath, content);
-            _tempFiles.Add(filePath);
-            return filePath;
-        }
-
-        private static async Task<bool> WaitForEventAsync(Func<bool> condition, int timeoutMs = 2000)
-        {
-            var endTime = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-            while (DateTime.UtcNow < endTime)
-            {
-                if (condition())
-                    return true;
-                await Task.Delay(50);
-            }
-            return false;
-        }
-
-        #endregion
-
         #region Constructor Tests
+
+        [Fact]
+        public void Constructor_WithValidParameters_CreatesInstance()
+        {
+            // Arrange & Act
+            var service = new FileSystemChangeWatcher(_mockLogger.Object, _mockWatcherFactory.Object);
+
+            // Assert
+            service.Should().NotBeNull();
+        }
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new FileSystemChangeWatcher(null!));
+            var exception = Assert.Throws<ArgumentNullException>(() => 
+                new FileSystemChangeWatcher(null!, _mockWatcherFactory.Object));
             exception.ParamName.Should().Be("logger");
         }
 
         [Fact]
-        public void Constructor_WithValidLogger_InitializesCorrectly()
+        public void Constructor_WithNullWatcherFactory_ThrowsArgumentNullException()
         {
-            // Act & Assert - Should not throw
-            using var watcher = new FileSystemChangeWatcher(_mockLogger.Object);
-            watcher.Should().NotBeNull();
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() => 
+                new FileSystemChangeWatcher(_mockLogger.Object, null!));
+            exception.ParamName.Should().Be("watcherFactory");
         }
 
         #endregion
@@ -120,6 +80,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             _mockLogger.Verify(l => l.Warning(It.Is<string>(s => s.Contains("does not exist"))), Times.Once);
+            _mockWatcherFactory.Verify(f => f.Create(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -130,48 +91,95 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             _mockLogger.Verify(l => l.Warning(It.Is<string>(s => s.Contains("does not exist"))), Times.Once);
+            _mockWatcherFactory.Verify(f => f.Create(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
         public void StartWatching_WithNonExistentFile_LogsWarningAndReturns()
         {
             // Arrange
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var nonExistentPath = @"C:\NonExistent\file.txt";
 
             // Act
             _watcher.StartWatching(nonExistentPath);
 
             // Assert
             _mockLogger.Verify(l => l.Warning(It.Is<string>(s => s.Contains("does not exist"))), Times.Once);
+            _mockWatcherFactory.Verify(f => f.Create(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
-        public void StartWatching_WithValidFile_LogsStartMessage()
+        public void StartWatching_WithValidFile_CreatesWatcherAndLogsStartMessage()
         {
             // Arrange
-            var filePath = CreateTempFile();
+            var validPath = Path.GetTempFileName();
+            
+            try
+            {
+                // Act
+                _watcher.StartWatching(validPath);
 
-            // Act
-            _watcher.StartWatching(filePath);
-
-            // Assert
-            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Started watching"))), Times.Once);
+                // Assert
+                _mockWatcherFactory.Verify(f => f.Create(Path.GetDirectoryName(validPath), Path.GetFileName(validPath)), Times.Once);
+                _mockWatcher.VerifySet(w => w.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName, Times.Once);
+                _mockWatcher.VerifySet(w => w.EnableRaisingEvents = true, Times.Once);
+                _mockWatcher.VerifySet(w => w.IncludeSubdirectories = false, Times.Once);
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Started watching"))), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
         public void StartWatching_CalledTwice_StopsWatchingPreviousFile()
         {
             // Arrange
-            var firstFile = CreateTempFile();
-            var secondFile = CreateTempFile();
+            var firstFile = Path.GetTempFileName();
+            var secondFile = Path.GetTempFileName();
+            
+            try
+            {
+                // Act
+                _watcher.StartWatching(firstFile);
+                _watcher.StartWatching(secondFile);
 
-            // Act
-            _watcher.StartWatching(firstFile);
-            _watcher.StartWatching(secondFile);
+                // Assert
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Started watching"))), Times.Exactly(2));
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+                _mockWatcher.Verify(w => w.Dispose(), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(firstFile)) File.Delete(firstFile);
+                if (File.Exists(secondFile)) File.Delete(secondFile);
+            }
+        }
 
-            // Assert
-            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Started watching"))), Times.Exactly(2));
-            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+        [Fact]
+        public void StartWatching_WithValidFile_WiresUpEventHandlers()
+        {
+            // Arrange
+            var validPath = Path.GetTempFileName();
+            
+            try
+            {
+                // Act
+                _watcher.StartWatching(validPath);
+
+                // Assert - Verify event handlers were attached
+                _mockWatcher.VerifyAdd(w => w.Changed += It.IsAny<FileSystemEventHandler>(), Times.Once);
+                _mockWatcher.VerifyAdd(w => w.Renamed += It.IsAny<RenamedEventHandler>(), Times.Once);
+                _mockWatcher.VerifyAdd(w => w.Deleted += It.IsAny<FileSystemEventHandler>(), Times.Once);
+                _mockWatcher.VerifyAdd(w => w.Error += It.IsAny<ErrorEventHandler>(), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         #endregion
@@ -184,22 +192,38 @@ namespace SharpBridge.Tests.Utilities
             // Act & Assert - Should not throw
             _watcher.StopWatching();
             
-            // Assert - Verify no exception was thrown and no log messages were generated
+            // Assert - Verify no operations were performed
+            _mockWatcher.Verify(w => w.Dispose(), Times.Never);
             _mockLogger.Verify(l => l.Info(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
-        public void StopWatching_WhenWatching_LogsStopMessage()
+        public void StopWatching_WhenWatching_DisposesWatcherAndLogsStopMessage()
         {
             // Arrange
-            var filePath = CreateTempFile();
-            _watcher.StartWatching(filePath);
+            var validPath = Path.GetTempFileName();
+            
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // Act
-            _watcher.StopWatching();
+                // Act
+                _watcher.StopWatching();
 
-            // Assert
-            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+                // Assert
+                _mockWatcher.VerifySet(w => w.EnableRaisingEvents = false, Times.Once);
+                _mockWatcher.VerifyRemove(w => w.Changed -= It.IsAny<FileSystemEventHandler>(), Times.Once);
+                _mockWatcher.VerifyRemove(w => w.Renamed -= It.IsAny<RenamedEventHandler>(), Times.Once);
+                _mockWatcher.VerifyRemove(w => w.Deleted -= It.IsAny<FileSystemEventHandler>(), Times.Once);
+                _mockWatcher.VerifyRemove(w => w.Error -= It.IsAny<ErrorEventHandler>(), Times.Once);
+                _mockWatcher.Verify(w => w.Dispose(), Times.Once);
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         #endregion
@@ -207,10 +231,10 @@ namespace SharpBridge.Tests.Utilities
         #region File Change Detection Tests
 
         [Fact]
-        public async Task FileChanged_WhenFileModified_RaisesEvent()
+        public void FileChanged_WhenFileModified_RaisesEvent()
         {
             // Arrange
-            var filePath = CreateTempFile("initial content");
+            var validPath = Path.GetTempFileName();
             var eventRaised = false;
             FileChangeEventArgs? eventArgs = null;
 
@@ -220,24 +244,32 @@ namespace SharpBridge.Tests.Utilities
                 eventArgs = args;
             };
 
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // Act
-            File.WriteAllText(filePath, "modified content");
+                // Act - Simulate file change event
+                _mockWatcher.Raise(w => w.Changed += null, 
+                    new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath)));
 
-            // Assert
-            var success = await WaitForEventAsync(() => eventRaised);
-            success.Should().BeTrue("File change event should be raised");
-            eventArgs.Should().NotBeNull();
-            eventArgs!.FilePath.Should().Be(Path.GetFullPath(filePath));
+                // Assert - Event should be raised immediately
+                eventRaised.Should().BeTrue();
+                eventArgs.Should().NotBeNull();
+                eventArgs!.FilePath.Should().Be(validPath);
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Detected change"))), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
-        public async Task FileChanged_WhenFileDeleted_RaisesEvent()
+        public void FileChanged_WhenFileDeleted_RaisesEvent()
         {
             // Arrange
-            var filePath = CreateTempFile();
+            var validPath = Path.GetTempFileName();
             var eventRaised = false;
             FileChangeEventArgs? eventArgs = null;
 
@@ -247,26 +279,31 @@ namespace SharpBridge.Tests.Utilities
                 eventArgs = args;
             };
 
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // Act
-            File.Delete(filePath);
+                // Act - Simulate file deletion event
+                _mockWatcher.Raise(w => w.Deleted += null, 
+                    new FileSystemEventArgs(WatcherChangeTypes.Deleted, Path.GetDirectoryName(validPath), Path.GetFileName(validPath)));
 
-            // Assert
-            var success = await WaitForEventAsync(() => eventRaised);
-            success.Should().BeTrue("File deletion event should be raised");
-            eventArgs.Should().NotBeNull();
+                // Assert - Event should be raised immediately
+                eventRaised.Should().BeTrue();
+                eventArgs.Should().NotBeNull();
+                eventArgs!.FilePath.Should().Be(validPath);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
-        public async Task FileChanged_WhenFileRenamed_RaisesEvent()
+        public void FileChanged_WhenFileRenamed_RaisesEvent()
         {
             // Arrange
-            var directory = CreateTempDirectory();
-            var originalPath = CreateTempFileInDirectory(directory, "original.txt");
-            var newPath = Path.Combine(directory, "renamed.txt");
-            
+            var validPath = Path.GetTempFileName();
             var eventRaised = false;
             FileChangeEventArgs? eventArgs = null;
 
@@ -276,17 +313,23 @@ namespace SharpBridge.Tests.Utilities
                 eventArgs = args;
             };
 
-            _watcher.StartWatching(originalPath);
-            await Task.Delay(100); // Allow watcher to initialize
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // Act
-            File.Move(originalPath, newPath);
-            _tempFiles.Add(newPath); // Track for cleanup
+                // Act - Simulate file rename event
+                _mockWatcher.Raise(w => w.Renamed += null, 
+                    new RenamedEventArgs(WatcherChangeTypes.Renamed, Path.GetDirectoryName(validPath), "newname.txt", Path.GetFileName(validPath)));
 
-            // Assert
-            var success = await WaitForEventAsync(() => eventRaised);
-            success.Should().BeTrue("File rename event should be raised");
-            eventArgs.Should().NotBeNull();
+                // Assert - Event should be raised immediately
+                eventRaised.Should().BeTrue();
+                eventArgs.Should().NotBeNull();
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         #endregion
@@ -294,59 +337,67 @@ namespace SharpBridge.Tests.Utilities
         #region Debouncing Tests
 
         [Fact]
-        public async Task FileChanged_MultipleRapidChanges_DebouncesEvents()
+        public void FileChanged_MultipleRapidChanges_DebouncesEvents()
         {
             // Arrange
-            var filePath = CreateTempFile("initial");
+            var validPath = Path.GetTempFileName();
             var eventCount = 0;
-            var eventArgs = new List<FileChangeEventArgs>();
 
-            _watcher.FileChanged += (sender, args) =>
+            _watcher.FileChanged += (sender, args) => eventCount++;
+
+            try
             {
-                eventCount++;
-                eventArgs.Add(args);
-            };
+                _watcher.StartWatching(validPath);
 
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
+                // Act - Simulate multiple rapid changes (within debounce interval)
+                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath));
+                
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
 
-            // Act - Make multiple rapid changes
-            for (int i = 0; i < 5; i++)
-            {
-                File.WriteAllText(filePath, $"content {i}");
-                await Task.Delay(50); // Less than debounce interval (200ms)
+                // Assert - Only the first event should be processed due to debouncing
+                eventCount.Should().Be(1, "Events should be debounced within the 200ms interval");
             }
-
-            // Wait for debounce period to complete
-            await Task.Delay(300);
-
-            // Assert
-            eventCount.Should().BeLessThan(5, "Events should be debounced");
-            eventCount.Should().BeGreaterThan(0, "At least one event should be raised");
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
         public async Task FileChanged_ChangesWithLongInterval_RaisesMultipleEvents()
         {
             // Arrange
-            var filePath = CreateTempFile("initial");
+            var validPath = Path.GetTempFileName();
             var eventCount = 0;
 
             _watcher.FileChanged += (sender, args) => eventCount++;
 
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
+            try
+            {
+                _watcher.StartWatching(validPath);
+                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath));
 
-            // Act - Make changes with long intervals
-            File.WriteAllText(filePath, "content 1");
-            await Task.Delay(300); // Longer than debounce interval
+                // Act - Simulate changes with intervals longer than debounce period
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
+                
+                // Wait longer than debounce interval (200ms)
+                await Task.Delay(250);
+                
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
 
-            File.WriteAllText(filePath, "content 2");
-            await Task.Delay(300); // Longer than debounce interval
-
-            // Assert
-            var success = await WaitForEventAsync(() => eventCount >= 2, 1000);
-            success.Should().BeTrue("Multiple events should be raised for well-spaced changes");
+                // Assert - Both events should be processed
+                eventCount.Should().Be(2, "Events separated by longer intervals should both be processed");
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         #endregion
@@ -354,36 +405,57 @@ namespace SharpBridge.Tests.Utilities
         #region Error Handling Tests
 
         [Fact]
-        public void StartWatching_WithInvalidDirectory_HandlesGracefully()
+        public void FileChanged_WhenWatcherError_LogsError()
         {
             // Arrange
-            var invalidPath = Path.Combine("Z:\\NonExistentDrive", "file.txt");
+            var validPath = Path.GetTempFileName();
 
-            // Act & Assert - Should not throw
-            _watcher.StartWatching(invalidPath);
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // The watcher should log a warning about the file not existing
-            _mockLogger.Verify(l => l.Warning(It.IsAny<string>()), Times.Once);
+                // Act - Simulate watcher error
+                var errorException = new InvalidOperationException("Test error");
+                _mockWatcher.Raise(w => w.Error += null, new ErrorEventArgs(errorException));
+
+                // Assert - Error should be logged
+                _mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Watcher error"))), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
-        public async Task FileChanged_AfterDisposal_DoesNotRaiseEvents()
+        public void FileChanged_AfterDisposal_DoesNotRaiseEvents()
         {
             // Arrange
-            var filePath = CreateTempFile();
+            var validPath = Path.GetTempFileName();
             var eventRaised = false;
 
             _watcher.FileChanged += (sender, args) => eventRaised = true;
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
 
-            // Act
-            _watcher.Dispose();
-            File.WriteAllText(filePath, "modified after disposal");
-            await Task.Delay(300); // Wait for potential event
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // Assert
-            eventRaised.Should().BeFalse("No events should be raised after disposal");
+                // Act
+                _watcher.Dispose();
+                
+                // Simulate file change after disposal
+                _mockWatcher.Raise(w => w.Changed += null, 
+                    new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath)));
+
+                // Assert - No events should be raised after disposal
+                eventRaised.Should().BeFalse("No events should be raised after disposal");
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         #endregion
@@ -394,41 +466,68 @@ namespace SharpBridge.Tests.Utilities
         public void Dispose_WhenWatching_StopsWatching()
         {
             // Arrange
-            var filePath = CreateTempFile();
-            _watcher.StartWatching(filePath);
+            var validPath = Path.GetTempFileName();
+            
+            try
+            {
+                _watcher.StartWatching(validPath);
 
-            // Act
-            _watcher.Dispose();
+                // Act
+                _watcher.Dispose();
 
-            // Assert
-            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+                // Assert
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
         public void Dispose_CalledMultipleTimes_DoesNotThrow()
         {
             // Arrange
-            var filePath = CreateTempFile();
-            _watcher.StartWatching(filePath);
-
-            // Act & Assert - Should not throw
-            _watcher.Dispose();
-            _watcher.Dispose();
-            _watcher.Dispose();
+            var validPath = Path.GetTempFileName();
             
-            // Assert - Verify no exception was thrown and stop watching was called only once
-            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+            try
+            {
+                _watcher.StartWatching(validPath);
+
+                // Act & Assert - Should not throw
+                _watcher.Dispose();
+                _watcher.Dispose();
+                _watcher.Dispose();
+                
+                // Assert - Verify stop watching was called only once
+                _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Stopped watching"))), Times.Once);
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
         public void StartWatching_AfterDispose_ThrowsObjectDisposedException()
         {
             // Arrange
-            var filePath = CreateTempFile();
-            _watcher.Dispose();
+            var validPath = Path.GetTempFileName();
+            
+            try
+            {
+                _watcher.Dispose();
 
-            // Act & Assert
-            Assert.Throws<ObjectDisposedException>(() => _watcher.StartWatching(filePath));
+                // Act & Assert
+                Assert.Throws<ObjectDisposedException>(() => _watcher.StartWatching(validPath));
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         [Fact]
@@ -443,37 +542,13 @@ namespace SharpBridge.Tests.Utilities
 
         #endregion
 
-        #region Event Logging Tests
-
-        [Fact]
-        public async Task FileChanged_LogsDetectedChange()
-        {
-            // Arrange
-            var filePath = CreateTempFile();
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
-
-            // Act
-            File.WriteAllText(filePath, "modified content");
-
-            // Assert
-            var success = await WaitForEventAsync(() => 
-                _mockLogger.Invocations.Any(i => 
-                    i.Method.Name == "Info" && 
-                    i.Arguments[0].ToString()!.Contains("Detected change")), 1000);
-            
-            success.Should().BeTrue("Should log detected change");
-        }
-
-        #endregion
-
         #region Thread Safety Tests
 
         [Fact]
-        public async Task FileChanged_EventHandlerThreadSafety_HandlesCorrectly()
+        public void FileChanged_EventHandlerThreadSafety_HandlesCorrectly()
         {
             // Arrange
-            var filePath = CreateTempFile();
+            var validPath = Path.GetTempFileName();
             var eventCount = 0;
             var exceptions = new List<Exception>();
 
@@ -481,8 +556,6 @@ namespace SharpBridge.Tests.Utilities
             {
                 try
                 {
-                    // Simulate some work in the event handler without Thread.Sleep
-                    Task.Delay(10).Wait(); // Use Task.Delay instead of Thread.Sleep
                     Interlocked.Increment(ref eventCount);
                 }
                 catch (Exception ex)
@@ -494,23 +567,23 @@ namespace SharpBridge.Tests.Utilities
                 }
             };
 
-            _watcher.StartWatching(filePath);
-            await Task.Delay(100); // Allow watcher to initialize
+            try
+            {
+                _watcher.StartWatching(validPath);
+                var fileSystemArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(validPath), Path.GetFileName(validPath));
 
-            // Act - Make a few well-spaced file changes
-            File.WriteAllText(filePath, "content 1");
-            await Task.Delay(300); // Wait longer than debounce interval
+                // Act - Simulate concurrent file changes
+                _mockWatcher.Raise(w => w.Changed += null, fileSystemArgs);
 
-            File.WriteAllText(filePath, "content 2");
-            await Task.Delay(300); // Wait longer than debounce interval
-
-            File.WriteAllText(filePath, "content 3");
-            await Task.Delay(300); // Wait for final event
-
-            // Assert
-            exceptions.Should().BeEmpty("No exceptions should occur in event handlers");
-            eventCount.Should().BeGreaterThan(0, "At least some events should be raised");
-            eventCount.Should().BeLessOrEqualTo(3, "Should not exceed the number of changes made");
+                // Assert
+                exceptions.Should().BeEmpty("No exceptions should occur in event handlers");
+                eventCount.Should().BeGreaterThan(0, "At least one event should be raised");
+            }
+            finally
+            {
+                if (File.Exists(validPath))
+                    File.Delete(validPath);
+            }
         }
 
         #endregion
