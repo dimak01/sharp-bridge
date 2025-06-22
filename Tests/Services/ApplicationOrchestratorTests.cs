@@ -802,7 +802,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                null,
+                null!,
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
@@ -822,7 +822,7 @@ namespace SharpBridge.Tests.Services
             // Arrange & Act & Assert
             Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
                 _vtubeStudioPCClientMock.Object,
-                null,
+                null!,
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _loggerMock.Object,
@@ -842,7 +842,7 @@ namespace SharpBridge.Tests.Services
             Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
                 _vtubeStudioPCClientMock.Object,
                 _vtubeStudioPhoneClientMock.Object,
-                null,
+                null!,
                 _phoneConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
@@ -862,7 +862,7 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPCClientMock.Object,
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
-                null,
+                null!,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
@@ -883,7 +883,7 @@ namespace SharpBridge.Tests.Services
                 _vtubeStudioPhoneClientMock.Object,
                 _transformationEngineMock.Object,
                 _phoneConfig,
-                null,
+                null!,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
@@ -903,7 +903,7 @@ namespace SharpBridge.Tests.Services
                 _transformationEngineMock.Object,
                 _phoneConfig,
                 _loggerMock.Object,
-                null,
+                null!,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
@@ -922,7 +922,7 @@ namespace SharpBridge.Tests.Services
                 _phoneConfig,
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
-                null,
+                null!,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
@@ -941,7 +941,7 @@ namespace SharpBridge.Tests.Services
                 _loggerMock.Object,
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
-                null,
+                null!,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
                 Mock.Of<IParameterColorService>(),
@@ -960,7 +960,7 @@ namespace SharpBridge.Tests.Services
                 _consoleRendererMock.Object,
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
-                null,
+                null!,
                 _consoleMock.Object,
                 Mock.Of<IParameterColorService>(),
                 Mock.Of<IExternalEditorService>()));
@@ -979,7 +979,7 @@ namespace SharpBridge.Tests.Services
                 _keyboardInputHandlerMock.Object,
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
-                null,
+                null!,
                 Mock.Of<IParameterColorService>(),
                 Mock.Of<IExternalEditorService>()));
         }
@@ -1938,7 +1938,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
-                    null,
+                    null!,
                     Mock.Of<IExternalEditorService>()));
 
             Assert.Equal("colorService", exception.ParamName);
@@ -1961,7 +1961,7 @@ namespace SharpBridge.Tests.Services
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
                     Mock.Of<IParameterColorService>(),
-                    null));
+                    null!));
 
             Assert.Equal("externalEditorService", exception.ParamName);
         }
@@ -2328,7 +2328,7 @@ namespace SharpBridge.Tests.Services
             // Act - Use reflection to call the private method
             var method = typeof(ApplicationOrchestrator).GetMethod("OpenTransformationConfigInEditor", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var task = (Task)method.Invoke(orchestrator, null);
+            var task = (Task)method!.Invoke(orchestrator, null)!;
             await task;
 
             // Assert
@@ -2349,7 +2349,7 @@ namespace SharpBridge.Tests.Services
             // Act - Use reflection to call the private method
             var method = typeof(ApplicationOrchestrator).GetMethod("OpenTransformationConfigInEditor", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var task = (Task)method.Invoke(orchestrator, null);
+            var task = (Task)method!.Invoke(orchestrator, null)!;
             await task;
 
             // Assert
@@ -2421,11 +2421,11 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
-        public void RegisterKeyboardShortcuts_CtrlAltE_OpensExternalEditor()
+        public async Task RegisterKeyboardShortcuts_CtrlAltE_OpensExternalEditor()
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
-            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
             
             _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);
@@ -2436,7 +2436,7 @@ namespace SharpBridge.Tests.Services
             shortcutAction?.Invoke();
 
             // Give async operation time to complete
-            Thread.Sleep(100);
+            await Task.Delay(100);
 
             // Assert
             _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(It.IsAny<string>()), Times.Once);
@@ -2445,7 +2445,7 @@ namespace SharpBridge.Tests.Services
         /// <summary>
         /// Helper method to get registered keyboard shortcut action for testing
         /// </summary>
-        private Action GetRegisteredShortcutAction(ConsoleKey key, ConsoleModifiers modifiers)
+        private Action? GetRegisteredShortcutAction(ConsoleKey key, ConsoleModifiers modifiers)
         {
             return _keyboardInputHandlerMock.Invocations
                 .Where(inv => inv.Method.Name == "RegisterShortcut" && 
@@ -2473,7 +2473,7 @@ namespace SharpBridge.Tests.Services
             // Act - Use reflection to call the private method
             var method = typeof(ApplicationOrchestrator).GetMethod("ReloadTransformationConfig", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var task = (Task)method.Invoke(orchestrator, null);
+            var task = (Task)method!.Invoke(orchestrator, null)!;
             await task;
 
             // Assert - The actual log message is "Error reloading transformation config"
@@ -2495,7 +2495,7 @@ namespace SharpBridge.Tests.Services
             // Initialize the service first time
             var method = typeof(ApplicationOrchestrator).GetMethod("InitializeColorServiceIfNeeded", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            method.Invoke(orchestrator, new object[] { trackingData });
+            method!.Invoke(orchestrator, new object[] { trackingData });
 
             // Reset mock to verify second call behavior
             _colorServiceMock.Reset();
@@ -2527,7 +2527,8 @@ namespace SharpBridge.Tests.Services
                 _externalEditorServiceMock.Object);
 
             // Act & Assert - Should not throw
-            orchestrator.Dispose();
+            var exception = Record.Exception(() => orchestrator.Dispose());
+            Assert.Null(exception);
         }
 
         #endregion
