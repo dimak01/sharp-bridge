@@ -150,7 +150,7 @@ namespace SharpBridge.Utilities
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
                 var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
-                builder.AppendLine($"Config File Path: {colorized_config_path}");
+                builder.AppendLine($"Config File Path (Ctrl+Alt+E to edit): {colorized_config_path}");
                 
                 var upToDateStatus = engineInfo.IsConfigUpToDate ? "Yes" : "No";
                 var colorizedStatus = engineInfo.IsConfigUpToDate 
