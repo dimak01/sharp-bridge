@@ -89,7 +89,7 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="commandLine">Full command line to parse</param>
         /// <returns>Tuple containing executable path and arguments</returns>
-        private (string executable, string arguments) ParseCommand(string commandLine)
+        private static (string executable, string arguments) ParseCommand(string commandLine)
         {
             if (string.IsNullOrWhiteSpace(commandLine))
             {
@@ -99,9 +99,9 @@ namespace SharpBridge.Services
             var trimmedCommand = commandLine.Trim();
 
             // Handle quoted executables
-            if (trimmedCommand.StartsWith("\""))
+            if (trimmedCommand.StartsWith('"'))
             {
-                var closingQuoteIndex = trimmedCommand.IndexOf("\"", 1);
+                var closingQuoteIndex = trimmedCommand.IndexOf('"', 1);
                 if (closingQuoteIndex > 0)
                 {
                     var executable = trimmedCommand.Substring(1, closingQuoteIndex - 1);
