@@ -16,6 +16,9 @@ namespace SharpBridge.Utilities
         /// <returns>Description from attribute or enum name as fallback</returns>
         public static string GetDescription(Enum enumValue)
         {
+            if (enumValue == null)
+                throw new ArgumentNullException(nameof(enumValue));
+
             var field = enumValue.GetType().GetField(enumValue.ToString());
             if (field == null)
                 return enumValue.ToString();
@@ -32,6 +35,13 @@ namespace SharpBridge.Utilities
         /// <returns>Description from attribute or property name as fallback</returns>
         public static string GetPropertyDescription(Type type, string propertyName)
         {
+            if (type == null)
+                throw new ArgumentNullException(nameof(type));
+            if (propertyName == null)
+                throw new ArgumentNullException(nameof(propertyName));
+            if (string.IsNullOrWhiteSpace(propertyName))
+                throw new ArgumentException("Property name cannot be null or whitespace.", nameof(propertyName));
+
             var property = type.GetProperty(propertyName);
             if (property == null)
                 return propertyName;
@@ -48,6 +58,9 @@ namespace SharpBridge.Utilities
         /// <returns>Description from attribute or property name as fallback</returns>
         public static string GetPropertyDescription(object instance, string propertyName)
         {
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
             return GetPropertyDescription(instance.GetType(), propertyName);
         }
     }
