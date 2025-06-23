@@ -6,6 +6,6 @@
     "CyclePhoneClientVerbosity": "Alt+O",
     "ReloadTransformationConfig": "Alt+K",
     "OpenConfigInEditor": "Ctrl+Alt+E",
-    "ShowShortcutHelp": "F1"
+    "ShowSystemHelp": "F1"
   }
 }
