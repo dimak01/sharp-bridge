@@ -29,6 +29,8 @@ namespace SharpBridge.Services
         private readonly ConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
+        private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
+        private readonly ApplicationConfig _applicationConfig;
 
         // Preferred console dimensions
         private const int PREFERRED_CONSOLE_WIDTH = 150;
@@ -60,6 +62,8 @@ namespace SharpBridge.Services
         /// <param name="console">Console abstraction for window management</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
         /// <param name="externalEditorService">Service for opening files in external editors</param>
+        /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
+        /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -72,7 +76,9 @@ namespace SharpBridge.Services
             IRecoveryPolicy recoveryPolicy,
             IConsole console,
             IParameterColorService colorService,
-            IExternalEditorService externalEditorService)
+            IExternalEditorService externalEditorService,
+            IShortcutConfigurationManager shortcutConfigurationManager,
+            ApplicationConfig applicationConfig)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -86,9 +92,14 @@ namespace SharpBridge.Services
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
+            _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
+            _applicationConfig = applicationConfig ?? throw new ArgumentNullException(nameof(applicationConfig));
 
             // Initialize console window manager
             _consoleWindowManager = new ConsoleWindowManager(_console);
+
+            // Load shortcut configuration
+            _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig);
         }
 
         /// <summary>
@@ -545,70 +556,96 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
-        /// Registers the keyboard shortcuts for the application
+        /// Registers the keyboard shortcuts for the application based on configuration
         /// </summary>
         private void RegisterKeyboardShortcuts()
         {
-            // Register Alt+T to cycle Transformation Engine verbosity
-            _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.T,
-                ConsoleModifiers.Alt,
-                () =>
+            var mappedShortcuts = _shortcutConfigurationManager.GetMappedShortcuts();
+
+            // Register each configured shortcut
+            foreach (var (action, keyMapping) in mappedShortcuts)
+            {
+                if (keyMapping == null)
+                {
+                    _logger.Debug("Skipping disabled shortcut for action: {0}", action);
+                    continue;
+                }
+
+                var (key, modifiers) = keyMapping.Value;
+                var actionMethod = GetActionMethod(action);
+                var description = GetActionDescription(action);
+
+                if (actionMethod != null)
+                {
+                    _keyboardInputHandler.RegisterShortcut(key, modifiers, actionMethod, description);
+                    _logger.Debug("Registered shortcut {0}+{1} for action: {2}", modifiers, key, action);
+                }
+            }
+
+            // Log any configuration issues
+            var issues = _shortcutConfigurationManager.GetConfigurationIssues();
+            if (issues.Count > 0)
+            {
+                _logger.Warning("Shortcut configuration issues detected: {0}", string.Join(", ", issues));
+            }
+        }
+
+        /// <summary>
+        /// Gets the action method for a specific shortcut action
+        /// </summary>
+        private Action? GetActionMethod(ShortcutAction action)
+        {
+            return action switch
+            {
+                ShortcutAction.CycleTransformationEngineVerbosity => () =>
                 {
                     var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
-                    if (transformationFormatter != null)
-                    {
-                        transformationFormatter.CycleVerbosity();
-                    }
-                },
-                "Cycle Transformation Engine verbosity"
-            );
-
-            // Register Alt+P to cycle PC client verbosity
-            _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.P,
-                ConsoleModifiers.Alt,
-                () =>
+                    transformationFormatter?.CycleVerbosity();
+                }
+                ,
+                ShortcutAction.CyclePCClientVerbosity => () =>
                 {
                     var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
-                    if (pcFormatter != null)
-                    {
-                        pcFormatter.CycleVerbosity();
-                    }
-                },
-                "Cycle PC client verbosity"
-            );
-
-            // Register Alt+O to cycle Phone client verbosity
-            _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.O,
-                ConsoleModifiers.Alt,
-                () =>
+                    pcFormatter?.CycleVerbosity();
+                }
+                ,
+                ShortcutAction.CyclePhoneClientVerbosity => () =>
                 {
                     var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
-                    if (phoneFormatter != null)
-                    {
-                        phoneFormatter.CycleVerbosity();
-                    }
-                },
-                "Cycle Phone client verbosity"
-            );
+                    phoneFormatter?.CycleVerbosity();
+                }
+                ,
+                ShortcutAction.ReloadTransformationConfig => () => _ = ReloadTransformationConfig(),
+                ShortcutAction.OpenConfigInEditor => () => _ = OpenTransformationConfigInEditor(),
+                ShortcutAction.ShowSystemHelp => () => ShowShortcutHelp(),
+                _ => null
+            };
+        }
 
-            // Register Alt+K to reload transformation config
-            _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.K,
-                ConsoleModifiers.Alt,
-                () => _ = ReloadTransformationConfig(),
-                "Reload transformation configuration"
-            );
+        /// <summary>
+        /// Gets the description for a specific shortcut action
+        /// </summary>
+        private static string GetActionDescription(ShortcutAction action)
+        {
+            return action switch
+            {
+                ShortcutAction.CycleTransformationEngineVerbosity => "Cycle Transformation Engine verbosity",
+                ShortcutAction.CyclePCClientVerbosity => "Cycle PC client verbosity",
+                ShortcutAction.CyclePhoneClientVerbosity => "Cycle Phone client verbosity",
+                ShortcutAction.ReloadTransformationConfig => "Reload transformation configuration",
+                ShortcutAction.OpenConfigInEditor => "Open transformation config in external editor",
+                ShortcutAction.ShowSystemHelp => "Show keyboard shortcuts help",
+                _ => action.ToString()
+            };
+        }
 
-            // Register Ctrl+Alt+E to open transformation config in external editor
-            _keyboardInputHandler.RegisterShortcut(
-                ConsoleKey.E,
-                ConsoleModifiers.Control | ConsoleModifiers.Alt,
-                () => _ = OpenTransformationConfigInEditor(),
-                "Open transformation config in external editor"
-            );
+        /// <summary>
+        /// Shows the keyboard shortcuts help system (F1 functionality)
+        /// </summary>
+        private void ShowShortcutHelp()
+        {
+            // TODO: Implement F1 help system in Phase 2
+            _logger.Info("Keyboard shortcuts help requested (F1 help system - coming in Phase 2)");
         }
 
         /// <summary>
