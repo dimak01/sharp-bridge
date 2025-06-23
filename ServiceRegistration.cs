@@ -135,6 +135,7 @@ namespace SharpBridge
             // Register shortcut services
             services.AddSingleton<IShortcutParser, ShortcutParser>();
             services.AddSingleton<IShortcutConfigurationManager, ShortcutConfigurationManager>();
+            services.AddSingleton<ISystemHelpRenderer, SystemHelpRenderer>();
 
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();

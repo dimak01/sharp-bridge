@@ -33,7 +33,7 @@ namespace SharpBridge.Utilities
             try
             {
                 var keyInfo = Console.ReadKey(true); // true means don't echo to screen
-                
+
                 var shortcutKey = (keyInfo.Key, keyInfo.Modifiers);
                 if (_shortcuts.TryGetValue(shortcutKey, out var shortcut))
                 {
@@ -58,13 +58,13 @@ namespace SharpBridge.Utilities
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
-                
+
             if (string.IsNullOrWhiteSpace(description))
                 throw new ArgumentException("Description cannot be null or whitespace", nameof(description));
-                
+
             var shortcutKey = (key, modifiers);
             _shortcuts[shortcutKey] = (action, description);
-            
+
             _logger.Debug("Registered shortcut: {0} + {1} - {2}", modifiers, key, description);
         }
 
@@ -76,5 +76,26 @@ namespace SharpBridge.Utilities
         {
             return _shortcuts.Select(s => (s.Key.Key, s.Key.Modifiers, s.Value.Description)).ToArray();
         }
+
+        /// <summary>
+        /// Checks if any key is pressed and consumes it (for help mode exit)
+        /// </summary>
+        /// <returns>True if a key was pressed and consumed</returns>
+        public bool ConsumeAnyKeyPress()
+        {
+            if (!Console.KeyAvailable)
+                return false;
+
+            try
+            {
+                Console.ReadKey(true); // Consume the key press without echoing
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error consuming key press", ex);
+                return false;
+            }
+        }
     }
-} 
+}

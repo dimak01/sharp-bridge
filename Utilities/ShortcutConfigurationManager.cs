@@ -130,20 +130,11 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Gets a human-readable display name for a shortcut action
+        /// Gets a human-readable display name for a shortcut action using Description attributes
         /// </summary>
         private static string GetActionDisplayName(ShortcutAction action)
         {
-            return action switch
-            {
-                ShortcutAction.CycleTransformationEngineVerbosity => "Cycle Transformation Engine verbosity",
-                ShortcutAction.CyclePCClientVerbosity => "Cycle PC client verbosity",
-                ShortcutAction.CyclePhoneClientVerbosity => "Cycle Phone client verbosity",
-                ShortcutAction.ReloadTransformationConfig => "Reload transformation config",
-                ShortcutAction.OpenConfigInEditor => "Open config in editor",
-                ShortcutAction.ShowSystemHelp => "Show shortcut help",
-                _ => action.ToString()
-            };
+            return AttributeHelper.GetDescription(action);
         }
     }
 }

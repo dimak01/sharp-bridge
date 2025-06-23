@@ -31,6 +31,7 @@ namespace SharpBridge.Services
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly ApplicationConfig _applicationConfig;
+        private readonly ISystemHelpRenderer _systemHelpRenderer;
 
         // Preferred console dimensions
         private const int PREFERRED_CONSOLE_WIDTH = 150;
@@ -45,6 +46,7 @@ namespace SharpBridge.Services
         private string _transformConfigPath = string.Empty; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
+        private bool _isShowingSystemHelp = false; // Track if currently displaying F1 help
 
 
         /// <summary>
@@ -64,6 +66,7 @@ namespace SharpBridge.Services
         /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
         /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
+        /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -78,7 +81,8 @@ namespace SharpBridge.Services
             IParameterColorService colorService,
             IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
-            ApplicationConfig applicationConfig)
+            ApplicationConfig applicationConfig,
+            ISystemHelpRenderer systemHelpRenderer)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -94,6 +98,7 @@ namespace SharpBridge.Services
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _applicationConfig = applicationConfig ?? throw new ArgumentNullException(nameof(applicationConfig));
+            _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
 
             // Initialize console window manager
             _consoleWindowManager = new ConsoleWindowManager(_console);
@@ -398,6 +403,12 @@ namespace SharpBridge.Services
         {
             try
             {
+                // Skip normal updates when showing system help
+                if (_isShowingSystemHelp)
+                {
+                    return;
+                }
+
                 // Get statistics from all components
                 var transformationStats = _transformationEngine.GetServiceStats();
                 var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
@@ -425,7 +436,31 @@ namespace SharpBridge.Services
         /// </summary>
         private void CheckForKeyboardInput()
         {
-            _keyboardInputHandler.CheckForKeyboardInput();
+            if (_isShowingSystemHelp)
+            {
+                // In help mode - any key exits help
+                if (_keyboardInputHandler.ConsumeAnyKeyPress())
+                {
+                    ExitSystemHelp();
+                }
+            }
+            else
+            {
+                // Normal mode - process shortcuts
+                _keyboardInputHandler.CheckForKeyboardInput();
+            }
+        }
+
+        /// <summary>
+        /// Exits system help mode and returns to normal display
+        /// </summary>
+        private void ExitSystemHelp()
+        {
+            _isShowingSystemHelp = false;
+            _logger.Debug("Exiting system help, returning to normal display");
+
+            // Clear console and let the normal update cycle refresh the display
+            _console.Clear();
         }
 
         /// <summary>
@@ -623,29 +658,49 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
-        /// Gets the description for a specific shortcut action
+        /// Gets the description for a specific shortcut action using Description attributes
         /// </summary>
         private static string GetActionDescription(ShortcutAction action)
         {
-            return action switch
-            {
-                ShortcutAction.CycleTransformationEngineVerbosity => "Cycle Transformation Engine verbosity",
-                ShortcutAction.CyclePCClientVerbosity => "Cycle PC client verbosity",
-                ShortcutAction.CyclePhoneClientVerbosity => "Cycle Phone client verbosity",
-                ShortcutAction.ReloadTransformationConfig => "Reload transformation configuration",
-                ShortcutAction.OpenConfigInEditor => "Open transformation config in external editor",
-                ShortcutAction.ShowSystemHelp => "Show keyboard shortcuts help",
-                _ => action.ToString()
-            };
+            return AttributeHelper.GetDescription(action);
         }
 
         /// <summary>
-        /// Shows the keyboard shortcuts help system (F1 functionality)
+        /// Shows the system help display (F1 functionality)
         /// </summary>
         private void ShowShortcutHelp()
         {
-            // TODO: Implement F1 help system in Phase 2
-            _logger.Info("Keyboard shortcuts help requested (F1 help system - coming in Phase 2)");
+            if (_isShowingSystemHelp)
+            {
+                // Already showing help, ignore additional F1 presses
+                return;
+            }
+
+            _isShowingSystemHelp = true;
+            _logger.Debug("Displaying system help (F1)");
+
+            // Force immediate console update to show help
+            UpdateConsoleWithSystemHelp();
+        }
+
+        /// <summary>
+        /// Updates the console display with system help content
+        /// </summary>
+        private void UpdateConsoleWithSystemHelp()
+        {
+            try
+            {
+                var consoleSize = _consoleWindowManager.GetCurrentSize();
+                var helpContent = _systemHelpRenderer.RenderSystemHelp(_applicationConfig, consoleSize.width);
+
+                _console.Clear();
+                _console.Write(helpContent);
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error displaying system help", ex);
+                _isShowingSystemHelp = false;
+            }
         }
 
         /// <summary>
