@@ -55,7 +55,7 @@ namespace SharpBridge.Utilities
             _mappedShortcuts.Clear();
 
             var defaultShortcuts = GetDefaultShortcuts();
-            var configShortcuts = config?.Shortcuts ?? new Dictionary<string, string>();
+            var configShortcuts = config?.Shortcuts;
 
             // Track used key combinations to detect duplicates
             var usedCombinations = new Dictionary<(ConsoleKey, ConsoleModifiers), ShortcutAction>();
@@ -64,12 +64,18 @@ namespace SharpBridge.Utilities
             {
                 var actionName = action.ToString();
 
-                // Try to get shortcut from config, fallback to default
-                var shortcutString = configShortcuts.TryGetValue(actionName, out var configValue)
-                    ? configValue
-                    : defaultShortcuts.TryGetValue(action, out var defaultValue)
-                        ? defaultValue
-                        : null;
+                // If config is null, use defaults; if config exists but action is missing, disable the shortcut
+                string? shortcutString;
+                if (configShortcuts == null)
+                {
+                    // No config provided - use defaults
+                    shortcutString = defaultShortcuts.TryGetValue(action, out var defaultValue) ? defaultValue : null;
+                }
+                else
+                {
+                    // Config provided - only use what's explicitly defined
+                    shortcutString = configShortcuts.TryGetValue(actionName, out var configValue) ? configValue : null;
+                }
 
                 if (string.IsNullOrWhiteSpace(shortcutString))
                 {
