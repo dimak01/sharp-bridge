@@ -18,11 +18,30 @@ namespace SharpBridge.Utilities
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
 
+        // Counter Keys
+        private const string TOTAL_MESSAGES_KEY = "Total Messages";
+        private const string UPTIME_SECONDS_KEY = "Uptime (seconds)";
 
+        // Display Limits
+        private const int PARAMETER_DISPLAY_COUNT_NORMAL = 15;
+
+        // Column Width Constants
+        private const int PARAMETER_NAME_COLUMN_MIN_WIDTH = 8;
+        private const int PARAMETER_NAME_COLUMN_MAX_WIDTH = 20;
+        private const int PARAMETER_VALUE_COLUMN_MIN_WIDTH = 8;
+        private const int PARAMETER_VALUE_COLUMN_MAX_WIDTH = 15;
+
+        // Table Formatting Constants
+        private const int TABLE_MINIMUM_ROWS = 1;
+        private const int TABLE_MINIMUM_WIDTH = 20;
+
+        // Service Display Constants
+        private const string SERVICE_NAME = "Phone Client";
 
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
         private readonly IParameterColorService _colorService;
+        private readonly IShortcutConfigurationManager _shortcutManager;
 
         /// <summary>
         /// Gets or sets the current time for testing purposes. If null, uses DateTime.UtcNow.
@@ -35,11 +54,13 @@ namespace SharpBridge.Utilities
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="colorService">Parameter color service for colored display</param>
-        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService)
+        /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
+        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
+            _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
         }
 
         /// <summary>
@@ -71,8 +92,11 @@ namespace SharpBridge.Utilities
 
             var builder = new StringBuilder();
 
+            // Get dynamic shortcut instead of hardcoded "Alt+O"
+            var verbosityShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CyclePhoneClientVerbosity);
+
             // Header with service status
-            builder.AppendLine(FormatServiceHeader("iPhone Tracking Data", stats.Status, "Alt+O"));
+            builder.AppendLine(FormatServiceHeader(SERVICE_NAME, stats.Status, verbosityShortcut));
 
             // Tracking data details
             if (stats.CurrentEntity is PhoneTrackingInfo phoneTrackingInfo)
@@ -236,10 +260,6 @@ namespace SharpBridge.Utilities
         {
             return CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : TARGET_ROWS_NORMAL;
         }
-
-
-
-
 
         /// <summary>
         /// Formats a service header with status and color coding
