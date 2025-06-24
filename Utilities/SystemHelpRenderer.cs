@@ -14,22 +14,16 @@ namespace SharpBridge.Utilities
     public class SystemHelpRenderer : ISystemHelpRenderer
     {
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
-        private readonly IShortcutParser _shortcutParser;
         private readonly ITableFormatter _tableFormatter;
 
         /// <summary>
         /// Initializes a new instance of the SystemHelpRenderer
         /// </summary>
-        /// <param name="shortcutConfigurationManager">Manager for shortcut configurations</param>
-        /// <param name="shortcutParser">Parser for formatting shortcut strings</param>
-        /// <param name="tableFormatter">Formatter for creating tables</param>
-        public SystemHelpRenderer(
-            IShortcutConfigurationManager shortcutConfigurationManager,
-            IShortcutParser shortcutParser,
-            ITableFormatter tableFormatter)
+        /// <param name="shortcutConfigurationManager">Configuration manager for shortcut information</param>
+        /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
+        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, ITableFormatter tableFormatter)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
-            _shortcutParser = shortcutParser ?? throw new ArgumentNullException(nameof(shortcutParser));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
         }
 
@@ -57,7 +51,7 @@ namespace SharpBridge.Utilities
             builder.AppendLine();
 
             // Keyboard Shortcuts section
-            builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
+            builder.AppendLine(RenderShortcutsTable(consoleWidth));
 
             // Footer
             builder.AppendLine();
@@ -112,19 +106,16 @@ namespace SharpBridge.Utilities
         public string RenderKeyboardShortcuts(int consoleWidth)
         {
             var builder = new StringBuilder();
-
-            var mappedShortcuts = _shortcutConfigurationManager.GetMappedShortcuts();
-            var incorrectShortcuts = _shortcutConfigurationManager.GetIncorrectShortcuts();
-
-            // Create shortcut display data
             var shortcutRows = new List<ShortcutDisplayRow>();
 
-            foreach (var (action, shortcut) in mappedShortcuts)
+            var mappedShortcuts = _shortcutConfigurationManager.GetMappedShortcuts();
+
+            foreach (var action in mappedShortcuts.Keys)
             {
                 var row = new ShortcutDisplayRow
                 {
                     Action = GetActionDisplayName(action),
-                    Shortcut = shortcut != null ? _shortcutParser.FormatShortcut(shortcut.Key, shortcut.Modifiers) : GetInvalidShortcutDisplay(action, incorrectShortcuts),
+                    Shortcut = _shortcutConfigurationManager.GetDisplayString(action),
                     Status = GetStatusDisplay(action)
                 };
                 shortcutRows.Add(row);
@@ -156,6 +147,14 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
+        /// Renders the shortcuts table section of the help display
+        /// </summary>
+        private string RenderShortcutsTable(int consoleWidth)
+        {
+            return RenderKeyboardShortcuts(consoleWidth);
+        }
+
+        /// <summary>
         /// Gets a human-readable display name for a shortcut action using Description attributes
         /// </summary>
         private static string GetActionDisplayName(ShortcutAction action)
@@ -176,18 +175,6 @@ namespace SharpBridge.Utilities
 
             var padding = (width - text.Length) / 2;
             return new string(' ', padding) + text;
-        }
-
-        /// <summary>
-        /// Gets the display text for invalid shortcuts, showing the original string with an indicator
-        /// </summary>
-        private static string GetInvalidShortcutDisplay(ShortcutAction action, Dictionary<ShortcutAction, string> incorrectShortcuts)
-        {
-            if (incorrectShortcuts.TryGetValue(action, out var invalidString))
-            {
-                return $"{invalidString} (Invalid)";
-            }
-            return "None";
         }
 
         /// <summary>
@@ -216,6 +203,4 @@ namespace SharpBridge.Utilities
             public string Status { get; set; } = string.Empty;
         }
     }
-
-
 }

@@ -54,6 +54,29 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
+        /// Gets the display string for a shortcut action (e.g., "Alt+T", "None", "Ctrl+K (Invalid)")
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <returns>Human-readable shortcut string for display</returns>
+        public string GetDisplayString(ShortcutAction action)
+        {
+            var mappedShortcuts = GetMappedShortcuts();
+            var incorrectShortcuts = GetIncorrectShortcuts();
+
+            if (mappedShortcuts[action] != null)
+            {
+                return _parser.FormatShortcut(mappedShortcuts[action]!);
+            }
+
+            if (incorrectShortcuts.TryGetValue(action, out var invalidString))
+            {
+                return $"{invalidString} (Invalid)";
+            }
+
+            return "None";
+        }
+
+        /// <summary>
         /// Gets the status of a specific shortcut action
         /// </summary>
         /// <param name="action">The shortcut action to check</param>
@@ -92,69 +115,78 @@ namespace SharpBridge.Utilities
 
             var defaultShortcuts = GetDefaultShortcuts();
             var configShortcuts = config?.Shortcuts;
-            var usedCombinations = new Dictionary<(ConsoleKey, ConsoleModifiers), ShortcutAction>();
+            var usedCombinations = new Dictionary<Shortcut, ShortcutAction>(ShortcutComparer.Instance);
 
             foreach (var action in Enum.GetValues<ShortcutAction>())
             {
                 var actionName = action.ToString();
 
                 // Determine source: config vs defaults vs missing
-                string? shortcutString;
+                Shortcut? shortcut;
+                string? originalString;
+
                 if (configShortcuts == null)
                 {
                     // No config - use defaults
-                    var defaultShortcut = defaultShortcuts[action];
-                    shortcutString = _parser.FormatShortcut(defaultShortcut.Key, defaultShortcut.Modifiers);
+                    shortcut = defaultShortcuts[action];
+                    originalString = _parser.FormatShortcut(shortcut);
                 }
                 else
                 {
                     // Config exists - only use explicitly defined shortcuts
-                    shortcutString = configShortcuts.TryGetValue(actionName, out var configValue) ? configValue : null;
+                    originalString = configShortcuts.TryGetValue(actionName, out var configValue) ? configValue : null;
+
+                    if (string.IsNullOrWhiteSpace(originalString))
+                    {
+                        shortcut = null;
+                    }
+                    else
+                    {
+                        shortcut = _parser.ParseShortcut(originalString);
+                    }
                 }
 
-                if (string.IsNullOrWhiteSpace(shortcutString))
+                // Handle disabled shortcuts
+                if (shortcut == null)
                 {
                     _mappedShortcuts[action] = null;
-                    _explicitlyDisabled.Add(action);
-                    _configurationIssues.Add($"{GetActionDisplayName(action)}: No shortcut defined"); // Legacy
-                    _logger.Debug("No shortcut defined for action: {0}", action);
+
+                    if (string.IsNullOrWhiteSpace(originalString))
+                    {
+                        _explicitlyDisabled.Add(action);
+                        _configurationIssues.Add($"{GetActionDisplayName(action)}: No shortcut defined"); // Legacy
+                        _logger.Debug("No shortcut defined for action: {0}", action);
+                    }
+                    else
+                    {
+                        _incorrectShortcuts[action] = originalString;
+                        _configurationIssues.Add($"{GetActionDisplayName(action)}: Invalid shortcut format '{originalString}'"); // Legacy
+                        _logger.Warning("Invalid shortcut format for {0}: {1}", action, originalString);
+                    }
                     continue;
                 }
 
-                var parsed = _parser.ParseShortcut(shortcutString);
-                if (parsed == null)
+                // Handle conflicts - simple resolution: first valid wins
+                if (usedCombinations.TryGetValue(shortcut, out var conflictingAction))
                 {
                     _mappedShortcuts[action] = null;
-                    _incorrectShortcuts[action] = shortcutString;
-                    _configurationIssues.Add($"{GetActionDisplayName(action)}: Invalid shortcut format '{shortcutString}'"); // Legacy
-                    _logger.Warning("Invalid shortcut format for {0}: {1}", action, shortcutString);
+                    _incorrectShortcuts[action] = originalString!; // Treat as invalid due to conflict
+                    _configurationIssues.Add($"{GetActionDisplayName(action)}: Shortcut '{originalString}' conflicts with {GetActionDisplayName(conflictingAction)}"); // Legacy
+                    _logger.Warning("Duplicate shortcut {0} for actions {1} and {2}, disabling {1}", originalString!, action, conflictingAction);
                     continue;
                 }
 
-                var (key, modifiers) = parsed.Value;
-                var combination = (key, modifiers);
-
-                // Simple conflict resolution: first valid wins
-                if (usedCombinations.ContainsKey(combination))
-                {
-                    _mappedShortcuts[action] = null;
-                    _incorrectShortcuts[action] = shortcutString; // Treat as invalid
-                    _configurationIssues.Add($"{GetActionDisplayName(action)}: Shortcut '{shortcutString}' conflicts with {GetActionDisplayName(usedCombinations[combination])}"); // Legacy
-                    _logger.Warning("Duplicate shortcut {0} for actions {1} and {2}, disabling {1}", shortcutString, action, usedCombinations[combination]);
-                    continue;
-                }
-
-                // Success
-                var shortcut = new Shortcut(key, modifiers);
+                // Success - register the shortcut
                 _mappedShortcuts[action] = shortcut;
-                usedCombinations[combination] = action;
-                _logger.Debug("Mapped shortcut {0} to action {1}", shortcutString, action);
+                usedCombinations[shortcut] = action;
+                _logger.Debug("Mapped shortcut {0} to action {1}", originalString!, action);
             }
 
             // Log summary
             var enabledCount = _mappedShortcuts.Values.Count(v => v != null);
             var totalCount = _mappedShortcuts.Count;
-            _logger.Info("Loaded {0}/{1} shortcuts successfully, {2} issues found", enabledCount, totalCount, _incorrectShortcuts.Count + _explicitlyDisabled.Count);
+            _logger.Info("Loaded {0}/{1} shortcuts successfully, {2} issues found",
+                        enabledCount, totalCount, _incorrectShortcuts.Count + _explicitlyDisabled.Count);
         }
 
         /// <summary>
@@ -191,8 +223,6 @@ namespace SharpBridge.Utilities
                 [ShortcutAction.ShowSystemHelp] = "F1"
             };
         }
-
-
 
         /// <summary>
         /// Gets a human-readable display name for a shortcut action using Description attributes

@@ -14,45 +14,63 @@ namespace SharpBridge.Tests.Utilities
     public class SystemHelpRendererTests
     {
         private readonly Mock<IShortcutConfigurationManager> _shortcutManagerMock;
-        private readonly Mock<IShortcutParser> _shortcutParserMock;
         private readonly Mock<ITableFormatter> _tableFormatterMock;
         private readonly SystemHelpRenderer _renderer;
 
         public SystemHelpRendererTests()
         {
             _shortcutManagerMock = new Mock<IShortcutConfigurationManager>();
-            _shortcutParserMock = new Mock<IShortcutParser>();
             _tableFormatterMock = new Mock<ITableFormatter>();
-            _renderer = new SystemHelpRenderer(_shortcutManagerMock.Object, _shortcutParserMock.Object, _tableFormatterMock.Object);
+            _renderer = new SystemHelpRenderer(_shortcutManagerMock.Object, _tableFormatterMock.Object);
         }
 
         #region Constructor Tests
 
         [Fact]
-        public void Constructor_WithNullShortcutManager_ThrowsArgumentNullException()
+        public void Constructor_WithNullShortcutConfigurationManager_ThrowsArgumentNullException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                new SystemHelpRenderer(null!, _shortcutParserMock.Object, _tableFormatterMock.Object));
-            exception.ParamName.Should().Be("shortcutConfigurationManager");
-        }
-
-        [Fact]
-        public void Constructor_WithNullShortcutParser_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                new SystemHelpRenderer(_shortcutManagerMock.Object, null!, _tableFormatterMock.Object));
-            exception.ParamName.Should().Be("shortcutParser");
+            // Arrange & Act & Assert
+            var tableFormatterMock = new Mock<ITableFormatter>();
+            Action act = () => new SystemHelpRenderer(null!, tableFormatterMock.Object);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutConfigurationManager");
         }
 
         [Fact]
         public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                new SystemHelpRenderer(_shortcutManagerMock.Object, _shortcutParserMock.Object, null!));
-            exception.ParamName.Should().Be("tableFormatter");
+            // Arrange & Act & Assert
+            var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, null!);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
+        }
+
+        [Fact]
+        public void Constructor_WithValidParameters_CreatesInstance()
+        {
+            // Arrange & Act & Assert
+            var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
+            var tableFormatterMock = new Mock<ITableFormatter>();
+            var renderer = new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, tableFormatterMock.Object);
+            renderer.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void RenderApplicationConfiguration_WithValidConfig_ReturnsFormattedString()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+
+            // Act
+            var result = _renderer.RenderApplicationConfiguration(config);
+
+            // Assert
+            result.Should().NotBeNullOrEmpty();
+            result.Should().Contain("EditorCommand");
+            result.Should().Contain("notepad.exe");
         }
 
         #endregion
@@ -81,8 +99,8 @@ namespace SharpBridge.Tests.Utilities
             _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(incorrectShortcuts);
             _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity)).Returns(ShortcutStatus.Active);
             _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.ExplicitlyDisabled);
-            _shortcutParserMock.Setup(x => x.FormatShortcut(ConsoleKey.T, ConsoleModifiers.Alt))
-                .Returns("Alt+T");
+            _shortcutManagerMock.Setup(x => x.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity)).Returns("Alt+T");
+            _shortcutManagerMock.Setup(x => x.GetDisplayString(ShortcutAction.ShowSystemHelp)).Returns("None");
             _tableFormatterMock.Setup(x => x.AppendTable(
     It.IsAny<StringBuilder>(),
     It.IsAny<string>(),
