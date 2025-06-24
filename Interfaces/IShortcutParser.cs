@@ -1,26 +1,26 @@
 using System;
+using SharpBridge.Models;
 
 namespace SharpBridge.Interfaces
 {
     /// <summary>
-    /// Interface for parsing keyboard shortcut strings into console key combinations
+    /// Interface for parsing keyboard shortcut strings into Shortcut objects
     /// </summary>
     public interface IShortcutParser
     {
         /// <summary>
-        /// Parses a shortcut string into console key and modifiers
+        /// Parses a shortcut string into a Shortcut object
         /// </summary>
         /// <param name="shortcutString">Shortcut string to parse (e.g., "Alt+T", "Ctrl+Alt+E", "F1")</param>
-        /// <returns>Tuple containing the console key and modifiers, or null if parsing failed</returns>
-        (ConsoleKey Key, ConsoleModifiers Modifiers)? ParseShortcut(string shortcutString);
+        /// <returns>Shortcut object, or null if parsing failed</returns>
+        Shortcut? ParseShortcut(string shortcutString);
 
         /// <summary>
-        /// Formats a console key and modifiers combination into a readable string
+        /// Formats a Shortcut object into a readable string
         /// </summary>
-        /// <param name="key">The console key</param>
-        /// <param name="modifiers">The modifier keys</param>
+        /// <param name="shortcut">The shortcut to format</param>
         /// <returns>Formatted shortcut string (e.g., "Alt+T")</returns>
-        string FormatShortcut(ConsoleKey key, ConsoleModifiers modifiers);
+        string FormatShortcut(Shortcut shortcut);
 
         /// <summary>
         /// Validates whether a shortcut string can be parsed successfully

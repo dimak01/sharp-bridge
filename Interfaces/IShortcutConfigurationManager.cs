@@ -22,6 +22,13 @@ namespace SharpBridge.Interfaces
         Dictionary<ShortcutAction, string> GetIncorrectShortcuts();
 
         /// <summary>
+        /// Gets the display string for a shortcut action (e.g., "Alt+T", "None", "Ctrl+K (Invalid)")
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <returns>Human-readable shortcut string for display</returns>
+        string GetDisplayString(ShortcutAction action);
+
+        /// <summary>
         /// Loads shortcut configuration from the provided application configuration
         /// </summary>
         /// <param name="config">Application configuration containing shortcut definitions</param>

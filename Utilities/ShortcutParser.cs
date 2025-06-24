@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using SharpBridge.Interfaces;
+using SharpBridge.Models;
 
 namespace SharpBridge.Utilities
 {
@@ -11,11 +12,11 @@ namespace SharpBridge.Utilities
     public class ShortcutParser : IShortcutParser
     {
         /// <summary>
-        /// Parses a shortcut string into console key and modifiers
+        /// Parses a shortcut string into a Shortcut object
         /// </summary>
         /// <param name="shortcutString">Shortcut string to parse (e.g., "Alt+T", "Ctrl+Alt+E", "F1")</param>
-        /// <returns>Tuple containing the console key and modifiers, or null if parsing failed</returns>
-        public (ConsoleKey Key, ConsoleModifiers Modifiers)? ParseShortcut(string shortcutString)
+        /// <returns>Shortcut object, or null if parsing failed</returns>
+        public Shortcut? ParseShortcut(string shortcutString)
         {
             if (string.IsNullOrWhiteSpace(shortcutString))
                 return null;
@@ -50,7 +51,7 @@ namespace SharpBridge.Utilities
                     modifiers |= modifier;
                 }
 
-                return (consoleKey, modifiers);
+                return new Shortcut(consoleKey, modifiers);
             }
             catch
             {
@@ -59,25 +60,27 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Formats a console key and modifiers combination into a readable string
+        /// Formats a Shortcut object into a readable string
         /// </summary>
-        /// <param name="key">The console key</param>
-        /// <param name="modifiers">The modifier keys</param>
+        /// <param name="shortcut">The shortcut to format</param>
         /// <returns>Formatted shortcut string (e.g., "Alt+T")</returns>
-        public string FormatShortcut(ConsoleKey key, ConsoleModifiers modifiers)
+        public string FormatShortcut(Shortcut shortcut)
         {
+            if (shortcut == null)
+                throw new ArgumentNullException(nameof(shortcut));
+
             var parts = new List<string>();
 
             // Add modifiers in consistent order
-            if ((modifiers & ConsoleModifiers.Control) != 0)
+            if ((shortcut.Modifiers & ConsoleModifiers.Control) != 0)
                 parts.Add("Ctrl");
-            if ((modifiers & ConsoleModifiers.Alt) != 0)
+            if ((shortcut.Modifiers & ConsoleModifiers.Alt) != 0)
                 parts.Add("Alt");
-            if ((modifiers & ConsoleModifiers.Shift) != 0)
+            if ((shortcut.Modifiers & ConsoleModifiers.Shift) != 0)
                 parts.Add("Shift");
 
             // Add the key
-            parts.Add(FormatConsoleKey(key));
+            parts.Add(FormatConsoleKey(shortcut.Key));
 
             return string.Join("+", parts);
         }
