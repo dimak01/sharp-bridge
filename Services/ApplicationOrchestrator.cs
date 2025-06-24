@@ -598,30 +598,30 @@ namespace SharpBridge.Services
             var mappedShortcuts = _shortcutConfigurationManager.GetMappedShortcuts();
 
             // Register each configured shortcut
-            foreach (var (action, keyMapping) in mappedShortcuts)
+            foreach (var (action, shortcut) in mappedShortcuts)
             {
-                if (keyMapping == null)
+                if (shortcut == null)
                 {
                     _logger.Debug("Skipping disabled shortcut for action: {0}", action);
                     continue;
                 }
 
-                var (key, modifiers) = keyMapping.Value;
                 var actionMethod = GetActionMethod(action);
                 var description = GetActionDescription(action);
 
                 if (actionMethod != null)
                 {
-                    _keyboardInputHandler.RegisterShortcut(key, modifiers, actionMethod, description);
-                    _logger.Debug("Registered shortcut {0}+{1} for action: {2}", modifiers, key, action);
+                    _keyboardInputHandler.RegisterShortcut(shortcut.Key, shortcut.Modifiers, actionMethod, description);
+                    _logger.Debug("Registered shortcut {0}+{1} for action: {2}", shortcut.Modifiers, shortcut.Key, action);
                 }
             }
 
-            // Log any configuration issues
-            var issues = _shortcutConfigurationManager.GetConfigurationIssues();
-            if (issues.Count > 0)
+            // Log any configuration issues using new status system
+            var incorrectShortcuts = _shortcutConfigurationManager.GetIncorrectShortcuts();
+            if (incorrectShortcuts.Count > 0)
             {
-                _logger.Warning("Shortcut configuration issues detected: {0}", string.Join(", ", issues));
+                var invalidActions = incorrectShortcuts.Keys.Select(action => $"{action}: {incorrectShortcuts[action]}");
+                _logger.Warning("Invalid shortcut configurations detected: {0}", string.Join(", ", invalidActions));
             }
         }
 

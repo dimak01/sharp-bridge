@@ -62,12 +62,18 @@ namespace SharpBridge.Tests.Utilities
             defaults.Should().ContainKey(ShortcutAction.OpenConfigInEditor);
             defaults.Should().ContainKey(ShortcutAction.ShowSystemHelp);
 
-            defaults[ShortcutAction.CycleTransformationEngineVerbosity].Should().Be("Alt+T");
-            defaults[ShortcutAction.CyclePCClientVerbosity].Should().Be("Alt+P");
-            defaults[ShortcutAction.CyclePhoneClientVerbosity].Should().Be("Alt+O");
-            defaults[ShortcutAction.ReloadTransformationConfig].Should().Be("Alt+K");
-            defaults[ShortcutAction.OpenConfigInEditor].Should().Be("Ctrl+Alt+E");
-            defaults[ShortcutAction.ShowSystemHelp].Should().Be("F1");
+            defaults[ShortcutAction.CycleTransformationEngineVerbosity].Key.Should().Be(ConsoleKey.T);
+            defaults[ShortcutAction.CycleTransformationEngineVerbosity].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.CyclePCClientVerbosity].Key.Should().Be(ConsoleKey.P);
+            defaults[ShortcutAction.CyclePCClientVerbosity].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.CyclePhoneClientVerbosity].Key.Should().Be(ConsoleKey.O);
+            defaults[ShortcutAction.CyclePhoneClientVerbosity].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.ReloadTransformationConfig].Key.Should().Be(ConsoleKey.K);
+            defaults[ShortcutAction.ReloadTransformationConfig].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.OpenConfigInEditor].Key.Should().Be(ConsoleKey.E);
+            defaults[ShortcutAction.OpenConfigInEditor].Modifiers.Should().Be(ConsoleModifiers.Control | ConsoleModifiers.Alt);
+            defaults[ShortcutAction.ShowSystemHelp].Key.Should().Be(ConsoleKey.F1);
+            defaults[ShortcutAction.ShowSystemHelp].Modifiers.Should().Be(ConsoleModifiers.None);
         }
 
         #endregion
@@ -98,18 +104,31 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             var mappings = _manager.GetMappedShortcuts();
             mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().NotBeNull();
-            mappings[ShortcutAction.CycleTransformationEngineVerbosity]!.Value.Key.Should().Be(ConsoleKey.T);
-            mappings[ShortcutAction.CycleTransformationEngineVerbosity]!.Value.Modifiers.Should().Be(ConsoleModifiers.Alt);
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity]!.Key.Should().Be(ConsoleKey.T);
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity]!.Modifiers.Should().Be(ConsoleModifiers.Alt);
 
             mappings[ShortcutAction.CyclePCClientVerbosity].Should().NotBeNull();
-            mappings[ShortcutAction.CyclePCClientVerbosity]!.Value.Key.Should().Be(ConsoleKey.P);
-            mappings[ShortcutAction.CyclePCClientVerbosity]!.Value.Modifiers.Should().Be(ConsoleModifiers.Alt);
+            mappings[ShortcutAction.CyclePCClientVerbosity]!.Key.Should().Be(ConsoleKey.P);
+            mappings[ShortcutAction.CyclePCClientVerbosity]!.Modifiers.Should().Be(ConsoleModifiers.Alt);
         }
 
         [Fact]
         public void LoadFromConfiguration_WithNullConfig_UsesDefaults()
         {
-            // Arrange
+            // Arrange - Setup parser to format and parse default shortcuts
+            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.T, ConsoleModifiers.Alt))
+                .Returns("Alt+T");
+            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.P, ConsoleModifiers.Alt))
+                .Returns("Alt+P");
+            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.O, ConsoleModifiers.Alt))
+                .Returns("Alt+O");
+            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.K, ConsoleModifiers.Alt))
+                .Returns("Alt+K");
+            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt))
+                .Returns("Ctrl+Alt+E");
+            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.F1, ConsoleModifiers.None))
+                .Returns("F1");
+
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
                 .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
@@ -154,8 +173,12 @@ namespace SharpBridge.Tests.Utilities
             var mappings = _manager.GetMappedShortcuts();
             mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().BeNull();
 
-            var issues = _manager.GetConfigurationIssues();
-            issues.Should().Contain(issue => issue.Contains("Invalid shortcut format"));
+            var status = _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity);
+            status.Should().Be(ShortcutStatus.Invalid);
+
+            var incorrectShortcuts = _manager.GetIncorrectShortcuts();
+            incorrectShortcuts.Should().ContainKey(ShortcutAction.CycleTransformationEngineVerbosity);
+            incorrectShortcuts[ShortcutAction.CycleTransformationEngineVerbosity].Should().Be("InvalidShortcut");
         }
 
         [Fact]
@@ -182,8 +205,12 @@ namespace SharpBridge.Tests.Utilities
             var enabledShortcuts = mappings.Values.Count(v => v != null);
             enabledShortcuts.Should().Be(1); // Only one should be enabled
 
-            var issues = _manager.GetConfigurationIssues();
-            issues.Should().Contain(issue => issue.Contains("conflicts with"));
+            // First action should be active, second should be invalid due to conflict
+            var firstStatus = _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity);
+            var secondStatus = _manager.GetShortcutStatus(ShortcutAction.CyclePCClientVerbosity);
+
+            (firstStatus == ShortcutStatus.Active || secondStatus == ShortcutStatus.Active).Should().BeTrue("One should be active");
+            (firstStatus == ShortcutStatus.Invalid || secondStatus == ShortcutStatus.Invalid).Should().BeTrue("One should be invalid due to conflict");
         }
 
         [Fact]
@@ -205,8 +232,8 @@ namespace SharpBridge.Tests.Utilities
             var mappings = _manager.GetMappedShortcuts();
             mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().BeNull();
 
-            var issues = _manager.GetConfigurationIssues();
-            issues.Should().Contain(issue => issue.Contains("No shortcut defined"));
+            var status = _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity);
+            status.Should().Be(ShortcutStatus.ExplicitlyDisabled);
         }
 
         [Fact]
@@ -244,7 +271,8 @@ namespace SharpBridge.Tests.Utilities
             {
                 Shortcuts = new Dictionary<string, string>
                 {
-                    ["CycleTransformationEngineVerbosity"] = "Alt+T"
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "InvalidShortcut" // This will create an incorrect shortcut
                 }
             };
 
@@ -260,23 +288,26 @@ namespace SharpBridge.Tests.Utilities
                 .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
                 .Returns((ConsoleKey.P, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
 
             // Act
             _manager.LoadFromConfiguration(firstConfig);
             var firstMappings = _manager.GetMappedShortcuts();
-            var firstIssues = _manager.GetConfigurationIssues();
+            var firstIncorrectShortcuts = _manager.GetIncorrectShortcuts();
 
             _manager.LoadFromConfiguration(secondConfig);
             var secondMappings = _manager.GetMappedShortcuts();
-            var secondIssues = _manager.GetConfigurationIssues();
+            var secondIncorrectShortcuts = _manager.GetIncorrectShortcuts();
 
             // Assert
             firstMappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().NotBeNull();
             secondMappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().BeNull();
             secondMappings[ShortcutAction.CyclePCClientVerbosity].Should().NotBeNull();
 
-            // Issues should be cleared between loads
-            secondIssues.Should().NotBeEquivalentTo(firstIssues);
+            // State should be cleared between loads - first load has invalid shortcut, second doesn't
+            firstIncorrectShortcuts.Should().ContainKey(ShortcutAction.CyclePCClientVerbosity);
+            secondIncorrectShortcuts.Should().NotContainKey(ShortcutAction.CyclePCClientVerbosity);
         }
 
         #endregion
@@ -311,10 +342,10 @@ namespace SharpBridge.Tests.Utilities
 
         #endregion
 
-        #region GetConfigurationIssues Tests
+        #region New Interface Methods Tests
 
         [Fact]
-        public void GetConfigurationIssues_ReturnsDefensiveCopy()
+        public void GetIncorrectShortcuts_ReturnsDefensiveCopy()
         {
             // Arrange
             var config = new ApplicationConfig
@@ -331,12 +362,39 @@ namespace SharpBridge.Tests.Utilities
             _manager.LoadFromConfiguration(config);
 
             // Act
-            var issues1 = _manager.GetConfigurationIssues();
-            var issues2 = _manager.GetConfigurationIssues();
+            var incorrectShortcuts1 = _manager.GetIncorrectShortcuts();
+            var incorrectShortcuts2 = _manager.GetIncorrectShortcuts();
 
             // Assert
-            issues1.Should().NotBeSameAs(issues2);
-            issues1.Should().BeEquivalentTo(issues2);
+            incorrectShortcuts1.Should().NotBeSameAs(incorrectShortcuts2);
+            incorrectShortcuts1.Should().BeEquivalentTo(incorrectShortcuts2);
+        }
+
+        [Fact]
+        public void GetShortcutStatus_ReturnsCorrectStatus()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "InvalidShortcut",
+                    // CyclePhoneClientVerbosity not defined (explicitly disabled)
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
+
+            _manager.LoadFromConfiguration(config);
+
+            // Act & Assert
+            _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity).Should().Be(ShortcutStatus.Active);
+            _manager.GetShortcutStatus(ShortcutAction.CyclePCClientVerbosity).Should().Be(ShortcutStatus.Invalid);
+            _manager.GetShortcutStatus(ShortcutAction.CyclePhoneClientVerbosity).Should().Be(ShortcutStatus.ExplicitlyDisabled);
         }
 
         #endregion
