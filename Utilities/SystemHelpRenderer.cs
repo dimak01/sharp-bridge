@@ -114,18 +114,18 @@ namespace SharpBridge.Utilities
             var builder = new StringBuilder();
 
             var mappedShortcuts = _shortcutConfigurationManager.GetMappedShortcuts();
-            var configurationIssues = _shortcutConfigurationManager.GetConfigurationIssues();
+            var incorrectShortcuts = _shortcutConfigurationManager.GetIncorrectShortcuts();
 
             // Create shortcut display data
             var shortcutRows = new List<ShortcutDisplayRow>();
 
-            foreach (var (action, keyMapping) in mappedShortcuts)
+            foreach (var (action, shortcut) in mappedShortcuts)
             {
                 var row = new ShortcutDisplayRow
                 {
                     Action = GetActionDisplayName(action),
-                    Shortcut = keyMapping.HasValue ? _shortcutParser.FormatShortcut(keyMapping.Value.Key, keyMapping.Value.Modifiers) : "None",
-                    Status = GetStatusDisplay(action, keyMapping, configurationIssues)
+                    Shortcut = shortcut != null ? _shortcutParser.FormatShortcut(shortcut.Key, shortcut.Modifiers) : GetInvalidShortcutDisplay(action, incorrectShortcuts),
+                    Status = GetStatusDisplay(action)
                 };
                 shortcutRows.Add(row);
             }
@@ -179,27 +179,31 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Gets the status display text for a shortcut, including any configuration issues
+        /// Gets the display text for invalid shortcuts, showing the original string with an indicator
         /// </summary>
-        private static string GetStatusDisplay(ShortcutAction action, (ConsoleKey Key, ConsoleModifiers Modifiers)? keyMapping, List<string> configurationIssues)
+        private static string GetInvalidShortcutDisplay(ShortcutAction action, Dictionary<ShortcutAction, string> incorrectShortcuts)
         {
-            if (keyMapping == null)
+            if (incorrectShortcuts.TryGetValue(action, out var invalidString))
             {
-                // Find the specific issue for this action
-                var actionDisplayName = GetActionDisplayName(action);
-                var issue = configurationIssues.FirstOrDefault(i => i.StartsWith(actionDisplayName + ":"));
-
-                if (issue != null)
-                {
-                    // Extract the issue description after the colon
-                    var issueDescription = issue.Substring(actionDisplayName.Length + 1).Trim();
-                    return $"✗ Disabled ({issueDescription})";
-                }
-
-                return "✗ Disabled";
+                return $"{invalidString} (Invalid)";
             }
+            return "None";
+        }
 
-            return "✓ Active";
+        /// <summary>
+        /// Gets the status display text for a shortcut using the new status system
+        /// </summary>
+        private string GetStatusDisplay(ShortcutAction action)
+        {
+            var status = _shortcutConfigurationManager.GetShortcutStatus(action);
+
+            return status switch
+            {
+                ShortcutStatus.Active => "✓ Active",
+                ShortcutStatus.Invalid => "✗ Invalid Format",
+                ShortcutStatus.ExplicitlyDisabled => "✗ Disabled",
+                _ => "✗ Unknown"
+            };
         }
 
         /// <summary>

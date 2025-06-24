@@ -69,16 +69,18 @@ namespace SharpBridge.Tests.Utilities
                 Shortcuts = new Dictionary<string, string>()
             };
 
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
-                [ShortcutAction.CycleTransformationEngineVerbosity] = (ConsoleKey.T, ConsoleModifiers.Alt),
+                [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
                 [ShortcutAction.ShowSystemHelp] = null // Disabled
             };
 
-            var issues = new List<string> { "Test issue" };
+            var incorrectShortcuts = new Dictionary<ShortcutAction, string>();
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(issues);
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(incorrectShortcuts);
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity)).Returns(ShortcutStatus.Active);
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.ExplicitlyDisabled);
             _shortcutParserMock.Setup(x => x.FormatShortcut(ConsoleKey.T, ConsoleModifiers.Alt))
                 .Returns("Alt+T");
             _tableFormatterMock.Setup(x => x.AppendTable(
@@ -116,11 +118,11 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithNullConfig_HandlesGracefully()
         {
             // Arrange
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>();
-            var issues = new List<string>();
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>();
+            var incorrectShortcuts = new Dictionary<ShortcutAction, string>();
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(issues);
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(incorrectShortcuts);
             _tableFormatterMock.Setup(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
@@ -148,16 +150,18 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var config = new ApplicationConfig();
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
-                [ShortcutAction.CycleTransformationEngineVerbosity] = (ConsoleKey.T, ConsoleModifiers.Alt),
+                [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
                 [ShortcutAction.ShowSystemHelp] = null
             };
 
-            var issues = new List<string> { "Show System Help: Test error" };
+            var incorrectShortcuts = new Dictionary<ShortcutAction, string>();
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(issues);
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(incorrectShortcuts);
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity)).Returns(ShortcutStatus.Active);
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.ExplicitlyDisabled);
 
             object? capturedTableData = null;
             _tableFormatterMock.Setup(x => x.AppendTable(
@@ -199,15 +203,19 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var config = new ApplicationConfig();
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = null
             };
 
-            var issues = new List<string> { "Cycle Transformation Engine Verbosity: Invalid format" };
+            var incorrectShortcuts = new Dictionary<ShortcutAction, string>
+            {
+                [ShortcutAction.CycleTransformationEngineVerbosity] = "InvalidShortcut"
+            };
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(issues);
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(incorrectShortcuts);
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity)).Returns(ShortcutStatus.Invalid);
 
             _tableFormatterMock.Setup(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
@@ -238,13 +246,14 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var config = new ApplicationConfig();
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
-                [ShortcutAction.CycleTransformationEngineVerbosity] = (ConsoleKey.T, ConsoleModifiers.Alt)
+                [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)
             };
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(new List<string>());
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(new Dictionary<ShortcutAction, string>());
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity)).Returns(ShortcutStatus.Active);
 
             _tableFormatterMock.Setup(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
@@ -276,13 +285,14 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var config = new ApplicationConfig();
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = null
             };
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(new List<string>());
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(new Dictionary<ShortcutAction, string>());
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity)).Returns(ShortcutStatus.ExplicitlyDisabled);
 
             _tableFormatterMock.Setup(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
@@ -313,13 +323,14 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var config = new ApplicationConfig();
-            var shortcuts = new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
-                [ShortcutAction.ShowSystemHelp] = (ConsoleKey.F1, ConsoleModifiers.None)
+                [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
             };
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts()).Returns(shortcuts);
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues()).Returns(new List<string>());
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts()).Returns(new Dictionary<ShortcutAction, string>());
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.Active);
             _tableFormatterMock.Setup(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
@@ -363,12 +374,13 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts())
-                .Returns(new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+                .Returns(new Dictionary<ShortcutAction, Shortcut?>
                 {
-                    [ShortcutAction.ShowSystemHelp] = (ConsoleKey.F1, ConsoleModifiers.None)
+                    [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
                 });
-            _shortcutManagerMock.Setup(x => x.GetConfigurationIssues())
-                .Returns(new List<string>());
+            _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts())
+                .Returns(new Dictionary<ShortcutAction, string>());
+            _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.Active);
             _tableFormatterMock.Setup(x => x.AppendTable(
     It.IsAny<StringBuilder>(),
     It.IsAny<string>(),

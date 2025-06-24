@@ -105,17 +105,17 @@ namespace SharpBridge.Tests.Services
 
             // Setup shortcut configuration manager mock
             _shortcutConfigurationManagerMock.Setup(x => x.GetMappedShortcuts())
-                .Returns(new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+                .Returns(new Dictionary<ShortcutAction, Shortcut?>
                 {
-                    [ShortcutAction.CycleTransformationEngineVerbosity] = (ConsoleKey.T, ConsoleModifiers.Alt),
-                    [ShortcutAction.CyclePCClientVerbosity] = (ConsoleKey.P, ConsoleModifiers.Alt),
-                    [ShortcutAction.CyclePhoneClientVerbosity] = (ConsoleKey.O, ConsoleModifiers.Alt),
-                    [ShortcutAction.ReloadTransformationConfig] = (ConsoleKey.K, ConsoleModifiers.Alt),
-                    [ShortcutAction.OpenConfigInEditor] = (ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt),
-                    [ShortcutAction.ShowSystemHelp] = (ConsoleKey.F1, ConsoleModifiers.None)
+                    [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
+                    [ShortcutAction.CyclePCClientVerbosity] = new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt),
+                    [ShortcutAction.CyclePhoneClientVerbosity] = new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt),
+                    [ShortcutAction.ReloadTransformationConfig] = new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt),
+                    [ShortcutAction.OpenConfigInEditor] = new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt),
+                    [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
                 });
-            _shortcutConfigurationManagerMock.Setup(x => x.GetConfigurationIssues())
-                .Returns(new List<string>());
+            _shortcutConfigurationManagerMock.Setup(x => x.GetIncorrectShortcuts())
+                .Returns(new Dictionary<ShortcutAction, string>());
 
             // Create orchestrator with mocked dependencies
             _orchestrator = new ApplicationOrchestrator(
@@ -2772,9 +2772,13 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             SetupBasicMocks();
-            var issues = new List<string> { "Invalid shortcut format", "Duplicate key combination" };
-            _shortcutConfigurationManagerMock.Setup(x => x.GetConfigurationIssues())
-                .Returns(issues);
+            var incorrectShortcuts = new Dictionary<ShortcutAction, string>
+            {
+                [ShortcutAction.CycleTransformationEngineVerbosity] = "InvalidShortcut",
+                [ShortcutAction.CyclePCClientVerbosity] = "DuplicateKey"
+            };
+            _shortcutConfigurationManagerMock.Setup(x => x.GetIncorrectShortcuts())
+                .Returns(incorrectShortcuts);
 
             var orchestrator = CreateOrchestrator();
 
@@ -2783,7 +2787,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _loggerMock.Verify(x => x.Warning(
-                It.Is<string>(s => s.Contains("Shortcut configuration issues detected")),
+                It.Is<string>(s => s.Contains("Invalid shortcut configurations detected")),
                 It.IsAny<object[]>()), Times.Once);
         }
 
@@ -2793,10 +2797,10 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             _shortcutConfigurationManagerMock.Setup(x => x.GetMappedShortcuts())
-                .Returns(new Dictionary<ShortcutAction, (ConsoleKey Key, ConsoleModifiers Modifiers)?>
+                .Returns(new Dictionary<ShortcutAction, Shortcut?>
                 {
                     [ShortcutAction.CycleTransformationEngineVerbosity] = null, // Disabled
-                    [ShortcutAction.CyclePCClientVerbosity] = (ConsoleKey.P, ConsoleModifiers.Alt),
+                    [ShortcutAction.CyclePCClientVerbosity] = new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt),
                 });
 
             var orchestrator = CreateOrchestrator();
