@@ -123,13 +123,8 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
-            // Arrange
-            var mockTableFormatter = new Mock<ITableFormatter>();
-            var mockColorService = new Mock<IParameterColorService>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-
             // Act & Assert
-            Action act = () => new PhoneTrackingInfoFormatter(null!, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
+            Action act = () => new PhoneTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -138,11 +133,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockConsole = new Mock<IConsole>();
-            var mockColorService = new Mock<IParameterColorService>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
 
             // Act & Assert
-            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, null!, mockColorService.Object, mockShortcutManager.Object);
+            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, null!, _mockColorService.Object, _mockShortcutManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
         }
 
@@ -151,11 +144,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockConsole = new Mock<IConsole>();
-            var mockTableFormatter = new Mock<ITableFormatter>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
 
             // Act & Assert
-            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, null!, mockShortcutManager.Object);
+            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, _mockTableFormatter.Object, null!, _mockShortcutManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("colorService");
         }
 

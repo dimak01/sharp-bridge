@@ -47,11 +47,6 @@ namespace SharpBridge.Interfaces
         /// <returns>The current status of the shortcut</returns>
         ShortcutStatus GetShortcutStatus(ShortcutAction action);
 
-        /// <summary>
-        /// Gets a list of configuration issues encountered during loading (legacy method)
-        /// </summary>
-        /// <returns>List of human-readable error messages for display in help system</returns>
-        [Obsolete("Use GetShortcutStatus() and GetIncorrectShortcuts() for better error handling")]
-        List<string> GetConfigurationIssues();
+
     }
 }

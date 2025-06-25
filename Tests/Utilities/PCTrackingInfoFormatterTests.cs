@@ -797,13 +797,8 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
-            // Arrange
-            var mockTableFormatter = new Mock<ITableFormatter>();
-            var mockColorService = new Mock<IParameterColorService>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-
             // Act & Assert
-            Action act = () => new PCTrackingInfoFormatter(null!, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
+            Action act = () => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 

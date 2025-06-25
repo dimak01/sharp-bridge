@@ -119,12 +119,8 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
-            // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-
             // Act & Assert
-            Action act = () => new ConsoleRenderer(null!, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            Action act = () => new ConsoleRenderer(null!, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -133,10 +129,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockConsole = new Mock<IConsole>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
 
             // Act & Assert
-            Action act = () => new ConsoleRenderer(mockConsole.Object, null!, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            Action act = () => new ConsoleRenderer(mockConsole.Object, null!, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
         }
 
@@ -145,9 +140,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockConsole = new Mock<IConsole>();
-            var mockLogger = new Mock<IAppLogger>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(mockConsole.Object, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             var mockFormatter = new Mock<IFormatter>();
 
             // Act & Assert
@@ -160,9 +153,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockConsole = new Mock<IConsole>();
-            var mockLogger = new Mock<IAppLogger>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(mockConsole.Object, mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(mockConsole.Object, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             var mockFormatter = new Mock<IFormatter>();
 
             // Act
@@ -179,8 +170,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             // Create a new renderer without registering formatters
             var testConsole = new TestConsole();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
 
             // Act
             var result = renderer.GetFormatter<TestEntity>();
@@ -193,8 +183,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WithValidStats_CallsFormatterWithCorrectStats()
         {
             // Arrange
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
             var stats = new List<IServiceStats> { _testStats };
 
@@ -209,8 +198,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WritesFormattedOutputToConsole()
         {
             // Arrange
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             renderer.RegisterFormatter<TestEntity>(_mockFormatter.Object);
             var stats = new List<IServiceStats> { _testStats };
 
@@ -225,8 +213,7 @@ namespace SharpBridge.Tests.Utilities
         public void Update_WhenCalledRapidly_ThrottlesUpdates()
         {
             // Arrange
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
             var stats = new List<IServiceStats> { _testStats };
 
             // Act - Call update multiple times rapidly
@@ -248,8 +235,7 @@ namespace SharpBridge.Tests.Utilities
             {
                 CreateMockServiceStats("TestService", "Running", true, otherEntity)
             };
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, mockShortcutManager.Object);
+            var renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);
 
             // Act
             renderer.Update(stats);
