@@ -48,7 +48,7 @@ namespace SharpBridge.Tests.Utilities
         public void GetDescription_WithEnumWithoutDescription_ReturnsEnumName()
         {
             // Arrange
-            var enumWithoutDescription = TestEnumWithoutDescription.ValueWithoutDescription;
+            var enumWithoutDescription = TestValueWithoutDescription.ValueWithoutDescription;
 
             // Act
             var result = AttributeHelper.GetDescription(enumWithoutDescription);
@@ -148,7 +148,7 @@ namespace SharpBridge.Tests.Utilities
         public void GetDescription_WithGenericEnum_WorksCorrectly()
         {
             // Arrange
-            var genericEnum = TestGenericEnum.ValueWithDescription;
+            var genericEnum = TestGenericValue.ValueWithDescription;
 
             // Act
             var result = AttributeHelper.GetDescription(genericEnum);
@@ -181,12 +181,12 @@ namespace SharpBridge.Tests.Utilities
 
         #region Test Helper Classes and Enums
 
-        private enum TestEnumWithoutDescription
+        private enum TestValueWithoutDescription
         {
             ValueWithoutDescription
         }
 
-        private enum TestGenericEnum
+        private enum TestGenericValue
         {
             [Description("Generic Value with Description")]
             ValueWithDescription,
@@ -209,7 +209,7 @@ namespace SharpBridge.Tests.Utilities
             public override string BaseProperty { get; set; } = string.Empty;
         }
 
-        private class TestClassWithStaticProperty
+        private static class TestClassWithStaticProperty
         {
             [Description("Static Property Description")]
             public static string StaticProperty { get; set; } = string.Empty;
