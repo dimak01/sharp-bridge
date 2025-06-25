@@ -22,7 +22,7 @@ namespace SharpBridge.Utilities
         private readonly HashSet<ShortcutAction> _explicitlyDisabled = new();
 
         // Legacy support
-        private readonly List<string> _configurationIssues = new();
+
 
         /// <summary>
         /// Initializes a new instance of the ShortcutConfigurationManager
@@ -92,15 +92,7 @@ namespace SharpBridge.Utilities
             return ShortcutStatus.ExplicitlyDisabled;
         }
 
-        /// <summary>
-        /// Gets a list of configuration issues encountered during loading (legacy method)
-        /// </summary>
-        /// <returns>List of human-readable error messages for display in help system</returns>
-        [Obsolete("Use GetShortcutStatus() and GetIncorrectShortcuts() for better error handling")]
-        public List<string> GetConfigurationIssues()
-        {
-            return new List<string>(_configurationIssues);
-        }
+
 
         /// <summary>
         /// Loads shortcut configuration from the provided application configuration
@@ -111,7 +103,7 @@ namespace SharpBridge.Utilities
             _mappedShortcuts.Clear();
             _incorrectShortcuts.Clear();
             _explicitlyDisabled.Clear();
-            _configurationIssues.Clear(); // For legacy support
+
 
             var defaultShortcuts = GetDefaultShortcuts();
             var configShortcuts = config?.Shortcuts;
@@ -154,13 +146,13 @@ namespace SharpBridge.Utilities
                     if (string.IsNullOrWhiteSpace(originalString))
                     {
                         _explicitlyDisabled.Add(action);
-                        _configurationIssues.Add($"{GetActionDisplayName(action)}: No shortcut defined"); // Legacy
+
                         _logger.Debug("No shortcut defined for action: {0}", action);
                     }
                     else
                     {
                         _incorrectShortcuts[action] = originalString;
-                        _configurationIssues.Add($"{GetActionDisplayName(action)}: Invalid shortcut format '{originalString}'"); // Legacy
+
                         _logger.Warning("Invalid shortcut format for {0}: {1}", action, originalString);
                     }
                     continue;
@@ -171,7 +163,7 @@ namespace SharpBridge.Utilities
                 {
                     _mappedShortcuts[action] = null;
                     _incorrectShortcuts[action] = originalString!; // Treat as invalid due to conflict
-                    _configurationIssues.Add($"{GetActionDisplayName(action)}: Shortcut '{originalString}' conflicts with {GetActionDisplayName(conflictingAction)}"); // Legacy
+
                     _logger.Warning("Duplicate shortcut {0} for actions {1} and {2}, disabling {1}", originalString!, action, conflictingAction);
                     continue;
                 }
@@ -206,23 +198,7 @@ namespace SharpBridge.Utilities
             };
         }
 
-        /// <summary>
-        /// Gets the default shortcut mappings as string representations (legacy method)
-        /// </summary>
-        /// <returns>Dictionary of default shortcut action to string mappings</returns>
-        [Obsolete("Use GetDefaultShortcuts() which returns Shortcut objects")]
-        public Dictionary<ShortcutAction, string> GetDefaultShortcutsAsStrings()
-        {
-            return new Dictionary<ShortcutAction, string>
-            {
-                [ShortcutAction.CycleTransformationEngineVerbosity] = "Alt+T",
-                [ShortcutAction.CyclePCClientVerbosity] = "Alt+P",
-                [ShortcutAction.CyclePhoneClientVerbosity] = "Alt+O",
-                [ShortcutAction.ReloadTransformationConfig] = "Alt+K",
-                [ShortcutAction.OpenConfigInEditor] = "Ctrl+Alt+E",
-                [ShortcutAction.ShowSystemHelp] = "F1"
-            };
-        }
+
 
         /// <summary>
         /// Gets a human-readable display name for a shortcut action using Description attributes
