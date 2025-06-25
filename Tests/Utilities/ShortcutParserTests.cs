@@ -1,5 +1,6 @@
 using System;
 using FluentAssertions;
+using SharpBridge.Models;
 using SharpBridge.Utilities;
 using Xunit;
 
@@ -24,8 +25,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.F1);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.None);
+            result!.Key.Should().Be(ConsoleKey.F1);
+            result.Modifiers.Should().Be(ConsoleModifiers.None);
         }
 
         [Fact]
@@ -36,8 +37,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.T);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.Alt);
+            result!.Key.Should().Be(ConsoleKey.T);
+            result.Modifiers.Should().Be(ConsoleModifiers.Alt);
         }
 
         [Fact]
@@ -48,8 +49,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.E);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.Control | ConsoleModifiers.Alt);
+            result!.Key.Should().Be(ConsoleKey.E);
+            result.Modifiers.Should().Be(ConsoleModifiers.Control | ConsoleModifiers.Alt);
         }
 
         [Fact]
@@ -60,8 +61,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.F5);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.Shift);
+            result!.Key.Should().Be(ConsoleKey.F5);
+            result.Modifiers.Should().Be(ConsoleModifiers.Shift);
         }
 
         [Fact]
@@ -72,8 +73,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.C);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.Control);
+            result!.Key.Should().Be(ConsoleKey.C);
+            result.Modifiers.Should().Be(ConsoleModifiers.Control);
         }
 
         [Theory]
@@ -141,8 +142,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.T);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.Alt);
+            result!.Key.Should().Be(ConsoleKey.T);
+            result.Modifiers.Should().Be(ConsoleModifiers.Alt);
         }
 
         [Fact]
@@ -153,8 +154,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNull();
-            result!.Value.Key.Should().Be(ConsoleKey.T);
-            result.Value.Modifiers.Should().Be(ConsoleModifiers.Alt);
+            result!.Key.Should().Be(ConsoleKey.T);
+            result.Modifiers.Should().Be(ConsoleModifiers.Alt);
         }
 
         #endregion
@@ -164,8 +165,11 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void FormatShortcut_WithNoModifiers_ReturnsKeyOnly()
         {
+            // Arrange
+            var shortcut = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None);
+
             // Act
-            var result = _parser.FormatShortcut(ConsoleKey.F1, ConsoleModifiers.None);
+            var result = _parser.FormatShortcut(shortcut);
 
             // Assert
             result.Should().Be("F1");
@@ -174,8 +178,11 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void FormatShortcut_WithSingleModifier_ReturnsCorrectFormat()
         {
+            // Arrange
+            var shortcut = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt);
+
             // Act
-            var result = _parser.FormatShortcut(ConsoleKey.T, ConsoleModifiers.Alt);
+            var result = _parser.FormatShortcut(shortcut);
 
             // Assert
             result.Should().Be("Alt+T");
@@ -184,8 +191,11 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void FormatShortcut_WithMultipleModifiers_ReturnsConsistentOrder()
         {
+            // Arrange
+            var shortcut = new Shortcut(ConsoleKey.E, ConsoleModifiers.Alt | ConsoleModifiers.Control);
+
             // Act
-            var result = _parser.FormatShortcut(ConsoleKey.E, ConsoleModifiers.Alt | ConsoleModifiers.Control);
+            var result = _parser.FormatShortcut(shortcut);
 
             // Assert
             result.Should().Be("Ctrl+Alt+E");
@@ -194,9 +204,11 @@ namespace SharpBridge.Tests.Utilities
         [Fact]
         public void FormatShortcut_WithAllModifiers_ReturnsConsistentOrder()
         {
+            // Arrange
+            var shortcut = new Shortcut(ConsoleKey.A, ConsoleModifiers.Control | ConsoleModifiers.Alt | ConsoleModifiers.Shift);
+
             // Act
-            var result = _parser.FormatShortcut(ConsoleKey.A,
-                ConsoleModifiers.Control | ConsoleModifiers.Alt | ConsoleModifiers.Shift);
+            var result = _parser.FormatShortcut(shortcut);
 
             // Assert
             result.Should().Be("Ctrl+Alt+Shift+A");
@@ -236,15 +248,16 @@ namespace SharpBridge.Tests.Utilities
         public void ParseAndFormat_RoundTrip_ReturnsOriginalValues(ConsoleKey key, ConsoleModifiers modifiers)
         {
             // Arrange
-            var formatted = _parser.FormatShortcut(key, modifiers);
+            var shortcut = new Shortcut(key, modifiers);
+            var formatted = _parser.FormatShortcut(shortcut);
 
             // Act
             var parsed = _parser.ParseShortcut(formatted);
 
             // Assert
             parsed.Should().NotBeNull();
-            parsed!.Value.Key.Should().Be(key);
-            parsed.Value.Modifiers.Should().Be(modifiers);
+            parsed!.Key.Should().Be(key);
+            parsed.Modifiers.Should().Be(modifiers);
         }
 
         #endregion

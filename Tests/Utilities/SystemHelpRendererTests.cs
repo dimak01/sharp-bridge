@@ -69,7 +69,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().NotBeNullOrEmpty();
-            result.Should().Contain("EditorCommand");
+            result.Should().Contain("External Editor Command");
             result.Should().Contain("notepad.exe");
         }
 

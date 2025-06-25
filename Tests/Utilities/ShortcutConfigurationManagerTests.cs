@@ -94,9 +94,9 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
-                .Returns((ConsoleKey.P, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt));
 
             // Act
             _manager.LoadFromConfiguration(config);
@@ -116,31 +116,31 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithNullConfig_UsesDefaults()
         {
             // Arrange - Setup parser to format and parse default shortcuts
-            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.T, ConsoleModifiers.Alt))
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)))
                 .Returns("Alt+T");
-            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.P, ConsoleModifiers.Alt))
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt)))
                 .Returns("Alt+P");
-            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.O, ConsoleModifiers.Alt))
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt)))
                 .Returns("Alt+O");
-            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.K, ConsoleModifiers.Alt))
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt)))
                 .Returns("Alt+K");
-            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt))
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt)))
                 .Returns("Ctrl+Alt+E");
-            _parserMock.Setup(x => x.FormatShortcut(ConsoleKey.F1, ConsoleModifiers.None))
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)))
                 .Returns("F1");
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
-                .Returns((ConsoleKey.P, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+O"))
-                .Returns((ConsoleKey.O, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+K"))
-                .Returns((ConsoleKey.K, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Ctrl+Alt+E"))
-                .Returns((ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("F1"))
-                .Returns((ConsoleKey.F1, ConsoleModifiers.None));
+                .Returns(new Shortcut(ConsoleKey.F1, ConsoleModifiers.None));
 
             // Act
             _manager.LoadFromConfiguration(null!);
@@ -164,7 +164,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
-                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
+                .Returns((Shortcut?)null);
 
             // Act
             _manager.LoadFromConfiguration(config);
@@ -195,7 +195,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
 
             // Act
             _manager.LoadFromConfiguration(config);
@@ -250,9 +250,9 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
-                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
+                .Returns((Shortcut?)null);
 
             // Act
             _manager.LoadFromConfiguration(config);
@@ -285,11 +285,11 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
-                .Returns((ConsoleKey.P, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
-                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
+                .Returns((Shortcut?)null);
 
             // Act
             _manager.LoadFromConfiguration(firstConfig);
@@ -327,7 +327,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
 
             _manager.LoadFromConfiguration(config);
 
@@ -357,7 +357,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
-                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
+                .Returns((Shortcut?)null);
 
             _manager.LoadFromConfiguration(config);
 
@@ -385,9 +385,9 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
             _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
-                .Returns(((ConsoleKey, ConsoleModifiers)?)null);
+                .Returns((Shortcut?)null);
 
             _manager.LoadFromConfiguration(config);
 
@@ -411,7 +411,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut(It.IsAny<string>()))
-                .Returns((ConsoleKey.F1, ConsoleModifiers.None));
+                .Returns(new Shortcut(ConsoleKey.F1, ConsoleModifiers.None));
 
             // Act
             var exception = Record.Exception(() => _manager.LoadFromConfiguration(config));
@@ -434,7 +434,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
-                .Returns((ConsoleKey.T, ConsoleModifiers.Alt));
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
 
             // Act
             var exception = Record.Exception(() => _manager.LoadFromConfiguration(config));
@@ -444,6 +444,51 @@ namespace SharpBridge.Tests.Utilities
 
             var mappings = _manager.GetMappedShortcuts();
             mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().NotBeNull();
+        }
+
+        #endregion
+
+        #region Verify Default Shortcuts
+
+        [Fact]
+        public void VerifyDefaultShortcuts()
+        {
+            // Arrange - Setup parser mocks for default shortcuts using callback to handle any Shortcut object
+            _parserMock.Setup(x => x.FormatShortcut(It.IsAny<Shortcut>()))
+                .Returns<Shortcut>(shortcut =>
+                {
+                    if (shortcut.Key == ConsoleKey.T && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+T";
+                    if (shortcut.Key == ConsoleKey.P && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+P";
+                    if (shortcut.Key == ConsoleKey.O && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+O";
+                    if (shortcut.Key == ConsoleKey.K && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+K";
+                    if (shortcut.Key == ConsoleKey.E && shortcut.Modifiers == (ConsoleModifiers.Control | ConsoleModifiers.Alt)) return "Ctrl+Alt+E";
+                    if (shortcut.Key == ConsoleKey.F1 && shortcut.Modifiers == ConsoleModifiers.None) return "F1";
+                    return $"{shortcut.Modifiers}+{shortcut.Key}"; // Fallback
+                });
+
+            // Load default configuration to populate the mapped shortcuts
+            _manager.LoadFromConfiguration(null!);
+
+            // Verify default shortcuts
+            var defaults = _manager.GetMappedShortcuts();
+            // Verify individual shortcuts using ShortcutComparer for equality
+            var comparer = ShortcutComparer.Instance;
+            comparer.Equals(defaults[ShortcutAction.CycleTransformationEngineVerbosity], new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.CyclePCClientVerbosity], new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.CyclePhoneClientVerbosity], new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.OpenConfigInEditor], new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.ShowSystemHelp], new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)).Should().BeTrue();
+
+            // Verify formatted shortcuts - now using GetDisplayString
+            _manager.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity).Should().Be("Alt+T");
+            _manager.GetDisplayString(ShortcutAction.CyclePCClientVerbosity).Should().Be("Alt+P");
+            _manager.GetDisplayString(ShortcutAction.CyclePhoneClientVerbosity).Should().Be("Alt+O");
+            _manager.GetDisplayString(ShortcutAction.OpenConfigInEditor).Should().Be("Ctrl+Alt+E");
+            _manager.GetDisplayString(ShortcutAction.ShowSystemHelp).Should().Be("F1");
+            _manager.GetDisplayString(ShortcutAction.ReloadTransformationConfig).Should().Be("Alt+K");
+
+            // Verify ReloadTransformationConfig shortcut using ShortcutComparer for equality
+            comparer.Equals(defaults[ShortcutAction.ReloadTransformationConfig], new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt)).Should().BeTrue();
         }
 
         #endregion
