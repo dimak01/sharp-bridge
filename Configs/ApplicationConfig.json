@@ -1,11 +1,11 @@
 {
   "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\"",
   "Shortcuts": {
-    "CycleTransformationEngineVerbosity": "Alt+T",
-    "CyclePCClientVerbosity": "Alt+P",
-    "CyclePhoneClientVerbosity": "Alt+O",
-    "ReloadTransformationConfig": "Alt+K",
-    "OpenConfigInEditor": "Ctrl+Alt+E",
-    "ShowSystemHelp": "F1"
+    "CycleTransformationEngineVerbosity": "Alt+Y",
+    "CyclePCClientVerbosity": "Alt+K",
+    "CyclePhoneClientVerbosity": "Alt+C",
+    "ReloadTransformationConfig": "Alt+Q",
+    "OpenConfigInEditor": "Ctrl+Alt+W",
+    "ShowSystemHelp": "F2"
   }
 }
