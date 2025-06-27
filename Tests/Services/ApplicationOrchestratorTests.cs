@@ -16,27 +16,27 @@ namespace SharpBridge.Tests.Services
 {
     public class ApplicationOrchestratorTests
     {
-        private Mock<IVTubeStudioPCClient> _vtubeStudioPCClientMock;
-        private Mock<IVTubeStudioPhoneClient> _vtubeStudioPhoneClientMock;
-        private Mock<ITransformationEngine> _transformationEngineMock;
-        private Mock<IAppLogger> _loggerMock;
-        private Mock<IConsoleRenderer> _consoleRendererMock;
-        private Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
-        private Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
-        private Mock<IRecoveryPolicy> _recoveryPolicyMock;
-        private Mock<IConsole> _consoleMock;
-        private Mock<IParameterColorService> _colorServiceMock;
-        private Mock<IExternalEditorService> _externalEditorServiceMock;
-        private Mock<IShortcutConfigurationManager> _shortcutConfigurationManagerMock;
-        private Mock<ISystemHelpRenderer> _systemHelpRendererMock;
-        private ApplicationConfig _applicationConfig;
+        private readonly Mock<IVTubeStudioPCClient> _vtubeStudioPCClientMock;
+        private readonly Mock<IVTubeStudioPhoneClient> _vtubeStudioPhoneClientMock;
+        private readonly Mock<ITransformationEngine> _transformationEngineMock;
+        private readonly Mock<IAppLogger> _loggerMock;
+        private readonly Mock<IConsoleRenderer> _consoleRendererMock;
+        private readonly Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
+        private readonly Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
+        private readonly Mock<IRecoveryPolicy> _recoveryPolicyMock;
+        private readonly Mock<IConsole> _consoleMock;
+        private readonly Mock<IParameterColorService> _colorServiceMock;
+        private readonly Mock<IExternalEditorService> _externalEditorServiceMock;
+        private readonly Mock<IShortcutConfigurationManager> _shortcutConfigurationManagerMock;
+        private readonly Mock<ISystemHelpRenderer> _systemHelpRendererMock;
+        private readonly ApplicationConfig _applicationConfig;
         private ApplicationOrchestrator _orchestrator;
-        private string _tempConfigPath;
-        private VTubeStudioPhoneClientConfig _phoneConfig;
-        private VTubeStudioPCConfig _pcConfig;
-        private CancellationTokenSource _defaultCts;
-        private TimeSpan _longTimeout;
-        private CancellationTokenSource _longTimeoutCts;
+        private readonly string _tempConfigPath;
+        private readonly VTubeStudioPhoneClientConfig _phoneConfig;
+        private readonly VTubeStudioPCConfig _pcConfig;
+        private readonly CancellationTokenSource _defaultCts;
+        private readonly TimeSpan _longTimeout;
+        private readonly CancellationTokenSource _longTimeoutCts;
 
         public ApplicationOrchestratorTests()
         {
@@ -588,11 +588,6 @@ namespace SharpBridge.Tests.Services
             }
         }
 
-        private static async Task RunWithException<TException>(Func<Task> testAction) where TException : Exception
-        {
-            await Assert.ThrowsAsync<TException>(testAction);
-        }
-
         public void Dispose()
         {
             // Clean up temp file
@@ -660,22 +655,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        [Fact]
-        public async Task InitializeAsync_WhenAuthenticationFails_CompletesGracefully()
-        {
-            // Arrange
-            SetupBasicMocks();
-            var cancellationToken = CancellationToken.None;
 
-            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false); // Initialization (including authentication) fails
-
-            // Act - should not throw
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
-
-            // Assert - verify that initialization was attempted
-            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
-        }
 
         // Connection and Lifecycle Tests
 
@@ -967,10 +947,10 @@ namespace SharpBridge.Tests.Services
             };
 
             // Configure transformation for both events
-            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)))
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound)))
                 .Returns(transformedParams1);
 
-            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)))
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => !p.FaceFound)))
                 .Returns(transformedParams2);
 
             // Configure PC client to track sends
@@ -1010,11 +990,11 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _transformationEngineMock.Verify(
-                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)),
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound)),
                 Times.Once);
 
             _transformationEngineMock.Verify(
-                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)),
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => !p.FaceFound)),
                 Times.Once);
 
             _vtubeStudioPCClientMock.Verify(x =>
@@ -2314,7 +2294,7 @@ namespace SharpBridge.Tests.Services
             // Verify transformation and sending still occurred
             _transformationEngineMock.Verify(x => x.TransformData(trackingData), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => x.SendTrackingAsync(
-                It.Is<PCTrackingInfo>(info => info.FaceFound == true),
+                It.Is<PCTrackingInfo>(info => info.FaceFound),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
 
