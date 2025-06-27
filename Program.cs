@@ -10,7 +10,7 @@ namespace SharpBridge
     /// <summary>
     /// Main program entry point
     /// </summary>
-    public class Program
+    public static class Program
     {
         /// <summary>
         /// Application entry point
@@ -21,15 +21,12 @@ namespace SharpBridge
         {
             Console.WriteLine("SharpBridge Application");
 
-            // Parse command line arguments
-            var options = await CommandLineParser.ParseAsync(args);
-
             // Setup DI container
             var services = new ServiceCollection();
             services.AddSharpBridgeServices(
-                options.ConfigDirectory,
-                options.PCConfigFilename,
-                options.PhoneConfigFilename);
+                "./Configs",
+                "VTubeStudioPCConfig.json",
+                "VTubeStudioPhoneConfig.json");
 
             using var serviceProvider = services.BuildServiceProvider();
 
@@ -50,7 +47,7 @@ namespace SharpBridge
                 var orchestrator = serviceProvider.GetRequiredService<IApplicationOrchestrator>();
 
                 // Initialize and run the application
-                await orchestrator.InitializeAsync(options.TransformConfigPath, cts.Token);
+                await orchestrator.InitializeAsync("./Configs/vts_transforms.json", cts.Token); //TODO: Refactor to read this from ApplicationConfig
                 await orchestrator.RunAsync(cts.Token);
 
                 return 0;

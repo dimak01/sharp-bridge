@@ -834,13 +834,13 @@ namespace SharpBridge.Tests.Utilities
 
             var mockTableFormatter = new Mock<ITableFormatter>();
             mockTableFormatter.Setup(t => t.AppendTable(
-                It.IsAny<StringBuilder>(),
-                It.IsAny<string>(),
-                It.IsAny<IEnumerable<TrackingParam>>(),
-                It.IsAny<IList<ITableColumn<TrackingParam>>>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
-                It.IsAny<int>(),
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
                 It.IsAny<int?>()));
 
             var mockColorService = new Mock<IParameterColorService>();

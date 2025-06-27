@@ -527,7 +527,7 @@ namespace SharpBridge.Tests.Services
             };
 
             // Create token file with invalid token
-            File.WriteAllText(config.TokenFilePath, "invalid-token");
+            await File.WriteAllTextAsync(config.TokenFilePath, "invalid-token");
 
             var mockWebSocket = new MockWebSocketWrapper();
             var mockPortDiscovery = new Mock<IPortDiscoveryService>();

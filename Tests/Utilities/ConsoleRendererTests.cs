@@ -51,17 +51,17 @@ namespace SharpBridge.Tests.Utilities
         }
 
         // Fields for common test objects
-        private TestConsole _testConsole;
-        private ConsoleRenderer _renderer;
-        private Mock<IFormatter> _mockFormatter;
-        private Mock<IAppLogger> _mockLogger;
-        private Mock<ITableFormatter> _mockTableFormatter;
-        private Mock<TransformationEngineInfoFormatter> _mockTransformationFormatter;
-        private Mock<PhoneTrackingInfoFormatter> _mockPhoneFormatter;
-        private Mock<PCTrackingInfoFormatter> _mockPCFormatter;
-        private Mock<IShortcutConfigurationManager> _mockShortcutManager;
-        private TestEntity _testEntity;
-        private ServiceStats _testStats;
+        private readonly TestConsole _testConsole;
+        private readonly ConsoleRenderer _renderer;
+        private readonly Mock<IFormatter> _mockFormatter;
+        private readonly Mock<IAppLogger> _mockLogger;
+        private readonly Mock<ITableFormatter> _mockTableFormatter;
+        private readonly Mock<TransformationEngineInfoFormatter> _mockTransformationFormatter;
+        private readonly Mock<PhoneTrackingInfoFormatter> _mockPhoneFormatter;
+        private readonly Mock<PCTrackingInfoFormatter> _mockPCFormatter;
+        private readonly Mock<IShortcutConfigurationManager> _mockShortcutManager;
+        private readonly TestEntity _testEntity;
+        private readonly ServiceStats _testStats;
 
         /// <summary>
         /// Setup test dependencies

@@ -18,6 +18,12 @@ namespace SharpBridge.Utilities
         /// <returns>Shortcut object, or null if parsing failed</returns>
         public Shortcut? ParseShortcut(string shortcutString)
         {
+            // Handle special cases FIRST before any other checks
+            if (shortcutString == "+")
+                return new Shortcut(ConsoleKey.OemPlus, ConsoleModifiers.None);
+            if (shortcutString == " ")
+                return new Shortcut(ConsoleKey.Spacebar, ConsoleModifiers.None);
+
             if (string.IsNullOrWhiteSpace(shortcutString))
                 return null;
 
@@ -26,37 +32,27 @@ namespace SharpBridge.Utilities
                 string.Equals(shortcutString, "Disabled", StringComparison.OrdinalIgnoreCase))
                 return null;
 
-            try
-            {
-                var parts = shortcutString.Split('+').Select(p => p.Trim()).ToArray();
+            var parts = shortcutString.Split('+').Select(p => p.Trim()).ToArray();
 
-                if (parts.Length == 0)
-                    return null;
+            // Last part is the key, everything before are modifiers
+            var keyPart = parts.Last();
+            var modifierParts = parts.Take(parts.Length - 1);
 
-                // Last part is the key, everything before are modifiers
-                var keyPart = parts.Last();
-                var modifierParts = parts.Take(parts.Length - 1);
-
-                // Parse the key
-                if (!TryParseConsoleKey(keyPart, out var consoleKey))
-                    return null;
-
-                // Parse modifiers
-                var modifiers = ConsoleModifiers.None;
-                foreach (var modifierPart in modifierParts)
-                {
-                    if (!TryParseModifier(modifierPart, out var modifier))
-                        return null;
-
-                    modifiers |= modifier;
-                }
-
-                return new Shortcut(consoleKey, modifiers);
-            }
-            catch
-            {
+            // Parse the key
+            if (!TryParseConsoleKey(keyPart, out var consoleKey))
                 return null;
+
+            // Parse modifiers
+            var modifiers = ConsoleModifiers.None;
+            foreach (var modifierPart in modifierParts)
+            {
+                if (!TryParseModifier(modifierPart, out var modifier))
+                    return null;
+
+                modifiers |= modifier;
             }
+
+            return new Shortcut(consoleKey, modifiers);
         }
 
         /// <summary>
@@ -105,16 +101,66 @@ namespace SharpBridge.Utilities
             {
                 case "CTRL":
                 case "CONTROL":
-                    consoleKey = ConsoleKey.LeftWindows; // Invalid - modifiers shouldn't be keys
-                    return false;
                 case "ALT":
-                    consoleKey = ConsoleKey.LeftWindows; // Invalid - modifiers shouldn't be keys  
-                    return false;
                 case "SHIFT":
-                    consoleKey = ConsoleKey.LeftWindows; // Invalid - modifiers shouldn't be keys
+                    // Invalid - modifiers shouldn't be keys
+                    consoleKey = default;
                     return false;
                 default:
-                    return Enum.TryParse<ConsoleKey>(keyString, true, out consoleKey);
+                    // Handle user-friendly number keys (0-9 instead of D0-D9) FIRST
+                    // This must come before enum parsing because both ConsoleKey.0 and ConsoleKey.D0 exist
+                    if (keyString.Length == 1 && char.IsDigit(keyString[0]))
+                    {
+                        var digit = keyString[0] - '0';
+                        consoleKey = ConsoleKey.D0 + digit;
+                        return true;
+                    }
+
+                    // Try direct enum parsing for standard keys
+                    if (Enum.TryParse<ConsoleKey>(keyString, true, out consoleKey))
+                        return true;
+
+                    // Handle common symbols that users might want to bind
+                    consoleKey = keyString switch
+                    {
+                        "!" => ConsoleKey.D1,      // Shift+1
+                        "@" => ConsoleKey.D2,      // Shift+2
+                        "#" => ConsoleKey.D3,      // Shift+3
+                        "$" => ConsoleKey.D4,      // Shift+4
+                        "%" => ConsoleKey.D5,      // Shift+5
+                        "^" => ConsoleKey.D6,      // Shift+6
+                        "&" => ConsoleKey.D7,      // Shift+7
+                        "*" => ConsoleKey.D8,      // Shift+8
+                        "(" => ConsoleKey.D9,      // Shift+9
+                        ")" => ConsoleKey.D0,      // Shift+0
+                        "_" => ConsoleKey.OemMinus,   // Shift+Minus
+                        "+" => ConsoleKey.OemPlus,    // Shift+Plus
+                        "{" => ConsoleKey.Oem4,       // Shift+[ (US layout)
+                        "}" => ConsoleKey.Oem6,       // Shift+] (US layout)
+                        "|" => ConsoleKey.Oem5,       // Shift+\ (US layout)
+                        ":" => ConsoleKey.Oem1,       // Shift+; (US layout)
+                        "\"" => ConsoleKey.Oem7,      // Shift+' (US layout)
+                        "<" => ConsoleKey.OemComma,   // Shift+,
+                        ">" => ConsoleKey.OemPeriod,  // Shift+.
+                        "?" => ConsoleKey.Oem2,       // Shift+/ (US layout)
+                        "~" => ConsoleKey.Oem3,       // Shift+` (US layout)
+                        // Unshifted symbols
+                        "-" => ConsoleKey.OemMinus,
+                        "=" => ConsoleKey.OemPlus,
+                        "[" => ConsoleKey.Oem4,
+                        "]" => ConsoleKey.Oem6,
+                        "\\" => ConsoleKey.Oem5,
+                        ";" => ConsoleKey.Oem1,
+                        "'" => ConsoleKey.Oem7,
+                        "," => ConsoleKey.OemComma,
+                        "." => ConsoleKey.OemPeriod,
+                        "/" => ConsoleKey.Oem2,
+                        "`" => ConsoleKey.Oem3,
+                        " " => ConsoleKey.Spacebar,
+                        _ => default
+                    };
+
+                    return consoleKey != default;
             }
         }
 
@@ -164,6 +210,29 @@ namespace SharpBridge.Utilities
                 ConsoleKey.DownArrow => "Down",
                 ConsoleKey.LeftArrow => "Left",
                 ConsoleKey.RightArrow => "Right",
+                // Format numbers without the 'D' prefix
+                ConsoleKey.D0 => "0",
+                ConsoleKey.D1 => "1",
+                ConsoleKey.D2 => "2",
+                ConsoleKey.D3 => "3",
+                ConsoleKey.D4 => "4",
+                ConsoleKey.D5 => "5",
+                ConsoleKey.D6 => "6",
+                ConsoleKey.D7 => "7",
+                ConsoleKey.D8 => "8",
+                ConsoleKey.D9 => "9",
+                // Format common OEM keys in a user-friendly way
+                ConsoleKey.OemMinus => "-",
+                ConsoleKey.OemPlus => "=",
+                ConsoleKey.Oem4 => "[",
+                ConsoleKey.Oem6 => "]",
+                ConsoleKey.Oem5 => "\\",
+                ConsoleKey.Oem1 => ";",
+                ConsoleKey.Oem7 => "'",
+                ConsoleKey.OemComma => ",",
+                ConsoleKey.OemPeriod => ".",
+                ConsoleKey.Oem2 => "/",
+                ConsoleKey.Oem3 => "`",
                 _ => key.ToString()
             };
         }
