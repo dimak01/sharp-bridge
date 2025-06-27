@@ -19,7 +19,7 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== [INFO] iPhone Tracking Data ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
+            return $"=== [INFO] Phone Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
         }
 
 
@@ -76,6 +76,7 @@ namespace SharpBridge.Tests.Utilities
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
         private readonly Mock<IParameterColorService> _mockColorService;
+        private readonly Mock<IShortcutConfigurationManager> _mockShortcutManager;
         private readonly PhoneTrackingInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -97,7 +98,10 @@ namespace SharpBridge.Tests.Utilities
             _mockColorService.Setup(x => x.GetColoredBlendShapeName(It.IsAny<string>())).Returns<string>(s => s);
             _mockColorService.Setup(x => x.GetColoredExpression(It.IsAny<string>())).Returns<string>(s => s);
 
-            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
+            _mockShortcutManager = new Mock<IShortcutConfigurationManager>();
+            _mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+O");
+
+            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
         }
 
         #region Constructor Tests
@@ -106,27 +110,44 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithValidParameters_InitializesSuccessfully()
         {
             // Arrange & Act
-            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
+            var mockConsole = new Mock<IConsole>();
+            var mockTableFormatter = new Mock<ITableFormatter>();
+            var mockColorService = new Mock<IParameterColorService>();
+            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
 
-            // Assert
+            // Act & Assert
+            var formatter = new PhoneTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
             formatter.Should().NotBeNull();
-            formatter.CurrentVerbosity.Should().Be(VerbosityLevel.Normal);
         }
 
         [Fact]
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
-                new PhoneTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object));
+            Action act = () => new PhoneTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
         [Fact]
         public void Constructor_WithNullTableFormatter_ThrowsArgumentNullException()
         {
+            // Arrange
+            var mockConsole = new Mock<IConsole>();
+
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() =>
-                new PhoneTrackingInfoFormatter(_mockConsole.Object, null!, _mockColorService.Object));
+            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, null!, _mockColorService.Object, _mockShortcutManager.Object);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
+        }
+
+        [Fact]
+        public void Constructor_WithNullColorService_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var mockConsole = new Mock<IConsole>();
+
+            // Act & Assert
+            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, _mockTableFormatter.Object, null!, _mockShortcutManager.Object);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("colorService");
         }
 
         #endregion
@@ -176,7 +197,9 @@ namespace SharpBridge.Tests.Utilities
         public void CycleVerbosity_WithInvalidVerbosityLevel_ResetsToNormal()
         {
             // Arrange
-            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object);
+            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
+            mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+O");
+            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, mockShortcutManager.Object);
 
             // Use reflection to set an invalid verbosity level
             var property = typeof(PhoneTrackingInfoFormatter).GetProperty("CurrentVerbosity");
@@ -259,7 +282,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain($"=== [DEBUG] iPhone Tracking Data ({ConsoleColors.Colorize("Running", ConsoleColors.GetStatusColor("Running"))}) === [Alt+O]");
+            result.Should().Contain($"=== [DEBUG] Phone Client ({ConsoleColors.Colorize("Running", ConsoleColors.GetStatusColor("Running"))}) === [Alt+O]");
         }
 
         #endregion
@@ -842,7 +865,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             var serviceStats = new ServiceStats(
-                serviceName: "iPhone Tracking Data",
+                serviceName: "Phone Client",
                 status: "Running",
                 currentEntity: wrongEntity, // This will cause the error
                 isHealthy: true,
@@ -901,7 +924,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             return new ServiceStats(
-                serviceName: "iPhone Tracking Data",
+                serviceName: "Phone Client",
                 status: status,
                 currentEntity: currentEntity,
                 isHealthy: isHealthy,

@@ -8,7 +8,7 @@ using SharpBridge.Models;
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Formatter for TransformationEngineInfo objects
+    /// Formatter for TransformationEngineInfo objects with dynamic shortcut support
     /// </summary>
     public class TransformationEngineInfoFormatter : IFormatter
     {
@@ -18,7 +18,6 @@ namespace SharpBridge.Utilities
         private const string UPTIME_SINCE_RULES_LOADED_KEY = "Uptime Since Rules Loaded (seconds)";
         private const string HOT_RELOAD_ATTEMPTS_KEY = "Hot Reload Attempts";
         private const string HOT_RELOAD_SUCCESSES_KEY = "Hot Reload Successes";
-
 
         // Display Limits
         private const int RULE_DISPLAY_COUNT_NORMAL = 15;
@@ -41,20 +40,22 @@ namespace SharpBridge.Utilities
 
         // Service Display Constants
         private const string SERVICE_NAME = "Transformation Engine";
-        private const string KEYBOARD_SHORTCUT = "Alt+T";
 
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
+        private readonly IShortcutConfigurationManager _shortcutManager;
 
         /// <summary>
         /// Initializes a new instance of the TransformationEngineInfoFormatter
         /// </summary>
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
-        public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter)
+        /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
+        public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter, IShortcutConfigurationManager shortcutManager)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
+            _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
         }
 
         /// <summary>
@@ -116,8 +117,11 @@ namespace SharpBridge.Utilities
         /// </summary>
         private void AppendServiceHeader(StringBuilder builder, IServiceStats serviceStats)
         {
+            // Get dynamic shortcut instead of hardcoded "Alt+T"
+            var verbosityShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity);
+
             // Header with service status
-            builder.AppendLine(FormatServiceHeader(SERVICE_NAME, serviceStats.Status, KEYBOARD_SHORTCUT));
+            builder.AppendLine(FormatServiceHeader(SERVICE_NAME, serviceStats.Status, verbosityShortcut));
 
             AppendRulesOverview(builder, serviceStats);
             AppendConfigurationInfo(builder, serviceStats);
@@ -145,12 +149,15 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends the configuration information section to the string builder
         /// </summary>
-        private static void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
+        private void AppendConfigurationInfo(StringBuilder builder, IServiceStats serviceStats)
         {
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
+                // Get dynamic shortcut instead of hardcoded "Ctrl+Alt+E"
+                var editConfigShortcut = _shortcutManager.GetDisplayString(ShortcutAction.OpenConfigInEditor);
+
                 var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
-                builder.AppendLine($"Config File Path (Ctrl+Alt+E to edit): {colorized_config_path}");
+                builder.AppendLine($"Config File Path ({editConfigShortcut} to edit): {colorized_config_path}");
 
                 var upToDateStatus = engineInfo.IsConfigUpToDate ? "Yes" : "No";
                 var colorizedStatus = engineInfo.IsConfigUpToDate

@@ -8,15 +8,34 @@ using SharpBridge.Models;
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Formatter for PCTrackingInfo objects
+    /// Formatter for PC tracking information with dynamic shortcut support
     /// </summary>
     public class PCTrackingInfoFormatter : IFormatter
     {
-        private const int PARAM_DISPLAY_COUNT_NORMAL = 25;
+        // Counter Keys
+        private const string TOTAL_MESSAGES_KEY = "Total Messages";
+        private const string UPTIME_SECONDS_KEY = "Uptime (seconds)";
+
+        // Display Limits
+        private const int PARAMETER_DISPLAY_COUNT_NORMAL = 15;
+
+        // Column Width Constants
+        private const int PARAMETER_NAME_COLUMN_MIN_WIDTH = 8;
+        private const int PARAMETER_NAME_COLUMN_MAX_WIDTH = 20;
+        private const int PARAMETER_VALUE_COLUMN_MIN_WIDTH = 8;
+        private const int PARAMETER_VALUE_COLUMN_MAX_WIDTH = 15;
+
+        // Table Formatting Constants
+        private const int TABLE_MINIMUM_ROWS = 1;
+        private const int TABLE_MINIMUM_WIDTH = 20;
+
+        // Service Display Constants
+        private const string SERVICE_NAME = "PC Client";
 
         private readonly IConsole _console;
         private readonly ITableFormatter _tableFormatter;
         private readonly IParameterColorService _colorService;
+        private readonly IShortcutConfigurationManager _shortcutManager;
 
         /// <summary>
         /// Initializes a new instance of the PCTrackingInfoFormatter
@@ -24,11 +43,13 @@ namespace SharpBridge.Utilities
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="colorService">Parameter color service for colored display</param>
-        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService)
+        /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
+        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
+            _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
         }
 
         /// <summary>
@@ -60,8 +81,11 @@ namespace SharpBridge.Utilities
 
             var builder = new StringBuilder();
 
+            // Get dynamic shortcut instead of hardcoded "Alt+P"
+            var verbosityShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CyclePCClientVerbosity);
+
             // Header with service status
-            builder.AppendLine(FormatServiceHeader("PC Client", stats.Status, "Alt+P"));
+            builder.AppendLine(FormatServiceHeader(SERVICE_NAME, stats.Status, verbosityShortcut));
 
             // Tracking data details
             if (stats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
@@ -114,7 +138,7 @@ namespace SharpBridge.Utilities
             };
 
             // Use the new generic table formatter - let it handle display limits
-            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAM_DISPLAY_COUNT_NORMAL;
+            var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAMETER_DISPLAY_COUNT_NORMAL;
             _tableFormatter.AppendTable(builder, "=== Parameters ===", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
 
             builder.AppendLine();

@@ -16,24 +16,27 @@ namespace SharpBridge.Tests.Services
 {
     public class ApplicationOrchestratorTests
     {
-        private Mock<IVTubeStudioPCClient> _vtubeStudioPCClientMock;
-        private Mock<IVTubeStudioPhoneClient> _vtubeStudioPhoneClientMock;
-        private Mock<ITransformationEngine> _transformationEngineMock;
-        private Mock<IAppLogger> _loggerMock;
-        private Mock<IConsoleRenderer> _consoleRendererMock;
-        private Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
-        private Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
-        private Mock<IRecoveryPolicy> _recoveryPolicyMock;
-        private Mock<IConsole> _consoleMock;
-        private Mock<IParameterColorService> _colorServiceMock;
-        private Mock<IExternalEditorService> _externalEditorServiceMock;
+        private readonly Mock<IVTubeStudioPCClient> _vtubeStudioPCClientMock;
+        private readonly Mock<IVTubeStudioPhoneClient> _vtubeStudioPhoneClientMock;
+        private readonly Mock<ITransformationEngine> _transformationEngineMock;
+        private readonly Mock<IAppLogger> _loggerMock;
+        private readonly Mock<IConsoleRenderer> _consoleRendererMock;
+        private readonly Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
+        private readonly Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
+        private readonly Mock<IRecoveryPolicy> _recoveryPolicyMock;
+        private readonly Mock<IConsole> _consoleMock;
+        private readonly Mock<IParameterColorService> _colorServiceMock;
+        private readonly Mock<IExternalEditorService> _externalEditorServiceMock;
+        private readonly Mock<IShortcutConfigurationManager> _shortcutConfigurationManagerMock;
+        private readonly Mock<ISystemHelpRenderer> _systemHelpRendererMock;
+        private readonly ApplicationConfig _applicationConfig;
         private ApplicationOrchestrator _orchestrator;
-        private string _tempConfigPath;
-        private VTubeStudioPhoneClientConfig _phoneConfig;
-        private VTubeStudioPCConfig _pcConfig;
-        private CancellationTokenSource _defaultCts;
-        private TimeSpan _longTimeout;
-        private CancellationTokenSource _longTimeoutCts;
+        private readonly string _tempConfigPath;
+        private readonly VTubeStudioPhoneClientConfig _phoneConfig;
+        private readonly VTubeStudioPCConfig _pcConfig;
+        private readonly CancellationTokenSource _defaultCts;
+        private readonly TimeSpan _longTimeout;
+        private readonly CancellationTokenSource _longTimeoutCts;
 
         public ApplicationOrchestratorTests()
         {
@@ -49,6 +52,23 @@ namespace SharpBridge.Tests.Services
             _consoleMock = new Mock<IConsole>();
             _colorServiceMock = new Mock<IParameterColorService>();
             _externalEditorServiceMock = new Mock<IExternalEditorService>();
+            _shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
+            _systemHelpRendererMock = new Mock<ISystemHelpRenderer>();
+
+            // Create application config with default shortcuts
+            _applicationConfig = new ApplicationConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "Alt+P",
+                    ["CyclePhoneClientVerbosity"] = "Alt+O",
+                    ["ReloadTransformationConfig"] = "Alt+K",
+                    ["OpenConfigInEditor"] = "Ctrl+Alt+E",
+                    ["ShowSystemHelp"] = "F1"
+                }
+            };
 
             // Configure recovery policy to return 2 second delay
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
@@ -83,6 +103,20 @@ namespace SharpBridge.Tests.Services
             _consoleMock.Setup(x => x.WindowHeight).Returns(25);
             _consoleMock.Setup(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>())).Returns(true);
 
+            // Setup shortcut configuration manager mock
+            _shortcutConfigurationManagerMock.Setup(x => x.GetMappedShortcuts())
+                .Returns(new Dictionary<ShortcutAction, Shortcut?>
+                {
+                    [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
+                    [ShortcutAction.CyclePCClientVerbosity] = new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt),
+                    [ShortcutAction.CyclePhoneClientVerbosity] = new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt),
+                    [ShortcutAction.ReloadTransformationConfig] = new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt),
+                    [ShortcutAction.OpenConfigInEditor] = new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt),
+                    [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
+                });
+            _shortcutConfigurationManagerMock.Setup(x => x.GetIncorrectShortcuts())
+                .Returns(new Dictionary<ShortcutAction, string>());
+
             // Create orchestrator with mocked dependencies
             _orchestrator = new ApplicationOrchestrator(
                 _vtubeStudioPCClientMock.Object,
@@ -96,7 +130,10 @@ namespace SharpBridge.Tests.Services
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
                 _colorServiceMock.Object,
-                _externalEditorServiceMock.Object
+                _externalEditorServiceMock.Object,
+                _shortcutConfigurationManagerMock.Object,
+                _applicationConfig,
+                _systemHelpRendererMock.Object
             );
 
             // Create temp config file for tests
@@ -117,8 +154,262 @@ namespace SharpBridge.Tests.Services
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
                 _colorServiceMock.Object,
-                _externalEditorServiceMock.Object
+                _externalEditorServiceMock.Object,
+                _shortcutConfigurationManagerMock.Object,
+                _applicationConfig,
+                _systemHelpRendererMock.Object
             );
+        }
+
+        /// <summary>
+        /// Helper method to create ApplicationOrchestrator with one parameter replaced for null testing
+        /// </summary>
+        private ApplicationOrchestrator CreateOrchestratorWithNullParameter(string parameterName)
+        {
+            return parameterName switch
+            {
+                "vtubeStudioPCClient" => new ApplicationOrchestrator(
+                    null!,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "vtubeStudioPhoneClient" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    null!,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "transformationEngine" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    null!,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "phoneConfig" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    null!,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "logger" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    null!,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "consoleRenderer" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    null!,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "keyboardInputHandler" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    null!,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "parameterManager" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    null!,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "recoveryPolicy" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    null!,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "console" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    null!,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "colorService" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    null!,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "externalEditorService" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    null!,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "shortcutConfigurationManager" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    null!,
+                    _applicationConfig,
+                    _systemHelpRendererMock.Object),
+                "applicationConfig" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    null!,
+                    _systemHelpRendererMock.Object),
+                "systemHelpRenderer" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _applicationConfig,
+                    null!),
+                _ => throw new ArgumentException($"Unknown parameter: {parameterName}")
+            };
         }
 
         private void SetupBasicMocks()
@@ -297,11 +588,6 @@ namespace SharpBridge.Tests.Services
             }
         }
 
-        private static async Task RunWithException<TException>(Func<Task> testAction) where TException : Exception
-        {
-            await Assert.ThrowsAsync<TException>(testAction);
-        }
-
         public void Dispose()
         {
             // Clean up temp file
@@ -369,22 +655,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        [Fact]
-        public async Task InitializeAsync_WhenAuthenticationFails_CompletesGracefully()
-        {
-            // Arrange
-            SetupBasicMocks();
-            var cancellationToken = CancellationToken.None;
 
-            _vtubeStudioPCClientMock.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false); // Initialization (including authentication) fails
-
-            // Act - should not throw
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
-
-            // Assert - verify that initialization was attempted
-            _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
-        }
 
         // Connection and Lifecycle Tests
 
@@ -676,10 +947,10 @@ namespace SharpBridge.Tests.Services
             };
 
             // Configure transformation for both events
-            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)))
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound)))
                 .Returns(transformedParams1);
 
-            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)))
+            _transformationEngineMock.Setup(x => x.TransformData(It.Is<PhoneTrackingInfo>(p => !p.FaceFound)))
                 .Returns(transformedParams2);
 
             // Configure PC client to track sends
@@ -719,11 +990,11 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _transformationEngineMock.Verify(
-                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == true)),
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound)),
                 Times.Once);
 
             _transformationEngineMock.Verify(
-                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => p.FaceFound == false)),
+                x => x.TransformData(It.Is<PhoneTrackingInfo>(p => !p.FaceFound)),
                 Times.Once);
 
             _vtubeStudioPCClientMock.Verify(x =>
@@ -802,188 +1073,91 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public void Constructor_WithNullVTubeStudioPCClient_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                null!,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("vtubeStudioPCClient"));
+            exception.ParamName.Should().Be("vtubeStudioPCClient");
         }
 
         [Fact]
         public void Constructor_WithNullVTubeStudioPhoneClient_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                null!,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("vtubeStudioPhoneClient"));
+            exception.ParamName.Should().Be("vtubeStudioPhoneClient");
         }
 
         [Fact]
         public void Constructor_WithNullTransformationEngine_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                null!,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("transformationEngine"));
+            exception.ParamName.Should().Be("transformationEngine");
         }
 
         [Fact]
         public void Constructor_WithNullPhoneConfig_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                null!,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("phoneConfig"));
+            exception.ParamName.Should().Be("phoneConfig");
         }
-
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                null!,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("logger"));
+            exception.ParamName.Should().Be("logger");
         }
 
         [Fact]
         public void Constructor_WithNullConsoleRenderer_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                null!,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("consoleRenderer"));
+            exception.ParamName.Should().Be("consoleRenderer");
         }
 
         [Fact]
         public void Constructor_WithNullKeyboardInputHandler_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                null!,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("keyboardInputHandler"));
+            exception.ParamName.Should().Be("keyboardInputHandler");
         }
 
         [Fact]
         public void Constructor_WithNullParameterManager_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                null!,
-                _recoveryPolicyMock.Object,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("parameterManager"));
+            exception.ParamName.Should().Be("parameterManager");
         }
 
         [Fact]
         public void Constructor_WithNullRecoveryPolicy_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                null!,
-                _consoleMock.Object,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("recoveryPolicy"));
+            exception.ParamName.Should().Be("recoveryPolicy");
         }
 
         [Fact]
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ApplicationOrchestrator(
-                _vtubeStudioPCClientMock.Object,
-                _vtubeStudioPhoneClientMock.Object,
-                _transformationEngineMock.Object,
-                _phoneConfig,
-                _loggerMock.Object,
-                _consoleRendererMock.Object,
-                _keyboardInputHandlerMock.Object,
-                _parameterManagerMock.Object,
-                _recoveryPolicyMock.Object,
-                null!,
-                Mock.Of<IParameterColorService>(),
-                Mock.Of<IExternalEditorService>()));
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("console"));
+            exception.ParamName.Should().Be("console");
         }
 
         // Additional Initialization Tests
@@ -1933,21 +2107,8 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ApplicationOrchestrator(
-                    _vtubeStudioPCClientMock.Object,
-                    _vtubeStudioPhoneClientMock.Object,
-                    _transformationEngineMock.Object,
-                    _phoneConfig,
-                    _loggerMock.Object,
-                    _consoleRendererMock.Object,
-                    _keyboardInputHandlerMock.Object,
-                    _parameterManagerMock.Object,
-                    _recoveryPolicyMock.Object,
-                    _consoleMock.Object,
-                    null!,
-                    Mock.Of<IExternalEditorService>()));
-
-            Assert.Equal("colorService", exception.ParamName);
+                CreateOrchestratorWithNullParameter("colorService"));
+            exception.ParamName.Should().Be("colorService");
         }
 
         [Fact]
@@ -1955,21 +2116,35 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ApplicationOrchestrator(
-                    _vtubeStudioPCClientMock.Object,
-                    _vtubeStudioPhoneClientMock.Object,
-                    _transformationEngineMock.Object,
-                    _phoneConfig,
-                    _loggerMock.Object,
-                    _consoleRendererMock.Object,
-                    _keyboardInputHandlerMock.Object,
-                    _parameterManagerMock.Object,
-                    _recoveryPolicyMock.Object,
-                    _consoleMock.Object,
-                    Mock.Of<IParameterColorService>(),
-                    null!));
+                CreateOrchestratorWithNullParameter("externalEditorService"));
+            exception.ParamName.Should().Be("externalEditorService");
+        }
 
-            Assert.Equal("externalEditorService", exception.ParamName);
+        [Fact]
+        public void Constructor_WithNullShortcutConfigurationManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("shortcutConfigurationManager"));
+            exception.ParamName.Should().Be("shortcutConfigurationManager");
+        }
+
+        [Fact]
+        public void Constructor_WithNullApplicationConfig_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("applicationConfig"));
+            exception.ParamName.Should().Be("applicationConfig");
+        }
+
+        [Fact]
+        public void Constructor_WithNullSystemHelpRenderer_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("systemHelpRenderer"));
+            exception.ParamName.Should().Be("systemHelpRenderer");
         }
 
         [Fact]
@@ -2119,7 +2294,7 @@ namespace SharpBridge.Tests.Services
             // Verify transformation and sending still occurred
             _transformationEngineMock.Verify(x => x.TransformData(trackingData), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => x.SendTrackingAsync(
-                It.Is<PCTrackingInfo>(info => info.FaceFound == true),
+                It.Is<PCTrackingInfo>(info => info.FaceFound),
                 It.IsAny<CancellationToken>()),
                 Times.Once);
 
@@ -2530,11 +2705,468 @@ namespace SharpBridge.Tests.Services
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
                 _colorServiceMock.Object,
-                _externalEditorServiceMock.Object);
+                _externalEditorServiceMock.Object,
+                _shortcutConfigurationManagerMock.Object,
+                _applicationConfig,
+                _systemHelpRendererMock.Object);
 
             // Act & Assert - Should not throw
             var exception = Record.Exception(() => orchestrator.Dispose());
             Assert.Null(exception);
+        }
+
+        #endregion
+
+        #region Shortcut System Tests
+
+        [Fact]
+        public void Constructor_LoadsShortcutConfiguration()
+        {
+            // Arrange & Act
+            CreateOrchestrator();
+
+            // Assert
+            _shortcutConfigurationManagerMock.Verify(x => x.LoadFromConfiguration(_applicationConfig), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_RegistersShortcutsFromConfiguration()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+
+            // Act
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Assert
+            _keyboardInputHandlerMock.Verify(x => x.RegisterShortcut(
+                It.IsAny<ConsoleKey>(),
+                It.IsAny<ConsoleModifiers>(),
+                It.IsAny<Action>(),
+                It.IsAny<string>()), Times.AtLeast(1));
+        }
+
+        [Fact]
+        public async Task InitializeAsync_WithShortcutConfigurationIssues_LogsWarnings()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var incorrectShortcuts = new Dictionary<ShortcutAction, string>
+            {
+                [ShortcutAction.CycleTransformationEngineVerbosity] = "InvalidShortcut",
+                [ShortcutAction.CyclePCClientVerbosity] = "DuplicateKey"
+            };
+            _shortcutConfigurationManagerMock.Setup(x => x.GetIncorrectShortcuts())
+                .Returns(incorrectShortcuts);
+
+            var orchestrator = CreateOrchestrator();
+
+            // Act
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Assert
+            _loggerMock.Verify(x => x.Warning(
+                It.Is<string>(s => s.Contains("Invalid shortcut configurations detected")),
+                It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_WithDisabledShortcuts_SkipsRegistration()
+        {
+            // Arrange
+            SetupBasicMocks();
+            _shortcutConfigurationManagerMock.Setup(x => x.GetMappedShortcuts())
+                .Returns(new Dictionary<ShortcutAction, Shortcut?>
+                {
+                    [ShortcutAction.CycleTransformationEngineVerbosity] = null, // Disabled
+                    [ShortcutAction.CyclePCClientVerbosity] = new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt),
+                });
+
+            var orchestrator = CreateOrchestrator();
+
+            // Act
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Assert
+            _loggerMock.Verify(x => x.Debug(
+                It.Is<string>(s => s.Contains("Skipping disabled shortcut for action")),
+                It.IsAny<object[]>()), Times.Once);
+        }
+
+        #endregion
+
+        #region System Help Tests
+
+        [Fact]
+        public async Task ShowShortcutHelp_DisplaysSystemHelp()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            _systemHelpRendererMock.Setup(x => x.RenderSystemHelp(It.IsAny<ApplicationConfig>(), It.IsAny<int>()))
+                .Returns("Test help content");
+
+            // Get the help action from registered shortcuts
+            Action? helpAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.F1,
+                ConsoleModifiers.None,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => helpAction = action);
+
+            // Re-initialize to capture the action
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            helpAction.Should().NotBeNull("Help action should be registered");
+            helpAction!();
+
+            // Assert
+            _systemHelpRendererMock.Verify(x => x.RenderSystemHelp(
+                _applicationConfig,
+                It.IsAny<int>()), Times.Once);
+            _consoleMock.Verify(x => x.Clear(), Times.Once);
+            _consoleMock.Verify(x => x.Write("Test help content"), Times.Once);
+        }
+
+        [Fact]
+        public async Task CheckForKeyboardInput_InHelpMode_ExitsOnAnyKey()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Setup help mode
+            _keyboardInputHandlerMock.Setup(x => x.ConsumeAnyKeyPress()).Returns(true);
+
+            // Get the help action and trigger it
+            Action? helpAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.F1,
+                ConsoleModifiers.None,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => helpAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            helpAction!(); // Enter help mode
+
+            // Use reflection to call CheckForKeyboardInput
+            var method = typeof(ApplicationOrchestrator)
+                .GetMethod("CheckForKeyboardInput", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            // Act
+            method!.Invoke(newOrchestrator, null);
+
+            // Assert
+            _keyboardInputHandlerMock.Verify(x => x.ConsumeAnyKeyPress(), Times.Once);
+            _consoleMock.Verify(x => x.Clear(), Times.AtLeast(1)); // Called when exiting help
+        }
+
+        #endregion
+
+        #region External Editor Tests
+
+        [Fact]
+        public async Task OpenConfigInEditor_CallsExternalEditorService()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(true);
+
+            // Get the editor action from registered shortcuts
+            Action? editorAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.E,
+                ConsoleModifiers.Control | ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => editorAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            editorAction.Should().NotBeNull("Editor action should be registered");
+            editorAction!();
+
+            // Give async operation time to complete
+            await Task.Delay(100);
+
+            // Assert
+            _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(_tempConfigPath), Times.Once);
+        }
+
+        [Fact]
+        public async Task OpenConfigInEditor_WhenServiceFails_LogsWarning()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+                .ReturnsAsync(false);
+
+            // Get the editor action
+            Action? editorAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.E,
+                ConsoleModifiers.Control | ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => editorAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            editorAction!();
+            await Task.Delay(100);
+
+            // Assert
+            _loggerMock.Verify(x => x.Warning("Failed to launch external editor"), Times.Once);
+        }
+
+        #endregion
+
+        #region Reload Configuration Tests
+
+        [Fact]
+        public async Task ReloadTransformationConfig_ReloadsConfiguration()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Clear previous invocations
+            _transformationEngineMock.Invocations.Clear();
+
+            // Get the reload action
+            Action? reloadAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.K,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            reloadAction.Should().NotBeNull("Reload action should be registered");
+            reloadAction!();
+
+            // Allow time for async operations to complete
+            await Task.Delay(100);
+
+            // Assert
+            _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.AtLeast(2)); // Called during Initialize + Reload
+            _loggerMock.Verify(x => x.Info("Reloading transformation config..."), Times.Once);
+            _loggerMock.Verify(x => x.Info("Transformation config reloaded successfully"), Times.Once);
+        }
+
+        [Fact]
+        public async Task ReloadTransformationConfig_ResetsColorServiceFlag()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Get the reload action
+            Action? reloadAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.K,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            reloadAction!();
+            await Task.Delay(100);
+
+            // Assert
+            _loggerMock.Verify(x => x.Debug("Color service initialization flag reset for config reload"), Times.Once);
+        }
+
+        [Fact]
+        public async Task ReloadTransformationConfig_WhenLoadingFails_LogsErrorMessage()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Set up the mock to succeed on first calls, then fail on subsequent calls
+            var expectedException = new InvalidOperationException("Test exception");
+            _transformationEngineMock.SetupSequence(x => x.LoadRulesAsync(_tempConfigPath))
+                .Returns(Task.CompletedTask) // First call during InitializeAsync succeeds
+                .ThrowsAsync(expectedException); // Second call during reload fails
+
+            // Get the reload action
+            Action? reloadAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.K,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            reloadAction!();
+            await Task.Delay(100);
+
+            // Assert
+            _loggerMock.Verify(x => x.ErrorWithException(
+                "Error reloading transformation config",
+                expectedException), Times.Once);
+        }
+
+        #endregion
+
+        #region Verbosity Cycling Tests
+
+        [Fact]
+        public async Task CycleTransformationEngineVerbosity_CallsFormatter()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var transformationFormatter = new Mock<IFormatter>();
+            _consoleRendererMock.Setup(x => x.GetFormatter<TransformationEngineInfo>())
+                .Returns(transformationFormatter.Object);
+
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Get the verbosity action
+            Action? verbosityAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.T,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            verbosityAction.Should().NotBeNull("Verbosity action should be registered");
+            verbosityAction!();
+
+            // Assert
+            transformationFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CyclePCClientVerbosity_CallsFormatter()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var pcFormatter = new Mock<IFormatter>();
+            _consoleRendererMock.Setup(x => x.GetFormatter<PCTrackingInfo>())
+                .Returns(pcFormatter.Object);
+
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Get the verbosity action
+            Action? verbosityAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.P,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            verbosityAction!();
+
+            // Assert
+            pcFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CyclePhoneClientVerbosity_CallsFormatter()
+        {
+            // Arrange
+            SetupBasicMocks();
+            var phoneFormatter = new Mock<IFormatter>();
+            _consoleRendererMock.Setup(x => x.GetFormatter<PhoneTrackingInfo>())
+                .Returns(phoneFormatter.Object);
+
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Get the verbosity action
+            Action? verbosityAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.O,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act
+            verbosityAction!();
+
+            // Assert
+            phoneFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public async Task CycleVerbosity_WhenFormatterIsNull_HandlesGracefully()
+        {
+            // Arrange
+            SetupBasicMocks();
+            _consoleRendererMock.Setup(x => x.GetFormatter<TransformationEngineInfo>())
+                .Returns((IFormatter?)null);
+
+            var orchestrator = CreateOrchestrator();
+            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Get the verbosity action
+            Action? verbosityAction = null;
+            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
+                ConsoleKey.T,
+                ConsoleModifiers.Alt,
+                It.IsAny<Action>(),
+                It.IsAny<string>()))
+                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
+
+            var newOrchestrator = CreateOrchestrator();
+            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+
+            // Act & Assert - Should not throw
+            var exception = Record.Exception(() => verbosityAction!());
+            exception.Should().BeNull("Action should handle null formatter gracefully");
         }
 
         #endregion

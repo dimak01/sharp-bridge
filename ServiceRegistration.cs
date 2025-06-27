@@ -26,9 +26,9 @@ namespace SharpBridge
         /// <param name="phoneConfigFilename">Phone config filename</param>
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddSharpBridgeServices(
-            this IServiceCollection services, 
-            string configDirectory, 
-            string pcConfigFilename, 
+            this IServiceCollection services,
+            string configDirectory,
+            string pcConfigFilename,
             string phoneConfigFilename)
         {
             // Validate parameters
@@ -38,39 +38,39 @@ namespace SharpBridge
                 throw new ArgumentException("PC config filename cannot be null or empty", nameof(pcConfigFilename));
             if (string.IsNullOrEmpty(phoneConfigFilename))
                 throw new ArgumentException("Phone config filename cannot be null or empty", nameof(phoneConfigFilename));
-                
+
             // Register config manager
-            services.AddSingleton<ConfigManager>(provider => 
+            services.AddSingleton<ConfigManager>(provider =>
                 new ConfigManager(configDirectory, pcConfigFilename, phoneConfigFilename));
-            
+
             // Register configurations
-            services.AddSingleton(provider => 
+            services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<ConfigManager>();
                 return configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
             });
-            
-            services.AddSingleton(provider => 
+
+            services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<ConfigManager>();
                 return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
             });
-            
+
             // Register ApplicationConfig
-            services.AddSingleton(provider => 
+            services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<ConfigManager>();
                 return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
             });
-            
+
             // Register clients
             services.AddSingleton<IWebSocketWrapper, WebSocketWrapper>();
-            
+
             // Register UDP client factory
             services.AddSingleton<IUdpClientWrapperFactory, UdpClientWrapperFactory>();
-            
+
             // Register core services
-            services.AddTransient<IVTubeStudioPhoneClient>(provider => 
+            services.AddTransient<IVTubeStudioPhoneClient>(provider =>
             {
                 var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
                 return new VTubeStudioPhoneClient(
@@ -79,27 +79,27 @@ namespace SharpBridge
                     provider.GetRequiredService<IAppLogger>()
                 );
             });
-            
+
             // Register file system watcher factory
             services.AddSingleton<IFileSystemWatcherFactory, FileSystemWatcherFactory>();
-            
+
             // Register file change watcher
             services.AddSingleton<IFileChangeWatcher, SharpBridge.Utilities.FileSystemChangeWatcher>();
-            
+
             // Register transformation rules repository
             services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
-            
+
             services.AddTransient<ITransformationEngine, TransformationEngine>();
-            
+
             // Register VTubeStudioPCClient as a singleton
             services.AddSingleton<VTubeStudioPCClient>();
             services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
-            
+
             // Register VTubeStudioPCParameterManager
             services.AddSingleton<IVTubeStudioPCParameterManager, VTubeStudioPCParameterManager>();
-            
+
             // Register port discovery service
-            services.AddTransient<IPortDiscoveryService>(provider => 
+            services.AddTransient<IPortDiscoveryService>(provider =>
             {
                 var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
                 return new PortDiscoveryService(
@@ -107,52 +107,57 @@ namespace SharpBridge
                     factory.CreateForPortDiscovery()
                 );
             });
-            
+
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();
-            
+
             // Register logging services
             services.AddSingleton(ConfigureSerilog());
-            
+
             // Register the Serilog logger as a singleton
             services.AddSingleton<IAppLogger, SerilogAppLogger>();
-            
+
             // Register keyboard input handler
             services.AddSingleton<IKeyboardInputHandler, KeyboardInputHandler>();
-            
+
             // Register table formatter
             services.AddSingleton<ITableFormatter, TableFormatter>();
-            
+
             // Register parameter color service
             services.AddSingleton<IParameterColorService, ParameterColorService>();
-            
+
             // Register process launcher
             services.AddSingleton<IProcessLauncher, ProcessLauncher>();
-            
+
             // Register external editor service
             services.AddSingleton<IExternalEditorService, ExternalEditorService>();
-            
+
+            // Register shortcut services
+            services.AddSingleton<IShortcutParser, ShortcutParser>();
+            services.AddSingleton<IShortcutConfigurationManager, ShortcutConfigurationManager>();
+            services.AddSingleton<ISystemHelpRenderer, SystemHelpRenderer>();
+
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();
             services.AddSingleton<PCTrackingInfoFormatter>();
             services.AddSingleton<TransformationEngineInfoFormatter>();
-            
+
             // Register console renderer - dependencies will be resolved automatically
             services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
-            
+
             // Register recovery policy
-            services.AddSingleton<IRecoveryPolicy>(provider => 
+            services.AddSingleton<IRecoveryPolicy>(provider =>
             {
                 var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
                 return new SimpleRecoveryPolicy(TimeSpan.FromSeconds(pcConfig.RecoveryIntervalSeconds));
             });
-            
+
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Configures Serilog for the application
         /// </summary>
@@ -161,7 +166,7 @@ namespace SharpBridge
             // Ensure the logs directory exists
             string logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
             Directory.CreateDirectory(logDirectory);
-            
+
             // Configure Serilog with file-only output to avoid interfering with console GUI
             return new LoggerConfiguration()
                 .MinimumLevel.Debug()
@@ -173,9 +178,9 @@ namespace SharpBridge
                     retainedFileCountLimit: 31,      // Keep 31 files (for a month of logs)
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
                 .CreateLogger();
-                
+
         }
-        
+
         /// <summary>
         /// Configures the VTubeStudioPhoneClientConfig with the specified settings
         /// </summary>
@@ -183,10 +188,10 @@ namespace SharpBridge
         /// <param name="configureOptions">Action to configure the phone client options</param>
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection ConfigureVTubeStudioPhoneClient(
-            this IServiceCollection services, 
+            this IServiceCollection services,
             Action<VTubeStudioPhoneClientConfig> configureOptions)
         {
-            services.AddSingleton(sp => 
+            services.AddSingleton(sp =>
             {
                 var configManager = sp.GetRequiredService<ConfigManager>();
                 var config = configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
@@ -194,10 +199,10 @@ namespace SharpBridge
                 configManager.SavePhoneConfigAsync(config).GetAwaiter().GetResult();
                 return config;
             });
-            
+
             return services;
         }
-        
+
         /// <summary>
         /// Configures the VTubeStudioPCConfig with the specified settings
         /// </summary>
@@ -205,10 +210,10 @@ namespace SharpBridge
         /// <param name="configureOptions">Action to configure the VTube Studio PC options</param>
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection ConfigureVTubeStudioPC(
-            this IServiceCollection services, 
+            this IServiceCollection services,
             Action<VTubeStudioPCConfig> configureOptions)
         {
-            services.AddSingleton(sp => 
+            services.AddSingleton(sp =>
             {
                 var configManager = sp.GetRequiredService<ConfigManager>();
                 var config = configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
@@ -216,8 +221,8 @@ namespace SharpBridge
                 configManager.SavePCConfigAsync(config).GetAwaiter().GetResult();
                 return config;
             });
-            
+
             return services;
         }
     }
-} 
+}

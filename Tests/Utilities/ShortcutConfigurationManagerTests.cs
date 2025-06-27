@@ -1,0 +1,496 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using FluentAssertions;
+using Moq;
+using SharpBridge.Interfaces;
+using SharpBridge.Models;
+using SharpBridge.Utilities;
+using Xunit;
+
+namespace SharpBridge.Tests.Utilities
+{
+    public class ShortcutConfigurationManagerTests
+    {
+        private readonly Mock<IShortcutParser> _parserMock;
+        private readonly Mock<IAppLogger> _loggerMock;
+        private readonly ShortcutConfigurationManager _manager;
+
+        public ShortcutConfigurationManagerTests()
+        {
+            _parserMock = new Mock<IShortcutParser>();
+            _loggerMock = new Mock<IAppLogger>();
+            _manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object);
+        }
+
+        #region Constructor Tests
+
+        [Fact]
+        public void Constructor_WithNullParser_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ShortcutConfigurationManager(null!, _loggerMock.Object));
+            exception.ParamName.Should().Be("parser");
+        }
+
+        [Fact]
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ShortcutConfigurationManager(_parserMock.Object, null!));
+            exception.ParamName.Should().Be("logger");
+        }
+
+        #endregion
+
+        #region GetDefaultShortcuts Tests
+
+        [Fact]
+        public void GetDefaultShortcuts_ReturnsExpectedDefaults()
+        {
+            // Act
+            var defaults = _manager.GetDefaultShortcuts();
+
+            // Assert
+            defaults.Should().NotBeNull();
+            defaults.Should().ContainKey(ShortcutAction.CycleTransformationEngineVerbosity);
+            defaults.Should().ContainKey(ShortcutAction.CyclePCClientVerbosity);
+            defaults.Should().ContainKey(ShortcutAction.CyclePhoneClientVerbosity);
+            defaults.Should().ContainKey(ShortcutAction.ReloadTransformationConfig);
+            defaults.Should().ContainKey(ShortcutAction.OpenConfigInEditor);
+            defaults.Should().ContainKey(ShortcutAction.ShowSystemHelp);
+
+            defaults[ShortcutAction.CycleTransformationEngineVerbosity].Key.Should().Be(ConsoleKey.T);
+            defaults[ShortcutAction.CycleTransformationEngineVerbosity].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.CyclePCClientVerbosity].Key.Should().Be(ConsoleKey.P);
+            defaults[ShortcutAction.CyclePCClientVerbosity].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.CyclePhoneClientVerbosity].Key.Should().Be(ConsoleKey.O);
+            defaults[ShortcutAction.CyclePhoneClientVerbosity].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.ReloadTransformationConfig].Key.Should().Be(ConsoleKey.K);
+            defaults[ShortcutAction.ReloadTransformationConfig].Modifiers.Should().Be(ConsoleModifiers.Alt);
+            defaults[ShortcutAction.OpenConfigInEditor].Key.Should().Be(ConsoleKey.E);
+            defaults[ShortcutAction.OpenConfigInEditor].Modifiers.Should().Be(ConsoleModifiers.Control | ConsoleModifiers.Alt);
+            defaults[ShortcutAction.ShowSystemHelp].Key.Should().Be(ConsoleKey.F1);
+            defaults[ShortcutAction.ShowSystemHelp].Modifiers.Should().Be(ConsoleModifiers.None);
+        }
+
+        #endregion
+
+        #region LoadFromConfiguration Tests
+
+        [Fact]
+        public void LoadFromConfiguration_WithValidConfig_LoadsMappingsSuccessfully()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "Alt+P"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
+                .Returns(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt));
+
+            // Act
+            _manager.LoadFromConfiguration(config);
+
+            // Assert
+            var mappings = _manager.GetMappedShortcuts();
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().NotBeNull();
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity]!.Key.Should().Be(ConsoleKey.T);
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity]!.Modifiers.Should().Be(ConsoleModifiers.Alt);
+
+            mappings[ShortcutAction.CyclePCClientVerbosity].Should().NotBeNull();
+            mappings[ShortcutAction.CyclePCClientVerbosity]!.Key.Should().Be(ConsoleKey.P);
+            mappings[ShortcutAction.CyclePCClientVerbosity]!.Modifiers.Should().Be(ConsoleModifiers.Alt);
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_WithNullConfig_UsesDefaults()
+        {
+            // Arrange - Setup parser to format and parse default shortcuts
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)))
+                .Returns("Alt+T");
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt)))
+                .Returns("Alt+P");
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt)))
+                .Returns("Alt+O");
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt)))
+                .Returns("Alt+K");
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt)))
+                .Returns("Ctrl+Alt+E");
+            _parserMock.Setup(x => x.FormatShortcut(new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)))
+                .Returns("F1");
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
+                .Returns(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("Alt+O"))
+                .Returns(new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("Alt+K"))
+                .Returns(new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("Ctrl+Alt+E"))
+                .Returns(new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("F1"))
+                .Returns(new Shortcut(ConsoleKey.F1, ConsoleModifiers.None));
+
+            // Act
+            _manager.LoadFromConfiguration(null!);
+
+            // Assert
+            var mappings = _manager.GetMappedShortcuts();
+            mappings.Should().HaveCount(6);
+            mappings.Values.Should().NotContain(x => x == null);
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_WithInvalidShortcut_DisablesShortcut()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "InvalidShortcut"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns((Shortcut?)null);
+
+            // Act
+            _manager.LoadFromConfiguration(config);
+
+            // Assert
+            var mappings = _manager.GetMappedShortcuts();
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().BeNull();
+
+            var status = _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity);
+            status.Should().Be(ShortcutStatus.Invalid);
+
+            var incorrectShortcuts = _manager.GetIncorrectShortcuts();
+            incorrectShortcuts.Should().ContainKey(ShortcutAction.CycleTransformationEngineVerbosity);
+            incorrectShortcuts[ShortcutAction.CycleTransformationEngineVerbosity].Should().Be("InvalidShortcut");
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_WithDuplicateShortcuts_DisablesConflictingShortcuts()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "Alt+T" // Duplicate
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+
+            // Act
+            _manager.LoadFromConfiguration(config);
+
+            // Assert
+            var mappings = _manager.GetMappedShortcuts();
+            var enabledShortcuts = mappings.Values.Count(v => v != null);
+            enabledShortcuts.Should().Be(1); // Only one should be enabled
+
+            // First action should be active, second should be invalid due to conflict
+            var firstStatus = _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity);
+            var secondStatus = _manager.GetShortcutStatus(ShortcutAction.CyclePCClientVerbosity);
+
+            (firstStatus == ShortcutStatus.Active || secondStatus == ShortcutStatus.Active).Should().BeTrue("One should be active");
+            (firstStatus == ShortcutStatus.Invalid || secondStatus == ShortcutStatus.Invalid).Should().BeTrue("One should be invalid due to conflict");
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_WithEmptyShortcut_DisablesShortcut()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = ""
+                }
+            };
+
+            // Act
+            _manager.LoadFromConfiguration(config);
+
+            // Assert
+            var mappings = _manager.GetMappedShortcuts();
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().BeNull();
+
+            var status = _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity);
+            status.Should().Be(ShortcutStatus.ExplicitlyDisabled);
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_LogsSummary()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "InvalidShortcut"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns((Shortcut?)null);
+
+            // Act
+            _manager.LoadFromConfiguration(config);
+
+            // Assert
+            _loggerMock.Verify(x => x.Info(
+                It.Is<string>(s => s.Contains("Loaded") && s.Contains("shortcuts successfully")),
+                It.IsAny<object[]>()), Times.Once);
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_ClearsPreviousState()
+        {
+            // Arrange
+            var firstConfig = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "InvalidShortcut" // This will create an incorrect shortcut
+                }
+            };
+
+            var secondConfig = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CyclePCClientVerbosity"] = "Alt+P"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("Alt+P"))
+                .Returns(new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns((Shortcut?)null);
+
+            // Act
+            _manager.LoadFromConfiguration(firstConfig);
+            var firstMappings = _manager.GetMappedShortcuts();
+            var firstIncorrectShortcuts = _manager.GetIncorrectShortcuts();
+
+            _manager.LoadFromConfiguration(secondConfig);
+            var secondMappings = _manager.GetMappedShortcuts();
+            var secondIncorrectShortcuts = _manager.GetIncorrectShortcuts();
+
+            // Assert
+            firstMappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().NotBeNull();
+            secondMappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().BeNull();
+            secondMappings[ShortcutAction.CyclePCClientVerbosity].Should().NotBeNull();
+
+            // State should be cleared between loads - first load has invalid shortcut, second doesn't
+            firstIncorrectShortcuts.Should().ContainKey(ShortcutAction.CyclePCClientVerbosity);
+            secondIncorrectShortcuts.Should().NotContainKey(ShortcutAction.CyclePCClientVerbosity);
+        }
+
+        #endregion
+
+        #region GetMappedShortcuts Tests
+
+        [Fact]
+        public void GetMappedShortcuts_ReturnsDefensiveCopy()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+
+            _manager.LoadFromConfiguration(config);
+
+            // Act
+            var mappings1 = _manager.GetMappedShortcuts();
+            var mappings2 = _manager.GetMappedShortcuts();
+
+            // Assert
+            mappings1.Should().NotBeSameAs(mappings2);
+            mappings1.Should().BeEquivalentTo(mappings2);
+        }
+
+        #endregion
+
+        #region New Interface Methods Tests
+
+        [Fact]
+        public void GetIncorrectShortcuts_ReturnsDefensiveCopy()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "InvalidShortcut"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns((Shortcut?)null);
+
+            _manager.LoadFromConfiguration(config);
+
+            // Act
+            var incorrectShortcuts1 = _manager.GetIncorrectShortcuts();
+            var incorrectShortcuts2 = _manager.GetIncorrectShortcuts();
+
+            // Assert
+            incorrectShortcuts1.Should().NotBeSameAs(incorrectShortcuts2);
+            incorrectShortcuts1.Should().BeEquivalentTo(incorrectShortcuts2);
+        }
+
+        [Fact]
+        public void GetShortcutStatus_ReturnsCorrectStatus()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T",
+                    ["CyclePCClientVerbosity"] = "InvalidShortcut",
+                    // CyclePhoneClientVerbosity not defined (explicitly disabled)
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+            _parserMock.Setup(x => x.ParseShortcut("InvalidShortcut"))
+                .Returns((Shortcut?)null);
+
+            _manager.LoadFromConfiguration(config);
+
+            // Act & Assert
+            _manager.GetShortcutStatus(ShortcutAction.CycleTransformationEngineVerbosity).Should().Be(ShortcutStatus.Active);
+            _manager.GetShortcutStatus(ShortcutAction.CyclePCClientVerbosity).Should().Be(ShortcutStatus.Invalid);
+            _manager.GetShortcutStatus(ShortcutAction.CyclePhoneClientVerbosity).Should().Be(ShortcutStatus.ExplicitlyDisabled);
+        }
+
+        #endregion
+
+        #region Edge Cases
+
+        [Fact]
+        public void LoadFromConfiguration_WithNullShortcutsProperty_UsesDefaults()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = null!
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut(It.IsAny<string>()))
+                .Returns(new Shortcut(ConsoleKey.F1, ConsoleModifiers.None));
+
+            // Act
+            var exception = Record.Exception(() => _manager.LoadFromConfiguration(config));
+
+            // Assert
+            exception.Should().BeNull("Should handle null Shortcuts property gracefully");
+        }
+
+        [Fact]
+        public void LoadFromConfiguration_WithUnknownShortcutAction_IgnoresGracefully()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["UnknownAction"] = "Alt+X",
+                    ["CycleTransformationEngineVerbosity"] = "Alt+T"
+                }
+            };
+
+            _parserMock.Setup(x => x.ParseShortcut("Alt+T"))
+                .Returns(new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt));
+
+            // Act
+            var exception = Record.Exception(() => _manager.LoadFromConfiguration(config));
+
+            // Assert
+            exception.Should().BeNull("Should ignore unknown actions gracefully");
+
+            var mappings = _manager.GetMappedShortcuts();
+            mappings[ShortcutAction.CycleTransformationEngineVerbosity].Should().NotBeNull();
+        }
+
+        #endregion
+
+        #region Verify Default Shortcuts
+
+        [Fact]
+        public void VerifyDefaultShortcuts()
+        {
+            // Arrange - Setup parser mocks for default shortcuts using callback to handle any Shortcut object
+            _parserMock.Setup(x => x.FormatShortcut(It.IsAny<Shortcut>()))
+                .Returns<Shortcut>(shortcut =>
+                {
+                    if (shortcut.Key == ConsoleKey.T && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+T";
+                    if (shortcut.Key == ConsoleKey.P && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+P";
+                    if (shortcut.Key == ConsoleKey.O && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+O";
+                    if (shortcut.Key == ConsoleKey.K && shortcut.Modifiers == ConsoleModifiers.Alt) return "Alt+K";
+                    if (shortcut.Key == ConsoleKey.E && shortcut.Modifiers == (ConsoleModifiers.Control | ConsoleModifiers.Alt)) return "Ctrl+Alt+E";
+                    if (shortcut.Key == ConsoleKey.F1 && shortcut.Modifiers == ConsoleModifiers.None) return "F1";
+                    return $"{shortcut.Modifiers}+{shortcut.Key}"; // Fallback
+                });
+
+            // Load default configuration to populate the mapped shortcuts
+            _manager.LoadFromConfiguration(null!);
+
+            // Verify default shortcuts
+            var defaults = _manager.GetMappedShortcuts();
+            // Verify individual shortcuts using ShortcutComparer for equality
+            var comparer = ShortcutComparer.Instance;
+            comparer.Equals(defaults[ShortcutAction.CycleTransformationEngineVerbosity], new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.CyclePCClientVerbosity], new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.CyclePhoneClientVerbosity], new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.OpenConfigInEditor], new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt)).Should().BeTrue();
+            comparer.Equals(defaults[ShortcutAction.ShowSystemHelp], new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)).Should().BeTrue();
+
+            // Verify formatted shortcuts - now using GetDisplayString
+            _manager.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity).Should().Be("Alt+T");
+            _manager.GetDisplayString(ShortcutAction.CyclePCClientVerbosity).Should().Be("Alt+P");
+            _manager.GetDisplayString(ShortcutAction.CyclePhoneClientVerbosity).Should().Be("Alt+O");
+            _manager.GetDisplayString(ShortcutAction.OpenConfigInEditor).Should().Be("Ctrl+Alt+E");
+            _manager.GetDisplayString(ShortcutAction.ShowSystemHelp).Should().Be("F1");
+            _manager.GetDisplayString(ShortcutAction.ReloadTransformationConfig).Should().Be("Alt+K");
+
+            // Verify ReloadTransformationConfig shortcut using ShortcutComparer for equality
+            comparer.Equals(defaults[ShortcutAction.ReloadTransformationConfig], new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt)).Should().BeTrue();
+        }
+
+        #endregion
+    }
+}

@@ -1,3 +1,11 @@
 {
-  "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\""
-} 
+  "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\"",
+  "Shortcuts": {
+    "CycleTransformationEngineVerbosity": "Alt+Y",
+    "CyclePCClientVerbosity": "Alt+K",
+    "CyclePhoneClientVerbosity": "Alt+C",
+    "ReloadTransformationConfig": "Alt+Q",
+    "OpenConfigInEditor": "Ctrl+Alt+W",
+    "ShowSystemHelp": "F2"
+  }
+}
