@@ -10,14 +10,15 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Centralized console rendering utility
     /// </summary>
-    public class ConsoleRenderer: IConsoleRenderer
+    public class ConsoleRenderer : IConsoleRenderer
     {
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private DateTime _lastUpdate = DateTime.MinValue;
         private readonly object _lock = new object();
         private readonly IConsole _console;
         private readonly IAppLogger _logger;
-        
+        private readonly IShortcutConfigurationManager _shortcutManager;
+
         /// <summary>
         /// Initializes a new instance of the ConsoleRenderer class
         /// </summary>
@@ -26,17 +27,19 @@ namespace SharpBridge.Utilities
         /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
-        public ConsoleRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter)
+        /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
+        public ConsoleRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            
+            _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+
             // Register formatters for known types - order determines display order
             RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
             RegisterFormatter<PhoneTrackingInfo>(phoneFormatter ?? throw new ArgumentNullException(nameof(phoneFormatter)));
             RegisterFormatter<PCTrackingInfo>(pcFormatter ?? throw new ArgumentNullException(nameof(pcFormatter)));
         }
-        
+
         /// <summary>
         /// Registers a formatter for a specific entity type
         /// </summary>
@@ -44,7 +47,7 @@ namespace SharpBridge.Utilities
         {
             _formatters[typeof(T)] = formatter;
         }
-        
+
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
@@ -56,7 +59,7 @@ namespace SharpBridge.Utilities
             }
             return null;
         }
-        
+
         /// <summary>
         /// Updates the console display with service statistics
         /// </summary>
@@ -66,9 +69,9 @@ namespace SharpBridge.Utilities
             {
                 if (!ShouldUpdate())
                     return;
-                
+
                 _lastUpdate = DateTime.UtcNow;
-                
+
                 var lines = BuildDisplayLines(stats);
                 ConsoleDisplayAction(lines.ToArray());
             }
@@ -89,11 +92,11 @@ namespace SharpBridge.Utilities
         private List<string> BuildDisplayLines(IEnumerable<IServiceStats> stats)
         {
             var lines = new List<string>();
-            
+
             AddHeaderLines(lines);
             AddServiceLines(lines, stats);
             AddFooterLines(lines);
-            
+
             return lines;
         }
 
@@ -148,7 +151,7 @@ namespace SharpBridge.Utilities
         private string FormatServiceWithEntity(IServiceStats stat)
         {
             var entityType = stat.CurrentEntity!.GetType();
-            
+
             if (_formatters.TryGetValue(entityType, out var formatter))
             {
                 return formatter.Format(stat);
@@ -165,7 +168,7 @@ namespace SharpBridge.Utilities
         private string FormatServiceWithoutEntity(IServiceStats stat)
         {
             var formatter = FindFormatterForServiceWithoutEntity(stat);
-            
+
             if (formatter != null)
             {
                 return formatter.Format(stat);
@@ -181,19 +184,19 @@ namespace SharpBridge.Utilities
         /// </summary>
         private IFormatter? FindFormatterForServiceWithoutEntity(IServiceStats stat)
         {
-            if (stat.ServiceName.Contains("Phone") && 
-                _formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) && 
+            if (stat.ServiceName.Contains("Phone") &&
+                _formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) &&
                 phoneFormatter is PhoneTrackingInfoFormatter)
             {
                 return phoneFormatter;
             }
-            
-            if (stat.ServiceName.Contains("PC") && 
+
+            if (stat.ServiceName.Contains("PC") &&
                 _formatters.TryGetValue(typeof(PCTrackingInfo), out var pcFormatter))
             {
                 return pcFormatter;
             }
-            
+
             return null;
         }
 
@@ -229,9 +232,13 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Adds footer lines to the display
         /// </summary>
-        private static void AddFooterLines(List<string> lines)
+        private void AddFooterLines(List<string> lines)
         {
-            lines.Add("Press Ctrl+C to exit | Alt+T for Transformation Engine verbosity | Alt+P for PC client verbosity | Alt+O for Phone client verbosity");
+            var transformationShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity);
+            var pcShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CyclePCClientVerbosity);
+            var phoneShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CyclePhoneClientVerbosity);
+
+            lines.Add($"Press Ctrl+C to exit | {transformationShortcut} for Transformation Engine verbosity | {pcShortcut} for PC client verbosity | {phoneShortcut} for Phone client verbosity");
         }
 
         // Reusing PerformanceMonitor's console display technique
@@ -240,30 +247,30 @@ namespace SharpBridge.Utilities
             try
             {
                 _console.SetCursorPosition(0, 0);
-                
+
                 int currentLine = 0;
                 int windowWidth = _console.WindowWidth - 1;
-                
+
                 // Write each line and clear the remainder of each line
                 foreach (var line in outputLines)
                 {
                     _console.SetCursorPosition(0, currentLine);
                     _console.Write(line);
-                    
+
                     // Clear the rest of this line (in case previous content was longer)
                     int remainingSpace = windowWidth - line.Length;
                     if (remainingSpace > 0)
                     {
                         _console.Write(new string(' ', remainingSpace));
                     }
-                    
+
                     currentLine++;
-                    
+
                     // Ensure we don't exceed console boundaries
                     if (currentLine >= _console.WindowHeight - 1)
                         break;
                 }
-                
+
                 // Clear any remaining lines that might have had content before
                 int windowHeight = _console.WindowHeight;
                 for (int i = currentLine; i < windowHeight - 1; i++)
@@ -271,7 +278,7 @@ namespace SharpBridge.Utilities
                     _console.SetCursorPosition(0, i);
                     _console.Write(new string(' ', windowWidth));
                 }
-                
+
                 // Reset cursor position to the end of our content
                 _console.SetCursorPosition(0, currentLine);
             }
@@ -290,5 +297,7 @@ namespace SharpBridge.Utilities
         {
             _console.Clear();
         }
+
+
     }
-} 
+}

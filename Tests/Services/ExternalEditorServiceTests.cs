@@ -26,13 +26,13 @@ namespace SharpBridge.Tests.Services
             {
                 EditorCommand = "notepad.exe \"%f\""
             };
-            
+
             // Default setup: process launcher succeeds
             _processLauncherMock.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(true);
-                
+
             _service = new ExternalEditorService(_config, _loggerMock.Object, _processLauncherMock.Object);
-            
+
             // Create a temporary file for testing
             _tempFilePath = Path.GetTempFileName();
             File.WriteAllText(_tempFilePath, "test content");
@@ -167,10 +167,10 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             result.Should().BeTrue();
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                 It.Is<string>(cmd => cmd.Contains(_tempFilePath))), Times.Once);
             _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", "notepad.exe"), Times.Once);
-            _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe", 
+            _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe",
                 It.Is<string>(args => args.Contains(_tempFilePath))), Times.Once);
         }
 
@@ -238,9 +238,9 @@ namespace SharpBridge.Tests.Services
             await service.TryOpenFileAsync(_tempFilePath);
 
             // Assert
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                 It.Is<string>(cmd => cmd.Contains(_tempFilePath) && !cmd.Contains("%f"))), Times.Once);
-            _processLauncherMock.Verify(x => x.TryStartProcess("editor.exe", 
+            _processLauncherMock.Verify(x => x.TryStartProcess("editor.exe",
                 It.Is<string>(args => args.Contains(_tempFilePath) && args.Contains("--file") && args.Contains("--readonly"))), Times.Once);
         }
 
@@ -255,9 +255,9 @@ namespace SharpBridge.Tests.Services
             await service.TryOpenFileAsync(_tempFilePath);
 
             // Assert
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                 It.Is<string>(cmd => cmd.Contains(_tempFilePath) && !cmd.Contains("%f"))), Times.Once);
-            _processLauncherMock.Verify(x => x.TryStartProcess("editor.exe", 
+            _processLauncherMock.Verify(x => x.TryStartProcess("editor.exe",
                 It.Is<string>(args => args.Contains(_tempFilePath) && args.Contains("--backup"))), Times.Once);
         }
 
@@ -282,16 +282,16 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var pathWithSpaces = Path.Combine(Path.GetTempPath(), "test file with spaces.txt");
             File.WriteAllText(pathWithSpaces, "test");
-            
+
             try
             {
                 // Act
                 await _service.TryOpenFileAsync(pathWithSpaces);
 
                 // Assert
-                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                     It.Is<string>(cmd => cmd.Contains(pathWithSpaces))), Times.Once);
-                _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe", 
+                _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe",
                     It.Is<string>(args => args.Contains(pathWithSpaces))), Times.Once);
             }
             finally
@@ -316,7 +316,7 @@ namespace SharpBridge.Tests.Services
             var result = await service.TryOpenFileAsync(_tempFilePath);
 
             // Assert - Verify command was parsed and executed (will likely fail since editor doesn't exist)
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                 It.Is<string>(cmd => cmd.Contains("C:\\Program Files\\Editor\\editor.exe") && cmd.Contains(_tempFilePath))), Times.Once);
             // Should fail gracefully since the editor doesn't exist
             _loggerMock.Verify(x => x.Warning("Failed to start external editor process"), Times.Once);
@@ -331,7 +331,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", "notepad.exe"), Times.Once);
-            _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe", 
+            _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe",
                 It.Is<string>(args => args.Contains(_tempFilePath))), Times.Once);
         }
 
@@ -354,8 +354,9 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithComplexArguments_ParsesCorrectly()
         {
             // Arrange
-            var configWithComplexArgs = new ApplicationConfig { 
-                EditorCommand = "code.exe --goto \"%f\":1:1 --new-window --wait" 
+            var configWithComplexArgs = new ApplicationConfig
+            {
+                EditorCommand = "code.exe --goto \"%f\":1:1 --new-window --wait"
             };
             var service = CreateService(configWithComplexArgs, false); // Expect failure
 
@@ -363,9 +364,9 @@ namespace SharpBridge.Tests.Services
             var result = await service.TryOpenFileAsync(_tempFilePath);
 
             // Assert - Verify command was parsed correctly with complex arguments
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
-                It.Is<string>(cmd => cmd.Contains("code.exe") && cmd.Contains("--goto") && 
-                                     cmd.Contains(_tempFilePath) && cmd.Contains(":1:1") && 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
+                It.Is<string>(cmd => cmd.Contains("code.exe") && cmd.Contains("--goto") &&
+                                     cmd.Contains(_tempFilePath) && cmd.Contains(":1:1") &&
                                      cmd.Contains("--new-window") && cmd.Contains("--wait"))), Times.Once);
             // Should fail gracefully since code.exe likely doesn't exist
             _loggerMock.Verify(x => x.Warning("Failed to start external editor process"), Times.Once);
@@ -393,7 +394,7 @@ namespace SharpBridge.Tests.Services
             await _service.TryOpenFileAsync(_tempFilePath);
 
             // Assert
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                 It.IsAny<string>()), Times.Once);
         }
 
@@ -404,7 +405,7 @@ namespace SharpBridge.Tests.Services
             await _service.TryOpenFileAsync(_tempFilePath);
 
             // Assert
-            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", 
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}",
                 "notepad.exe"), Times.Once);
         }
 
@@ -412,8 +413,9 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithInvalidExecutable_ReturnsFalseAndLogsWarning()
         {
             // Arrange
-            var configWithInvalidExe = new ApplicationConfig { 
-                EditorCommand = "nonexistenteditor12345.exe \"%f\"" 
+            var configWithInvalidExe = new ApplicationConfig
+            {
+                EditorCommand = "nonexistenteditor12345.exe \"%f\""
             };
             var service = CreateService(configWithInvalidExe, false); // Process launcher returns false
 
@@ -467,7 +469,7 @@ namespace SharpBridge.Tests.Services
             var mockProcessLauncher = new Mock<IProcessLauncher>();
             mockProcessLauncher.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
                 .Throws(new InvalidOperationException("Test exception"));
-            
+
             var config = new ApplicationConfig { EditorCommand = "notepad.exe \"%f\"" };
             var service = new ExternalEditorService(config, _loggerMock.Object, mockProcessLauncher.Object);
 
@@ -476,7 +478,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             result.Should().BeFalse();
-            _loggerMock.Verify(x => x.ErrorWithException("Error launching external editor", 
+            _loggerMock.Verify(x => x.ErrorWithException("Error launching external editor",
                 It.IsAny<InvalidOperationException>()), Times.Once);
         }
 
@@ -490,17 +492,17 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var longFileName = new string('a', 200) + ".txt";
             var longFilePath = Path.Combine(Path.GetTempPath(), longFileName);
-            
+
             try
             {
-                File.WriteAllText(longFilePath, "test");
+                await File.WriteAllTextAsync(longFilePath, "test");
 
                 // Act
                 var result = await _service.TryOpenFileAsync(longFilePath);
 
                 // Assert
                 result.Should().BeTrue();
-                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                     It.Is<string>(cmd => cmd.Contains(longFilePath))), Times.Once);
             }
             finally
@@ -515,17 +517,17 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var specialCharFile = Path.Combine(Path.GetTempPath(), "test-file_with[special]chars.txt");
-            
+
             try
             {
-                File.WriteAllText(specialCharFile, "test");
+                await File.WriteAllTextAsync(specialCharFile, "test");
 
                 // Act
                 var result = await _service.TryOpenFileAsync(specialCharFile);
 
                 // Assert
                 result.Should().BeTrue();
-                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                     It.Is<string>(cmd => cmd.Contains(specialCharFile))), Times.Once);
             }
             finally
@@ -540,17 +542,17 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var unicodeFile = Path.Combine(Path.GetTempPath(), "test-файл-测试.txt");
-            
+
             try
             {
-                File.WriteAllText(unicodeFile, "test");
+                await File.WriteAllTextAsync(unicodeFile, "test");
 
                 // Act
                 var result = await _service.TryOpenFileAsync(unicodeFile);
 
                 // Assert
                 result.Should().BeTrue();
-                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+                _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                     It.Is<string>(cmd => cmd.Contains(unicodeFile))), Times.Once);
             }
             finally
@@ -582,9 +584,9 @@ namespace SharpBridge.Tests.Services
 
             // Assert - All should succeed since we're mocking the process launcher to return true
             result.Should().BeTrue();
-            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", 
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}",
                 expectedExecutable), Times.Once);
-            _processLauncherMock.Verify(x => x.TryStartProcess(expectedExecutable, 
+            _processLauncherMock.Verify(x => x.TryStartProcess(expectedExecutable,
                 It.Is<string>(args => args.Contains(_tempFilePath))), Times.Once);
         }
 
@@ -592,8 +594,9 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithJetBrainsIDECommand_ParsesCorrectly()
         {
             // Arrange
-            var jetbrainsConfig = new ApplicationConfig { 
-                EditorCommand = "\"C:\\Users\\User\\AppData\\Local\\JetBrains\\Toolbox\\scripts\\idea.cmd\" \"%f\"" 
+            var jetbrainsConfig = new ApplicationConfig
+            {
+                EditorCommand = "\"C:\\Users\\User\\AppData\\Local\\JetBrains\\Toolbox\\scripts\\idea.cmd\" \"%f\""
             };
             var service = CreateService(jetbrainsConfig);
 
@@ -602,7 +605,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert - Verify command parsing for JetBrains IDE
             result.Should().BeTrue();
-            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", 
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}",
                 "C:\\Users\\User\\AppData\\Local\\JetBrains\\Toolbox\\scripts\\idea.cmd"), Times.Once);
         }
 
@@ -610,8 +613,9 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenFileAsync_WithSublimeTextCommand_ParsesCorrectly()
         {
             // Arrange
-            var sublimeConfig = new ApplicationConfig { 
-                EditorCommand = "\"C:\\Program Files\\Sublime Text\\sublime_text.exe\" \"%f\"" 
+            var sublimeConfig = new ApplicationConfig
+            {
+                EditorCommand = "\"C:\\Program Files\\Sublime Text\\sublime_text.exe\" \"%f\""
             };
             var service = CreateService(sublimeConfig);
 
@@ -620,7 +624,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert - Verify command parsing for Sublime Text
             result.Should().BeTrue();
-            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", 
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}",
                 "C:\\Program Files\\Sublime Text\\sublime_text.exe"), Times.Once);
         }
 
@@ -670,7 +674,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             result.Should().BeTrue();
-            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", 
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}",
                 "C:\\Program Files\\Editor\\editor.exe"), Times.Once);
             _processLauncherMock.Verify(x => x.TryStartProcess("C:\\Program Files\\Editor\\editor.exe", ""), Times.Once);
         }
@@ -687,7 +691,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert - Should not throw exception and handle gracefully
             result.Should().BeTrue(); // ParseCommand should still work, treating the whole thing as an unquoted command
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}", 
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
                 It.IsAny<string>()), Times.Once);
         }
 
@@ -719,4 +723,4 @@ namespace SharpBridge.Tests.Services
 
         #endregion
     }
-} 
+}
