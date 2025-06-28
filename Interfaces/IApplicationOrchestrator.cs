@@ -12,11 +12,10 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Initializes components and establishes connections
         /// </summary>
-        /// <param name="transformConfigPath">Path to the transformation configuration file</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>A task that completes when initialization and connection are done</returns>
-        Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken);
-        
+        Task InitializeAsync(CancellationToken cancellationToken);
+
         /// <summary>
         /// Starts the data flow between components and runs until cancelled
         /// </summary>
@@ -24,4 +23,4 @@ namespace SharpBridge.Interfaces
         /// <returns>A task that completes when the orchestrator is stopped</returns>
         Task RunAsync(CancellationToken cancellationToken);
     }
-} 
+}

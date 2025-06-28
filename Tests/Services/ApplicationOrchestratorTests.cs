@@ -556,7 +556,7 @@ namespace SharpBridge.Tests.Services
             }
 
             // Initialize and run the orchestrator
-            await _orchestrator.InitializeAsync(_tempConfigPath, linkedCts.Token);
+            await _orchestrator.InitializeAsync(linkedCts.Token);
             await _orchestrator.RunAsync(linkedCts.Token);
 
             return eventWasRaised;
@@ -617,25 +617,12 @@ namespace SharpBridge.Tests.Services
             var cancellationToken = CancellationToken.None;
 
             // Act
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
             _transformationEngineMock.Verify(x => x.LoadRulesAsync(), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
             _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WithNonExistentConfigFile_ThrowsFileNotFoundException()
-        {
-            // Arrange
-            SetupBasicMocks();
-            var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            var cancellationToken = CancellationToken.None;
-
-            // Act & Assert
-            await Assert.ThrowsAsync<FileNotFoundException>(() =>
-                _orchestrator.InitializeAsync(nonExistentPath, cancellationToken));
         }
 
         [Fact]
@@ -649,7 +636,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(false); // Initialization fails
 
             // Act - should not throw
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert - verify that initialization was attempted
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -683,7 +670,7 @@ namespace SharpBridge.Tests.Services
                 var consoleWriter = new StringWriter();
                 Console.SetOut(consoleWriter);
 
-                await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+                await _orchestrator.InitializeAsync(_defaultCts.Token);
 
                 // Act
                 await RunWithDefaultTimeout(async () =>
@@ -716,7 +703,7 @@ namespace SharpBridge.Tests.Services
 
             // Create and initialize orchestrator
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act & Assert
             await RunWithDefaultTimeout(async () =>
@@ -748,7 +735,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPCClientMock.Setup(x => x.AuthenticateAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act & Assert - should not throw exception
             await RunWithDefaultTimeout(async () =>
@@ -966,7 +953,7 @@ namespace SharpBridge.Tests.Services
 
             // Initialize orchestrator to subscribe to events
             var cancellationToken = CancellationToken.None;
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Get the event handler method via reflection
             var onTrackingDataReceivedMethod = typeof(ApplicationOrchestrator)
@@ -1160,20 +1147,6 @@ namespace SharpBridge.Tests.Services
             exception.ParamName.Should().Be("console");
         }
 
-        // Additional Initialization Tests
-
-        [Fact]
-        public async Task InitializeAsync_WithEmptyTransformConfigPath_ThrowsArgumentException()
-        {
-            // Arrange
-            string emptyPath = string.Empty;
-            var cancellationToken = CancellationToken.None;
-
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(() =>
-                _orchestrator.InitializeAsync(emptyPath, cancellationToken));
-        }
-
         // Additional RunAsync Tests
 
         [Fact]
@@ -1190,7 +1163,7 @@ namespace SharpBridge.Tests.Services
 
             // Create and initialize orchestrator
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             await RunWithDefaultTimeout(async () =>
@@ -1231,7 +1204,7 @@ namespace SharpBridge.Tests.Services
                     return Task.FromResult(false);
                 });
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act - Use a longer timeout to ensure we get multiple calls
             await RunWithCustomTimeout(async () =>
@@ -1259,7 +1232,7 @@ namespace SharpBridge.Tests.Services
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new WebSocketException("Test exception"));
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             await RunWithDefaultTimeout(async () =>
@@ -1384,7 +1357,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
 
             // Act
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Assert
             _keyboardInputHandlerMock.Verify(
@@ -1404,7 +1377,7 @@ namespace SharpBridge.Tests.Services
             var cancellationToken = CancellationToken.None;
 
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Setup transform engine to track reloads
             _transformationEngineMock.Invocations.Clear(); // Clear previous invocations
@@ -1429,7 +1402,7 @@ namespace SharpBridge.Tests.Services
 
             // Re-initialize to capture the action
             _orchestrator = CreateOrchestrator();
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Act - trigger the reload action
             reloadAction.Should().NotBeNull("Reload action should be registered");
@@ -1472,7 +1445,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
 
             // Initialize the orchestrator
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Act
             reloadAction!();
@@ -1501,7 +1474,7 @@ namespace SharpBridge.Tests.Services
             var cancellationToken = CancellationToken.None;
 
             // Act - should not throw exception
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
             _consoleMock.Verify(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>()), Times.Once);
@@ -1524,7 +1497,7 @@ namespace SharpBridge.Tests.Services
             var cancellationToken = CancellationToken.None;
 
             // Act - should not throw exception
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
             _loggerMock.Verify(x => x.ErrorWithException(
@@ -1545,7 +1518,7 @@ namespace SharpBridge.Tests.Services
             _consoleMock.Setup(x => x.TryRestoreWindowSize())
                 .Throws(expectedException);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             await RunWithDefaultTimeout(async () =>
@@ -1575,7 +1548,7 @@ namespace SharpBridge.Tests.Services
 
             // Act & Assert
             var thrownException = await Assert.ThrowsAsync<FileNotFoundException>(() =>
-                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
+                _orchestrator.InitializeAsync(cancellationToken));
 
             Assert.Equal(expectedException.Message, thrownException.Message);
         }
@@ -1601,7 +1574,7 @@ namespace SharpBridge.Tests.Services
                     return Task.CompletedTask;
                 });
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act
             await RunWithCustomTimeout(async () =>
@@ -1644,7 +1617,7 @@ namespace SharpBridge.Tests.Services
 
             // Act & Assert - The exception should propagate since TrySynchronizeParametersAsync is called directly
             var thrownException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken));
+                _orchestrator.InitializeAsync(cancellationToken));
 
             Assert.Equal(expectedException.Message, thrownException.Message);
         }
@@ -1665,7 +1638,7 @@ namespace SharpBridge.Tests.Services
             _recoveryPolicyMock.Setup(x => x.GetNextDelay())
                 .Throws(recoveryException);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act
             await RunWithCustomTimeout(async () =>
@@ -1700,7 +1673,7 @@ namespace SharpBridge.Tests.Services
                     }
                 });
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act
             await RunWithCustomTimeout(async () =>
@@ -1736,7 +1709,7 @@ namespace SharpBridge.Tests.Services
                     }
                 });
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Set console update interval to 5ms (much tighter)
             _orchestrator.CONSOLE_UPDATE_INTERVAL_SECONDS = 0.005;
@@ -1773,7 +1746,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(true);
 
             // Act
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
@@ -1796,7 +1769,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(true);
 
             // Act
-            await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
+            await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
@@ -1901,7 +1874,7 @@ namespace SharpBridge.Tests.Services
 
                 // Initialize orchestrator to subscribe to events
                 var orchestrator = CreateOrchestrator();
-                await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+                await orchestrator.InitializeAsync(CancellationToken.None);
 
                 // Get the event handler method via reflection
                 var onTrackingDataReceivedMethod = typeof(ApplicationOrchestrator)
@@ -1956,7 +1929,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
                 .ThrowsAsync(new InvalidOperationException("Phone client connection failed"));
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act - Run the orchestrator which will trigger recovery due to phone client exception
             await RunWithCustomTimeout(async () =>
@@ -2021,7 +1994,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
                 .ThrowsAsync(new InvalidOperationException("Trigger recovery scenario"));
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act - Run the orchestrator which will trigger recovery
             await RunWithCustomTimeout(async () =>
@@ -2087,7 +2060,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPhoneClientMock.Setup(x => x.SendTrackingRequestAsync())
                 .ThrowsAsync(new InvalidOperationException("Trigger recovery"));
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _longTimeoutCts.Token);
+            await _orchestrator.InitializeAsync(_longTimeoutCts.Token);
 
             // Act
             await RunWithCustomTimeout(async () =>
@@ -2168,7 +2141,7 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.TransformData(trackingData))
                 .Returns(pcTrackingInfo);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act - Trigger the event multiple times
             bool eventTriggered1 = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
@@ -2211,7 +2184,7 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.TransformData(trackingDataWithEmptyBlendShapes))
                 .Returns(pcTrackingInfo);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingDataWithEmptyBlendShapes, TimeSpan.FromMilliseconds(100));
@@ -2242,7 +2215,7 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.TransformData(trackingDataWithNullBlendShapes))
                 .Returns(pcTrackingInfo);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingDataWithNullBlendShapes, TimeSpan.FromMilliseconds(100));
@@ -2283,7 +2256,7 @@ namespace SharpBridge.Tests.Services
                 It.IsAny<IEnumerable<string>>()))
                 .Throws(new InvalidOperationException("Color service initialization failed"));
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
@@ -2331,7 +2304,7 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.GetParameterDefinitions())
                 .Returns(new List<VTSParameter>());
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act
             bool eventTriggered = await RunWithTimeoutAndEventTrigger(trackingData, TimeSpan.FromMilliseconds(100));
@@ -2379,7 +2352,7 @@ namespace SharpBridge.Tests.Services
             _transformationEngineMock.Setup(x => x.TransformData(It.IsAny<PhoneTrackingInfo>()))
                 .Returns(pcTrackingInfo);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act - Trigger events with different blend shapes
             bool firstEventTriggered = await RunWithTimeoutAndEventTrigger(firstTrackingData, TimeSpan.FromMilliseconds(100));
@@ -2446,7 +2419,7 @@ namespace SharpBridge.Tests.Services
                     It.IsAny<string>()))
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
 
-            await _orchestrator.InitializeAsync(_tempConfigPath, _defaultCts.Token);
+            await _orchestrator.InitializeAsync(_defaultCts.Token);
 
             // Act - First tracking data should initialize color service
             bool firstEventTriggered = await RunWithTimeoutAndEventTrigger(firstTrackingData, TimeSpan.FromMilliseconds(100));
@@ -2501,9 +2474,9 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
                 .ReturnsAsync(true);
 
             // Act - Use reflection to call the private method
@@ -2513,8 +2486,7 @@ namespace SharpBridge.Tests.Services
             await task;
 
             // Assert
-            _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(
-                It.Is<string>(path => path == _tempConfigPath)), Times.Once);
+            _externalEditorServiceMock.Verify(x => x.TryOpenTransformationConfigAsync(), Times.Once);
         }
 
         [Fact]
@@ -2522,9 +2494,9 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
                 .ReturnsAsync(false);
 
             // Act - Use reflection to call the private method
@@ -2551,7 +2523,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(transformationFormatter.Object);
 
             // Trigger keyboard shortcut registration
-            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+            orchestrator.InitializeAsync(CancellationToken.None).Wait();
 
             // Act - Simulate Alt+T keyboard shortcut
             var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.T, ConsoleModifiers.Alt);
@@ -2571,7 +2543,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(pcFormatter.Object);
 
             // Trigger keyboard shortcut registration
-            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+            orchestrator.InitializeAsync(CancellationToken.None).Wait();
 
             // Act - Simulate Alt+P keyboard shortcut
             var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.P, ConsoleModifiers.Alt);
@@ -2591,7 +2563,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(phoneFormatter.Object);
 
             // Trigger keyboard shortcut registration
-            orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None).Wait();
+            orchestrator.InitializeAsync(CancellationToken.None).Wait();
 
             // Act - Simulate Alt+O keyboard shortcut
             var shortcutAction = GetRegisteredShortcutAction(ConsoleKey.O, ConsoleModifiers.Alt);
@@ -2606,9 +2578,9 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
                 .ReturnsAsync(true);
 
             // Act - Simulate Ctrl+Alt+E keyboard shortcut
@@ -2620,7 +2592,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(It.IsAny<string>()), Times.Once);
+            _externalEditorServiceMock.Verify(x => x.TryOpenTransformationConfigAsync(), Times.Once);
         }
 
         /// <summary>
@@ -2646,7 +2618,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             _transformationEngineMock.Setup(x => x.LoadRulesAsync())
                 .ThrowsAsync(new InvalidOperationException("Config load failed"));
@@ -2737,7 +2709,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
 
             // Act
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Assert
             _keyboardInputHandlerMock.Verify(x => x.RegisterShortcut(
@@ -2763,7 +2735,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
 
             // Act
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Assert
             _loggerMock.Verify(x => x.Warning(
@@ -2786,7 +2758,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
 
             // Act
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Assert
             _loggerMock.Verify(x => x.Debug(
@@ -2804,7 +2776,7 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             _systemHelpRendererMock.Setup(x => x.RenderSystemHelp(It.IsAny<ApplicationConfig>(), It.IsAny<int>()))
                 .Returns("Test help content");
@@ -2820,7 +2792,7 @@ namespace SharpBridge.Tests.Services
 
             // Re-initialize to capture the action
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             helpAction.Should().NotBeNull("Help action should be registered");
@@ -2840,7 +2812,7 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Setup help mode
             _keyboardInputHandlerMock.Setup(x => x.ConsumeAnyKeyPress()).Returns(true);
@@ -2855,7 +2827,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => helpAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
             helpAction!(); // Enter help mode
 
             // Use reflection to call CheckForKeyboardInput
@@ -2880,9 +2852,9 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
                 .ReturnsAsync(true);
 
             // Get the editor action from registered shortcuts
@@ -2895,7 +2867,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => editorAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             editorAction.Should().NotBeNull("Editor action should be registered");
@@ -2905,7 +2877,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _externalEditorServiceMock.Verify(x => x.TryOpenFileAsync(_tempConfigPath), Times.Once);
+            _externalEditorServiceMock.Verify(x => x.TryOpenTransformationConfigAsync(), Times.Once);
         }
 
         [Fact]
@@ -2914,9 +2886,9 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenFileAsync(It.IsAny<string>()))
+            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
                 .ReturnsAsync(false);
 
             // Get the editor action
@@ -2929,7 +2901,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => editorAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             editorAction!();
@@ -2949,7 +2921,7 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Clear previous invocations
             _transformationEngineMock.Invocations.Clear();
@@ -2964,7 +2936,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             reloadAction.Should().NotBeNull("Reload action should be registered");
@@ -2985,7 +2957,7 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Get the reload action
             Action? reloadAction = null;
@@ -2997,7 +2969,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             reloadAction!();
@@ -3013,7 +2985,7 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Set up the mock to succeed on first calls, then fail on subsequent calls
             var expectedException = new InvalidOperationException("Test exception");
@@ -3031,7 +3003,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => reloadAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             reloadAction!();
@@ -3057,7 +3029,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(transformationFormatter.Object);
 
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Get the verbosity action
             Action? verbosityAction = null;
@@ -3069,7 +3041,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             verbosityAction.Should().NotBeNull("Verbosity action should be registered");
@@ -3089,7 +3061,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(pcFormatter.Object);
 
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Get the verbosity action
             Action? verbosityAction = null;
@@ -3101,7 +3073,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             verbosityAction!();
@@ -3120,7 +3092,7 @@ namespace SharpBridge.Tests.Services
                 .Returns(phoneFormatter.Object);
 
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Get the verbosity action
             Action? verbosityAction = null;
@@ -3132,7 +3104,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act
             verbosityAction!();
@@ -3150,7 +3122,7 @@ namespace SharpBridge.Tests.Services
                 .Returns((IFormatter?)null);
 
             var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await orchestrator.InitializeAsync(CancellationToken.None);
 
             // Get the verbosity action
             Action? verbosityAction = null;
@@ -3162,7 +3134,7 @@ namespace SharpBridge.Tests.Services
                 .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => verbosityAction = action);
 
             var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
+            await newOrchestrator.InitializeAsync(CancellationToken.None);
 
             // Act & Assert - Should not throw
             var exception = Record.Exception(() => verbosityAction!());

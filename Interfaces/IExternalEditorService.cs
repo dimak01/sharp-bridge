@@ -8,10 +8,9 @@ namespace SharpBridge.Interfaces
     public interface IExternalEditorService
     {
         /// <summary>
-        /// Attempts to open a file in the configured external editor
+        /// Attempts to open the transformation configuration file in the configured external editor
         /// </summary>
-        /// <param name="filePath">Path to the file to open</param>
         /// <returns>True if the editor was launched successfully, false otherwise</returns>
-        Task<bool> TryOpenFileAsync(string filePath);
+        Task<bool> TryOpenTransformationConfigAsync();
     }
-} 
+}

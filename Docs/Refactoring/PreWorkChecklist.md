@@ -74,8 +74,7 @@ This checklist covers the housekeeping tasks that need to be completed before st
     services.AddSingleton(provider =>
     {
         var configManager = provider.GetRequiredService<ConfigManager>();
-        // For now, create default config - will be replaced in main phases
-        return new TransformationEngineConfig();
+        return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
     });
     ```
 
@@ -83,38 +82,61 @@ This checklist covers the housekeeping tasks that need to be completed before st
 - [x] **Update TransformationEngine registration** to include TransformationEngineConfig dependency
 - [x] **Verify dependency injection chain** works correctly
 
-## 🔄 Task 4: Update ApplicationOrchestrator Interface
+### Add ConfigManager Support for TransformationEngineConfig
+- [x] **Create `Configs/TransformationEngineConfig.json`** with default values
+- [x] **Add `LoadTransformationConfigAsync()` method** to ConfigManager.cs
+- [x] **Add `SaveTransformationConfigAsync()` method** to ConfigManager.cs
+- [x] **Verify build succeeds** with proper config loading pattern
+
+## 🔄 Task 4: Update ApplicationOrchestrator Interface ✅ COMPLETE
 
 ### Remove Config Path Parameter
-- [ ] **Modify `IApplicationOrchestrator.cs`**:
-  - [ ] Change `Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken)` 
-  - [ ] To: `Task InitializeAsync(CancellationToken cancellationToken)`
+- [x] **Modify `IApplicationOrchestrator.cs`**:
+  - [x] Change `Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken)` 
+  - [x] To: `Task InitializeAsync(CancellationToken cancellationToken)`
 
 ### Update ApplicationOrchestrator Implementation
-- [ ] **Modify `Services/ApplicationOrchestrator.cs`**:
-  - [ ] Remove `string transformConfigPath` parameter from `InitializeAsync`
-  - [ ] Remove `_transformConfigPath` field (line 44)
-  - [ ] Remove `ValidateInitializationParameters` method (no longer needed)
-  - [ ] Update `InitializeTransformationEngine()` to be parameterless:
+- [x] **Modify `Services/ApplicationOrchestrator.cs`**:
+  - [x] Remove `string transformConfigPath` parameter from `InitializeAsync`
+  - [x] Remove `_transformConfigPath` field (line 44)
+  - [x] Remove `ValidateInitializationParameters` method (no longer needed)
+  - [x] Update `InitializeTransformationEngine()` to be parameterless:
     ```csharp
     private async Task InitializeTransformationEngine()
     {
         await _transformationEngine.LoadRulesAsync(); // No path needed!
     }
     ```
-  - [ ] Update `ReloadTransformationConfig()` method (around line 474):
+  - [x] Update `ReloadTransformationConfig()` method (around line 474):
     ```csharp
     await _transformationEngine.LoadRulesAsync(); // Remove path parameter
     ```
-  - [ ] Update constructor to accept `TransformationEngineConfig` if needed for other operations
+  
+### Update ExternalEditorService (Clean Interface Design) 
+- [x] **Modify `IExternalEditorService.cs`**:
+  - [x] Add `Task<bool> TryOpenTransformationConfigAsync()` method
+  - [x] **REMOVED** generic `Task<bool> TryOpenFileAsync(string filePath)` method (YAGNI principle)
+- [x] **Modify `Services/ExternalEditorService.cs`**:
+  - [x] Add `TransformationEngineConfig` constructor parameter
+  - [x] Implement `TryOpenTransformationConfigAsync()` method with full validation logic
+  - [x] **REMOVED** generic `TryOpenFileAsync(string filePath)` method (cleaner interface)
 
-## 📞 Task 4: Update Program.cs
+### Update Program.cs
+- [x] **Remove config path parameter** from `InitializeAsync` call in Program.cs
+
+### Results
+- [x] **Main application builds successfully** ✅ 
+- [x] **ApplicationOrchestrator fully decoupled** from transformation config paths
+- [x] **ExternalEditorService uses clean, typed interface** with single responsibility
+- [x] **YAGNI principle applied** - removed unused generic file opening method
+
+## 📞 Task 5: Update Program.cs ✅ COMPLETE
 
 ### Remove Command-Line Parsing
-- [ ] **Identify command-line parsing code** in `Program.cs`
-- [ ] **Remove command-line argument handling** for transformation config path
-- [ ] **Update `ApplicationOrchestrator.InitializeAsync` call** to remove config path parameter
-- [ ] **Test**: Verify application starts without command-line arguments
+- [x] **Identify command-line parsing code** in `Program.cs`
+- [x] **Remove command-line argument handling** for transformation config path
+- [x] **Update `ApplicationOrchestrator.InitializeAsync` call** to remove config path parameter
+- [x] **Test**: Verify application starts without command-line arguments
 
 ### Remove Unused Command-Line Classes (if they exist)
 - [ ] **Search for CommandLineParser** references
