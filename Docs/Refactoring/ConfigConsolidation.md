@@ -4,6 +4,8 @@
 
 This document outlines the plan to consolidate SharpBridge's fragmented configuration system into a cleaner, more maintainable structure. The current system has multiple configuration files and command-line arguments that are no longer necessary, and many settings that were originally configurable are now "figured out" and don't need user configuration.
 
+**Key Insight**: Instead of creating duplicate "section" classes, we'll reuse our existing, tested configuration classes (`VTubeStudioPCConfig`, `VTubeStudioPhoneClientConfig`, etc.) as sections within a consolidated `ApplicationConfig`. This minimizes code changes while achieving all consolidation benefits.
+
 ## Current State Analysis
 
 ### Current Configuration Files
@@ -24,66 +26,70 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 
 ### Final Configuration Structure
 1. **ApplicationConfig.json** - Main application configuration with sections:
-   - `PhoneClientSection` - Essential phone settings (IP address only)
-   - `PCClientSection` - Essential PC settings (host, port only)
-   - `TransformationEngineSection` - Engine settings (config path, etc.)
-   - `GeneralSettingsSection` - General app settings (editor, etc.)
-   - `KeyboardShortcutsSection` - Keyboard shortcuts
+   - `GeneralSettings` - General app settings (editor, shortcuts) - reuses current ApplicationConfig
+   - `PhoneClient` - Phone client settings - reuses existing VTubeStudioPhoneClientConfig
+   - `PCClient` - PC client settings - reuses existing VTubeStudioPCConfig  
+   - `TransformationEngine` - Engine settings (config path, hot-reload, etc.) - new TransformationEngineConfig
 2. **UserPreferences.json** - User preferences (verbosity levels, console size, etc.)
 3. **vts_transforms.json** - Transformation rules (unchanged)
 4. **No command-line arguments** needed
 
 ### Benefits
 - **Simplified Configuration**: Single file for all application settings
+- **Reuses Existing Classes**: Leverages existing, tested configuration classes as sections
+- **Preserves Hot Reload**: Existing ConfigManager interface maintained for seamless hot reload functionality
 - **User Preferences**: Separate file for user-specific settings that can be easily reset
 - **Better User Experience**: No command-line arguments needed
 - **Consistent Structure**: Everything uses sections for extensibility
-- **Configurable Paths**: Transformation engine config path is configurable
+- **Minimal Code Changes**: Existing config classes become sections without duplication
+- **No Runtime Config Saves**: Clean separation - only user preferences saved at runtime
 - **Easy Reset**: User preferences can be wiped without affecting application settings
 
 ## Implementation Plan
 
-### Phase 1: Create New Configuration Structure (Low Risk)
-**Goal**: Define the new consolidated configuration structure without breaking existing code.
+### Pre-work: Housekeeping Tasks (Low Risk)
+**Goal**: Clean up existing inappropriate configuration usage and eliminate command-line arguments before starting the main refactoring.
 
 #### Steps:
-1. **Create comprehensive section classes**:
+1. **Remove unused Configure methods** from ServiceRegistration.cs:
+   - Remove `ConfigureVTubeStudioPhoneClient` method (lines 189-205)
+   - Remove `ConfigureVTubeStudioPC` method (lines 211-228)
+   - These methods inappropriately save config changes back to files during startup
+2. **Remove inappropriate Save method calls** (if any are found during implementation)
+3. **Eliminate command-line arguments and simplify TransformationEngine interface**:
+   - Create `TransformationEngineConfig` class with `ConfigPath` property
+   - Update `TransformationEngine.LoadRulesAsync()` to be parameterless (gets path from injected config)
+   - Update `ApplicationOrchestrator` to eliminate config path parameter and storage
+   - Remove command-line parsing from `Program.cs`
+   - Clean up path-passing through multiple service layers
+4. **Add pre-work items discovered during refactoring** (placeholder for future items)
+
+### Phase 1: Create New Configuration Structure (Low Risk)
+**Goal**: Define the new consolidated configuration structure by reusing existing classes.
+
+#### Steps:
+1. **Rename ApplicationConfig to GeneralSettingsConfig**:
    ```csharp
-   public class PhoneClientSection
-   {
-       public string IphoneIpAddress { get; set; } = "192.168.1.178";
-       // Only essential settings that users actually need to configure
-   }
-
-   public class PCClientSection  
-   {
-       public string Host { get; set; } = "localhost";
-       public int Port { get; set; } = 8001;
-       // Only essential settings
-   }
-
-   public class TransformationEngineSection
-   {
-       public string ConfigPath { get; set; } = "Configs/vts_transforms.json";
-       public bool EnableHotReload { get; set; } = true;
-       public int MaxEvaluationIterations { get; set; } = 10;
-   }
-
-   public class GeneralSettingsSection
+   // Rename Models/ApplicationConfig.cs to Models/GeneralSettingsConfig.cs
+   public class GeneralSettingsConfig
    {
        public string EditorCommand { get; set; } = "notepad.exe \"%f\"";
-       public string LogDirectory { get; set; } = "logs";
-       public int LogRetentionDays { get; set; } = 31;
-       // Future general settings go here
-   }
-
-   public class KeyboardShortcutsSection
-   {
        public Dictionary<string, string> Shortcuts { get; set; } = new();
    }
    ```
 
-2. **Create UserPreferences class** with separate verbosity levels:
+2. **Create new ApplicationConfig that aggregates existing classes**:
+   ```csharp
+   public class ApplicationConfig
+   {
+       public GeneralSettingsConfig GeneralSettings { get; set; } = new();
+       public VTubeStudioPhoneClientConfig PhoneClient { get; set; } = new();
+       public VTubeStudioPCConfig PCClient { get; set; } = new();
+       public TransformationEngineConfig TransformationEngine { get; set; } = new();
+   }
+   ```
+
+3. **Create UserPreferences class** with separate verbosity levels:
    ```csharp
    public class UserPreferences
    {
@@ -103,67 +109,94 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
    }
    ```
 
-3. **Update ApplicationConfig to use all sections**:
-   ```csharp
-   public class ApplicationConfig
-   {
-       public PhoneClientSection PhoneClient { get; set; } = new();
-       public PCClientSection PCClient { get; set; } = new();
-       public TransformationEngineSection TransformationEngine { get; set; } = new();
-       public GeneralSettingsSection GeneralSettings { get; set; } = new();
-       public KeyboardShortcutsSection KeyboardShortcuts { get; set; } = new();
-   }
-   ```
-
-### Phase 2: Create Dual-File Configuration Manager (Low Risk)
-**Goal**: Update ConfigManager to handle both configuration files while maintaining backward compatibility.
+### Phase 2: Update Configuration Manager (Low Risk)
+**Goal**: Update ConfigManager to read from consolidated ApplicationConfig.json while maintaining existing interface for hot reload compatibility.
 
 #### Steps:
-1. **Update ConfigManager** to handle both files:
+1. **Update ConfigManager** to read from consolidated file but keep existing methods:
    ```csharp
    public class ConfigManager
    {
-       public async Task<ApplicationConfig> LoadApplicationConfigAsync()
+       // Keep existing interface for hot reload compatibility
+       public async Task<VTubeStudioPCConfig> LoadPCConfigAsync()
+       public async Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync()
+       public async Task<GeneralSettingsConfig> LoadGeneralSettingsAsync() // Renamed from current LoadApplicationConfigAsync
+       
+       // New methods for consolidated config
+       public async Task<ApplicationConfig> LoadApplicationConfigAsync() // Returns full consolidated config
        public async Task<UserPreferences> LoadUserPreferencesAsync()
-       public async Task SaveApplicationConfigAsync(ApplicationConfig config)
+       
+       // Only save user preferences at runtime - no config saves
        public async Task SaveUserPreferencesAsync(UserPreferences preferences)
        public async Task ResetUserPreferencesAsync() // Wipe and recreate with defaults
+       
+       // Remove public Save methods for configurations (SavePCConfigAsync, SavePhoneConfigAsync, etc.)
    }
    ```
 
-2. **Add configuration validation** for both files
-3. **Create migration utility** to convert old configs to new dual-file structure
-4. **Add backward compatibility** - if old config files exist, use them; otherwise use new structure
+2. **Update existing Load methods** to read from consolidated ApplicationConfig.json:
+   ```csharp
+   public async Task<VTubeStudioPCConfig> LoadPCConfigAsync()
+   {
+       var appConfig = await LoadApplicationConfigAsync();
+       return appConfig.PCClient;
+   }
+   
+   public async Task<GeneralSettingsConfig> LoadGeneralSettingsAsync()
+   {
+       var appConfig = await LoadApplicationConfigAsync();
+       return appConfig.GeneralSettings;
+   }
+   ```
+
+3. **Add configuration validation** for both files
+4. **Create migration utility** to convert old configs to new dual-file structure
+5. **Add backward compatibility** - if old config files exist, use them; otherwise use new structure
 
 ### Phase 3: Update Service Registration (Low Risk)
-**Goal**: Modify DI registration to use new configuration structure.
+**Goal**: Minimal changes to DI registration since existing ConfigManager interface is preserved.
 
 #### Steps:
-1. **Modify ServiceRegistration** to load both configuration files
-2. **Extract client configs** from ApplicationConfig sections
-3. **Pass UserPreferences** to components that need them (ApplicationOrchestrator, ConsoleRenderer)
-4. **Update tests** to work with new configuration structure
+1. **ServiceRegistration remains largely unchanged** - services continue to get their familiar config types:
+   ```csharp
+   // These registrations work exactly as before
+   services.AddSingleton(provider =>
+   {
+       var configManager = provider.GetRequiredService<ConfigManager>();
+       return configManager.LoadPCConfigAsync().GetAwaiter().GetResult();  // Now reads from consolidated file
+   });
+   
+   services.AddSingleton(provider =>
+   {
+       var configManager = provider.GetRequiredService<ConfigManager>();
+       return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult(); // Now reads from consolidated file
+   });
+   ```
 
-### Phase 4: Remove Command-Line Arguments (Low Risk)
-**Goal**: Eliminate command-line argument parsing and use fixed configuration paths.
+2. **Add UserPreferences registration**:
+   ```csharp
+   services.AddSingleton(provider =>
+   {
+       var configManager = provider.GetRequiredService<ConfigManager>();
+       return configManager.LoadUserPreferencesAsync().GetAwaiter().GetResult();
+   });
+   ```
+
+3. **Update TransformationEngine registration** to include TransformationEngineConfig dependency (already created in pre-work)
+4. **Update ApplicationOrchestrator registration** to include UserPreferences dependency and remove config path parameter
+5. **Update tests** to work with new configuration structure
+
+### Phase 4: Update Client Services (Low Risk)
+**Goal**: Services continue using their existing config classes, now loaded from consolidated ApplicationConfig.
 
 #### Steps:
-1. **Update Program.cs** to remove command-line parsing
-2. **Use TransformationEngine.ConfigPath** from ApplicationConfig.TransformationEngineSection
-3. **Remove CommandLineParser** and related classes
-4. **Update tests** to remove command-line argument testing
-
-### Phase 5: Update Client Services (Medium Risk)
-**Goal**: Modify client services to use configuration from ApplicationConfig sections.
-
-#### Steps:
-1. **Update VTubeStudioPhoneClient** to use ApplicationConfig.PhoneClientSection
-2. **Update VTubeStudioPCClient** to use ApplicationConfig.PCClientSection
-3. **Update TransformationEngine** to use ApplicationConfig.TransformationEngineSection
-4. **Update ApplicationOrchestrator** to use UserPreferences
+1. **VTubeStudioPhoneClient** - No changes needed (still receives `VTubeStudioPhoneClientConfig`)
+2. **VTubeStudioPCClient** - No changes needed (still receives `VTubeStudioPCConfig`)
+3. **TransformationEngine** - Already updated in pre-work (now uses `TransformationEngineConfig` and parameterless `LoadRulesAsync()`)
+4. **Update ApplicationOrchestrator** to use UserPreferences (config path handling already removed in pre-work)
 5. **Add configuration validation** for the new structure
 
-### Phase 6: Add User Preferences Management (Low Risk)
+### Phase 5: Add User Preferences Management (Low Risk)
 **Goal**: Implement runtime preference changes and persistence.
 
 #### Steps:
@@ -173,12 +206,12 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 4. **Update console UI** to reflect current preferences
 5. **Add preference validation** and error handling
 
-### Phase 7: Remove Old Configuration Files (Low Risk)
-**Goal**: Clean up old configuration files and models.
+### Phase 6: Remove Old Configuration Files (Low Risk)
+**Goal**: Clean up old configuration files and unused loading methods.
 
 #### Steps:
-1. **Remove old configuration models** (VTubeStudioPCConfig, VTubeStudioPhoneClientConfig)
-2. **Remove old configuration file loading** from ConfigManager
+1. **Remove old separate configuration files** (VTubeStudioPCConfig.json, VTubeStudioPhoneConfig.json)
+2. **Remove old configuration file loading methods** from ConfigManager (keep the classes - we're reusing them!)
 3. **Update documentation** to reflect new structure
 4. **Create migration guide** for users
 
@@ -187,30 +220,39 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 ### ApplicationConfig.json
 ```json
 {
+  "GeneralSettings": {
+    "EditorCommand": "notepad.exe \"%f\"",
+    "Shortcuts": {
+      "CycleTransformationEngineVerbosity": "Alt+T",
+      "CyclePCClientVerbosity": "Alt+P",
+      "CyclePhoneClientVerbosity": "Alt+O",
+      "ReloadTransformationConfig": "Alt+K",
+      "OpenConfigInEditor": "Ctrl+Alt+E",
+      "ShowSystemHelp": "F1"
+    }
+  },
   "PhoneClient": {
-    "IphoneIpAddress": "192.168.1.178"
+    "IphoneIpAddress": "192.168.1.178",
+    "IphonePort": 21412,
+    "LocalPort": 28964,
+    "RequestIntervalSeconds": 3,
+    "SendForSeconds": 4,
+    "ReceiveTimeoutMs": 100
   },
   "PCClient": {
     "Host": "localhost",
-    "Port": 8001
+    "Port": 8001,
+    "PluginName": "SharpBridge",
+    "PluginDeveloper": "SharpBridge Developer",
+    "TokenFilePath": "auth_token.txt",
+    "ConnectionTimeoutMs": 5000,
+    "ReconnectionDelayMs": 2000,
+    "UsePortDiscovery": true
   },
   "TransformationEngine": {
     "ConfigPath": "Configs/vts_transforms.json",
     "EnableHotReload": true,
     "MaxEvaluationIterations": 10
-  },
-  "GeneralSettings": {
-    "EditorCommand": "notepad.exe \"%f\"",
-    "LogDirectory": "logs",
-    "LogRetentionDays": 31
-  },
-  "KeyboardShortcuts": {
-    "CycleTransformationEngineVerbosity": "Alt+T",
-    "CyclePCClientVerbosity": "Alt+P",
-    "CyclePhoneClientVerbosity": "Alt+O",
-    "ReloadTransformationConfig": "Alt+K",
-    "OpenConfigInEditor": "Ctrl+Alt+E",
-    "ShowSystemHelp": "F1"
   }
 }
 ```
@@ -222,10 +264,7 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
   "PCClientVerbosity": "Normal",
   "TransformationEngineVerbosity": "Normal",
   "PreferredConsoleWidth": 150,
-  "PreferredConsoleHeight": 60,
-  "ConsoleUpdateIntervalSeconds": 0.1,
-  "AutoResizeConsole": true,
-  "ShowColorCoding": true
+  "PreferredConsoleHeight": 60
 }
 ```
 
@@ -270,19 +309,22 @@ The section-based approach makes it easy to add new configuration areas:
 - [ ] Performance not degraded
 - [ ] Error handling improved
 
-## Timeline
-
-- **Phase 1-2**: 1-2 days (foundation)
-- **Phase 3-4**: 1-2 days (DI and command-line removal)
-- **Phase 5**: 2-3 days (client service updates)
-- **Phase 6**: 1-2 days (preferences management)
-- **Phase 7**: 1 day (cleanup)
-
-**Total Estimated Time**: 7-10 days
 
 ## Notes
 
 - Each phase should be completed and tested before moving to the next
 - User feedback should be gathered during the transition period
 - Performance metrics should be monitored throughout the process
-- Documentation should be updated incrementally with each phase 
+- Documentation should be updated incrementally with each phase
+
+## Architecture Decision: Preserve ConfigManager Interface
+
+**Key Decision**: Instead of changing the ConfigManager interface to only expose a single `LoadApplicationConfigAsync()` method, we preserve the existing individual load methods (`LoadPCConfigAsync()`, `LoadPhoneConfigAsync()`, etc.) to maintain hot reload compatibility.
+
+**Benefits**:
+- ✅ **Hot Reload Preserved**: Existing hot reload mechanisms continue working unchanged
+- ✅ **No Service Changes**: Client services continue using familiar config types without modification
+- ✅ **Lower Risk**: Minimal changes to DI registration and service dependencies
+- ✅ **Backward Compatibility**: Migration path is seamless for existing code
+
+**Implementation**: The individual load methods now read from the consolidated `ApplicationConfig.json` file internally and extract the appropriate sections, while maintaining the same external interface. 
