@@ -180,49 +180,5 @@ namespace SharpBridge
                 .CreateLogger();
 
         }
-
-        /// <summary>
-        /// Configures the VTubeStudioPhoneClientConfig with the specified settings
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <param name="configureOptions">Action to configure the phone client options</param>
-        /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection ConfigureVTubeStudioPhoneClient(
-            this IServiceCollection services,
-            Action<VTubeStudioPhoneClientConfig> configureOptions)
-        {
-            services.AddSingleton(sp =>
-            {
-                var configManager = sp.GetRequiredService<ConfigManager>();
-                var config = configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
-                configureOptions(config);
-                configManager.SavePhoneConfigAsync(config).GetAwaiter().GetResult();
-                return config;
-            });
-
-            return services;
-        }
-
-        /// <summary>
-        /// Configures the VTubeStudioPCConfig with the specified settings
-        /// </summary>
-        /// <param name="services">The service collection</param>
-        /// <param name="configureOptions">Action to configure the VTube Studio PC options</param>
-        /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection ConfigureVTubeStudioPC(
-            this IServiceCollection services,
-            Action<VTubeStudioPCConfig> configureOptions)
-        {
-            services.AddSingleton(sp =>
-            {
-                var configManager = sp.GetRequiredService<ConfigManager>();
-                var config = configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
-                configureOptions(config);
-                configManager.SavePCConfigAsync(config).GetAwaiter().GetResult();
-                return config;
-            });
-
-            return services;
-        }
     }
 }

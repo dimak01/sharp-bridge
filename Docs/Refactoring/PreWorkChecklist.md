@@ -6,24 +6,26 @@ This checklist covers the housekeeping tasks that need to be completed before st
 
 **Estimated Time**: 1-1.5 days
 
-## 🧹 Task 1: Remove Unused Configure Methods
+## 🧹 Task 1: Remove Unused Configure Methods ✅ COMPLETE
 
 ### ServiceRegistration.cs Cleanup
-- [ ] **Remove `ConfigureVTubeStudioPhoneClient` method** (lines 189-205)
-  - [ ] Delete method entirely
-  - [ ] Verify no references exist in codebase
-- [ ] **Remove `ConfigureVTubeStudioPC` method** (lines 211-228)  
-  - [ ] Delete method entirely
-  - [ ] Verify no references exist in codebase
-- [ ] **Test**: Verify application builds and runs without these methods
+- [x] **Remove `ConfigureVTubeStudioPhoneClient` method** (lines 189-205)
+  - [x] Delete method entirely
+  - [x] Verify no references exist in codebase
+- [x] **Remove `ConfigureVTubeStudioPC` method** (lines 211-228)  
+  - [x] Delete method entirely
+  - [x] Verify no references exist in codebase
+- [x] **Test**: Verify application builds and runs without these methods
 
 ### Search for Inappropriate Save Calls
-- [ ] **Search codebase for Save method calls**:
-  - [ ] `SavePCConfigAsync`
-  - [ ] `SavePhoneConfigAsync` 
-  - [ ] `SaveApplicationConfigAsync`
-- [ ] **Review each usage** to determine if it's appropriate (likely most are not)
-- [ ] **Remove inappropriate calls** that save config during startup/runtime
+- [x] **Search codebase for Save method calls**:
+  - [x] `SavePCConfigAsync`
+  - [x] `SavePhoneConfigAsync` 
+  - [x] `SaveApplicationConfigAsync`
+- [x] **Review each usage** to determine if it's appropriate (likely most are not)
+- [x] **Remove inappropriate calls** that save config during startup/runtime
+
+**Results**: ✅ Removed 2 unused methods that inappropriately saved config during service registration. All remaining Save calls are appropriate (method definitions + tests).
 
 ## 🏗️ Task 2: Create TransformationEngineConfig
 
