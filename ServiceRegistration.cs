@@ -89,6 +89,13 @@ namespace SharpBridge
             // Register transformation rules repository
             services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
 
+            // Register TransformationEngineConfig
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+            });
+
             services.AddTransient<ITransformationEngine, TransformationEngine>();
 
             // Register VTubeStudioPCClient as a singleton

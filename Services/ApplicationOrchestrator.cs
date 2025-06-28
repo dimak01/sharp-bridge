@@ -213,7 +213,7 @@ namespace SharpBridge.Services
 
         private async Task InitializeTransformationEngine(string transformConfigPath)
         {
-            await _transformationEngine.LoadRulesAsync(transformConfigPath);
+            await _transformationEngine.LoadRulesAsync();
         }
 
         /// <summary>

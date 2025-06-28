@@ -27,10 +27,10 @@ This checklist covers the housekeeping tasks that need to be completed before st
 
 **Results**: ✅ Removed 2 unused methods that inappropriately saved config during service registration. All remaining Save calls are appropriate (method definitions + tests).
 
-## 🏗️ Task 2: Create TransformationEngineConfig
+## 🏗️ Task 2: Create TransformationEngineConfig ✅ COMPLETE
 
 ### Create New Model Class
-- [ ] **Create `Models/TransformationEngineConfig.cs`**:
+- [x] **Create `Models/TransformationEngineConfig.cs`**:
   ```csharp
   namespace SharpBridge.Models
   {
@@ -44,10 +44,6 @@ This checklist covers the housekeeping tasks that need to be completed before st
           /// </summary>
           public string ConfigPath { get; set; } = "Configs/vts_transforms.json";
           
-          /// <summary>
-          /// Whether hot reload is enabled for transformation rules
-          /// </summary>
-          public bool EnableHotReload { get; set; } = true;
           
           /// <summary>
           /// Maximum number of evaluation iterations for parameter dependencies
@@ -58,19 +54,36 @@ This checklist covers the housekeeping tasks that need to be completed before st
   ```
 
 ### Update TransformationEngine Interface
-- [ ] **Modify `ITransformationEngine.cs`**:
-  - [ ] Change `Task LoadRulesAsync(string filePath)` → `Task LoadRulesAsync()`
-  - [ ] Update XML documentation to reflect parameterless method
+- [x] **Modify `ITransformationEngine.cs`**:
+  - [x] Change `Task LoadRulesAsync(string filePath)` → `Task LoadRulesAsync()`
+  - [x] Update XML documentation to reflect parameterless method
 
 ### Update TransformationEngine Implementation  
-- [ ] **Modify `Services/TransformationEngine.cs`**:
-  - [ ] Add `TransformationEngineConfig` constructor parameter
-  - [ ] Store config as private field: `private readonly TransformationEngineConfig _config;`
-  - [ ] Update `LoadRulesAsync()` to be parameterless
-  - [ ] Use `_config.ConfigPath` internally instead of parameter
-  - [ ] Update all call sites within the class
+- [x] **Modify `Services/TransformationEngine.cs`**:
+  - [x] Add `TransformationEngineConfig` constructor parameter
+  - [x] Store config as private field: `private readonly TransformationEngineConfig _config;`
+  - [x] Update `LoadRulesAsync()` to be parameterless
+  - [x] Use `_config.ConfigPath` internally instead of parameter
+  - [x] Update all call sites within the class
+## 🔧 Task 3: Update Service Registration ✅ COMPLETE
 
-## 🔄 Task 3: Update ApplicationOrchestrator Interface
+### Add TransformationEngineConfig Registration
+- [x] **Modify `ServiceRegistration.cs`**:
+  - [x] Add TransformationEngineConfig registration:
+    ```csharp
+    services.AddSingleton(provider =>
+    {
+        var configManager = provider.GetRequiredService<ConfigManager>();
+        // For now, create default config - will be replaced in main phases
+        return new TransformationEngineConfig();
+    });
+    ```
+
+### Update TransformationEngine Registration
+- [x] **Update TransformationEngine registration** to include TransformationEngineConfig dependency
+- [x] **Verify dependency injection chain** works correctly
+
+## 🔄 Task 4: Update ApplicationOrchestrator Interface
 
 ### Remove Config Path Parameter
 - [ ] **Modify `IApplicationOrchestrator.cs`**:
@@ -108,23 +121,6 @@ This checklist covers the housekeeping tasks that need to be completed before st
 - [ ] **Remove unused command-line parsing classes/utilities**
 - [ ] **Clean up any related imports/dependencies**
 
-## 🔧 Task 5: Update Service Registration
-
-### Add TransformationEngineConfig Registration
-- [ ] **Modify `ServiceRegistration.cs`**:
-  - [ ] Add TransformationEngineConfig registration:
-    ```csharp
-    services.AddSingleton(provider =>
-    {
-        var configManager = provider.GetRequiredService<ConfigManager>();
-        // For now, create default config - will be replaced in main phases
-        return new TransformationEngineConfig();
-    });
-    ```
-
-### Update TransformationEngine Registration
-- [ ] **Update TransformationEngine registration** to include TransformationEngineConfig dependency
-- [ ] **Verify dependency injection chain** works correctly
 
 ## 🧪 Task 6: Update Tests
 

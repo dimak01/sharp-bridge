@@ -11,12 +11,11 @@ namespace SharpBridge.Interfaces
     public interface ITransformationEngine : IServiceStatsProvider
     {
         /// <summary>
-        /// Loads transformation rules from the specified file
+        /// Loads transformation rules from the configured file path
         /// </summary>
-        /// <param name="filePath">Path to the transformation rules JSON file</param>
         /// <returns>An asynchronous operation that completes when rules are loaded</returns>
-        Task LoadRulesAsync(string filePath);
-        
+        Task LoadRulesAsync();
+
         /// <summary>
         /// Transforms tracking data into VTube Studio parameters
         /// </summary>
@@ -30,4 +29,4 @@ namespace SharpBridge.Interfaces
         /// <returns>Collection of parameter definitions</returns>
         IEnumerable<VTSParameter> GetParameterDefinitions();
     }
-} 
+}

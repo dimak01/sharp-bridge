@@ -24,106 +24,111 @@ namespace SharpBridge.Tests.Services
             _mockLogger = new Mock<IAppLogger>();
             _mockRepository = new Mock<ITransformationRulesRepository>();
         }
-        
+
         private TransformationEngine CreateEngine()
         {
-            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object);
+            var config = new TransformationEngineConfig
+            {
+                ConfigPath = _configPath,
+                MaxEvaluationIterations = 10
+            };
+            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object, config);
         }
-        
+
         [Fact]
         public async Task FaceAngleY_TransformsCorrectly()
         {
             // Skip if the config file doesn't exist
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0, Y = 0.5, Z = 0 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var faceAngleY = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleY")!;
             faceAngleY.Should().NotBeNull();
-            
+
             // Expected: -HeadRotY * 1 = -0.5
             faceAngleY.Value.Should().BeApproximately(-0.5, 0.001);
         }
-        
+
         [Fact]
         public async Task FaceAngleX_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0.3, Y = 0.2, Z = 0.1 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var faceAngleX = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleX")!;
             faceAngleX.Should().NotBeNull();
-            
+
             // Expected: (((HeadRotX * ((90 - Abs(HeadRotY)) / 90)) + (HeadRotZ * (HeadRotY / 45))))
             // = (((0.3 * ((90 - Abs(0.2)) / 90)) + (0.1 * (0.2 / 45))))
             var expected = ((0.3 * ((90 - Math.Abs(0.2)) / 90)) + (0.1 * (0.2 / 45)));
             faceAngleX.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task FacePositionX_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0.5, Y = 0, Z = 0 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var facePositionX = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionX")!;
             facePositionX.Should().NotBeNull();
-            
+
             // Expected: HeadPosX * -1 = -0.5
             facePositionX.Value.Should().BeApproximately(-0.5, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthOpen_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -136,30 +141,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "MouthFunnel", Value = 0.3 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthOpen")!;
             mouthOpen.Should().NotBeNull();
-            
+
             // Expected: (((JawOpen - MouthClose) - ((MouthRollUpper + MouthRollLower) * 0.2) + (MouthFunnel * 0.2)))
             // = (((0.6 - 0.1) - ((0.2 + 0.1) * 0.2) + (0.3 * 0.2)))
             var expected = (0.6 - 0.1) - ((0.2 + 0.1) * 0.2) + (0.3 * 0.2);
             mouthOpen.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task EyeRightX_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -169,29 +174,29 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeLookOutLeft", Value = 0.2 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var eyeRightX = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightX")!;
             eyeRightX.Should().NotBeNull();
-            
+
             // Expected: (EyeLookInLeft - 0.1) - EyeLookOutLeft = (0.4 - 0.1) - 0.2 = 0.1
             var expected = (0.4 - 0.1) - 0.2;
             eyeRightX.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BoundaryTest_ClampingToMax()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             // Create extreme values that should trigger max clamping
             var trackingData = new PhoneTrackingInfo
             {
@@ -204,21 +209,21 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeBlinkRight", Value = 10 } // Extreme value (should be 0-1)
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             // FaceAngleX max is 40
             var faceAngleX = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleX")!;
             faceAngleX.Should().NotBeNull();
             faceAngleX.Value.Should().BeLessThanOrEqualTo(40);
-            
+
             // FacePositionX max is 15
             var facePositionX = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionX")!;
             facePositionX.Should().NotBeNull();
             facePositionX.Value.Should().BeLessThanOrEqualTo(15);
-            
+
             // EyeOpenLeft max is 1
             var eyeOpenLeft = result.Parameters.FirstOrDefault(p => p.Id == "EyeOpenLeft")!;
             if (eyeOpenLeft != null)
@@ -226,17 +231,17 @@ namespace SharpBridge.Tests.Services
                 eyeOpenLeft.Value.Should().BeLessThanOrEqualTo(1);
             }
         }
-        
+
         [Fact]
         public async Task BoundaryTest_ClampingToMin()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             // Create extreme values that should trigger min clamping
             var trackingData = new PhoneTrackingInfo
             {
@@ -249,21 +254,21 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeBlinkRight", Value = -2 } // Negative value (should be 0-1)
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             // FaceAngleX min is -40
             var faceAngleX = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleX")!;
             faceAngleX.Should().NotBeNull();
             faceAngleX.Value.Should().BeGreaterThanOrEqualTo(-40);
-            
+
             // FacePositionX min is -15
             var facePositionX = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionX")!;
             facePositionX.Should().NotBeNull();
             facePositionX.Value.Should().BeGreaterThanOrEqualTo(-15);
-            
+
             // MouthOpen min is 0
             var mouthOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthOpen");
             if (mouthOpen != null)
@@ -271,17 +276,17 @@ namespace SharpBridge.Tests.Services
                 mouthOpen.Value.Should().BeGreaterThanOrEqualTo(0);
             }
         }
-        
+
         [Fact]
         public async Task DefaultValue_UsedWhenExpressionFails()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             // Create tracking data with missing values required by expressions
             var trackingData = new PhoneTrackingInfo
             {
@@ -289,25 +294,25 @@ namespace SharpBridge.Tests.Services
                 // No Position or Rotation
                 BlendShapes = new List<BlendShape>() // Empty blend shapes
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             // Check default values for various parameters
-            
+
             // FaceAngleY should use default value 0
             var faceAngleY = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleY")!;
             faceAngleY.Should().NotBeNull();
             faceAngleY.Value.Should().Be(0); // Default value
-            
+
             // MouthOpen should use default value 0
             var mouthOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthOpen");
             if (mouthOpen != null)
             {
                 mouthOpen.Value.Should().Be(0); // Default value
             }
-            
+
             // Brows should use default value 0.5
             var brows = result.Parameters.FirstOrDefault(p => p.Id == "Brows");
             if (brows != null)
@@ -315,100 +320,100 @@ namespace SharpBridge.Tests.Services
                 brows.Value.Should().Be(0.5); // Default value
             }
         }
-        
+
         [Fact]
         public async Task FaceAngleZ_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0.3, Y = 0.2, Z = 0.1 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var faceAngleZ = result.Parameters.FirstOrDefault(p => p.Id == "FaceAngleZ")!;
             faceAngleZ.Should().NotBeNull();
-            
+
             // Expected: ((HeadRotZ * ((90 - Abs(HeadRotY)) / 90)) - (HeadRotX * (HeadRotY / 45)))
             // = ((0.1 * ((90 - Abs(0.2)) / 90)) - (0.3 * (0.2 / 45)))
             var expected = ((0.1 * ((90 - Math.Abs(0.2)) / 90)) - (0.3 * (0.2 / 45)));
             faceAngleZ.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task FacePositionY_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0.5, Z = 0 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var facePositionY = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionY")!;
             facePositionY.Should().NotBeNull();
-            
+
             // Expected: HeadPosY = 0.5
             facePositionY.Value.Should().BeApproximately(0.5, 0.001);
         }
-        
+
         [Fact]
         public async Task FacePositionZ_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0, Z = 0.5 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var facePositionZ = result.Parameters.FirstOrDefault(p => p.Id == "FacePositionZ")!;
             facePositionZ.Should().NotBeNull();
-            
+
             // Expected: HeadPosZ = 0.5
             facePositionZ.Value.Should().BeApproximately(0.5, 0.001);
         }
-        
+
         [Fact]
         public async Task EyeRightY_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -420,30 +425,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "BrowOuterUpLeft", Value = 0.2 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var eyeRightY = result.Parameters.FirstOrDefault(p => p.Id == "EyeRightY")!;
             eyeRightY.Should().NotBeNull();
-            
+
             // Expected: (EyeLookUpLeft - EyeLookDownLeft) + (BrowOuterUpLeft * 0.15) + (HeadRotX / 30)
             // = (0.4 - 0.1) + (0.2 * 0.15) + (0.3 / 30)
             var expected = (0.4 - 0.1) + (0.2 * 0.15) + (0.3 / 30);
             eyeRightY.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task EyeOpenLeft_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -453,30 +458,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeWideLeft", Value = 0.2 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var eyeOpenLeft = result.Parameters.FirstOrDefault(p => p.Id == "EyeOpenLeft")!;
             eyeOpenLeft.Should().NotBeNull();
-            
+
             // Expected: 0.5 + ((EyeBlinkLeft * -0.8) + (EyeWideLeft * 0.8))
             // = 0.5 + ((0.3 * -0.8) + (0.2 * 0.8))
             var expected = 0.5 + ((0.3 * -0.8) + (0.2 * 0.8));
             eyeOpenLeft.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task EyeOpenRight_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -486,30 +491,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeWideRight", Value = 0.1 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var eyeOpenRight = result.Parameters.FirstOrDefault(p => p.Id == "EyeOpenRight")!;
             eyeOpenRight.Should().NotBeNull();
-            
+
             // Expected: 0.5 + ((EyeBlinkRight * -0.8) + (EyeWideRight * 0.8))
             // = 0.5 + ((0.4 * -0.8) + (0.1 * 0.8))
             var expected = 0.5 + ((0.4 * -0.8) + (0.1 * 0.8));
             eyeOpenRight.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthSmile_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -524,29 +529,29 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "MouthDimpleRight", Value = 0.6 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthSmile = result.Parameters.FirstOrDefault(p => p.Id == "MouthSmile")!;
             mouthSmile.Should().NotBeNull();
-            
+
             // Expected: (2 - ((MouthFrownLeft + MouthFrownRight + MouthPucker) / 1) + ((MouthSmileRight + MouthSmileLeft + ((MouthDimpleLeft + MouthDimpleRight) / 2)) / 1)) / 4
             var expected = (2 - ((0.1 + 0.1 + 0.2) / 1) + ((0.3 + 0.4 + ((0.5 + 0.6) / 2)) / 1)) / 4;
             mouthSmile.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task EyeSquintL_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -555,28 +560,28 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeSquintLeft", Value = 0.7 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var eyeSquintL = result.Parameters.FirstOrDefault(p => p.Id == "EyeSquintL")!;
             eyeSquintL.Should().NotBeNull();
-            
+
             // Expected: EyeSquintLeft = 0.7
             eyeSquintL.Value.Should().BeApproximately(0.7, 0.001);
         }
-        
+
         [Fact]
         public async Task EyeSquintR_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -585,28 +590,28 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeSquintRight", Value = 0.6 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var eyeSquintR = result.Parameters.FirstOrDefault(p => p.Id == "EyeSquintR")!;
             eyeSquintR.Should().NotBeNull();
-            
+
             // Expected: EyeSquintRight = 0.6
             eyeSquintR.Value.Should().BeApproximately(0.6, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthX_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -619,30 +624,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "TongueOut", Value = 0.4 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthX = result.Parameters.FirstOrDefault(p => p.Id == "MouthX")!;
             mouthX.Should().NotBeNull();
-            
+
             // Expected: (((MouthLeft - MouthRight) + (MouthSmileLeft - MouthSmileRight)) * (1 - TongueOut))
             // = (((0.3 - 0.1) + (0.5 - 0.2)) * (1 - 0.4))
             var expected = (((0.3 - 0.1) + (0.5 - 0.2)) * (1 - 0.4));
             mouthX.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task CheekPuff_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -651,28 +656,28 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "CheekPuff", Value = 0.8 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var cheekPuff = result.Parameters.FirstOrDefault(p => p.Id == "CheekPuff")!;
             cheekPuff.Should().NotBeNull();
-            
+
             // Expected: CheekPuff = 0.8
             cheekPuff.Value.Should().BeApproximately(0.8, 0.001);
         }
-        
+
         [Fact]
         public async Task TongueOut_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -681,28 +686,28 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "TongueOut", Value = 0.9 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var tongueOut = result.Parameters.FirstOrDefault(p => p.Id == "TongueOut")!;
             tongueOut.Should().NotBeNull();
-            
+
             // Expected: TongueOut = 0.9
             tongueOut.Value.Should().BeApproximately(0.9, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthPucker_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -714,30 +719,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "TongueOut", Value = 0.1 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthPucker = result.Parameters.FirstOrDefault(p => p.Id == "MouthPucker")!;
             mouthPucker.Should().NotBeNull();
-            
+
             // Expected: (((MouthDimpleRight + MouthDimpleLeft) * 2) - MouthPucker) * (1 - TongueOut)
             // = (((0.4 + 0.3) * 2) - 0.2) * (1 - 0.1)
             var expected = (((0.4 + 0.3) * 2) - 0.2) * (1 - 0.1);
             mouthPucker.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthFunnel_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -748,30 +753,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "JawOpen", Value = 0.3 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthFunnel = result.Parameters.FirstOrDefault(p => p.Id == "MouthFunnel")!;
             mouthFunnel.Should().NotBeNull();
-            
+
             // Expected: (MouthFunnel * (1 - TongueOut)) - (JawOpen * 0.2)
             // = (0.7 * (1 - 0.2)) - (0.3 * 0.2)
             var expected = (0.7 * (1 - 0.2)) - (0.3 * 0.2);
             mouthFunnel.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task JawOpen_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -780,28 +785,28 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "JawOpen", Value = 0.6 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var jawOpen = result.Parameters.FirstOrDefault(p => p.Id == "JawOpen")!;
             jawOpen.Should().NotBeNull();
-            
+
             // Expected: JawOpen = 0.6
             jawOpen.Value.Should().BeApproximately(0.6, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthPressLipOpen_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -816,30 +821,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "TongueOut", Value = 0.3 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthPressLipOpen = result.Parameters.FirstOrDefault(p => p.Id == "MouthPressLipOpen")!;
             mouthPressLipOpen.Should().NotBeNull();
-            
+
             // Expected: (((MouthUpperUpRight + MouthUpperUpLeft + MouthLowerDownRight + MouthLowerDownLeft) / 1.8) - (MouthRollLower + MouthRollUpper)) * (1 - TongueOut)
             // = (((0.2 + 0.3 + 0.4 + 0.5) / 1.8) - (0.1 + 0.2)) * (1 - 0.3)
             var expected = (((0.2 + 0.3 + 0.4 + 0.5) / 1.8) - (0.1 + 0.2)) * (1 - 0.3);
             mouthPressLipOpen.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task MouthShrug_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -852,30 +857,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "TongueOut", Value = 0.5 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var mouthShrug = result.Parameters.FirstOrDefault(p => p.Id == "MouthShrug")!;
             mouthShrug.Should().NotBeNull();
-            
+
             // Expected: ((MouthShrugUpper + MouthShrugLower + MouthPressRight + MouthPressLeft) / 4) * (1 - TongueOut)
             // = ((0.1 + 0.2 + 0.3 + 0.4) / 4) * (1 - 0.5)
             var expected = ((0.1 + 0.2 + 0.3 + 0.4) / 4) * (1 - 0.5);
             mouthShrug.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BrowInnerUp_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -884,28 +889,28 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "BrowInnerUp", Value = 0.7 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var browInnerUp = result.Parameters.FirstOrDefault(p => p.Id == "BrowInnerUp")!;
             browInnerUp.Should().NotBeNull();
-            
+
             // Expected: BrowInnerUp = 0.7
             browInnerUp.Value.Should().BeApproximately(0.7, 0.001);
         }
-        
+
         [Fact]
         public async Task BrowLeftY_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -917,30 +922,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "MouthLeft", Value = 0.2 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var browLeftY = result.Parameters.FirstOrDefault(p => p.Id == "BrowLeftY")!;
             browLeftY.Should().NotBeNull();
-            
+
             // Expected: 0.5 + (BrowOuterUpLeft - BrowDownLeft) + ((MouthRight - MouthLeft) / 8)
             // = 0.5 + (0.4 - 0.1) + ((0.5 - 0.2) / 8)
             var expected = 0.5 + (0.4 - 0.1) + ((0.5 - 0.2) / 8);
             browLeftY.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BrowRightY_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -952,30 +957,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "MouthRight", Value = 0.3 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var browRightY = result.Parameters.FirstOrDefault(p => p.Id == "BrowRightY")!;
             browRightY.Should().NotBeNull();
-            
+
             // Expected: 0.5 + (BrowOuterUpRight - BrowDownRight) + ((MouthLeft - MouthRight) / 8)
             // = 0.5 + (0.5 - 0.2) + ((0.6 - 0.3) / 8)
             var expected = 0.5 + (0.5 - 0.2) + ((0.6 - 0.3) / 8);
             browRightY.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task Brows_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -987,30 +992,30 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "BrowDownRight", Value = 0.2 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var brows = result.Parameters.FirstOrDefault(p => p.Id == "Brows")!;
             brows.Should().NotBeNull();
-            
+
             // Expected: 0.5 + (BrowOuterUpRight + BrowOuterUpLeft - BrowDownLeft - BrowDownRight) / 4
             // = 0.5 + (0.4 + 0.3 - 0.1 - 0.2) / 4
             var expected = 0.5 + (0.4 + 0.3 - 0.1 - 0.2) / 4;
             brows.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task VoiceFrequencyPlusMouthSmile_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -1025,58 +1030,58 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "MouthDimpleRight", Value = 0.6 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var voiceFrequencyPlusMouthSmile = result.Parameters.FirstOrDefault(p => p.Id == "VoiceFrequencyPlusMouthSmile")!;
             voiceFrequencyPlusMouthSmile.Should().NotBeNull();
-            
+
             // This has the same formula as MouthSmile:
             // Expected: (2 - ((MouthFrownLeft + MouthFrownRight + MouthPucker) / 1) + ((MouthSmileRight + MouthSmileLeft + ((MouthDimpleLeft + MouthDimpleRight) / 2)) / 1)) / 4
             var expected = (2 - ((0.1 + 0.1 + 0.2) / 1) + ((0.3 + 0.4 + ((0.5 + 0.6) / 2)) / 1)) / 4;
             voiceFrequencyPlusMouthSmile.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BodyAngleX_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0, Y = 0.4, Z = 0 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var bodyAngleX = result.Parameters.FirstOrDefault(p => p.Id == "BodyAngleX")!;
             bodyAngleX.Should().NotBeNull();
-            
+
             // Expected: -HeadRotY * 1.5 = -0.4 * 1.5 = -0.6
             var expected = -0.4 * 1.5;
             bodyAngleX.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BodyAngleY_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
@@ -1087,130 +1092,130 @@ namespace SharpBridge.Tests.Services
                     new BlendShape { Key = "EyeBlinkRight", Value = 0.3 }
                 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var bodyAngleY = result.Parameters.FirstOrDefault(p => p.Id == "BodyAngleY")!;
             bodyAngleY.Should().NotBeNull();
-            
+
             // Expected: (-HeadRotX * 1.5) + ((EyeBlinkLeft + EyeBlinkRight) * -1)
             // = (-0.3 * 1.5) + ((0.2 + 0.3) * -1)
             var expected = (-0.3 * 1.5) + ((0.2 + 0.3) * -1);
             bodyAngleY.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BodyAngleZ_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Rotation = new Coordinates { X = 0, Y = 0, Z = 0.2 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var bodyAngleZ = result.Parameters.FirstOrDefault(p => p.Id == "BodyAngleZ")!;
             bodyAngleZ.Should().NotBeNull();
-            
+
             // Expected: HeadRotZ * 1.5 = 0.2 * 1.5 = 0.3
             var expected = 0.2 * 1.5;
             bodyAngleZ.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BodyPositionX_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0.3, Y = 0, Z = 0 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var bodyPositionX = result.Parameters.FirstOrDefault(p => p.Id == "BodyPositionX")!;
             bodyPositionX.Should().NotBeNull();
-            
+
             // Expected: HeadPosX * -1 = 0.3 * -1 = -0.3
             var expected = 0.3 * -1;
             bodyPositionX.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BodyPositionY_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0.4, Z = 0 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var bodyPositionY = result.Parameters.FirstOrDefault(p => p.Id == "BodyPositionY")!;
             bodyPositionY.Should().NotBeNull();
-            
+
             // Expected: HeadPosY * 1 = 0.4 * 1 = 0.4
             var expected = 0.4 * 1;
             bodyPositionY.Value.Should().BeApproximately(expected, 0.001);
         }
-        
+
         [Fact]
         public async Task BodyPositionZ_TransformsCorrectly()
         {
             if (!File.Exists(_configPath))
                 return;
-            
+
             // Arrange
             var engine = CreateEngine();
-            await engine.LoadRulesAsync(_configPath);
-            
+            await engine.LoadRulesAsync();
+
             var trackingData = new PhoneTrackingInfo
             {
                 FaceFound = true,
                 Position = new Coordinates { X = 0, Y = 0, Z = 0.5 }
             };
-            
+
             // Act
             var result = engine.TransformData(trackingData);
-            
+
             // Assert
             var bodyPositionZ = result.Parameters.FirstOrDefault(p => p.Id == "BodyPositionZ")!;
             bodyPositionZ.Should().NotBeNull();
-            
+
             // Expected: HeadPosZ * -0.5 = 0.5 * -0.5 = -0.25
             var expected = 0.5 * -0.5;
             bodyPositionZ.Value.Should().BeApproximately(expected, 0.001);
         }
     }
-} 
+}

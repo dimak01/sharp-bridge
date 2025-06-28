@@ -458,7 +458,7 @@ namespace SharpBridge.Tests.Services
                 });
 
             _transformationEngineMock
-                .Setup(engine => engine.LoadRulesAsync(It.IsAny<string>()))
+                .Setup(engine => engine.LoadRulesAsync())
                 .Returns(Task.CompletedTask);
 
             // Default setup for SendTrackingRequestAsync (can be overridden by test-specific setups)
@@ -620,7 +620,7 @@ namespace SharpBridge.Tests.Services
             await _orchestrator.InitializeAsync(_tempConfigPath, cancellationToken);
 
             // Assert
-            _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.Once);
+            _transformationEngineMock.Verify(x => x.LoadRulesAsync(), Times.Once);
             _vtubeStudioPCClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
             _vtubeStudioPhoneClientMock.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
         }
@@ -1439,7 +1439,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.Exactly(2));
+            _transformationEngineMock.Verify(x => x.LoadRulesAsync(), Times.Exactly(2));
         }
 
         [Fact]
@@ -1452,7 +1452,7 @@ namespace SharpBridge.Tests.Services
 
             // Setup transform engine to throw on second load
             int loadCount = 0;
-            _transformationEngineMock.Setup(x => x.LoadRulesAsync(It.IsAny<string>()))
+            _transformationEngineMock.Setup(x => x.LoadRulesAsync())
                 .Returns(() =>
                 {
                     loadCount++;
@@ -1568,7 +1568,7 @@ namespace SharpBridge.Tests.Services
             SetupBasicMocks();
             var expectedException = new FileNotFoundException("Config file not found");
 
-            _transformationEngineMock.Setup(x => x.LoadRulesAsync(It.IsAny<string>()))
+            _transformationEngineMock.Setup(x => x.LoadRulesAsync())
                 .ThrowsAsync(expectedException);
 
             var cancellationToken = CancellationToken.None;
@@ -2648,7 +2648,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
             await orchestrator.InitializeAsync(_tempConfigPath, CancellationToken.None);
 
-            _transformationEngineMock.Setup(x => x.LoadRulesAsync(It.IsAny<string>()))
+            _transformationEngineMock.Setup(x => x.LoadRulesAsync())
                 .ThrowsAsync(new InvalidOperationException("Config load failed"));
 
             // Act - Use reflection to call the private method
@@ -2974,7 +2974,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _transformationEngineMock.Verify(x => x.LoadRulesAsync(_tempConfigPath), Times.AtLeast(2)); // Called during Initialize + Reload
+            _transformationEngineMock.Verify(x => x.LoadRulesAsync(), Times.AtLeast(2)); // Called during Initialize + Reload
             _loggerMock.Verify(x => x.Info("Reloading transformation config..."), Times.Once);
             _loggerMock.Verify(x => x.Info("Transformation config reloaded successfully"), Times.Once);
         }
@@ -3017,7 +3017,7 @@ namespace SharpBridge.Tests.Services
 
             // Set up the mock to succeed on first calls, then fail on subsequent calls
             var expectedException = new InvalidOperationException("Test exception");
-            _transformationEngineMock.SetupSequence(x => x.LoadRulesAsync(_tempConfigPath))
+            _transformationEngineMock.SetupSequence(x => x.LoadRulesAsync())
                 .Returns(Task.CompletedTask) // First call during InitializeAsync succeeds
                 .ThrowsAsync(expectedException); // Second call during reload fails
 
