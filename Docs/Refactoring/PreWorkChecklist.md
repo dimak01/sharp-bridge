@@ -65,6 +65,7 @@ This checklist covers the housekeeping tasks that need to be completed before st
   - [x] Update `LoadRulesAsync()` to be parameterless
   - [x] Use `_config.ConfigPath` internally instead of parameter
   - [x] Update all call sites within the class
+
 ## 🔧 Task 3: Update Service Registration ✅ COMPLETE
 
 ### Add TransformationEngineConfig Registration
@@ -139,46 +140,49 @@ This checklist covers the housekeeping tasks that need to be completed before st
 - [x] **Test**: Verify application starts without command-line arguments
 
 ### Remove Unused Command-Line Classes (if they exist)
-- [ ] **Search for CommandLineParser** references
-- [ ] **Remove unused command-line parsing classes/utilities**
-- [ ] **Clean up any related imports/dependencies**
+- [x] **Search for CommandLineParser** references
+- [x] **Remove unused command-line parsing classes/utilities**
+- [x] **Clean up any related imports/dependencies**
 
+**Results**: ✅ Removed `CommandLineParser.cs` file, System.CommandLine package references, and updated coverage exclusions. Application builds and tests pass without command-line dependencies.
 
-## 🧪 Task 6: Update Tests
+## 🧪 Task 6: Update Tests ✅ COMPLETE
 
 ### Find Tests Using Old Interface
-- [ ] **Search for tests calling**:
-  - [ ] `LoadRulesAsync(string filePath)`
-  - [ ] `InitializeAsync(string transformConfigPath, ...)`
-- [ ] **Update test method calls** to use new parameterless interfaces
-- [ ] **Mock TransformationEngineConfig** in relevant tests
-- [ ] **Update test assertions** as needed
+- [x] **Search for tests calling**:
+  - [x] `LoadRulesAsync(string filePath)`
+  - [x] `InitializeAsync(string transformConfigPath, ...)`
+- [x] **Update test method calls** to use new parameterless interfaces
+- [x] **Mock TransformationEngineConfig** in relevant tests
+- [x] **Update test assertions** as needed
 
 ### Remove Command-Line Tests
-- [ ] **Find tests for command-line argument parsing**
-- [ ] **Remove or update tests** that are no longer relevant
-- [ ] **Verify all tests pass** after changes
+- [x] **Find tests for command-line argument parsing**
+- [x] **Remove or update tests** that are no longer relevant
+- [x] **Verify all tests pass** after changes
+
+**Results**: ✅ Updated ExternalEditorServiceTests and ApplicationOrchestratorTests. All 759 tests pass with no failures.
 
 ## ✅ Verification Steps
 
 ### Build and Basic Functionality
-- [ ] **Solution builds without errors**
-- [ ] **All tests pass**
-- [ ] **Application starts successfully**
-- [ ] **Basic functionality works** (phone client connection, transformation engine loads)
+- [x] **Solution builds without errors**
+- [x] **All tests pass**
+- [x] **Application starts successfully**
+- [x] **Basic functionality works** (phone client connection, transformation engine loads)
 
 ### Hot Reload Testing
-- [ ] **Test transformation config hot reload**:
-  - [ ] Start application
-  - [ ] Modify `vts_transforms.json`
-  - [ ] Press hot reload shortcut (Alt+K)
-  - [ ] Verify config reloads without errors
-- [ ] **Verify parameterless LoadRulesAsync works correctly**
+- [x] **Test transformation config hot reload**:
+  - [x] Start application
+  - [x] Modify `vts_transforms.json`
+  - [x] Press hot reload shortcut (Alt+K)
+  - [x] Verify config reloads without errors
+- [x] **Verify parameterless LoadRulesAsync works correctly**
 
 ### Interface Consistency
-- [ ] **Check all ITransformationEngine implementations** use new interface
-- [ ] **Verify no lingering references** to old interfaces
-- [ ] **Confirm dependency injection** resolves correctly
+- [x] **Check all ITransformationEngine implementations** use new interface
+- [x] **Verify no lingering references** to old interfaces
+- [x] **Confirm dependency injection** resolves correctly
 
 ## 📝 Notes
 
@@ -201,13 +205,15 @@ This checklist covers the housekeeping tasks that need to be completed before st
 
 ## 🎯 Success Criteria
 
-- [ ] **No command-line arguments required** to start application
-- [ ] **TransformationEngine.LoadRulesAsync()** works parameterless
-- [ ] **ApplicationOrchestrator.InitializeAsync()** takes no config path
-- [ ] **All existing functionality preserved** (especially hot reload)
-- [ ] **All tests pass**
-- [ ] **Clean codebase** with removed inappropriate Save calls
+- [x] **No command-line arguments required** to start application
+- [x] **TransformationEngine.LoadRulesAsync()** works parameterless
+- [x] **ApplicationOrchestrator.InitializeAsync()** takes no config path
+- [x] **All existing functionality preserved** (especially hot reload)
+- [x] **All tests pass**
+- [x] **Clean codebase** with removed inappropriate Save calls
 
 ---
 
-**Next Step**: Once this checklist is complete, proceed to Phase 1 of the main configuration consolidation plan. 
+**✅ PRE-WORK PHASE COMPLETE!** 
+
+**Next Step**: Proceed to Phase 1 of the main configuration consolidation plan. 
