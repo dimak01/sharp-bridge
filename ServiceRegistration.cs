@@ -90,10 +90,10 @@ namespace SharpBridge
             services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
 
             // Register TransformationEngineConfig
-            services.AddSingleton(provider =>
+            services.AddSingleton(async provider =>
             {
                 var configManager = provider.GetRequiredService<ConfigManager>();
-                return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+                return await configManager.LoadTransformationConfigAsync();
             });
 
             services.AddTransient<ITransformationEngine, TransformationEngine>();
