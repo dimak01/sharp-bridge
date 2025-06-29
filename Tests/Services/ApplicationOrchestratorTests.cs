@@ -29,7 +29,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IExternalEditorService> _externalEditorServiceMock;
         private readonly Mock<IShortcutConfigurationManager> _shortcutConfigurationManagerMock;
         private readonly Mock<ISystemHelpRenderer> _systemHelpRendererMock;
-        private readonly ApplicationConfig _applicationConfig;
+        private readonly GeneralSettingsConfig _generalSettingsConfig;
         private ApplicationOrchestrator _orchestrator;
         private readonly string _tempConfigPath;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
@@ -56,7 +56,7 @@ namespace SharpBridge.Tests.Services
             _systemHelpRendererMock = new Mock<ISystemHelpRenderer>();
 
             // Create application config with default shortcuts
-            _applicationConfig = new ApplicationConfig
+            _generalSettingsConfig = new GeneralSettingsConfig
             {
                 EditorCommand = "notepad.exe \"%f\"",
                 Shortcuts = new Dictionary<string, string>
@@ -132,7 +132,7 @@ namespace SharpBridge.Tests.Services
                 _colorServiceMock.Object,
                 _externalEditorServiceMock.Object,
                 _shortcutConfigurationManagerMock.Object,
-                _applicationConfig,
+                _generalSettingsConfig,
                 _systemHelpRendererMock.Object
             );
 
@@ -156,7 +156,7 @@ namespace SharpBridge.Tests.Services
                 _colorServiceMock.Object,
                 _externalEditorServiceMock.Object,
                 _shortcutConfigurationManagerMock.Object,
-                _applicationConfig,
+                _generalSettingsConfig,
                 _systemHelpRendererMock.Object
             );
         }
@@ -182,7 +182,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "vtubeStudioPhoneClient" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -198,7 +198,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "transformationEngine" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -214,7 +214,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "phoneConfig" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -230,7 +230,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "logger" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -246,7 +246,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "consoleRenderer" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -262,7 +262,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "keyboardInputHandler" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -278,7 +278,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "parameterManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -294,7 +294,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "recoveryPolicy" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -310,7 +310,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "console" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -326,7 +326,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "colorService" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -342,7 +342,7 @@ namespace SharpBridge.Tests.Services
                     null!,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "externalEditorService" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -358,7 +358,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     null!,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "shortcutConfigurationManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -374,7 +374,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     null!,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     _systemHelpRendererMock.Object),
                 "applicationConfig" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
@@ -406,7 +406,7 @@ namespace SharpBridge.Tests.Services
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
+                    _generalSettingsConfig,
                     null!),
                 _ => throw new ArgumentException($"Unknown parameter: {parameterName}")
             };
@@ -2108,7 +2108,7 @@ namespace SharpBridge.Tests.Services
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
                 CreateOrchestratorWithNullParameter("applicationConfig"));
-            exception.ParamName.Should().Be("applicationConfig");
+            exception.ParamName.Should().Be("generalSettingsConfig");
         }
 
         [Fact]
@@ -2679,7 +2679,7 @@ namespace SharpBridge.Tests.Services
                 _colorServiceMock.Object,
                 _externalEditorServiceMock.Object,
                 _shortcutConfigurationManagerMock.Object,
-                _applicationConfig,
+                _generalSettingsConfig,
                 _systemHelpRendererMock.Object);
 
             // Act & Assert - Should not throw
@@ -2698,7 +2698,7 @@ namespace SharpBridge.Tests.Services
             CreateOrchestrator();
 
             // Assert
-            _shortcutConfigurationManagerMock.Verify(x => x.LoadFromConfiguration(_applicationConfig), Times.AtLeastOnce);
+            _shortcutConfigurationManagerMock.Verify(x => x.LoadFromConfiguration(_generalSettingsConfig), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -2778,7 +2778,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
             await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _systemHelpRendererMock.Setup(x => x.RenderSystemHelp(It.IsAny<ApplicationConfig>(), It.IsAny<int>()))
+            _systemHelpRendererMock.Setup(x => x.RenderSystemHelp(It.IsAny<GeneralSettingsConfig>(), It.IsAny<int>()))
                 .Returns("Test help content");
 
             // Get the help action from registered shortcuts
@@ -2800,7 +2800,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _systemHelpRendererMock.Verify(x => x.RenderSystemHelp(
-                _applicationConfig,
+                _generalSettingsConfig,
                 It.IsAny<int>()), Times.Once);
             _consoleMock.Verify(x => x.Clear(), Times.Once);
             _consoleMock.Verify(x => x.Write("Test help content"), Times.Once);

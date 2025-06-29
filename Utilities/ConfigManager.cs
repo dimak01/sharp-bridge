@@ -15,7 +15,7 @@ namespace SharpBridge.Utilities
         private readonly string _configDirectory;
         private readonly string _pcConfigFilename;
         private readonly string _phoneConfigFilename;
-        private readonly string _applicationConfigFilename = "ApplicationConfig.json";
+        private readonly string _generalSettingsConfigFilename = "GeneralSettingsConfig.json";
         private readonly string _transformationEngineConfigFilename = "TransformationEngineConfig.json";
 
         /// <summary>
@@ -52,7 +52,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets the path to the Application configuration file.
         /// </summary>
-        public string ApplicationConfigPath => Path.Combine(_configDirectory, _applicationConfigFilename);
+        public string GeneralSettingsConfigPath => Path.Combine(_configDirectory, _generalSettingsConfigFilename);
 
         /// <summary>
         /// Gets the path to the TransformationEngine configuration file.
@@ -98,22 +98,22 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Loads the Application configuration from file or creates a default one if it doesn't exist.
+        /// Loads the GeneralSettings configuration from file or creates a default one if it doesn't exist.
         /// </summary>
-        /// <returns>The Application configuration.</returns>
-        public async Task<ApplicationConfig> LoadApplicationConfigAsync()
+        /// <returns>The GeneralSettings configuration.</returns>
+        public async Task<GeneralSettingsConfig> LoadGeneralSettingsConfigAsync()
         {
-            return await LoadConfigAsync<ApplicationConfig>(ApplicationConfigPath, () => new ApplicationConfig());
+            return await LoadConfigAsync<GeneralSettingsConfig>(GeneralSettingsConfigPath, () => new GeneralSettingsConfig());
         }
 
         /// <summary>
-        /// Saves the Application configuration to file.
+        /// Saves the GeneralSettings configuration to file.
         /// </summary>
         /// <param name="config">The configuration to save.</param>
         /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SaveApplicationConfigAsync(ApplicationConfig config)
+        public async Task SaveGeneralSettingsConfigAsync(GeneralSettingsConfig config)
         {
-            await SaveConfigAsync(ApplicationConfigPath, config);
+            await SaveConfigAsync(GeneralSettingsConfigPath, config);
         }
 
         /// <summary>

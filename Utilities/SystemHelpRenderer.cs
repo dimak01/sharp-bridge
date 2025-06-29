@@ -30,10 +30,10 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Renders the complete system help display including application configuration and keyboard shortcuts
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
+        /// <param name="generalSettingsConfig">Application configuration to display</param>
         /// <param name="consoleWidth">Available console width for formatting</param>
         /// <returns>Formatted help content as a string</returns>
-        public string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth)
+        public string RenderSystemHelp(GeneralSettingsConfig generalSettingsConfig, int consoleWidth)
         {
             var builder = new StringBuilder();
 
@@ -47,7 +47,7 @@ namespace SharpBridge.Utilities
             builder.AppendLine();
 
             // Application Configuration section
-            builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
+            builder.AppendLine(RenderApplicationConfiguration(generalSettingsConfig));
             builder.AppendLine();
 
             // Keyboard Shortcuts section
@@ -65,31 +65,31 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Renders just the application configuration section
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
+        /// <param name="generalSettingsConfig">Application configuration to display</param>
         /// <returns>Formatted configuration section</returns>
-        public string RenderApplicationConfiguration(ApplicationConfig applicationConfig)
+        public string RenderApplicationConfiguration(GeneralSettingsConfig generalSettingsConfig)
         {
             var builder = new StringBuilder();
 
             builder.AppendLine("APPLICATION CONFIGURATION:");
             builder.AppendLine("─────────────────────────");
 
-            if (applicationConfig == null)
+            if (generalSettingsConfig == null)
             {
                 builder.AppendLine("  No configuration loaded");
                 return builder.ToString();
             }
 
             // Use reflection to display all properties with their descriptions
-            var properties = typeof(ApplicationConfig).GetProperties();
+            var properties = typeof(GeneralSettingsConfig).GetProperties();
             foreach (var property in properties)
             {
                 // Skip the Shortcuts property as it's displayed separately
-                if (property.Name == nameof(ApplicationConfig.Shortcuts))
+                if (property.Name == nameof(GeneralSettingsConfig.Shortcuts))
                     continue;
 
-                var displayName = AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), property.Name);
-                var value = property.GetValue(applicationConfig);
+                var displayName = AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), property.Name);
+                var value = property.GetValue(generalSettingsConfig);
                 var displayValue = value?.ToString() ?? "Not set";
 
                 builder.AppendLine($"  {displayName}: {displayValue}");

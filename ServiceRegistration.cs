@@ -56,11 +56,18 @@ namespace SharpBridge
                 return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
             });
 
-            // Register ApplicationConfig
+            // Register GeneralSettingsConfig
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<ConfigManager>();
-                return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+            });
+
+            // Register TransformationEngineConfig
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult(); ;
             });
 
             // Register clients
@@ -89,12 +96,6 @@ namespace SharpBridge
             // Register transformation rules repository
             services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
 
-            // Register TransformationEngineConfig
-            services.AddSingleton(async provider =>
-            {
-                var configManager = provider.GetRequiredService<ConfigManager>();
-                return await configManager.LoadTransformationConfigAsync();
-            });
 
             services.AddTransient<ITransformationEngine, TransformationEngine>();
 

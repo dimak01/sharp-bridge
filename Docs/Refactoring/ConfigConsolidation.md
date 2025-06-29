@@ -26,13 +26,12 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 1. **VTubeStudioPCConfig.json** - PC client settings (host, port, auth, timeouts)
 2. **VTubeStudioPhoneConfig.json** - Phone client settings (IP, ports, intervals)
 3. **ApplicationConfig.json** - General app settings (editor, shortcuts)
-4. **vts_transforms.json** - Transformation rules (stays separate)
-5. **Command-line arguments** for config paths
+4. **TransformationEngineConfig.json** - Engine settings (config path, max iterations)
+5. **vts_transforms.json** - Transformation rules (stays separate)
 
 ### Issues Identified
 - **Fragmented Configuration**: Settings spread across multiple files
 - **Unnecessary Complexity**: Many settings are now "figured out" and don't need user configuration
-- **Command-line Arguments**: Unnecessary complexity for config paths
 - **No User Preferences**: No way to configure runtime preferences like verbosity, console size, etc.
 - **Inconsistent Structure**: Some configs use sections, others don't
 
@@ -46,14 +45,13 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
    - `TransformationEngine` - Engine settings (config path, max iterations) - new TransformationEngineConfig
 2. **UserPreferences.json** - User preferences (verbosity levels, console size, etc.)
 3. **vts_transforms.json** - Transformation rules (unchanged)
-4. **No command-line arguments** needed
 
 ### Benefits
 - **Simplified Configuration**: Single file for all application settings
 - **Reuses Existing Classes**: Leverages existing, tested configuration classes as sections
 - **Preserves Hot Reload**: Existing ConfigManager interface maintained for seamless hot reload functionality
 - **User Preferences**: Separate file for user-specific settings that can be easily reset
-- **Better User Experience**: No command-line arguments needed
+- **Better User Experience**: Simplified configuration management
 - **Consistent Structure**: Everything uses sections for extensibility
 - **Minimal Code Changes**: Existing config classes become sections without duplication
 - **No Runtime Config Saves**: Clean separation - only user preferences saved at runtime
@@ -62,7 +60,7 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 ## Implementation Plan
 
 ### Pre-work: Housekeeping Tasks (Low Risk)
-**Goal**: Clean up existing inappropriate configuration usage and eliminate command-line arguments before starting the main refactoring.
+**Goal**: Clean up existing inappropriate configuration usage and simplify TransformationEngine interface before starting the main refactoring.
 
 #### Steps:
 1. **✅ COMPLETED - Remove unused Configure methods** from ServiceRegistration.cs:
@@ -70,15 +68,12 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
    - ✅ Removed `ConfigureVTubeStudioPC` method (lines 211-228)
    - ✅ These methods inappropriately saved config changes back to files during startup
 2. **✅ COMPLETED - Remove inappropriate Save method calls** (verified none exist in production code)
-3. **✅ COMPLETED - Eliminate command-line arguments and simplify TransformationEngine interface**:
+3. **✅ COMPLETED - Simplify TransformationEngine interface and centralize config paths**:
    - ✅ Created `TransformationEngineConfig` class with `ConfigPath` and `MaxEvaluationIterations` properties
    - ✅ Updated `ITransformationEngine.LoadRulesAsync()` to be parameterless (gets path from injected config)
    - ✅ Updated `TransformationEngine` implementation to use config and parameterless LoadRulesAsync()
    - ✅ Updated `ApplicationOrchestrator` to eliminate config path parameter and storage (removed `_transformConfigPath` field, parameterless `InitializeAsync`)
-   - ✅ Remove command-line parsing from `Program.cs` (verified `args` parameter was never used)
    - ✅ Clean up path-passing through multiple service layers (config paths now centralized in Program.cs)
-   
-   **Note**: `EnableHotReload` property was removed from `TransformationEngineConfig` as hot reload is non-optional (see Architecture Decision 2).
 4. **✅ COMPLETED - Additional pre-work items discovered during refactoring** (no additional items were needed)
 
 ### Phase 1: Create New Configuration Structure (Low Risk)
@@ -118,11 +113,6 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
        // Console preferences
        public int PreferredConsoleWidth { get; set; } = 150;
        public int PreferredConsoleHeight { get; set; } = 60;
-       public double ConsoleUpdateIntervalSeconds { get; set; } = 0.1;
-       public bool AutoResizeConsole { get; set; } = true;
-       public bool ShowColorCoding { get; set; } = true;
-       
-       // User-specific preferences that can be easily reset
    }
    ```
 
@@ -138,6 +128,7 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
        public async Task<VTubeStudioPCConfig> LoadPCConfigAsync()
        public async Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync()
        public async Task<GeneralSettingsConfig> LoadGeneralSettingsAsync() // Renamed from current LoadApplicationConfigAsync
+       public async Task<TransformationEngineConfig> LoadTransformationConfigAsync() // Existing method
        
        // New methods for consolidated config
        public async Task<ApplicationConfig> LoadApplicationConfigAsync() // Returns full consolidated config
@@ -147,7 +138,7 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
        public async Task SaveUserPreferencesAsync(UserPreferences preferences)
        public async Task ResetUserPreferencesAsync() // Wipe and recreate with defaults
        
-       // Remove public Save methods for configurations (SavePCConfigAsync, SavePhoneConfigAsync, etc.)
+       // Keep existing Save methods for load/save symmetry (unused in production)
    }
    ```
 
@@ -227,8 +218,8 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 **Goal**: Clean up old configuration files and unused loading methods.
 
 #### Steps:
-1. **Remove old separate configuration files** (VTubeStudioPCConfig.json, VTubeStudioPhoneConfig.json)
-2. **Remove old configuration file loading methods** from ConfigManager (keep the classes - we're reusing them!)
+1. **Remove old separate configuration files** (VTubeStudioPCConfig.json, VTubeStudioPhoneConfig.json, TransformationEngineConfig.json)
+2. **Update ConfigManager to remove individual file paths** (keep load/save methods for API symmetry - they'll work with consolidated file)
 3. **Update documentation** to reflect new structure
 4. **Create migration guide** for users
 
@@ -238,14 +229,14 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 ```json
 {
   "GeneralSettings": {
-    "EditorCommand": "notepad.exe \"%f\"",
+    "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\"",
     "Shortcuts": {
-      "CycleTransformationEngineVerbosity": "Alt+T",
-      "CyclePCClientVerbosity": "Alt+P",
-      "CyclePhoneClientVerbosity": "Alt+O",
-      "ReloadTransformationConfig": "Alt+K",
-      "OpenConfigInEditor": "Ctrl+Alt+E",
-      "ShowSystemHelp": "F1"
+      "CycleTransformationEngineVerbosity": "Alt+{",
+      "CyclePCClientVerbosity": "Alt+K",
+      "CyclePhoneClientVerbosity": "Alt+C",
+      "ReloadTransformationConfig": "Alt+Q",
+      "OpenConfigInEditor": "Ctrl+Alt+W",
+      "ShowSystemHelp": "F2"
     }
   },
   "PhoneClient": {

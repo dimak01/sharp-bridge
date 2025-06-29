@@ -7,7 +7,7 @@ namespace SharpBridge.Models
     /// <summary>
     /// Configuration for general application settings
     /// </summary>
-    public class ApplicationConfig
+    public class GeneralSettingsConfig
     {
         /// <summary>
         /// Command to execute when opening files in external editor.
