@@ -23,4 +23,30 @@ namespace SharpBridge.Models
         [Description("Keyboard Shortcuts")]
         public Dictionary<string, string> Shortcuts { get; set; } = new Dictionary<string, string>();
     }
+
+    /// <summary>
+    /// Consolidated application configuration that aggregates all configuration sections
+    /// </summary>
+    public class ApplicationConfig
+    {
+        /// <summary>
+        /// General application settings (editor, shortcuts)
+        /// </summary>
+        public GeneralSettingsConfig GeneralSettings { get; set; } = new();
+
+        /// <summary>
+        /// Phone client settings for connecting to iPhone VTube Studio
+        /// </summary>
+        public VTubeStudioPhoneClientConfig PhoneClient { get; set; } = new();
+
+        /// <summary>
+        /// PC client settings for connecting to VTube Studio on PC
+        /// </summary>
+        public VTubeStudioPCConfig PCClient { get; set; } = new();
+
+        /// <summary>
+        /// Transformation engine settings (config path, max iterations)
+        /// </summary>
+        public TransformationEngineConfig TransformationEngine { get; set; } = new();
+    }
 }
