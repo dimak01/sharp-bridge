@@ -98,7 +98,7 @@ namespace SharpBridge.Utilities
         /// Loads shortcut configuration from the provided application configuration
         /// </summary>
         /// <param name="config">Application configuration containing shortcut definitions</param>
-        public void LoadFromConfiguration(ApplicationConfig config)
+        public void LoadFromConfiguration(GeneralSettingsConfig config)
         {
             _mappedShortcuts.Clear();
             _incorrectShortcuts.Clear();

@@ -11,17 +11,17 @@ namespace SharpBridge.Interfaces
         /// <summary>
         /// Renders the complete system help display including application configuration and keyboard shortcuts
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
+        /// <param name="generalSettingsConfig">GeneralSettings configuration to display</param>
         /// <param name="consoleWidth">Available console width for formatting</param>
         /// <returns>Formatted help content as a string</returns>
-        string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth);
+        string RenderSystemHelp(GeneralSettingsConfig generalSettingsConfig, int consoleWidth);
 
         /// <summary>
         /// Renders just the application configuration section
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
+        /// <param name="generalSettingsConfig">GeneralSettings configuration to display</param>
         /// <returns>Formatted configuration section</returns>
-        string RenderApplicationConfiguration(ApplicationConfig applicationConfig);
+        string RenderApplicationConfiguration(GeneralSettingsConfig generalSettingsConfig);
 
         /// <summary>
         /// Renders just the keyboard shortcuts section with status information

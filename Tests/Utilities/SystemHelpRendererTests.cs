@@ -58,7 +58,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderApplicationConfiguration_WithValidConfig_ReturnsFormattedString()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 EditorCommand = "notepad.exe \"%f\"",
                 Shortcuts = new Dictionary<string, string>()
@@ -81,7 +81,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithValidConfig_ReturnsFormattedOutput()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 EditorCommand = "notepad.exe \"%f\"",
                 Shortcuts = new Dictionary<string, string>()
@@ -167,7 +167,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_CreatesCorrectTableData()
         {
             // Arrange
-            var config = new ApplicationConfig();
+            var config = new GeneralSettingsConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
@@ -220,7 +220,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithConfigurationIssues_IncludesErrorsInStatus()
         {
             // Arrange
-            var config = new ApplicationConfig();
+            var config = new GeneralSettingsConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = null
@@ -263,7 +263,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithActiveShortcuts_ShowsActiveStatus()
         {
             // Arrange
-            var config = new ApplicationConfig();
+            var config = new GeneralSettingsConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)
@@ -302,7 +302,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithDisabledShortcuts_ShowsDisabledStatus()
         {
             // Arrange
-            var config = new ApplicationConfig();
+            var config = new GeneralSettingsConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = null
@@ -340,7 +340,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithDifferentConsoleWidths_AdjustsSeparators()
         {
             // Arrange
-            var config = new ApplicationConfig();
+            var config = new GeneralSettingsConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
@@ -386,7 +386,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_IncludesAllExpectedSections()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 EditorCommand = "notepad.exe"
             };

@@ -84,7 +84,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithValidConfig_LoadsMappingsSuccessfully()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -155,7 +155,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithInvalidShortcut_DisablesShortcut()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -185,7 +185,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithDuplicateShortcuts_DisablesConflictingShortcuts()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -217,7 +217,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithEmptyShortcut_DisablesShortcut()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -240,7 +240,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_LogsSummary()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -267,7 +267,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_ClearsPreviousState()
         {
             // Arrange
-            var firstConfig = new ApplicationConfig
+            var firstConfig = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -276,7 +276,7 @@ namespace SharpBridge.Tests.Utilities
                 }
             };
 
-            var secondConfig = new ApplicationConfig
+            var secondConfig = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -318,7 +318,7 @@ namespace SharpBridge.Tests.Utilities
         public void GetMappedShortcuts_ReturnsDefensiveCopy()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -348,7 +348,7 @@ namespace SharpBridge.Tests.Utilities
         public void GetIncorrectShortcuts_ReturnsDefensiveCopy()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -374,7 +374,7 @@ namespace SharpBridge.Tests.Utilities
         public void GetShortcutStatus_ReturnsCorrectStatus()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
@@ -405,7 +405,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithNullShortcutsProperty_UsesDefaults()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = null!
             };
@@ -424,7 +424,7 @@ namespace SharpBridge.Tests.Utilities
         public void LoadFromConfiguration_WithUnknownShortcutAction_IgnoresGracefully()
         {
             // Arrange
-            var config = new ApplicationConfig
+            var config = new GeneralSettingsConfig
             {
                 Shortcuts = new Dictionary<string, string>
                 {
