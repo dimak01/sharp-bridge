@@ -16,7 +16,8 @@ namespace SharpBridge.Utilities
         private readonly string _pcConfigFilename;
         private readonly string _phoneConfigFilename;
         private readonly string _applicationConfigFilename = "ApplicationConfig.json";
-        
+        private readonly string _transformationEngineConfigFilename = "TransformationEngineConfig.json";
+
         /// <summary>
         /// Initializes a new instance of the ConfigManager class with specified paths.
         /// </summary>
@@ -28,31 +29,36 @@ namespace SharpBridge.Utilities
             _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
             _pcConfigFilename = pcConfigFilename ?? throw new ArgumentNullException(nameof(pcConfigFilename));
             _phoneConfigFilename = phoneConfigFilename ?? throw new ArgumentNullException(nameof(phoneConfigFilename));
-            
+
             _jsonOptions = new JsonSerializerOptions
             {
                 WriteIndented = true,
                 PropertyNameCaseInsensitive = true
             };
-            
+
             EnsureConfigDirectoryExists();
         }
-        
+
         /// <summary>
         /// Gets the path to the PC configuration file.
         /// </summary>
         public string PCConfigPath => Path.Combine(_configDirectory, _pcConfigFilename);
-        
+
         /// <summary>
         /// Gets the path to the Phone configuration file.
         /// </summary>
         public string PhoneConfigPath => Path.Combine(_configDirectory, _phoneConfigFilename);
-        
+
         /// <summary>
         /// Gets the path to the Application configuration file.
         /// </summary>
         public string ApplicationConfigPath => Path.Combine(_configDirectory, _applicationConfigFilename);
-        
+
+        /// <summary>
+        /// Gets the path to the TransformationEngine configuration file.
+        /// </summary>
+        public string TransformationEngineConfigPath => Path.Combine(_configDirectory, _transformationEngineConfigFilename);
+
         /// <summary>
         /// Loads the PC configuration from file or creates a default one if it doesn't exist.
         /// </summary>
@@ -61,7 +67,7 @@ namespace SharpBridge.Utilities
         {
             return await LoadConfigAsync<VTubeStudioPCConfig>(PCConfigPath, () => new VTubeStudioPCConfig());
         }
-        
+
         /// <summary>
         /// Loads the Phone configuration from file or creates a default one if it doesn't exist.
         /// </summary>
@@ -70,7 +76,7 @@ namespace SharpBridge.Utilities
         {
             return await LoadConfigAsync<VTubeStudioPhoneClientConfig>(PhoneConfigPath, () => new VTubeStudioPhoneClientConfig());
         }
-        
+
         /// <summary>
         /// Saves the PC configuration to file.
         /// </summary>
@@ -80,7 +86,7 @@ namespace SharpBridge.Utilities
         {
             await SaveConfigAsync(PCConfigPath, config);
         }
-        
+
         /// <summary>
         /// Saves the Phone configuration to file.
         /// </summary>
@@ -90,7 +96,7 @@ namespace SharpBridge.Utilities
         {
             await SaveConfigAsync(PhoneConfigPath, config);
         }
-        
+
         /// <summary>
         /// Loads the Application configuration from file or creates a default one if it doesn't exist.
         /// </summary>
@@ -99,7 +105,7 @@ namespace SharpBridge.Utilities
         {
             return await LoadConfigAsync<ApplicationConfig>(ApplicationConfigPath, () => new ApplicationConfig());
         }
-        
+
         /// <summary>
         /// Saves the Application configuration to file.
         /// </summary>
@@ -109,7 +115,26 @@ namespace SharpBridge.Utilities
         {
             await SaveConfigAsync(ApplicationConfigPath, config);
         }
-        
+
+        /// <summary>
+        /// Loads the TransformationEngine configuration from file or creates a default one if it doesn't exist.
+        /// </summary>
+        /// <returns>The TransformationEngine configuration.</returns>
+        public async Task<TransformationEngineConfig> LoadTransformationConfigAsync()
+        {
+            return await LoadConfigAsync<TransformationEngineConfig>(TransformationEngineConfigPath, () => new TransformationEngineConfig());
+        }
+
+        /// <summary>
+        /// Saves the TransformationEngine configuration to file.
+        /// </summary>
+        /// <param name="config">The configuration to save.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        public async Task SaveTransformationConfigAsync(TransformationEngineConfig config)
+        {
+            await SaveConfigAsync(TransformationEngineConfigPath, config);
+        }
+
         private async Task<T> LoadConfigAsync<T>(string path, Func<T> defaultConfigFactory) where T : class
         {
             if (!File.Exists(path))
@@ -118,17 +143,17 @@ namespace SharpBridge.Utilities
                 await SaveConfigAsync(path, defaultConfig);
                 return defaultConfig;
             }
-            
+
             try
             {
                 using var fileStream = File.OpenRead(path);
                 var config = await JsonSerializer.DeserializeAsync<T>(fileStream, _jsonOptions);
-                
+
                 if (config == null)
                 {
                     throw new InvalidOperationException($"Failed to deserialize configuration from {path}");
                 }
-                
+
                 return config;
             }
             catch (JsonException ex)
@@ -136,7 +161,7 @@ namespace SharpBridge.Utilities
                 throw new InvalidOperationException($"Error parsing configuration file {path}: {ex.Message}", ex);
             }
         }
-        
+
         private async Task SaveConfigAsync<T>(string path, T config) where T : class
         {
             try
@@ -149,7 +174,7 @@ namespace SharpBridge.Utilities
                 throw new InvalidOperationException($"Error saving configuration to {path}: {ex.Message}", ex);
             }
         }
-        
+
         private void EnsureConfigDirectoryExists()
         {
             if (!Directory.Exists(_configDirectory))
@@ -158,4 +183,4 @@ namespace SharpBridge.Utilities
             }
         }
     }
-} 
+}

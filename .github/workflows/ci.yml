@@ -65,7 +65,7 @@ jobs:
             /d:sonar.qualitygate.wait=true \
             /d:sonar.inclusions="**/*.cs" \
             /d:sonar.exclusions="**/bin/**,**/obj/**,**/Tests/**" \
-            /d:sonar.coverage.exclusions="**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/CommandLineParser.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**"
+            /d:sonar.coverage.exclusions="**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**"
 
       - name: Build
         run: dotnet build sharp-bridge.sln --no-restore --configuration Release
