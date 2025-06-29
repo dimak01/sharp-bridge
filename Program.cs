@@ -47,7 +47,7 @@ namespace SharpBridge
                 var orchestrator = serviceProvider.GetRequiredService<IApplicationOrchestrator>();
 
                 // Initialize and run the application
-                await orchestrator.InitializeAsync("./Configs/vts_transforms.json", cts.Token); //TODO: Refactor to read this from ApplicationConfig
+                await orchestrator.InitializeAsync(cts.Token);
                 await orchestrator.RunAsync(cts.Token);
 
                 return 0;

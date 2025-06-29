@@ -13,13 +13,13 @@ namespace SharpBridge.Services
     /// </summary>
     public class TransformationEngine : ITransformationEngine, IServiceStatsProvider
     {
-        private const int MAX_EVALUATION_ITERATIONS = 10;
         private const string EVALUATION_ERROR_MESSAGE = "Failed to evaluate - missing dependencies or evaluation error";
         private const string EVALUATION_ERROR_TYPE = "Evaluation";
 
         private readonly List<ParameterTransformation> _rules = new();
         private readonly IAppLogger _logger;
         private readonly ITransformationRulesRepository _rulesRepository;
+        private readonly TransformationEngineConfig _config;
 
         // Statistics tracking fields
         private long _totalTransformations = 0;
@@ -39,11 +39,13 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="logger">The logger instance for logging transformation operations</param>
         /// <param name="rulesRepository">The repository for loading and managing transformation rules</param>
-        /// <exception cref="ArgumentNullException">Thrown when logger or rulesRepository is null</exception>
-        public TransformationEngine(IAppLogger logger, ITransformationRulesRepository rulesRepository)
+        /// <param name="config">The configuration for the transformation engine</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger, rulesRepository, or config is null</exception>
+        public TransformationEngine(IAppLogger logger, ITransformationRulesRepository rulesRepository, TransformationEngineConfig config)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _rulesRepository = rulesRepository ?? throw new ArgumentNullException(nameof(rulesRepository));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
             _rulesRepository.RulesChanged += OnRulesChanged;
         }
 
@@ -58,16 +60,15 @@ namespace SharpBridge.Services
         public bool IsConfigUpToDate => _rulesRepository.IsUpToDate;
 
         /// <summary>
-        /// Loads transformation rules from the specified file
+        /// Loads transformation rules from the configured file path
         /// </summary>
-        /// <param name="filePath">Path to the transformation rules JSON file</param>
         /// <returns>An asynchronous operation that completes when rules are loaded</returns>
-        public async Task LoadRulesAsync(string filePath)
+        public async Task LoadRulesAsync()
         {
             // Track hot reload attempts
             _hotReloadAttempts++;
 
-            var result = await _rulesRepository.LoadRulesAsync(filePath);
+            var result = await _rulesRepository.LoadRulesAsync(_config.ConfigPath);
 
             // Update config file path for stats
             _configFilePath = _rulesRepository.CurrentFilePath;
@@ -147,7 +148,7 @@ namespace SharpBridge.Services
             var successfulRules = new List<ParameterTransformation>();
             int currentIteration = 0;
 
-            while (remainingRules.Count > 0 && currentIteration < MAX_EVALUATION_ITERATIONS)
+            while (remainingRules.Count > 0 && currentIteration < _config.MaxEvaluationIterations)
             {
                 currentIteration++;
                 int rulesCountAtStart = remainingRules.Count;

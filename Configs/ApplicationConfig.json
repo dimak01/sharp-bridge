@@ -1,7 +1,7 @@
 {
   "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\"",
   "Shortcuts": {
-    "CycleTransformationEngineVerbosity": "Alt+Y",
+    "CycleTransformationEngineVerbosity": "Alt+{",
     "CyclePCClientVerbosity": "Alt+K",
     "CyclePhoneClientVerbosity": "Alt+C",
     "ReloadTransformationConfig": "Alt+Q",

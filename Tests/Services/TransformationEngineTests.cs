@@ -25,9 +25,14 @@ namespace SharpBridge.Tests.Services
 
         #region Helper Methods
 
-        private TransformationEngine CreateEngine()
+        private TransformationEngine CreateEngine(string configPath = "")
         {
-            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object);
+            var config = new TransformationEngineConfig
+            {
+                ConfigPath = configPath,
+                MaxEvaluationIterations = 10
+            };
+            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object, config);
         }
 
         private PhoneTrackingInfo CreateValidTrackingData()
@@ -56,10 +61,10 @@ namespace SharpBridge.Tests.Services
         private void SetupRepositoryWithRules(params ParameterTransformation[] rules)
         {
             var result = new RulesLoadResult(
-                rules.ToList(), 
-                new List<RuleInfo>(), 
-                new List<string>(), 
-                false, 
+                rules.ToList(),
+                new List<RuleInfo>(),
+                new List<string>(),
+                false,
                 null);
 
             _mockRepository.Setup(r => r.LoadRulesAsync(It.IsAny<string>())).ReturnsAsync(result);
@@ -69,10 +74,10 @@ namespace SharpBridge.Tests.Services
         private void SetupRepositoryWithError(string errorMessage, bool hasCache = false)
         {
             var result = new RulesLoadResult(
-                hasCache ? new List<ParameterTransformation> { CreateTestTransformation("CachedRule", "eyeBlinkLeft * 100") } : new List<ParameterTransformation>(), 
-                new List<RuleInfo>(), 
-                new List<string>(), 
-                hasCache, 
+                hasCache ? new List<ParameterTransformation> { CreateTestTransformation("CachedRule", "eyeBlinkLeft * 100") } : new List<ParameterTransformation>(),
+                new List<RuleInfo>(),
+                new List<string>(),
+                hasCache,
                 errorMessage);
 
             _mockRepository.Setup(r => r.LoadRulesAsync(It.IsAny<string>())).ReturnsAsync(result);
@@ -92,7 +97,7 @@ namespace SharpBridge.Tests.Services
         public void Constructor_ThrowsArgumentNullException_WhenLoggerIsNull()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null!, _mockRepository.Object));
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null!, _mockRepository.Object, new TransformationEngineConfig()));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -100,7 +105,7 @@ namespace SharpBridge.Tests.Services
         public void Constructor_WithNullRepository_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(_mockLogger.Object, null!));
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(_mockLogger.Object, null!, new TransformationEngineConfig()));
             exception.ParamName.Should().Be("rulesRepository");
         }
 
@@ -112,11 +117,11 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_CallsRepository()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             SetupRepositoryWithRules();
 
             // Act
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             // Assert
             _mockRepository.Verify(r => r.LoadRulesAsync("test.json"), Times.Once);
@@ -126,23 +131,23 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_RepositoryThrowsException_PropagatesException()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             SetupRepositoryWithException(new InvalidOperationException("Repository error"));
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await engine.LoadRulesAsync("test.json"));
+                await engine.LoadRulesAsync());
         }
 
         [Fact]
         public async Task LoadRulesAsync_RepositoryReturnsError_UpdatesServiceStats()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             SetupRepositoryWithError("Critical error");
 
             // Act
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             // Assert
             var stats = engine.GetServiceStats();
@@ -154,11 +159,11 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_RepositoryReturnsCachedRules_UpdatesServiceStats()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             SetupRepositoryWithError("File error", hasCache: true);
 
             // Act
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             // Assert
             var stats = engine.GetServiceStats();
@@ -189,10 +194,10 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_WithValidRules_TransformsDataCorrectly()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rule = CreateTestTransformation("TestParam", "eyeBlinkLeft * 100", 0, 100, 0);
             SetupRepositoryWithRules(rule);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             var trackingData = new PhoneTrackingInfo
             {
@@ -217,14 +222,14 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_WithMultipleRules_AppliesAllRules()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rules = new[]
             {
                 CreateTestTransformation("HeadMovement", "HeadPosX * 100 + HeadRotY * 50", -1000, 1000, 0),
                 CreateTestTransformation("EyeBlink", "(eyeBlinkLeft + eyeBlinkRight) * 50", 0, 100, 0)
             };
             SetupRepositoryWithRules(rules);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             var trackingData = new PhoneTrackingInfo
             {
@@ -258,10 +263,10 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_ClampsValuesToMinMax()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rule = CreateTestTransformation("LimitedValue", "eyeBlinkLeft * 1000", 0, 100, 0);
             SetupRepositoryWithRules(rule);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             var trackingData = new PhoneTrackingInfo
             {
@@ -285,14 +290,14 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_HandlesInvalidExpressions_Gracefully()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rules = new[]
             {
                 CreateTestTransformation("ValidParam", "eyeBlinkLeft * 100", 0, 100, 0),
                 CreateTestTransformation("InvalidParam", "unknownVariable + 100", 0, 100, 50) // This will fail evaluation
             };
             SetupRepositoryWithRules(rules);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             var trackingData = new PhoneTrackingInfo
             {
@@ -334,10 +339,10 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_ReturnsEmptyCollection_WhenFaceNotFound()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rule = CreateTestTransformation("TestParam", "eyeBlinkLeft * 100", 0, 100, 0);
             SetupRepositoryWithRules(rule);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             var trackingData = new PhoneTrackingInfo
             {
@@ -360,10 +365,10 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_HandlesNullBlendShapes_Gracefully()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rule = CreateTestTransformation("TestParam", "eyeBlinkLeft * 100", 0, 100, 0);
             SetupRepositoryWithRules(rule);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             // Create tracking data with a null BlendShape to cause an exception
             var malformedData = new PhoneTrackingInfo
@@ -395,7 +400,7 @@ namespace SharpBridge.Tests.Services
         public async Task LoadRulesAsync_SuccessfulLoad_IncrementsHotReloadSuccessesOnlyOnce()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rule = CreateTestTransformation("TestParam", "eyeBlinkLeft * 100", 0, 100, 0);
             SetupRepositoryWithRules(rule);
 
@@ -404,15 +409,15 @@ namespace SharpBridge.Tests.Services
             var initialSuccesses = initialStats.Counters["Hot Reload Successes"];
 
             // Act - perform one successful load
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             // Assert - success counter should be incremented by exactly 1
             var finalStats = engine.GetServiceStats();
             var finalSuccesses = finalStats.Counters["Hot Reload Successes"];
-            
+
             // This test should FAIL with current buggy code (increments by 2)
             // but PASS after we fix the double increment bug
-            (finalSuccesses - initialSuccesses).Should().Be(1, 
+            (finalSuccesses - initialSuccesses).Should().Be(1,
                 "Hot reload success counter should be incremented by exactly 1 per successful load");
         }
 
@@ -424,14 +429,14 @@ namespace SharpBridge.Tests.Services
         public async Task GetParameterDefinitions_ReturnsAllLoadedRules()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rules = new[]
             {
                 CreateTestTransformation("TestParam1", "eyeBlinkLeft * 100", 0, 100, 0),
                 CreateTestTransformation("TestParam2", "eyeBlinkRight * 50", -50, 50, 25)
             };
             SetupRepositoryWithRules(rules);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             // Act
             var parameters = engine.GetParameterDefinitions().ToList();
@@ -467,14 +472,14 @@ namespace SharpBridge.Tests.Services
         public async Task TransformData_PopulatesParameterCalculationExpressions()
         {
             // Arrange
-            var engine = CreateEngine();
+            var engine = CreateEngine("test.json");
             var rules = new[]
             {
                 CreateTestTransformation("TestParam1", "eyeBlinkLeft * 100", 0, 100, 0),
                 CreateTestTransformation("TestParam2", "HeadPosX + HeadPosY", -10, 10, 0)
             };
             SetupRepositoryWithRules(rules);
-            await engine.LoadRulesAsync("test.json");
+            await engine.LoadRulesAsync();
 
             var trackingData = new PhoneTrackingInfo
             {
@@ -503,4 +508,4 @@ namespace SharpBridge.Tests.Services
 
         #endregion
     }
-} 
+}

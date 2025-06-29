@@ -43,7 +43,6 @@ namespace SharpBridge.Services
         public double CONSOLE_UPDATE_INTERVAL_SECONDS { get; set; } = 0.1;
 
         private bool _isDisposed;
-        private string _transformConfigPath = string.Empty; // Store the config path for reloading
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
         private bool _isShowingSystemHelp = false; // Track if currently displaying F1 help
@@ -110,22 +109,14 @@ namespace SharpBridge.Services
         /// <summary>
         /// Initializes components and establishes connections
         /// </summary>
-        /// <param name="transformConfigPath">Path to the transformation configuration file</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>A task that completes when initialization and connection are done</returns>
-        public async Task InitializeAsync(string transformConfigPath, CancellationToken cancellationToken)
+        public async Task InitializeAsync(CancellationToken cancellationToken)
         {
-            ValidateInitializationParameters(transformConfigPath);
-
             // Set preferred console window size
             SetupConsoleWindow();
 
-            _logger.Info("Using transformation config: {0}", transformConfigPath);
-
-            // Store the config path for reloading
-            _transformConfigPath = transformConfigPath;
-
-            await InitializeTransformationEngine(transformConfigPath);
+            await InitializeTransformationEngine();
 
             // Initialize clients directly during startup
             _logger.Info("Attempting initial client connections...");
@@ -198,22 +189,11 @@ namespace SharpBridge.Services
             _logger.Info("Application stopped");
         }
 
-        private static void ValidateInitializationParameters(string transformConfigPath)
-        {
-            if (string.IsNullOrWhiteSpace(transformConfigPath))
-            {
-                throw new ArgumentException("Transform configuration path cannot be null or empty", nameof(transformConfigPath));
-            }
 
-            if (!File.Exists(transformConfigPath))
-            {
-                throw new FileNotFoundException($"Transform configuration file not found: {transformConfigPath}");
-            }
-        }
 
-        private async Task InitializeTransformationEngine(string transformConfigPath)
+        private async Task InitializeTransformationEngine()
         {
-            await _transformationEngine.LoadRulesAsync(transformConfigPath);
+            await _transformationEngine.LoadRulesAsync();
         }
 
         /// <summary>
@@ -473,7 +453,7 @@ namespace SharpBridge.Services
                 _logger.Info("Reloading transformation config...");
 
                 // Use a lock or semaphore here if there are concurrency concerns
-                await InitializeTransformationEngine(_transformConfigPath);
+                await InitializeTransformationEngine();
 
                 // Reset color service initialization flag so it will be reinitialized with new config
                 _colorServiceInitialized = false;
@@ -503,7 +483,7 @@ namespace SharpBridge.Services
             {
                 _logger.Info("Opening transformation config in external editor...");
 
-                var success = await _externalEditorService.TryOpenFileAsync(_transformConfigPath);
+                var success = await _externalEditorService.TryOpenTransformationConfigAsync();
 
                 if (success)
                 {
