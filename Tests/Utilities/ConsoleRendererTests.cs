@@ -80,9 +80,10 @@ namespace SharpBridge.Tests.Utilities
             _mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+X");
 
             // Create formatter mocks with proper constructor parameters
-            _mockTransformationFormatter = new Mock<TransformationEngineInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IShortcutConfigurationManager>());
-            _mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>());
-            _mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>());
+            var userPreferences = new UserPreferences();
+            _mockTransformationFormatter = new Mock<TransformationEngineInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IShortcutConfigurationManager>(), userPreferences);
+            _mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>(), userPreferences);
+            _mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>(), userPreferences);
 
             // Create renderer with mocked dependencies
             _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);

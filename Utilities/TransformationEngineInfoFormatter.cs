@@ -51,11 +51,16 @@ namespace SharpBridge.Utilities
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter, IShortcutConfigurationManager shortcutManager)
+        /// <param name="userPreferences">User preferences for initial verbosity level</param>
+        public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+            var preferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+
+            // Initialize verbosity from user preferences
+            CurrentVerbosity = preferences.TransformationEngineVerbosity;
         }
 
         /// <summary>

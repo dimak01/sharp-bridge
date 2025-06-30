@@ -17,6 +17,7 @@ namespace SharpBridge.Tests.Utilities
 
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
+        private readonly UserPreferences _userPreferences;
         private readonly TransformationEngineInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -35,7 +36,10 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity)).Returns("Alt+T");
             mockShortcutManager.Setup(m => m.GetDisplayString(ShortcutAction.OpenConfigInEditor)).Returns("Ctrl+Alt+E");
-            _formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, mockShortcutManager.Object);
+
+            _userPreferences = new UserPreferences { TransformationEngineVerbosity = VerbosityLevel.Normal };
+
+            _formatter = new TransformationEngineInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, mockShortcutManager.Object, _userPreferences);
         }
 
         #region Helper Methods
@@ -121,7 +125,10 @@ namespace SharpBridge.Tests.Utilities
             var mockConsole = new Mock<IConsole>();
             var mockTableFormatter = new Mock<ITableFormatter>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var formatter = new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockShortcutManager.Object);
+            var formatter = new TransformationEngineInfoFormatter(mockConsole.Object,
+            mockTableFormatter.Object,
+            mockShortcutManager.Object,
+            _userPreferences);
 
             // Assert
             formatter.Should().NotBeNull();
@@ -136,7 +143,7 @@ namespace SharpBridge.Tests.Utilities
             var mockTableFormatter = new Mock<ITableFormatter>();
 
             // Act & Assert
-            Action act = () => new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, null!);
+            Action act = () => new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, null!, _userPreferences);
             act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutManager");
         }
 
@@ -146,7 +153,7 @@ namespace SharpBridge.Tests.Utilities
             // Act & Assert
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             Assert.Throws<ArgumentNullException>(() =>
-                new TransformationEngineInfoFormatter(null!, _mockTableFormatter.Object, mockShortcutManager.Object));
+                new TransformationEngineInfoFormatter(null!, _mockTableFormatter.Object, mockShortcutManager.Object, _userPreferences));
         }
 
         [Fact]
@@ -155,7 +162,7 @@ namespace SharpBridge.Tests.Utilities
             // Act & Assert
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             Assert.Throws<ArgumentNullException>(() =>
-                new TransformationEngineInfoFormatter(_mockConsole.Object, null!, mockShortcutManager.Object));
+                new TransformationEngineInfoFormatter(_mockConsole.Object, null!, mockShortcutManager.Object, _userPreferences));
         }
 
         #endregion
@@ -208,7 +215,7 @@ namespace SharpBridge.Tests.Utilities
             var mockConsole = new Mock<IConsole>();
             var mockTableFormatter = new Mock<ITableFormatter>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var formatter = new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockShortcutManager.Object);
+            var formatter = new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockShortcutManager.Object, _userPreferences);
             var field = typeof(TransformationEngineInfoFormatter).GetField("<CurrentVerbosity>k__BackingField",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             field!.SetValue(formatter, (VerbosityLevel)999); // Invalid enum value
@@ -1006,7 +1013,7 @@ namespace SharpBridge.Tests.Utilities
             var mockConsole = new Mock<IConsole>();
             var mockTableFormatter = new Mock<ITableFormatter>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            var formatter = new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockShortcutManager.Object);
+            var formatter = new TransformationEngineInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockShortcutManager.Object, _userPreferences);
 
             // Act
             var result = formatter.Format(null!);

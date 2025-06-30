@@ -44,12 +44,17 @@ namespace SharpBridge.Utilities
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="colorService">Parameter color service for colored display</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager)
+        /// <param name="userPreferences">User preferences for initial verbosity level</param>
+        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+            var preferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+
+            // Initialize verbosity from user preferences
+            CurrentVerbosity = preferences.PCClientVerbosity;
         }
 
         /// <summary>
