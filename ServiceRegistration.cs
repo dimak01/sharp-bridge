@@ -62,6 +62,13 @@ namespace SharpBridge
                 return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
             });
 
+            // Register UserPreferences
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadUserPreferencesAsync().GetAwaiter().GetResult();
+            });
+
             // Register clients
             services.AddSingleton<IWebSocketWrapper, WebSocketWrapper>();
 
