@@ -26,7 +26,7 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IRecoveryPolicy _recoveryPolicy;
         private readonly IConsole _console;
-        private readonly ConsoleWindowManager _consoleWindowManager;
+        private readonly IConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
@@ -59,6 +59,7 @@ namespace SharpBridge.Services
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
         /// <param name="console">Console abstraction for window management</param>
+        /// <param name="consoleWindowManager">Console window manager for size management and tracking</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
         /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
@@ -77,6 +78,7 @@ namespace SharpBridge.Services
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
             IConsole console,
+            IConsoleWindowManager consoleWindowManager,
             IParameterColorService colorService,
             IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
@@ -95,6 +97,7 @@ namespace SharpBridge.Services
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
             _console = console ?? throw new ArgumentNullException(nameof(console));
+            _consoleWindowManager = consoleWindowManager ?? throw new ArgumentNullException(nameof(consoleWindowManager));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
@@ -102,9 +105,6 @@ namespace SharpBridge.Services
             _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
-
-            // Initialize console window manager
-            _consoleWindowManager = new ConsoleWindowManager(_console);
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_generalSettingsConfig);
@@ -119,6 +119,17 @@ namespace SharpBridge.Services
         {
             // Set preferred console window size
             SetupConsoleWindow();
+
+            // Start console size change tracking
+            _consoleWindowManager.StartSizeChangeTracking((width, height) =>
+            {
+                // Update preferences and save asynchronously (fire-and-forget)
+                _ = UpdateUserPreferencesAsync(prefs =>
+                {
+                    prefs.PreferredConsoleWidth = width;
+                    prefs.PreferredConsoleHeight = height;
+                });
+            });
 
             await InitializeTransformationEngine();
 
@@ -150,7 +161,7 @@ namespace SharpBridge.Services
                 var currentSize = _consoleWindowManager.GetCurrentSize();
                 _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
 
-                bool success = _consoleWindowManager.SetTemporarySize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
+                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
                 if (success)
                 {
                     _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
@@ -251,6 +262,7 @@ namespace SharpBridge.Services
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     ProcessKeyboardInput();
+                    _consoleWindowManager.ProcessSizeChanges();
                     nextStatusUpdateTime = ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
                     await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
                 }
@@ -353,16 +365,8 @@ namespace SharpBridge.Services
             UnsubscribeFromEvents();
             await CloseVTubeStudioConnection();
 
-            // Restore original console window size
-            try
-            {
-                _consoleWindowManager?.RestoreOriginalSize();
-                _logger.Info("Console window size restored to original dimensions");
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error restoring console window size", ex);
-            }
+            // Console size is now preserved between application runs
+            // No restoration needed
         }
 
         private async Task CloseVTubeStudioConnection()
@@ -785,9 +789,8 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    // Dispose console window manager first to restore window size
-                    _consoleWindowManager?.Dispose();
-
+                    // Console window manager will be disposed by DI container
+                    // which will automatically stop size tracking and restore window size
                     _vtubeStudioPCClient.Dispose();
                     _vtubeStudioPhoneClient.Dispose();
                 }
