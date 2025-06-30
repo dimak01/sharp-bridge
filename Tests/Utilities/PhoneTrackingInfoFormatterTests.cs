@@ -77,6 +77,7 @@ namespace SharpBridge.Tests.Utilities
         private readonly Mock<ITableFormatter> _mockTableFormatter;
         private readonly Mock<IParameterColorService> _mockColorService;
         private readonly Mock<IShortcutConfigurationManager> _mockShortcutManager;
+        private readonly UserPreferences _userPreferences;
         private readonly PhoneTrackingInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -101,7 +102,9 @@ namespace SharpBridge.Tests.Utilities
             _mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             _mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+O");
 
-            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
+            _userPreferences = new UserPreferences { PhoneClientVerbosity = VerbosityLevel.Normal };
+
+            _formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
         }
 
         #region Constructor Tests
@@ -116,7 +119,8 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
 
             // Act & Assert
-            var formatter = new PhoneTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
+            var mockUserPreferences = new Mock<UserPreferences>();
+            var formatter = new PhoneTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object);
             formatter.Should().NotBeNull();
         }
 
@@ -124,7 +128,7 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new PhoneTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
+            Action act = () => new PhoneTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -135,7 +139,7 @@ namespace SharpBridge.Tests.Utilities
             var mockConsole = new Mock<IConsole>();
 
             // Act & Assert
-            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, null!, _mockColorService.Object, _mockShortcutManager.Object);
+            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, null!, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
             act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
         }
 
@@ -146,7 +150,7 @@ namespace SharpBridge.Tests.Utilities
             var mockConsole = new Mock<IConsole>();
 
             // Act & Assert
-            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, _mockTableFormatter.Object, null!, _mockShortcutManager.Object);
+            Action act = () => new PhoneTrackingInfoFormatter(mockConsole.Object, _mockTableFormatter.Object, null!, _mockShortcutManager.Object, _userPreferences);
             act.Should().Throw<ArgumentNullException>().WithParameterName("colorService");
         }
 
@@ -199,7 +203,7 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+O");
-            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, mockShortcutManager.Object);
+            var formatter = new PhoneTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, mockShortcutManager.Object, _userPreferences);
 
             // Use reflection to set an invalid verbosity level
             var property = typeof(PhoneTrackingInfoFormatter).GetProperty("CurrentVerbosity");
