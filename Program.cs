@@ -23,10 +23,7 @@ namespace SharpBridge
 
             // Setup DI container
             var services = new ServiceCollection();
-            services.AddSharpBridgeServices(
-                "./Configs",
-                "VTubeStudioPCConfig.json",
-                "VTubeStudioPhoneConfig.json");
+            services.AddSharpBridgeServices("./Configs");
 
             using var serviceProvider = services.BuildServiceProvider();
 

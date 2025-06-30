@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using Xunit;
 using FluentAssertions;
@@ -10,25 +11,20 @@ namespace SharpBridge.Tests.Models
 {
     public class ConfigManagerTests : IDisposable
     {
-        private readonly string _testDirectory = "TestConfigs";
-        private readonly string _pcConfigPath;
-        private readonly string _phoneConfigPath;
+        private readonly string _testDirectory = Path.Combine(Path.GetTempPath(), "ConfigManagerTests_" + Guid.NewGuid().ToString("N")[0..8]);
+        private readonly string _applicationConfigPath;
+        private readonly string _userPreferencesPath;
         private readonly ConfigManager _configManager;
 
         public ConfigManagerTests()
         {
-            // Set up test directory and config manager
-            if (Directory.Exists(_testDirectory))
-            {
-                Directory.Delete(_testDirectory, true);
-            }
-
+            // Create test directory 
             Directory.CreateDirectory(_testDirectory);
 
             // Create config manager with test directory
-            _configManager = new ConfigManager(_testDirectory, "VTubeStudioPCConfig.json", "VTubeStudioPhoneConfig.json");
-            _pcConfigPath = Path.Combine(_testDirectory, "VTubeStudioPCConfig.json");
-            _phoneConfigPath = Path.Combine(_testDirectory, "VTubeStudioPhoneConfig.json");
+            _configManager = new ConfigManager(_testDirectory);
+            _applicationConfigPath = Path.Combine(_testDirectory, "ApplicationConfig.json");
+            _userPreferencesPath = Path.Combine(_testDirectory, "UserPreferences.json");
         }
 
         public void Dispose()
@@ -41,12 +37,33 @@ namespace SharpBridge.Tests.Models
         }
 
         [Fact]
+        public async Task LoadApplicationConfigAsync_CreatesDefaultConfigIfNotExists()
+        {
+            // Arrange - Make sure config doesn't exist
+            if (File.Exists(_applicationConfigPath))
+            {
+                File.Delete(_applicationConfigPath);
+            }
+
+            // Act
+            var config = await _configManager.LoadApplicationConfigAsync();
+
+            // Assert
+            config.Should().NotBeNull();
+            File.Exists(_applicationConfigPath).Should().BeTrue("default config file should be created");
+            config.PCClient.Should().NotBeNull("PCClient config should exist");
+            config.PhoneClient.Should().NotBeNull("PhoneClient config should exist");
+            config.GeneralSettings.Should().NotBeNull("GeneralSettings config should exist");
+            config.TransformationEngine.Should().NotBeNull("TransformationEngine config should exist");
+        }
+
+        [Fact]
         public async Task LoadPCConfigAsync_CreatesDefaultConfigIfNotExists()
         {
             // Arrange - Make sure config doesn't exist
-            if (File.Exists(_pcConfigPath))
+            if (File.Exists(_applicationConfigPath))
             {
-                File.Delete(_pcConfigPath);
+                File.Delete(_applicationConfigPath);
             }
 
             // Act
@@ -54,7 +71,7 @@ namespace SharpBridge.Tests.Models
 
             // Assert
             config.Should().NotBeNull();
-            File.Exists(_pcConfigPath).Should().BeTrue("default config file should be created");
+            File.Exists(_applicationConfigPath).Should().BeTrue("default config file should be created");
             config.Host.Should().Be("localhost", "default host should be localhost");
             config.Port.Should().Be(8001, "default port should be 8001");
         }
@@ -63,9 +80,9 @@ namespace SharpBridge.Tests.Models
         public async Task LoadPhoneConfigAsync_CreatesDefaultConfigIfNotExists()
         {
             // Arrange - Make sure config doesn't exist
-            if (File.Exists(_phoneConfigPath))
+            if (File.Exists(_applicationConfigPath))
             {
-                File.Delete(_phoneConfigPath);
+                File.Delete(_applicationConfigPath);
             }
 
             // Act
@@ -73,7 +90,7 @@ namespace SharpBridge.Tests.Models
 
             // Assert
             config.Should().NotBeNull();
-            File.Exists(_phoneConfigPath).Should().BeTrue("default config file should be created");
+            File.Exists(_applicationConfigPath).Should().BeTrue("default config file should be created");
             config.IphoneIpAddress.Should().NotBeNullOrEmpty("default IP address should be set");
             config.IphonePort.Should().BeGreaterThan(0, "default port should be valid");
         }
@@ -141,46 +158,91 @@ namespace SharpBridge.Tests.Models
         }
 
         [Fact]
-        public void ConfigManager_Constructor_SetsCustomPaths()
+        public async Task LoadUserPreferencesAsync_CreatesDefaultIfNotExists()
+        {
+            // Arrange - Make sure preferences don't exist
+            if (File.Exists(_userPreferencesPath))
+            {
+                File.Delete(_userPreferencesPath);
+            }
+
+            // Act
+            var preferences = await _configManager.LoadUserPreferencesAsync();
+
+            // Assert
+            preferences.Should().NotBeNull();
+            File.Exists(_userPreferencesPath).Should().BeTrue("default preferences file should be created");
+            preferences.PhoneClientVerbosity.Should().NotBe(null, "default verbosity should be set");
+            preferences.PCClientVerbosity.Should().NotBe(null, "default verbosity should be set");
+            preferences.TransformationEngineVerbosity.Should().NotBe(null, "default verbosity should be set");
+        }
+
+        [Fact]
+        public async Task SaveAndLoadUserPreferencesAsync_PreservesChanges()
+        {
+            // Arrange
+            var preferences = new UserPreferences
+            {
+                PhoneClientVerbosity = VerbosityLevel.Detailed,
+                PCClientVerbosity = VerbosityLevel.Basic,
+                TransformationEngineVerbosity = VerbosityLevel.Detailed,
+                PreferredConsoleWidth = 120,
+                PreferredConsoleHeight = 40
+            };
+
+            // Act
+            await _configManager.SaveUserPreferencesAsync(preferences);
+            var reloadedPreferences = await _configManager.LoadUserPreferencesAsync();
+
+            // Assert
+            reloadedPreferences.PhoneClientVerbosity.Should().Be(VerbosityLevel.Detailed);
+            reloadedPreferences.PCClientVerbosity.Should().Be(VerbosityLevel.Basic);
+            reloadedPreferences.TransformationEngineVerbosity.Should().Be(VerbosityLevel.Detailed);
+            reloadedPreferences.PreferredConsoleWidth.Should().Be(120);
+            reloadedPreferences.PreferredConsoleHeight.Should().Be(40);
+        }
+
+        [Fact]
+        public async Task ResetUserPreferencesAsync_CreatesDefaultPreferences()
+        {
+            // Arrange - Create and save some custom preferences first
+            var customPreferences = new UserPreferences
+            {
+                PhoneClientVerbosity = VerbosityLevel.Detailed,
+                PreferredConsoleWidth = 200
+            };
+            await _configManager.SaveUserPreferencesAsync(customPreferences);
+
+            // Act
+            await _configManager.ResetUserPreferencesAsync();
+            var resetPreferences = await _configManager.LoadUserPreferencesAsync();
+
+            // Assert
+            resetPreferences.PhoneClientVerbosity.Should().Be(VerbosityLevel.Normal, "should be reset to default");
+            resetPreferences.PreferredConsoleWidth.Should().Be(150, "should be reset to default");
+        }
+
+        [Fact]
+        public void ConfigManager_Constructor_SetsConsolidatedPaths()
         {
             // Arrange
             string customDir = "CustomDir";
-            string customPcFile = "custom-pc.json";
-            string customPhoneFile = "custom-phone.json";
 
             // Act
-            var manager = new ConfigManager(customDir, customPcFile, customPhoneFile);
+            var manager = new ConfigManager(customDir);
 
             // Assert
-            manager.PCConfigPath.Should().Be(Path.Combine(customDir, customPcFile));
-            manager.PhoneConfigPath.Should().Be(Path.Combine(customDir, customPhoneFile));
+            manager.ApplicationConfigPath.Should().Be(Path.Combine(customDir, "ApplicationConfig.json"));
+            manager.UserPreferencesPath.Should().Be(Path.Combine(customDir, "UserPreferences.json"));
         }
 
         [Fact]
         public void ConfigManager_Constructor_NullConfigDirectory_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            Action act = () => new ConfigManager(null!, "pc.json", "phone.json");
+            Action act = () => new ConfigManager(null!);
             act.Should().Throw<ArgumentNullException>()
                .And.ParamName.Should().Be("configDirectory");
-        }
-
-        [Fact]
-        public void ConfigManager_Constructor_NullPCConfigFilename_ThrowsArgumentNullException()
-        {
-            // Arrange & Act & Assert
-            Action act = () => new ConfigManager("Configs", null!, "phone.json");
-            act.Should().Throw<ArgumentNullException>()
-               .And.ParamName.Should().Be("pcConfigFilename");
-        }
-
-        [Fact]
-        public void ConfigManager_Constructor_NullPhoneConfigFilename_ThrowsArgumentNullException()
-        {
-            // Arrange & Act & Assert
-            Action act = () => new ConfigManager("Configs", "pc.json", null!);
-            act.Should().Throw<ArgumentNullException>()
-               .And.ParamName.Should().Be("phoneConfigFilename");
         }
 
         [Fact]
@@ -198,7 +260,7 @@ namespace SharpBridge.Tests.Models
                 }
 
                 // Act - constructor calls EnsureConfigDirectoryExists internally
-                _ = new ConfigManager(testDir, "pc.json", "phone.json");
+                _ = new ConfigManager(testDir);
 
                 // Assert
                 Directory.Exists(testDir).Should().BeTrue("directory should be created if it doesn't exist");
@@ -219,74 +281,71 @@ namespace SharpBridge.Tests.Models
             // Arrange
             string testDir = Path.Combine(_testDirectory, "InvalidJson");
             Directory.CreateDirectory(testDir);
-            string invalidJsonPath = Path.Combine(testDir, "invalid.json");
+            string invalidJsonPath = Path.Combine(testDir, "ApplicationConfig.json");
 
             // Create a file with invalid JSON content
-            File.WriteAllText(invalidJsonPath, "{ this is not valid json }");
+            File.WriteAllText(invalidJsonPath, "{ invalid json content }");
 
-            var manager = new ConfigManager(testDir, "invalid.json", "phone.json");
+            var manager = new ConfigManager(testDir);
 
             // Act & Assert
-            Func<Task> act = async () => await manager.LoadPCConfigAsync();
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*Error parsing configuration file*");
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => manager.LoadApplicationConfigAsync());
+
+            exception.Message.Should().Contain("Error parsing configuration file");
         }
 
         [Fact]
         public async Task LoadConfigAsync_DeserializesToNull_ThrowsInvalidOperationException()
         {
             // Arrange
-            string testDir = Path.Combine(_testDirectory, "NullConfig");
+            string testDir = Path.Combine(_testDirectory, "NullDeserialization");
             Directory.CreateDirectory(testDir);
-            string nullConfigPath = Path.Combine(testDir, "null.json");
+            string nullJsonPath = Path.Combine(testDir, "ApplicationConfig.json");
 
-            // Create a file with JSON null
-            File.WriteAllText(nullConfigPath, "null");
+            // Create a file with null content (empty JSON object won't deserialize to null, but this simulates the condition)
+            File.WriteAllText(nullJsonPath, "null");
 
-            var manager = new ConfigManager(testDir, "null.json", "phone.json");
+            var manager = new ConfigManager(testDir);
 
             // Act & Assert
-            Func<Task> act = async () => await manager.LoadPCConfigAsync();
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*Failed to deserialize configuration*");
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => manager.LoadApplicationConfigAsync());
+
+            exception.Message.Should().Contain("Failed to deserialize configuration");
         }
 
         [Fact]
         public async Task SaveConfigAsync_IOException_ThrowsInvalidOperationException()
         {
-            // This scenario relies on Windows read-only semantics. Skip on other platforms
-            if (!OperatingSystem.IsWindows())
-            {
-                return;
-            }
+            // Arrange - Create a readonly file to cause IOException
+            string testDir = Path.Combine(_testDirectory, "ReadOnlyFile");
+            Directory.CreateDirectory(testDir);
 
-            // Arrange
-            // Create a readonly directory to cause an IO exception on save
-            string readOnlyDir = Path.Combine(_testDirectory, "ReadOnly");
-            Directory.CreateDirectory(readOnlyDir);
+            // Create config manager and load to create initial preferences file
+            var manager = new ConfigManager(testDir);
+            await manager.LoadUserPreferencesAsync(); // This creates the UserPreferences.json file
 
-            var manager = new ConfigManager(readOnlyDir, "readonly.json", "phone.json");
-            var config = new VTubeStudioPCConfig();
+            // Make the UserPreferences file readonly to cause IOException on save
+            string preferencesPath = Path.Combine(testDir, "UserPreferences.json");
+            var fileInfo = new FileInfo(preferencesPath);
+            fileInfo.IsReadOnly = true;
 
             try
             {
-                // Create a file and make it read-only to cause an exception
-                string readOnlyPath = Path.Combine(readOnlyDir, "readonly.json");
-                File.WriteAllText(readOnlyPath, "{}");
-                File.SetAttributes(readOnlyPath, FileAttributes.ReadOnly);
-
                 // Act & Assert
-                Func<Task> act = async () => await manager.SavePCConfigAsync(config);
-                await act.Should().ThrowAsync<InvalidOperationException>()
-                    .WithMessage("*Error saving configuration*");
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => manager.SaveUserPreferencesAsync(new UserPreferences()));
+
+                exception.Message.Should().Contain("Error saving configuration");
             }
             finally
             {
-                // Cleanup - reset readonly attribute to allow deletion
-                string readOnlyPath = Path.Combine(readOnlyDir, "readonly.json");
-                if (File.Exists(readOnlyPath))
+                // Cleanup - remove readonly attribute
+                var fileInfo2 = new FileInfo(preferencesPath);
+                if (fileInfo2.Exists)
                 {
-                    File.SetAttributes(readOnlyPath, FileAttributes.Normal);
+                    fileInfo2.IsReadOnly = false;
                 }
             }
         }

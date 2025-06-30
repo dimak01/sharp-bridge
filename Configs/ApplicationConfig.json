@@ -1,0 +1,37 @@
+{
+    "GeneralSettings": {
+        "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\"",
+        "Shortcuts": {
+            "CycleTransformationEngineVerbosity": "Alt+{",
+            "CyclePCClientVerbosity": "Alt+K",
+            "CyclePhoneClientVerbosity": "Alt+C",
+            "ReloadTransformationConfig": "Alt+Q",
+            "OpenConfigInEditor": "Ctrl+Alt+W",
+            "ShowSystemHelp": "F2"
+        }
+    },
+    "PhoneClient": {
+        "IphoneIpAddress": "192.168.1.178",
+        "IphonePort": 21412,
+        "LocalPort": 28964,
+        "RequestIntervalSeconds": 3,
+        "SendForSeconds": 4,
+        "ReceiveTimeoutMs": 100,
+        "ErrorDelayMs": 1000
+    },
+    "PCClient": {
+        "Host": "localhost",
+        "Port": 8001,
+        "PluginName": "SharpBridge",
+        "PluginDeveloper": "SharpBridge Developer",
+        "TokenFilePath": "auth_token.txt",
+        "ConnectionTimeoutMs": 5000,
+        "ReconnectionDelayMs": 2000,
+        "UsePortDiscovery": true,
+        "RecoveryIntervalSeconds": 2.0
+    },
+    "TransformationEngine": {
+        "ConfigPath": "Configs/vts_transforms.json",
+        "MaxEvaluationIterations": 10
+    }
+}
