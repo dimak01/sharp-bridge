@@ -118,6 +118,9 @@ namespace SharpBridge
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();
 
+            // Register console window manager
+            services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
+
             // Register logging services
             services.AddSingleton(ConfigureSerilog());
 

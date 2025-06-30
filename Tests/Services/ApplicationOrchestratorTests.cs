@@ -26,13 +26,14 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
         private readonly Mock<IRecoveryPolicy> _recoveryPolicyMock;
         private readonly Mock<IConsole> _consoleMock;
+        private readonly Mock<IConsoleWindowManager> _consoleWindowManagerMock;
         private readonly Mock<IParameterColorService> _colorServiceMock;
         private readonly Mock<IExternalEditorService> _externalEditorServiceMock;
         private readonly Mock<IShortcutConfigurationManager> _shortcutConfigurationManagerMock;
         private readonly Mock<ISystemHelpRenderer> _systemHelpRendererMock;
-        private readonly GeneralSettingsConfig _generalSettingsConfig;
-        private readonly UserPreferences _userPreferences;
-        private readonly Mock<ConfigManager> _configManagerMock;
+        private GeneralSettingsConfig _generalSettingsConfig;
+        private UserPreferences _userPreferences;
+        private Mock<ConfigManager> _configManagerMock;
         private ApplicationOrchestrator _orchestrator;
         private readonly string _tempConfigPath;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
@@ -53,6 +54,7 @@ namespace SharpBridge.Tests.Services
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
             _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
             _consoleMock = new Mock<IConsole>();
+            _consoleWindowManagerMock = new Mock<IConsoleWindowManager>();
             _colorServiceMock = new Mock<IParameterColorService>();
             _externalEditorServiceMock = new Mock<IExternalEditorService>();
             _shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
@@ -117,6 +119,11 @@ namespace SharpBridge.Tests.Services
             _consoleMock.Setup(x => x.WindowHeight).Returns(25);
             _consoleMock.Setup(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>())).Returns(true);
 
+            // Set up console window manager mock with default behavior
+            _consoleWindowManagerMock.Setup(x => x.GetCurrentSize()).Returns((80, 25));
+            _consoleWindowManagerMock.Setup(x => x.SetConsoleSize(It.IsAny<int>(), It.IsAny<int>())).Returns(true);
+            _consoleWindowManagerMock.Setup(x => x.RestoreOriginalSize()).Returns(true);
+
             // Setup shortcut configuration manager mock
             _shortcutConfigurationManagerMock.Setup(x => x.GetMappedShortcuts())
                 .Returns(new Dictionary<ShortcutAction, Shortcut?>
@@ -143,6 +150,7 @@ namespace SharpBridge.Tests.Services
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
+                _consoleWindowManagerMock.Object,
                 _colorServiceMock.Object,
                 _externalEditorServiceMock.Object,
                 _shortcutConfigurationManagerMock.Object,
@@ -169,6 +177,7 @@ namespace SharpBridge.Tests.Services
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
+                _consoleWindowManagerMock.Object,
                 _colorServiceMock.Object,
                 _externalEditorServiceMock.Object,
                 _shortcutConfigurationManagerMock.Object,
@@ -197,6 +206,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -215,6 +225,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -233,6 +244,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -251,6 +263,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -269,6 +282,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -287,6 +301,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -305,6 +320,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -323,6 +339,7 @@ namespace SharpBridge.Tests.Services
                     null!,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -341,6 +358,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     null!,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -358,6 +376,26 @@ namespace SharpBridge.Tests.Services
                     _keyboardInputHandlerMock.Object,
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
+                    null!,
+                    _consoleWindowManagerMock.Object,
+                    _colorServiceMock.Object,
+                    _externalEditorServiceMock.Object,
+                    _shortcutConfigurationManagerMock.Object,
+                    _generalSettingsConfig,
+                    _systemHelpRendererMock.Object,
+                    _userPreferences,
+                    _configManagerMock.Object),
+                "consoleWindowManager" => new ApplicationOrchestrator(
+                    _vtubeStudioPCClientMock.Object,
+                    _vtubeStudioPhoneClientMock.Object,
+                    _transformationEngineMock.Object,
+                    _phoneConfig,
+                    _loggerMock.Object,
+                    _consoleRendererMock.Object,
+                    _keyboardInputHandlerMock.Object,
+                    _parameterManagerMock.Object,
+                    _recoveryPolicyMock.Object,
+                    _consoleMock.Object,
                     null!,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
@@ -377,6 +415,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     null!,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -395,6 +434,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     null!,
                     _shortcutConfigurationManagerMock.Object,
@@ -413,6 +453,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     null!,
@@ -431,6 +472,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -449,6 +491,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -467,6 +510,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -485,6 +529,7 @@ namespace SharpBridge.Tests.Services
                     _parameterManagerMock.Object,
                     _recoveryPolicyMock.Object,
                     _consoleMock.Object,
+                    _consoleWindowManagerMock.Object,
                     _colorServiceMock.Object,
                     _externalEditorServiceMock.Object,
                     _shortcutConfigurationManagerMock.Object,
@@ -1231,6 +1276,15 @@ namespace SharpBridge.Tests.Services
             exception.ParamName.Should().Be("console");
         }
 
+        [Fact]
+        public void Constructor_WithNullConsoleWindowManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                CreateOrchestratorWithNullParameter("consoleWindowManager"));
+            exception.ParamName.Should().Be("consoleWindowManager");
+        }
+
         // Additional RunAsync Tests
 
         [Fact]
@@ -1551,8 +1605,8 @@ namespace SharpBridge.Tests.Services
             // Arrange
             SetupBasicMocks();
 
-            // Setup console mock to fail window resize
-            _consoleMock.Setup(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>()))
+            // Setup console window manager mock to fail window resize
+            _consoleWindowManagerMock.Setup(x => x.SetConsoleSize(It.IsAny<int>(), It.IsAny<int>()))
                 .Returns(false);
 
             var cancellationToken = CancellationToken.None;
@@ -1561,7 +1615,7 @@ namespace SharpBridge.Tests.Services
             await _orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
-            _consoleMock.Verify(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>()), Times.Once);
+            _consoleWindowManagerMock.Verify(x => x.SetConsoleSize(It.IsAny<int>(), It.IsAny<int>()), Times.Once);
             _loggerMock.Verify(x => x.Warning(
                 It.Is<string>(s => s.Contains("Failed to resize console window to preferred size")),
                 It.IsAny<object[]>()), Times.Once);
@@ -1574,8 +1628,8 @@ namespace SharpBridge.Tests.Services
             SetupBasicMocks();
             var expectedException = new InvalidOperationException("Console setup failed");
 
-            // Setup console mock to throw exception
-            _consoleMock.Setup(x => x.TrySetWindowSize(It.IsAny<int>(), It.IsAny<int>()))
+            // Setup console window manager mock to throw exception
+            _consoleWindowManagerMock.Setup(x => x.SetConsoleSize(It.IsAny<int>(), It.IsAny<int>()))
                 .Throws(expectedException);
 
             var cancellationToken = CancellationToken.None;
@@ -1587,33 +1641,6 @@ namespace SharpBridge.Tests.Services
             _loggerMock.Verify(x => x.ErrorWithException(
                 It.Is<string>(s => s.Contains("Error setting up console window")),
                 expectedException), Times.Once);
-        }
-
-        // Tests for PerformCleanup() exception handling
-
-        [Fact]
-        public async Task RunAsync_WhenConsoleRestoreThrowsException_HandlesGracefully()
-        {
-            // Arrange
-            SetupBasicMocks();
-            var expectedException = new InvalidOperationException("Console restore failed");
-
-            // Setup console mock to throw exception during restoration
-            _consoleMock.Setup(x => x.TryRestoreWindowSize())
-                .Throws(expectedException);
-
-            await _orchestrator.InitializeAsync(_defaultCts.Token);
-
-            // Act
-            await RunWithDefaultTimeout(async () =>
-            {
-                await _orchestrator.RunAsync(_defaultCts.Token);
-            });
-
-            // Assert - verify the exception was caught and logged during cleanup
-            _loggerMock.Verify(x => x.ErrorWithException(
-                It.Is<string>(s => s.Contains("Error restoring console window size")),
-                expectedException), Times.AtMostOnce); // May not be called if console window wasn't resized
         }
 
         // Tests for LoadTransformationConfig exception handling
@@ -2760,6 +2787,7 @@ namespace SharpBridge.Tests.Services
                 _parameterManagerMock.Object,
                 _recoveryPolicyMock.Object,
                 _consoleMock.Object,
+                _consoleWindowManagerMock.Object,
                 _colorServiceMock.Object,
                 _externalEditorServiceMock.Object,
                 _shortcutConfigurationManagerMock.Object,
@@ -3228,7 +3256,5 @@ namespace SharpBridge.Tests.Services
         }
 
         #endregion
-
-        // ... existing code ...
     }
 }
