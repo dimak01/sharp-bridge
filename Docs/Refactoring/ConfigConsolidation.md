@@ -204,15 +204,84 @@ This document outlines the plan to consolidate SharpBridge's fragmented configur
 4. **Update ApplicationOrchestrator** to use UserPreferences (config path handling already removed in pre-work)
 5. **Add configuration validation** for the new structure
 
-### Phase 5: Add User Preferences Management (Low Risk)
-**Goal**: Implement runtime preference changes and persistence.
+### Phase 5: Add User Preferences Persistence (Low Risk)
+**Goal**: Implement user preferences initialization and automatic persistence with resilient, fire-and-forget approach.
+
+#### Design Principles:
+- **Initialization**: Formatters initialize their verbosity from UserPreferences on startup
+- **Event-Driven**: Preference changes automatically trigger async saves
+- **Non-Blocking**: Save operations never block the UI or main application flow
+- **Resilient**: File I/O failures are logged but don't crash the application
+- **Fire-and-Forget**: Uses `_ = UpdateUserPreferencesAsync(...)` pattern
+- **Single Responsibility**: All preference changes go through ApplicationOrchestrator
 
 #### Steps:
-1. **Add preference change methods** with persistence
-2. **Implement preference reset functionality**
-3. **Add keyboard shortcuts** for changing preferences
-4. **Update console UI** to reflect current preferences
-5. **Add preference validation** and error handling
+1. **Update formatter constructors** to accept UserPreferences and initialize verbosity:
+   ```csharp
+   public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter, 
+       IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences)
+   {
+       // ... existing initialization ...
+       CurrentVerbosity = userPreferences.TransformationEngineVerbosity;
+   }
+   
+   // Similar updates for PCTrackingInfoFormatter and PhoneTrackingInfoFormatter
+   ```
+
+2. **Update ServiceRegistration** to pass UserPreferences to all formatters:
+   ```csharp
+   // Update formatter registrations to include UserPreferences dependency
+   services.AddSingleton<TransformationEngineInfoFormatter>();
+   services.AddSingleton<PCTrackingInfoFormatter>();
+   services.AddSingleton<PhoneTrackingInfoFormatter>();
+   ```
+
+3. **Update all formatter tests** to provide UserPreferences mocks in constructor calls
+
+4. **Update formatter CycleVerbosity() methods** to return new VerbosityLevel value instead of void
+
+5. **Add private UpdateUserPreferencesAsync() method** to ApplicationOrchestrator:
+   ```csharp
+   /// <summary>
+   /// Updates user preferences and saves them asynchronously.
+   /// Fire-and-forget operation with error logging.
+   /// </summary>
+   private async Task UpdateUserPreferencesAsync(Action<UserPreferences> updateAction)
+   {
+       try
+       {
+           // Apply the update directly to the DI instance
+           updateAction(_userPreferences);
+
+           // Save to file (fire-and-forget)
+           await _configManager.SaveUserPreferencesAsync(_userPreferences);
+           
+           _logger.Debug("User preferences updated and saved successfully");
+       }
+       catch (Exception ex)
+       {
+           _logger.Error($"Failed to save user preferences: {ex.Message}");
+           // Continue execution - preferences saving failure is not critical
+       }
+   }
+   ```
+
+6. **Update keyboard shortcut handlers** to trigger preference saves:
+   ```csharp
+   ShortcutAction.CycleTransformationEngineVerbosity => () =>
+   {
+       var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
+       var newVerbosity = transformationFormatter?.CycleVerbosity();
+       if (newVerbosity.HasValue)
+       {
+           _ = UpdateUserPreferencesAsync(prefs => prefs.TransformationEngineVerbosity = newVerbosity.Value);
+       }
+   },
+   // Similar updates for PC and Phone client verbosity cycling
+   ```
+
+7. **Add ConfigManager dependency** to ApplicationOrchestrator constructor and ServiceRegistration
+8. **Update tests** to verify preference persistence behavior
 
 ### Phase 6: Remove Old Configuration Files (Low Risk)
 **Goal**: Clean up old configuration files and unused loading methods.

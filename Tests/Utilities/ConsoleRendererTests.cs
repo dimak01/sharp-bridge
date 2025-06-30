@@ -42,7 +42,7 @@ namespace SharpBridge.Tests.Utilities
         {
             public VerbosityLevel CurrentVerbosity => VerbosityLevel.Normal;
 
-            public void CycleVerbosity() { }
+            public VerbosityLevel CycleVerbosity() { return VerbosityLevel.Normal; }
 
             public string Format(IServiceStats stats) =>
                 stats?.CurrentEntity is TestEntity testEntity ? $"Test: {testEntity.Name}" : "Unknown entity";

@@ -60,7 +60,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
-        public void CycleVerbosity()
+        /// <returns>The new verbosity level after cycling</returns>
+        public VerbosityLevel CycleVerbosity()
         {
             CurrentVerbosity = CurrentVerbosity switch
             {
@@ -69,6 +70,7 @@ namespace SharpBridge.Utilities
                 VerbosityLevel.Detailed => VerbosityLevel.Basic,
                 _ => VerbosityLevel.Normal
             };
+            return CurrentVerbosity;
         }
 
         /// <summary>

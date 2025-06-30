@@ -32,10 +32,8 @@ namespace SharpBridge.Services
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly GeneralSettingsConfig _generalSettingsConfig;
         private readonly ISystemHelpRenderer _systemHelpRenderer;
-
-        // Preferred console dimensions
-        private const int PREFERRED_CONSOLE_WIDTH = 150;
-        private const int PREFERRED_CONSOLE_HEIGHT = 60;
+        private readonly UserPreferences _userPreferences;
+        private readonly ConfigManager _configManager;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -66,6 +64,8 @@ namespace SharpBridge.Services
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
         /// <param name="generalSettingsConfig">GeneralSettings configuration containing shortcut definitions</param>
         /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
+        /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
+        /// <param name="configManager">Configuration manager for saving user preferences</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -81,7 +81,9 @@ namespace SharpBridge.Services
             IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
             GeneralSettingsConfig generalSettingsConfig,
-            ISystemHelpRenderer systemHelpRenderer)
+            ISystemHelpRenderer systemHelpRenderer,
+            UserPreferences userPreferences,
+            ConfigManager configManager)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -98,6 +100,8 @@ namespace SharpBridge.Services
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _generalSettingsConfig = generalSettingsConfig ?? throw new ArgumentNullException(nameof(generalSettingsConfig));
             _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
+            _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
 
             // Initialize console window manager
             _consoleWindowManager = new ConsoleWindowManager(_console);
@@ -146,10 +150,10 @@ namespace SharpBridge.Services
                 var currentSize = _consoleWindowManager.GetCurrentSize();
                 _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
 
-                bool success = _consoleWindowManager.SetTemporarySize(PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                bool success = _consoleWindowManager.SetTemporarySize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
                 if (success)
                 {
-                    _logger.Info("Console window resized to preferred size: {0}x{1}", PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
                 }
                 else
                 {
@@ -615,19 +619,31 @@ namespace SharpBridge.Services
                 ShortcutAction.CycleTransformationEngineVerbosity => () =>
                 {
                     var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
-                    transformationFormatter?.CycleVerbosity();
+                    var newVerbosity = transformationFormatter?.CycleVerbosity();
+                    if (newVerbosity.HasValue)
+                    {
+                        _ = UpdateUserPreferencesAsync(prefs => prefs.TransformationEngineVerbosity = newVerbosity.Value);
+                    }
                 }
                 ,
                 ShortcutAction.CyclePCClientVerbosity => () =>
                 {
                     var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
-                    pcFormatter?.CycleVerbosity();
+                    var newVerbosity = pcFormatter?.CycleVerbosity();
+                    if (newVerbosity.HasValue)
+                    {
+                        _ = UpdateUserPreferencesAsync(prefs => prefs.PCClientVerbosity = newVerbosity.Value);
+                    }
                 }
                 ,
                 ShortcutAction.CyclePhoneClientVerbosity => () =>
                 {
                     var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
-                    phoneFormatter?.CycleVerbosity();
+                    var newVerbosity = phoneFormatter?.CycleVerbosity();
+                    if (newVerbosity.HasValue)
+                    {
+                        _ = UpdateUserPreferencesAsync(prefs => prefs.PhoneClientVerbosity = newVerbosity.Value);
+                    }
                 }
                 ,
                 ShortcutAction.ReloadTransformationConfig => () => _ = ReloadTransformationConfig(),
@@ -643,6 +659,29 @@ namespace SharpBridge.Services
         private static string GetActionDescription(ShortcutAction action)
         {
             return AttributeHelper.GetDescription(action);
+        }
+
+        /// <summary>
+        /// Updates user preferences and saves them asynchronously.
+        /// Fire-and-forget operation with error logging.
+        /// </summary>
+        private async Task UpdateUserPreferencesAsync(Action<UserPreferences> updateAction)
+        {
+            try
+            {
+                // Apply the update directly to the DI instance
+                updateAction(_userPreferences);
+
+                // Save to file (fire-and-forget)
+                await _configManager.SaveUserPreferencesAsync(_userPreferences);
+
+                _logger.Debug("User preferences updated and saved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Failed to save user preferences: {ex.Message}");
+                // Continue execution - preferences saving failure is not critical
+            }
         }
 
         /// <summary>
