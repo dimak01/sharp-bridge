@@ -58,10 +58,13 @@ namespace SharpBridge.Tests.Utilities
         public void RenderApplicationConfiguration_WithValidConfig_ReturnsFormattedString()
         {
             // Arrange
-            var config = new GeneralSettingsConfig
+            var config = new ApplicationConfig
             {
-                EditorCommand = "notepad.exe \"%f\"",
-                Shortcuts = new Dictionary<string, string>()
+                GeneralSettings = new GeneralSettingsConfig
+                {
+                    EditorCommand = "notepad.exe \"%f\"",
+                    Shortcuts = new Dictionary<string, string>()
+                }
             };
 
             // Act
@@ -81,10 +84,13 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithValidConfig_ReturnsFormattedOutput()
         {
             // Arrange
-            var config = new GeneralSettingsConfig
+            var config = new ApplicationConfig
             {
-                EditorCommand = "notepad.exe \"%f\"",
-                Shortcuts = new Dictionary<string, string>()
+                GeneralSettings = new GeneralSettingsConfig
+                {
+                    EditorCommand = "notepad.exe \"%f\"",
+                    Shortcuts = new Dictionary<string, string>()
+                }
             };
 
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
@@ -167,7 +173,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_CreatesCorrectTableData()
         {
             // Arrange
-            var config = new GeneralSettingsConfig();
+            var config = new ApplicationConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
@@ -220,7 +226,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithConfigurationIssues_IncludesErrorsInStatus()
         {
             // Arrange
-            var config = new GeneralSettingsConfig();
+            var config = new ApplicationConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = null
@@ -263,7 +269,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithActiveShortcuts_ShowsActiveStatus()
         {
             // Arrange
-            var config = new GeneralSettingsConfig();
+            var config = new ApplicationConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt)
@@ -302,7 +308,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithDisabledShortcuts_ShowsDisabledStatus()
         {
             // Arrange
-            var config = new GeneralSettingsConfig();
+            var config = new ApplicationConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.CycleTransformationEngineVerbosity] = null
@@ -340,7 +346,7 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_WithDifferentConsoleWidths_AdjustsSeparators()
         {
             // Arrange
-            var config = new GeneralSettingsConfig();
+            var config = new ApplicationConfig();
             var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
             {
                 [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
@@ -386,9 +392,12 @@ namespace SharpBridge.Tests.Utilities
         public void RenderSystemHelp_IncludesAllExpectedSections()
         {
             // Arrange
-            var config = new GeneralSettingsConfig
+            var config = new ApplicationConfig
             {
-                EditorCommand = "notepad.exe"
+                GeneralSettings = new GeneralSettingsConfig
+                {
+                    EditorCommand = "notepad.exe"
+                }
             };
 
             _shortcutManagerMock.Setup(x => x.GetMappedShortcuts())

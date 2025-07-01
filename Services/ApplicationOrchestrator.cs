@@ -30,7 +30,7 @@ namespace SharpBridge.Services
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
-        private readonly GeneralSettingsConfig _generalSettingsConfig;
+        private readonly ApplicationConfig _applicationConfig;
         private readonly ISystemHelpRenderer _systemHelpRenderer;
         private readonly UserPreferences _userPreferences;
         private readonly ConfigManager _configManager;
@@ -63,7 +63,7 @@ namespace SharpBridge.Services
         /// <param name="colorService">Parameter color service for colored console output</param>
         /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
-        /// <param name="generalSettingsConfig">GeneralSettings configuration containing shortcut definitions</param>
+        /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
         /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
@@ -82,7 +82,7 @@ namespace SharpBridge.Services
             IParameterColorService colorService,
             IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
-            GeneralSettingsConfig generalSettingsConfig,
+            ApplicationConfig applicationConfig,
             ISystemHelpRenderer systemHelpRenderer,
             UserPreferences userPreferences,
             ConfigManager configManager)
@@ -101,13 +101,13 @@ namespace SharpBridge.Services
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
-            _generalSettingsConfig = generalSettingsConfig ?? throw new ArgumentNullException(nameof(generalSettingsConfig));
+            _applicationConfig = applicationConfig ?? throw new ArgumentNullException(nameof(applicationConfig));
             _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
 
             // Load shortcut configuration
-            _shortcutConfigurationManager.LoadFromConfiguration(_generalSettingsConfig);
+            _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
         }
 
         /// <summary>
@@ -714,7 +714,7 @@ namespace SharpBridge.Services
             try
             {
                 var consoleSize = _consoleWindowManager.GetCurrentSize();
-                var helpContent = _systemHelpRenderer.RenderSystemHelp(_generalSettingsConfig, consoleSize.width);
+                var helpContent = _systemHelpRenderer.RenderSystemHelp(_applicationConfig, consoleSize.width);
 
                 _console.Clear();
                 _console.Write(helpContent);

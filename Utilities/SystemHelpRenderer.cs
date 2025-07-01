@@ -9,7 +9,7 @@ using SharpBridge.Models;
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Implementation of ISystemHelpRenderer for rendering the F1 help system display
+    /// Implementation of ISystemHelpRenderer for rendering the F2 help system display
     /// </summary>
     public class SystemHelpRenderer : ISystemHelpRenderer
     {
@@ -28,12 +28,12 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Renders the complete system help display including application configuration and keyboard shortcuts
+        /// Renders the complete system help display including all application configuration sections and keyboard shortcuts
         /// </summary>
-        /// <param name="generalSettingsConfig">Application configuration to display</param>
+        /// <param name="applicationConfig">Complete application configuration to display</param>
         /// <param name="consoleWidth">Available console width for formatting</param>
         /// <returns>Formatted help content as a string</returns>
-        public string RenderSystemHelp(GeneralSettingsConfig generalSettingsConfig, int consoleWidth)
+        public string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth)
         {
             var builder = new StringBuilder();
 
@@ -42,12 +42,12 @@ namespace SharpBridge.Utilities
 
             // Header
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F1)", consoleWidth));
+            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F2)", consoleWidth));
             builder.AppendLine(separatorLine);
             builder.AppendLine();
 
-            // Application Configuration section
-            builder.AppendLine(RenderApplicationConfiguration(generalSettingsConfig));
+            // Application Configuration sections
+            builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
             builder.AppendLine();
 
             // Keyboard Shortcuts section
@@ -63,39 +63,96 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Renders just the application configuration section
+        /// Renders all application configuration sections
         /// </summary>
-        /// <param name="generalSettingsConfig">Application configuration to display</param>
-        /// <returns>Formatted configuration section</returns>
-        public string RenderApplicationConfiguration(GeneralSettingsConfig generalSettingsConfig)
+        /// <param name="applicationConfig">Complete application configuration to display</param>
+        /// <returns>Formatted configuration sections</returns>
+        public string RenderApplicationConfiguration(ApplicationConfig applicationConfig)
         {
             var builder = new StringBuilder();
 
             builder.AppendLine("APPLICATION CONFIGURATION:");
-            builder.AppendLine("─────────────────────────");
+            builder.AppendLine("═════════════════════════");
 
-            if (generalSettingsConfig == null)
+            if (applicationConfig == null)
             {
                 builder.AppendLine("  No configuration loaded");
                 return builder.ToString();
             }
 
+            // General Settings Section
+            builder.AppendLine();
+            builder.AppendLine("GENERAL SETTINGS:");
+            builder.AppendLine("─────────────────");
+            RenderConfigSection(builder, applicationConfig.GeneralSettings, skipProperties: new[] { nameof(GeneralSettingsConfig.Shortcuts) });
+
+            // Phone Client Section  
+            builder.AppendLine();
+            builder.AppendLine("PHONE CLIENT:");
+            builder.AppendLine("─────────────");
+            RenderConfigSection(builder, applicationConfig.PhoneClient);
+
+            // PC Client Section
+            builder.AppendLine();
+            builder.AppendLine("PC CLIENT:");
+            builder.AppendLine("──────────");
+            RenderConfigSection(builder, applicationConfig.PCClient);
+
+            // Transformation Engine Section
+            builder.AppendLine();
+            builder.AppendLine("TRANSFORMATION ENGINE:");
+            builder.AppendLine("──────────────────────");
+            RenderConfigSection(builder, applicationConfig.TransformationEngine);
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Renders a configuration section using reflection
+        /// </summary>
+        /// <param name="builder">StringBuilder to append to</param>
+        /// <param name="configSection">Configuration section object to render</param>
+        /// <param name="skipProperties">Properties to skip (e.g., Shortcuts which are displayed separately)</param>
+        private static void RenderConfigSection(StringBuilder builder, object? configSection, string[]? skipProperties = null)
+        {
+            if (configSection == null)
+            {
+                builder.AppendLine("  Not configured");
+                return;
+            }
+
+            skipProperties ??= Array.Empty<string>();
+
             // Use reflection to display all properties with their descriptions
-            var properties = typeof(GeneralSettingsConfig).GetProperties();
+            var properties = configSection.GetType().GetProperties();
             foreach (var property in properties)
             {
-                // Skip the Shortcuts property as it's displayed separately
-                if (property.Name == nameof(GeneralSettingsConfig.Shortcuts))
+                // Skip properties that should not be displayed
+                if (skipProperties.Contains(property.Name))
                     continue;
 
-                var displayName = AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), property.Name);
-                var value = property.GetValue(generalSettingsConfig);
-                var displayValue = value?.ToString() ?? "Not set";
+                var displayName = AttributeHelper.GetPropertyDescription(configSection.GetType(), property.Name);
+                var value = property.GetValue(configSection);
+                var displayValue = FormatPropertyValue(value);
 
                 builder.AppendLine($"  {displayName}: {displayValue}");
             }
+        }
 
-            return builder.ToString();
+        /// <summary>
+        /// Formats property values for display
+        /// </summary>
+        /// <param name="value">Property value to format</param>
+        /// <returns>Formatted display string</returns>
+        private static string FormatPropertyValue(object? value)
+        {
+            return value switch
+            {
+                null => "Not set",
+                string str when string.IsNullOrWhiteSpace(str) => "Not set",
+                bool b => b ? "Yes" : "No",
+                _ => value.ToString() ?? "Not set"
+            };
         }
 
         /// <summary>
