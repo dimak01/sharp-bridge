@@ -55,6 +55,13 @@ namespace SharpBridge
                 return configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
             });
 
+            // Register ApplicationConfig (full consolidated config)
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
+            });
+
             // Register TransformationEngineConfig
             services.AddSingleton(provider =>
             {
