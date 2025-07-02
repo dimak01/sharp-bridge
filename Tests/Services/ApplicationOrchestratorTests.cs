@@ -125,7 +125,6 @@ namespace SharpBridge.Tests.Services
             // Set up console window manager mock with default behavior
             _consoleWindowManagerMock.Setup(x => x.GetCurrentSize()).Returns((80, 25));
             _consoleWindowManagerMock.Setup(x => x.SetConsoleSize(It.IsAny<int>(), It.IsAny<int>())).Returns(true);
-            _consoleWindowManagerMock.Setup(x => x.RestoreOriginalSize()).Returns(true);
 
             // Setup shortcut configuration manager mock
             _shortcutConfigurationManagerMock.Setup(x => x.GetMappedShortcuts())

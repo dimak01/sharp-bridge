@@ -16,12 +16,6 @@ namespace SharpBridge.Interfaces
         bool SetConsoleSize(int width, int height);
 
         /// <summary>
-        /// No-op method for interface compatibility - console size is preserved between runs
-        /// </summary>
-        /// <returns>Always returns true</returns>
-        bool RestoreOriginalSize();
-
-        /// <summary>
         /// Gets the current console window dimensions
         /// </summary>
         /// <returns>Tuple containing width and height</returns>

@@ -33,6 +33,21 @@ namespace SharpBridge.Utilities
         {
             _parser = parser ?? throw new ArgumentNullException(nameof(parser));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            // Initialize with defaults - ensures shortcuts are always available
+            InitializeWithDefaults();
+        }
+
+        /// <summary>
+        /// Initializes the shortcut mappings with default values
+        /// </summary>
+        private void InitializeWithDefaults()
+        {
+            var defaults = GetDefaultShortcuts();
+            foreach (var (action, shortcut) in defaults)
+            {
+                _mappedShortcuts[action] = shortcut;
+            }
         }
 
         /// <summary>
@@ -104,6 +119,15 @@ namespace SharpBridge.Utilities
             _incorrectShortcuts.Clear();
             _explicitlyDisabled.Clear();
 
+            // If shortcuts dictionary is empty, populate it with defaults for serialization
+            if (config?.Shortcuts != null && config.Shortcuts.Count == 0)
+            {
+                var defaults = GetDefaultShortcuts();
+                foreach (var (action, shortcut) in defaults)
+                {
+                    config.Shortcuts[action.ToString()] = _parser.FormatShortcut(shortcut);
+                }
+            }
 
             var defaultShortcuts = GetDefaultShortcuts();
             var configShortcuts = config?.Shortcuts;
