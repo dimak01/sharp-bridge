@@ -49,17 +49,7 @@ namespace SharpBridge.Utilities
 
             return success;
         }
-
-        /// <summary>
-        /// No-op method for interface compatibility - console size is preserved between runs
-        /// </summary>
-        /// <returns>Always returns true</returns>
-        public bool RestoreOriginalSize()
-        {
-            // No longer restore original size - let console size persist between application runs
-            return true;
-        }
-
+        
         /// <summary>
         /// Gets the current console window dimensions
         /// </summary>
