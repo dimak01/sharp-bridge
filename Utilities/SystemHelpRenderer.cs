@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
@@ -129,6 +130,10 @@ namespace SharpBridge.Utilities
             {
                 // Skip properties that should not be displayed
                 if (skipProperties.Contains(property.Name))
+                    continue;
+
+                // Skip properties marked with JsonIgnore (internal settings)
+                if (property.GetCustomAttribute<JsonIgnoreAttribute>() != null)
                     continue;
 
                 var displayName = AttributeHelper.GetPropertyDescription(configSection.GetType(), property.Name);
