@@ -1,6 +1,6 @@
 {
   "GeneralSettings": {
-    "EditorCommand": "notepad.exe \"f\"",
+    "EditorCommand": "notepad.exe \"%f\"",
     "Shortcuts": {
       "CycleTransformationEngineVerbosity": "Alt+T",
       "CyclePCClientVerbosity": "Alt+P",
