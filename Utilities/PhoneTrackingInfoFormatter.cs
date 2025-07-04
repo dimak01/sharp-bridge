@@ -18,23 +18,6 @@ namespace SharpBridge.Utilities
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
 
-        // Counter Keys
-        private const string TOTAL_MESSAGES_KEY = "Total Messages";
-        private const string UPTIME_SECONDS_KEY = "Uptime (seconds)";
-
-        // Display Limits
-        private const int PARAMETER_DISPLAY_COUNT_NORMAL = 15;
-
-        // Column Width Constants
-        private const int PARAMETER_NAME_COLUMN_MIN_WIDTH = 8;
-        private const int PARAMETER_NAME_COLUMN_MAX_WIDTH = 20;
-        private const int PARAMETER_VALUE_COLUMN_MIN_WIDTH = 8;
-        private const int PARAMETER_VALUE_COLUMN_MAX_WIDTH = 15;
-
-        // Table Formatting Constants
-        private const int TABLE_MINIMUM_ROWS = 1;
-        private const int TABLE_MINIMUM_WIDTH = 20;
-
         // Service Display Constants
         private const string SERVICE_NAME = "Phone Client";
 
