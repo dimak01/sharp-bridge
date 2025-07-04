@@ -134,7 +134,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("SHARP BRIDGE - SYSTEM HELP");
-            result.Should().Contain("APPLICATION CONFIGURATION");
+            result.Should().Contain("GENERAL SETTINGS");
             result.Should().Contain("KEYBOARD SHORTCUTS");
             result.Should().Contain("Test Table");
             result.Should().Contain("Press any key to return to main display");
@@ -379,15 +379,13 @@ namespace SharpBridge.Tests.Utilities
             var result120 = _renderer.RenderSystemHelp(config, 120);
 
             // Assert
-            // For width 40, should use minimum of 80 characters
-            result40.Should().Contain(new string('═', 80));
+            // For width 40, should use 40 characters (limited by systemHelpScreenWidth)
+            result40.Should().Contain(new string('═', 40));
             result40.Should().NotContain(new string('═', 120));
 
-            // For width 120, should use 120 characters
-            result120.Should().Contain(new string('═', 120));
-            // Note: A 120-character line will contain an 80-character substring, so we can't test for NotContain(80)
-            // Instead, verify that the 120-character line exists and the 40-width result doesn't have it
-            result40.Should().NotContain(new string('═', 120));
+            // For width 120, should use 80 characters (limited by systemHelpScreenWidth max)
+            result120.Should().Contain(new string('═', 80));
+            result120.Should().NotContain(new string('═', 120));
         }
 
         [Fact]
@@ -432,10 +430,10 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().Contain("SHARP BRIDGE - SYSTEM HELP");
-            result.Should().Contain("APPLICATION CONFIGURATION");
+            result.Should().Contain("GENERAL SETTINGS");
             result.Should().Contain("KEYBOARD SHORTCUTS");
             result.Should().Contain("Press any key to return to main display");
-            result.Should().Contain("Editor Command");
+            result.Should().Contain("External Editor Command");
             result.Should().Contain("notepad.exe");
         }
 
@@ -462,9 +460,9 @@ namespace SharpBridge.Tests.Utilities
             var result = _renderer.RenderApplicationConfiguration(config);
 
             // Assert
-            result.Should().Contain("Host");
-            result.Should().Contain("Port");
-            result.Should().Contain("UsePortDiscovery"); // Property name as-is, not display name
+            result.Should().Contain("Host Address");
+            result.Should().Contain("Port Number");
+            result.Should().Contain("Use Port Discovery"); // Display name from Description attribute
 
             // These internal properties should NOT appear
             result.Should().NotContain("ConnectionTimeoutMs");
@@ -823,7 +821,6 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().Contain("SHARP BRIDGE - SYSTEM HELP");
-            result.Should().Contain("APPLICATION CONFIGURATION");
             result.Should().Contain("GENERAL SETTINGS");
             result.Should().Contain("PHONE CLIENT");
             result.Should().Contain("PC CLIENT");
@@ -894,11 +891,10 @@ namespace SharpBridge.Tests.Utilities
             return (string)method!.Invoke(null, new object[] { text, width })!;
         }
 
-        private static string CallFormatPropertyValueMethod(object? value)
+        private static string CallColorizeBasicTypeMethod(object? value)
         {
-            // Use reflection to call the private FormatPropertyValue method
-            var method = typeof(SystemHelpRenderer).GetMethod("FormatPropertyValue", BindingFlags.NonPublic | BindingFlags.Static);
-            return (string)method!.Invoke(null, new object?[] { value })!;
+            // Call the ColorizeBasicType method directly
+            return ConsoleColors.ColorizeBasicType(value);
         }
 
         #region Additional Coverage Tests
@@ -987,9 +983,10 @@ namespace SharpBridge.Tests.Utilities
             var result = builder.ToString();
 
             // Assert
-            result.Should().Contain("Host: localhost");
-            result.Should().Contain("Port: 8001");
-            result.Should().Contain("UsePortDiscovery: Yes");
+            var cleanResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
+            cleanResult.Should().Contain("Host Address: localhost");
+            cleanResult.Should().Contain("Port Number: 8001");
+            cleanResult.Should().Contain("Use Port Discovery: Yes");
 
             // These should NOT appear due to JsonIgnore
             result.Should().NotContain("ConnectionTimeoutMs");
@@ -1015,8 +1012,9 @@ namespace SharpBridge.Tests.Utilities
             var result = builder.ToString();
 
             // Assert
-            result.Should().Contain("Editor Command: notepad.exe");
-            result.Should().NotContain("Shortcuts"); // Should be skipped
+            var cleanResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
+            cleanResult.Should().Contain("Editor Command: notepad.exe");
+            cleanResult.Should().NotContain("Shortcuts"); // Should be skipped
         }
 
         [Fact]
@@ -1036,7 +1034,8 @@ namespace SharpBridge.Tests.Utilities
             var result = builder.ToString();
 
             // Assert
-            result.Should().Contain("Editor Command: notepad.exe");
+            var cleanResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
+            cleanResult.Should().Contain("Editor Command: notepad.exe");
         }
 
         #endregion
@@ -1111,22 +1110,17 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Fact]
-        public void FormatPropertyValue_WithObjectToStringReturningNull_ReturnsNotSet()
+        public void ColorizeBasicType_WithObjectToStringReturningNull_ReturnsNotSet()
         {
             // Arrange - Create a mock object that returns null from ToString()
             var mockObject = new Mock<object>();
             mockObject.Setup(x => x.ToString()).Returns((string?)null);
 
-            // Use reflection to access the private FormatPropertyValue method
-            var formatMethod = typeof(SystemHelpRenderer).GetMethod("FormatPropertyValue",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.NotNull(formatMethod);
-
-            // Act
-            var result = formatMethod.Invoke(null, new object[] { mockObject.Object });
+            // Act - Call the ColorizeBasicType method directly
+            var result = ConsoleColors.ColorizeBasicType(mockObject.Object);
 
             // Assert - Should return "Not set" when ToString() returns null
-            Assert.Equal("Not set", (string?)result);
+            Assert.Equal("Not set", result);
         }
     }
 }
