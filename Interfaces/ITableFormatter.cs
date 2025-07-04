@@ -22,9 +22,9 @@ namespace SharpBridge.Interfaces
         /// <param name="singleColumnBarWidth">Progress bar width for single-column mode (default 20)</param>
         /// <param name="singleColumnMaxItems">Maximum items to show in single-column mode (default: show all)</param>
         void AppendTable<T>(StringBuilder builder, string title,
-            IEnumerable<T> rows, IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth,
+            IEnumerable<T> rows, IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth,
             int singleColumnBarWidth = 20, int? singleColumnMaxItems = null);
-            
+
         /// <summary>
         /// Creates a progress bar visualization for a value between 0 and 1
         /// </summary>
@@ -32,7 +32,7 @@ namespace SharpBridge.Interfaces
         /// <param name="width">Width of the progress bar (default 20)</param>
         /// <returns>Progress bar string</returns>
         string CreateProgressBar(double value, int width = 20);
-        
+
         /// <summary>
         /// Creates a progress bar visualization for a value within a custom range
         /// </summary>
@@ -43,4 +43,4 @@ namespace SharpBridge.Interfaces
         /// <returns>Progress bar string</returns>
         string CreateProgressBar(double value, double min, double max, int width = 20);
     }
-} 
+}

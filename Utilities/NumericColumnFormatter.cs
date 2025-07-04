@@ -7,30 +7,30 @@ namespace SharpBridge.Utilities
     /// A numeric column that displays formatted numbers
     /// </summary>
     /// <typeparam name="T">The type of data being displayed</typeparam>
-    public class NumericColumn<T> : ITableColumn<T>
+    public class NumericColumnFormatter<T> : ITableColumnFormatter<T>
     {
         /// <summary>
         /// The header text for this column
         /// </summary>
         public string Header { get; }
-        
+
         /// <summary>
         /// Minimum width this column requires (including header)
         /// </summary>
         public int MinWidth { get; }
-        
+
         /// <summary>
         /// Maximum width this column should use (null = unlimited)
         /// </summary>
         public int? MaxWidth { get; }
-        
+
         /// <summary>
         /// Formats the value without width constraints - used for measuring natural content size
         /// </summary>
         public Func<T, string> ValueFormatter { get; }
-        
+
         private readonly bool _padLeft;
-        
+
         /// <summary>
         /// Initializes a new instance of the NumericColumn class
         /// </summary>
@@ -40,7 +40,7 @@ namespace SharpBridge.Utilities
         /// <param name="minWidth">Minimum column width</param>
         /// <param name="maxWidth">Maximum column width (null for unlimited)</param>
         /// <param name="padLeft">Whether to pad numbers to the left (right-align)</param>
-        public NumericColumn(string header, Func<T, double> valueSelector, string format = "0.##", int minWidth = 0, int? maxWidth = null, bool padLeft = true)
+        public NumericColumnFormatter(string header, Func<T, double> valueSelector, string format = "0.##", int minWidth = 0, int? maxWidth = null, bool padLeft = true)
         {
             Header = header ?? throw new ArgumentNullException(nameof(header));
             MinWidth = Math.Max(minWidth, header.Length);
@@ -48,7 +48,7 @@ namespace SharpBridge.Utilities
             ValueFormatter = item => valueSelector(item).ToString(format);
             _padLeft = padLeft;
         }
-        
+
         /// <summary>
         /// Formats and pads the cell content for this column
         /// </summary>
@@ -60,7 +60,7 @@ namespace SharpBridge.Utilities
             var content = ValueFormatter(item);
             return _padLeft ? content.PadLeft(width) : content.PadRight(width);
         }
-        
+
         /// <summary>
         /// Formats and pads the header for this column
         /// </summary>
@@ -71,4 +71,4 @@ namespace SharpBridge.Utilities
             return _padLeft ? Header.PadLeft(width) : Header.PadRight(width);
         }
     }
-} 
+}

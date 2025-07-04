@@ -513,7 +513,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<RuleInfo>>(),
-                It.IsAny<IList<ITableColumn<RuleInfo>>>(),
+                It.IsAny<IList<ITableColumnFormatter<RuleInfo>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -537,7 +537,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== Failed Rules ===",
                 It.Is<IEnumerable<RuleInfo>>(rules => rules.Count() == 3),
-                It.Is<IList<ITableColumn<RuleInfo>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<RuleInfo>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Rule Name" &&
                     cols[1].Header == "Function" &&
@@ -566,7 +566,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== Failed Rules ===",
                 It.Is<IEnumerable<RuleInfo>>(rules => rules.Count() == 20),
-                It.Is<IList<ITableColumn<RuleInfo>>>(cols => cols.Count == 3),
+                It.Is<IList<ITableColumnFormatter<RuleInfo>>>(cols => cols.Count == 3),
                 1, // targetColumns
                 80, // console width
                 20, // barWidth
@@ -592,7 +592,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<RuleInfo>>(),
-                It.IsAny<IList<ITableColumn<RuleInfo>>>(),
+                It.IsAny<IList<ITableColumnFormatter<RuleInfo>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -612,18 +612,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("SomeRulesActive", engineInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<RuleInfo>> capturedColumns = null!;
+            IList<ITableColumnFormatter<RuleInfo>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<RuleInfo>>(),
-                    It.IsAny<IList<ITableColumn<RuleInfo>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<RuleInfo>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<RuleInfo>, IList<ITableColumn<RuleInfo>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<RuleInfo>, IList<ITableColumnFormatter<RuleInfo>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;

@@ -468,7 +468,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 2),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -496,7 +496,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -526,7 +526,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -560,7 +560,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -592,7 +592,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" &&
@@ -630,7 +630,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 3),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols => cols.Count == 3),
+                It.Is<IList<ITableColumnFormatter<BlendShape>>>(cols => cols.Count == 3),
                 4, // TARGET_COLUMN_COUNT
                 80, // console width
                 20, // bar width
@@ -659,7 +659,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 "=== BlendShapes ===",
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 4, // TARGET_COLUMN_COUNT
                 80, // console width
                 20, // bar width
@@ -691,7 +691,7 @@ namespace SharpBridge.Tests.Utilities
                 It.Is<IEnumerable<BlendShape>>(shapes =>
                     shapes.First().Key == "aaaFirst" &&
                     shapes.Last().Key == "zzzLast"),
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -719,7 +719,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.Is<IList<ITableColumn<BlendShape>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<BlendShape>>>(cols =>
                     cols.Count == 3 &&
                     cols[0].Header == "Expression" &&
                     cols[1].Header == "" && // Progress bar column
@@ -752,7 +752,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -797,7 +797,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -821,7 +821,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<BlendShape>>(),
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -903,7 +903,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.Is<IEnumerable<BlendShape>>(shapes => shapes.Count() == 2), // Null filtered out
-                It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -963,18 +963,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null!;
+            IList<ITableColumnFormatter<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<BlendShape>>(),
-                    It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumnFormatter<BlendShape>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -1030,18 +1030,18 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null!;
+            IList<ITableColumnFormatter<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<BlendShape>>(),
-                    It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumnFormatter<BlendShape>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -1091,18 +1091,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateMockServiceStats("Running", phoneTrackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<BlendShape>> capturedColumns = null!;
+            IList<ITableColumnFormatter<BlendShape>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<BlendShape>>(),
-                    It.IsAny<IList<ITableColumn<BlendShape>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<BlendShape>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumn<BlendShape>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<BlendShape>, IList<ITableColumnFormatter<BlendShape>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;

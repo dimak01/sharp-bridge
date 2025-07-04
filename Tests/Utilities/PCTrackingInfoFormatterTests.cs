@@ -183,18 +183,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -244,18 +244,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -307,7 +307,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.Is<IEnumerable<TrackingParam>>(parameters => !parameters.Any()),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
+                It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -335,7 +335,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
+                It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -362,7 +362,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
+                It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -504,7 +504,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.Is<IList<ITableColumn<TrackingParam>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<TrackingParam>>>(cols =>
                     cols.Count == 5 &&
                     cols[0].Header == "Parameter" &&
                     cols[1].Header == "" && // Progress bar column
@@ -571,18 +571,18 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+                IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
                         It.IsAny<string>(),
                         It.IsAny<IEnumerable<TrackingParam>>(),
-                        It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                        It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int?>()))
-                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                         (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                         {
                             capturedColumns = columns;
@@ -643,18 +643,18 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+                IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
                         It.IsAny<string>(),
                         It.IsAny<IEnumerable<TrackingParam>>(),
-                        It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                        It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int?>()))
-                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                         (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                         {
                             capturedColumns = columns;
@@ -728,18 +728,18 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -841,7 +841,7 @@ namespace SharpBridge.Tests.Utilities
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),

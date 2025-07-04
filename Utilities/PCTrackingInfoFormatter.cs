@@ -121,13 +121,13 @@ namespace SharpBridge.Utilities
                 .ToList();
 
             // Define columns for the generic table
-            var columns = new List<ITableColumn<TrackingParam>>
+            var columns = new List<ITableColumnFormatter<TrackingParam>>
             {
-                new TextColumn<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
-                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
-                new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
-                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
-                new TextColumn<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
+                new TextColumnFormatter<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
+                new ProgressBarColumnFormatter<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
+                new NumericColumnFormatter<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
+                new TextColumnFormatter<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
+                new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
             };
 
             // Use the new generic table formatter - let it handle display limits
