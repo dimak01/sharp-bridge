@@ -18,30 +18,22 @@ namespace SharpBridge
     public static class ServiceRegistration
     {
         /// <summary>
-        /// Registers all application services with the DI container with custom configuration paths
+        /// Registers all application services with the DI container with consolidated configuration
         /// </summary>
         /// <param name="services">The service collection to add services to</param>
         /// <param name="configDirectory">Config directory path</param>
-        /// <param name="pcConfigFilename">PC config filename</param>
-        /// <param name="phoneConfigFilename">Phone config filename</param>
         /// <returns>The service collection for chaining</returns>
         public static IServiceCollection AddSharpBridgeServices(
             this IServiceCollection services,
-            string configDirectory,
-            string pcConfigFilename,
-            string phoneConfigFilename)
+            string configDirectory)
         {
             // Validate parameters
             if (string.IsNullOrEmpty(configDirectory))
                 throw new ArgumentException("Config directory cannot be null or empty", nameof(configDirectory));
-            if (string.IsNullOrEmpty(pcConfigFilename))
-                throw new ArgumentException("PC config filename cannot be null or empty", nameof(pcConfigFilename));
-            if (string.IsNullOrEmpty(phoneConfigFilename))
-                throw new ArgumentException("Phone config filename cannot be null or empty", nameof(phoneConfigFilename));
 
             // Register config manager
             services.AddSingleton<ConfigManager>(provider =>
-                new ConfigManager(configDirectory, pcConfigFilename, phoneConfigFilename));
+                new ConfigManager(configDirectory));
 
             // Register configurations
             services.AddSingleton(provider =>
@@ -56,11 +48,32 @@ namespace SharpBridge
                 return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
             });
 
-            // Register ApplicationConfig
+            // Register GeneralSettingsConfig
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+            });
+
+            // Register ApplicationConfig (full consolidated config)
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<ConfigManager>();
                 return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
+            });
+
+            // Register TransformationEngineConfig
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+            });
+
+            // Register UserPreferences
+            services.AddSingleton(provider =>
+            {
+                var configManager = provider.GetRequiredService<ConfigManager>();
+                return configManager.LoadUserPreferencesAsync().GetAwaiter().GetResult();
             });
 
             // Register clients
@@ -89,12 +102,6 @@ namespace SharpBridge
             // Register transformation rules repository
             services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
 
-            // Register TransformationEngineConfig
-            services.AddSingleton(async provider =>
-            {
-                var configManager = provider.GetRequiredService<ConfigManager>();
-                return await configManager.LoadTransformationConfigAsync();
-            });
 
             services.AddTransient<ITransformationEngine, TransformationEngine>();
 
@@ -117,6 +124,9 @@ namespace SharpBridge
 
             // Register console abstraction
             services.AddSingleton<IConsole, SystemConsole>();
+
+            // Register console window manager
+            services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
 
             // Register logging services
             services.AddSingleton(ConfigureSerilog());

@@ -4,23 +4,23 @@ using SharpBridge.Models;
 namespace SharpBridge.Interfaces
 {
     /// <summary>
-    /// Interface for rendering the system help display (F1 functionality)
+    /// Interface for rendering the system help display (F2 functionality)
     /// </summary>
     public interface ISystemHelpRenderer
     {
         /// <summary>
-        /// Renders the complete system help display including application configuration and keyboard shortcuts
+        /// Renders the complete system help display including all application configuration sections and keyboard shortcuts
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
+        /// <param name="applicationConfig">Complete application configuration to display</param>
         /// <param name="consoleWidth">Available console width for formatting</param>
         /// <returns>Formatted help content as a string</returns>
         string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth);
 
         /// <summary>
-        /// Renders just the application configuration section
+        /// Renders just the application configuration sections
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
-        /// <returns>Formatted configuration section</returns>
+        /// <param name="applicationConfig">Complete application configuration to display</param>
+        /// <returns>Formatted configuration sections</returns>
         string RenderApplicationConfiguration(ApplicationConfig applicationConfig);
 
         /// <summary>

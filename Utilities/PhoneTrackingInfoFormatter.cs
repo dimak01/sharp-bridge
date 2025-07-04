@@ -18,23 +18,6 @@ namespace SharpBridge.Utilities
         private const int TARGET_COLUMN_COUNT = 4;
         private const int TARGET_ROWS_NORMAL = 13;
 
-        // Counter Keys
-        private const string TOTAL_MESSAGES_KEY = "Total Messages";
-        private const string UPTIME_SECONDS_KEY = "Uptime (seconds)";
-
-        // Display Limits
-        private const int PARAMETER_DISPLAY_COUNT_NORMAL = 15;
-
-        // Column Width Constants
-        private const int PARAMETER_NAME_COLUMN_MIN_WIDTH = 8;
-        private const int PARAMETER_NAME_COLUMN_MAX_WIDTH = 20;
-        private const int PARAMETER_VALUE_COLUMN_MIN_WIDTH = 8;
-        private const int PARAMETER_VALUE_COLUMN_MAX_WIDTH = 15;
-
-        // Table Formatting Constants
-        private const int TABLE_MINIMUM_ROWS = 1;
-        private const int TABLE_MINIMUM_WIDTH = 20;
-
         // Service Display Constants
         private const string SERVICE_NAME = "Phone Client";
 
@@ -55,12 +38,17 @@ namespace SharpBridge.Utilities
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="colorService">Parameter color service for colored display</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager)
+        /// <param name="userPreferences">User preferences for initial verbosity level</param>
+        public PhoneTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+            var preferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+
+            // Initialize verbosity from user preferences
+            CurrentVerbosity = preferences.PhoneClientVerbosity;
         }
 
         /// <summary>
@@ -71,7 +59,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
-        public void CycleVerbosity()
+        /// <returns>The new verbosity level after cycling</returns>
+        public VerbosityLevel CycleVerbosity()
         {
             CurrentVerbosity = CurrentVerbosity switch
             {
@@ -80,6 +69,7 @@ namespace SharpBridge.Utilities
                 VerbosityLevel.Detailed => VerbosityLevel.Basic,
                 _ => VerbosityLevel.Normal
             };
+            return CurrentVerbosity;
         }
 
         /// <summary>
@@ -243,13 +233,13 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Creates columns for the blend shapes table
         /// </summary>
-        private List<ITableColumn<BlendShape>> CreateBlendShapeColumns()
+        private List<ITableColumnFormatter<BlendShape>> CreateBlendShapeColumns()
         {
-            return new List<ITableColumn<BlendShape>>
+            return new List<ITableColumnFormatter<BlendShape>>
             {
-                new TextColumn<BlendShape>("Expression", shape => _colorService.GetColoredBlendShapeName(shape.Key), minWidth: 10, maxWidth: 20),
-                new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
-                new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
+                new TextColumnFormatter<BlendShape>("Expression", shape => _colorService.GetColoredBlendShapeName(shape.Key), minWidth: 10, maxWidth: 20),
+                new ProgressBarColumnFormatter<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
+                new NumericColumnFormatter<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
             };
         }
 

@@ -32,7 +32,7 @@ namespace SharpBridge.Interfaces
         /// Loads shortcut configuration from the provided application configuration
         /// </summary>
         /// <param name="config">Application configuration containing shortcut definitions</param>
-        void LoadFromConfiguration(ApplicationConfig config);
+        void LoadFromConfiguration(GeneralSettingsConfig config);
 
         /// <summary>
         /// Gets the default shortcut mappings used when no configuration is provided

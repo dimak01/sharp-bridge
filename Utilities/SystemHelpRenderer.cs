@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Implementation of ISystemHelpRenderer for rendering the F1 help system display
+    /// Implementation of ISystemHelpRenderer for rendering the F2 help system display
     /// </summary>
     public class SystemHelpRenderer : ISystemHelpRenderer
     {
@@ -28,51 +29,47 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Renders the complete system help display including application configuration and keyboard shortcuts
+        /// Renders the complete system help display including all application configuration sections and keyboard shortcuts
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
+        /// <param name="applicationConfig">Complete application configuration to display</param>
         /// <param name="consoleWidth">Available console width for formatting</param>
         /// <returns>Formatted help content as a string</returns>
         public string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth)
         {
             var builder = new StringBuilder();
 
+            var systemHelpScreenWidth = Math.Min(consoleWidth, 80);
             // Create separator line based on console width
-            var separatorLine = new string('═', Math.Max(consoleWidth, 80));
+            var separatorLine = new string('═', systemHelpScreenWidth);
 
             // Header
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F1)", consoleWidth));
+            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F2)", systemHelpScreenWidth));
             builder.AppendLine(separatorLine);
             builder.AppendLine();
 
-            // Application Configuration section
+            // Application Configuration sections
             builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
-            builder.AppendLine();
 
-            // Keyboard Shortcuts section
-            builder.AppendLine(RenderShortcutsTable(consoleWidth));
+            builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
 
             // Footer
             builder.AppendLine();
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("Press any key to return to main display", consoleWidth));
+            builder.AppendLine(CenterText("Press any key to return to main display", systemHelpScreenWidth));
             builder.AppendLine(separatorLine);
 
             return builder.ToString();
         }
 
         /// <summary>
-        /// Renders just the application configuration section
+        /// Renders all application configuration sections
         /// </summary>
-        /// <param name="applicationConfig">Application configuration to display</param>
-        /// <returns>Formatted configuration section</returns>
+        /// <param name="applicationConfig">Complete application configuration to display</param>
+        /// <returns>Formatted configuration sections</returns>
         public string RenderApplicationConfiguration(ApplicationConfig applicationConfig)
         {
             var builder = new StringBuilder();
-
-            builder.AppendLine("APPLICATION CONFIGURATION:");
-            builder.AppendLine("─────────────────────────");
 
             if (applicationConfig == null)
             {
@@ -80,23 +77,66 @@ namespace SharpBridge.Utilities
                 return builder.ToString();
             }
 
-            // Use reflection to display all properties with their descriptions
-            var properties = typeof(ApplicationConfig).GetProperties();
-            foreach (var property in properties)
-            {
-                // Skip the Shortcuts property as it's displayed separately
-                if (property.Name == nameof(ApplicationConfig.Shortcuts))
-                    continue;
+            // General Settings Section
+            builder.AppendLine();
+            builder.AppendLine(CreateSectionHeader("GENERAL SETTINGS"));
+            RenderConfigSection(builder, applicationConfig.GeneralSettings, skipProperties: new[] { nameof(GeneralSettingsConfig.Shortcuts) });
 
-                var displayName = AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), property.Name);
-                var value = property.GetValue(applicationConfig);
-                var displayValue = value?.ToString() ?? "Not set";
+            // Phone Client Section  
+            builder.AppendLine();
+            builder.AppendLine(CreateSectionHeader("PHONE CLIENT"));
+            RenderConfigSection(builder, applicationConfig.PhoneClient);
 
-                builder.AppendLine($"  {displayName}: {displayValue}");
-            }
+            // PC Client Section
+            builder.AppendLine();
+            builder.AppendLine(CreateSectionHeader("PC CLIENT"));
+            RenderConfigSection(builder, applicationConfig.PCClient);
+
+            // Transformation Engine Section
+            builder.AppendLine();
+            builder.AppendLine(CreateSectionHeader("TRANSFORMATION ENGINE"));
+            RenderConfigSection(builder, applicationConfig.TransformationEngine);
 
             return builder.ToString();
         }
+
+        /// <summary>
+        /// Renders a configuration section using reflection
+        /// </summary>
+        /// <param name="builder">StringBuilder to append to</param>
+        /// <param name="configSection">Configuration section object to render</param>
+        /// <param name="skipProperties">Properties to skip (e.g., Shortcuts which are displayed separately)</param>
+        private static void RenderConfigSection(StringBuilder builder, object? configSection, string[]? skipProperties = null)
+        {
+            if (configSection == null)
+            {
+                builder.AppendLine("  Not configured");
+                return;
+            }
+
+            skipProperties ??= Array.Empty<string>();
+
+            // Use reflection to display all properties with their descriptions
+            var properties = configSection.GetType().GetProperties();
+            foreach (var property in properties)
+            {
+                // Skip properties that should not be displayed
+                if (skipProperties.Contains(property.Name))
+                    continue;
+
+                // Skip properties marked with JsonIgnore (internal settings)
+                if (property.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                    continue;
+
+                var displayName = AttributeHelper.GetPropertyDescription(configSection.GetType(), property.Name);
+                var value = property.GetValue(configSection);
+                var displayValue = ConsoleColors.ColorizeBasicType(value);
+
+                builder.AppendLine($"  {ConsoleColors.Colorize(displayName, ConsoleColors.ConfigPropertyName)}: {displayValue}");
+            }
+        }
+
+
 
         /// <summary>
         /// Renders just the keyboard shortcuts section with status information
@@ -114,28 +154,31 @@ namespace SharpBridge.Utilities
             {
                 var row = new ShortcutDisplayRow
                 {
-                    Action = GetActionDisplayName(action),
-                    Shortcut = _shortcutConfigurationManager.GetDisplayString(action),
+                    Action = ConsoleColors.Colorize(AttributeHelper.GetDescription(action), ConsoleColors.ShortcutActionColor),
+                    Shortcut = ConsoleColors.Colorize(_shortcutConfigurationManager.GetDisplayString(action), ConsoleColors.ShortcutKeyColor),
                     Status = GetStatusDisplay(action)
                 };
                 shortcutRows.Add(row);
             }
 
             // Sort by action name for consistent display
-            shortcutRows = shortcutRows.OrderBy(r => r.Action).ToList();
+            shortcutRows = shortcutRows.OrderBy(r => ConsoleColors.RemoveAnsiEscapeCodes(r.Action)).ToList();
 
             // Create table columns
-            var columns = new List<ITableColumn<ShortcutDisplayRow>>
+            var columns = new List<ITableColumnFormatter<ShortcutDisplayRow>>
             {
-                new TextColumn<ShortcutDisplayRow>("Action", r => r.Action, 30, 50),
-                new TextColumn<ShortcutDisplayRow>("Shortcut", r => r.Shortcut, 12, 20),
-                new TextColumn<ShortcutDisplayRow>("Status", r => r.Status, 15, 40)
+                new TextColumnFormatter<ShortcutDisplayRow>("Action", r => r.Action, 30, 50),
+                new TextColumnFormatter<ShortcutDisplayRow>("Shortcut", r => r.Shortcut, 12, 20),
+                new TextColumnFormatter<ShortcutDisplayRow>("Status", r => r.Status, 15, 40)
             };
 
-            // Use TableFormatter to create the shortcuts table
+            // Add the header with underline manually to match other sections
+            builder.AppendLine(CreateSectionHeader("KEYBOARD SHORTCUTS"));
+
+            // Use TableFormatter to create the shortcuts table (without title since we added it manually)
             _tableFormatter.AppendTable(
                 builder,
-                "KEYBOARD SHORTCUTS:",
+                "", // Empty title since we added it manually above
                 shortcutRows,
                 columns,
                 targetColumnCount: 1,
@@ -146,21 +189,6 @@ namespace SharpBridge.Utilities
             return builder.ToString();
         }
 
-        /// <summary>
-        /// Renders the shortcuts table section of the help display
-        /// </summary>
-        private string RenderShortcutsTable(int consoleWidth)
-        {
-            return RenderKeyboardShortcuts(consoleWidth);
-        }
-
-        /// <summary>
-        /// Gets a human-readable display name for a shortcut action using Description attributes
-        /// </summary>
-        private static string GetActionDisplayName(ShortcutAction action)
-        {
-            return AttributeHelper.GetDescription(action);
-        }
 
         /// <summary>
         /// Centers text within the specified width
@@ -178,6 +206,19 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
+        /// Creates a section header with consistent formatting
+        /// </summary>
+        /// <param name="title">Section title</param>
+        /// <param name="maxWidth">Maximum width for the header (default 60)</param>
+        /// <returns>Formatted section header</returns>
+        private static string CreateSectionHeader(string title, int maxWidth = 60)
+        {
+            var headerWidth = Math.Min(title.Length + 2, maxWidth);
+            var underline = new string('─', headerWidth);
+            return $"{title}:\n{underline}";
+        }
+
+        /// <summary>
         /// Gets the status display text for a shortcut using the new status system
         /// </summary>
         private string GetStatusDisplay(ShortcutAction action)
@@ -186,10 +227,10 @@ namespace SharpBridge.Utilities
 
             return status switch
             {
-                ShortcutStatus.Active => "✓ Active",
-                ShortcutStatus.Invalid => "✗ Invalid Format",
-                ShortcutStatus.ExplicitlyDisabled => "✗ Disabled",
-                _ => "✗ Unknown"
+                ShortcutStatus.Active => ConsoleColors.Colorize("✓ Active", ConsoleColors.Success),
+                ShortcutStatus.Invalid => ConsoleColors.Colorize("✗ Invalid Format", ConsoleColors.Error),
+                ShortcutStatus.ExplicitlyDisabled => ConsoleColors.Colorize("✗ Disabled", ConsoleColors.Warning),
+                _ => ConsoleColors.Colorize("✗ Unknown", ConsoleColors.Error)
             };
         }
 

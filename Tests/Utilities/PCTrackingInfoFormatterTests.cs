@@ -39,6 +39,7 @@ namespace SharpBridge.Tests.Utilities
         private readonly Mock<ITableFormatter> _mockTableFormatter;
         private readonly Mock<IParameterColorService> _mockColorService;
         private readonly Mock<IShortcutConfigurationManager> _mockShortcutManager;
+        private readonly UserPreferences _userPreferences;
         private readonly PCTrackingInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -63,7 +64,9 @@ namespace SharpBridge.Tests.Utilities
             _mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             _mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
 
-            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
+            _userPreferences = new UserPreferences { PCClientVerbosity = VerbosityLevel.Normal };
+
+            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
         }
 
         #region Helper Methods
@@ -180,18 +183,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -241,18 +244,18 @@ namespace SharpBridge.Tests.Utilities
             var serviceStats = CreateServiceStats(trackingInfo);
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -304,7 +307,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.Is<IEnumerable<TrackingParam>>(parameters => !parameters.Any()),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
+                It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -332,7 +335,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
+                It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -359,7 +362,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.IsAny<string>(),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.IsAny<List<ITableColumn<TrackingParam>>>(),
+                It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -501,7 +504,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<StringBuilder>(),
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.IsAny<IEnumerable<TrackingParam>>(),
-                It.Is<IList<ITableColumn<TrackingParam>>>(cols =>
+                It.Is<IList<ITableColumnFormatter<TrackingParam>>>(cols =>
                     cols.Count == 5 &&
                     cols[0].Header == "Parameter" &&
                     cols[1].Header == "" && // Progress bar column
@@ -568,18 +571,18 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+                IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
                         It.IsAny<string>(),
                         It.IsAny<IEnumerable<TrackingParam>>(),
-                        It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                        It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int?>()))
-                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                         (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                         {
                             capturedColumns = columns;
@@ -640,18 +643,18 @@ namespace SharpBridge.Tests.Utilities
                 );
 
                 // Capture the columns to verify their behavior
-                IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+                IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
                 _mockTableFormatter
                     .Setup(x => x.AppendTable(
                         It.IsAny<StringBuilder>(),
                         It.IsAny<string>(),
                         It.IsAny<IEnumerable<TrackingParam>>(),
-                        It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                        It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int>(),
                         It.IsAny<int?>()))
-                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                    .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                         (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                         {
                             capturedColumns = columns;
@@ -725,18 +728,18 @@ namespace SharpBridge.Tests.Utilities
                 });
 
             // Capture the columns to verify their behavior
-            IList<ITableColumn<TrackingParam>> capturedColumns = null!;
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
             _mockTableFormatter
                 .Setup(x => x.AppendTable(
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int?>()))
-                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumn<TrackingParam>>, int, int, int, int?>(
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
                     (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
                     {
                         capturedColumns = columns;
@@ -790,7 +793,8 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
 
             // Act & Assert
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
+            var mockUserPreferences = new Mock<UserPreferences>();
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object);
             formatter.Should().NotBeNull();
         }
 
@@ -798,7 +802,7 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object);
+            Action act = () => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -813,7 +817,7 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
 
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -827,7 +831,7 @@ namespace SharpBridge.Tests.Utilities
 
 
 
-        private static PCTrackingInfoFormatter CreateFormatterWithMocks(int windowWidth = 120, int tableRowsReturned = 10)
+        private PCTrackingInfoFormatter CreateFormatterWithMocks(int windowWidth = 120, int tableRowsReturned = 10)
         {
             var mockConsole = new Mock<IConsole>();
             mockConsole.Setup(c => c.WindowWidth).Returns(windowWidth);
@@ -837,7 +841,7 @@ namespace SharpBridge.Tests.Utilities
                     It.IsAny<StringBuilder>(),
                     It.IsAny<string>(),
                     It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumn<TrackingParam>>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<int>(),
@@ -847,10 +851,10 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
 
-            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object);
+            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences);
         }
 
-        private static PCTrackingInfoFormatter CreateFormatterWithColorService(IParameterColorService colorService, int windowWidth = 120)
+        private PCTrackingInfoFormatter CreateFormatterWithColorService(IParameterColorService colorService, int windowWidth = 120)
         {
             var mockConsole = new Mock<IConsole>();
             mockConsole.Setup(c => c.WindowWidth).Returns(windowWidth);
@@ -859,7 +863,7 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
 
-            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, colorService, mockShortcutManager.Object);
+            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, colorService, mockShortcutManager.Object, _userPreferences);
         }
     }
 }

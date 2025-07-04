@@ -11,7 +11,7 @@ namespace SharpBridge.Services
     /// </summary>
     public class ExternalEditorService : IExternalEditorService
     {
-        private readonly ApplicationConfig _config;
+        private readonly GeneralSettingsConfig _config;
         private readonly IAppLogger _logger;
         private readonly IProcessLauncher _processLauncher;
         private readonly TransformationEngineConfig _transformationEngineConfig;
@@ -23,7 +23,7 @@ namespace SharpBridge.Services
         /// <param name="logger">Logger for recording operations and errors</param>
         /// <param name="processLauncher">Process launcher for starting external processes</param>
         /// <param name="transformationEngineConfig">Configuration for the transformation engine</param>
-        public ExternalEditorService(ApplicationConfig config, IAppLogger logger, IProcessLauncher processLauncher, TransformationEngineConfig transformationEngineConfig)
+        public ExternalEditorService(GeneralSettingsConfig config, IAppLogger logger, IProcessLauncher processLauncher, TransformationEngineConfig transformationEngineConfig)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

@@ -51,11 +51,16 @@ namespace SharpBridge.Utilities
         /// <param name="console">Console abstraction for getting window dimensions</param>
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter, IShortcutConfigurationManager shortcutManager)
+        /// <param name="userPreferences">User preferences for initial verbosity level</param>
+        public TransformationEngineInfoFormatter(IConsole console, ITableFormatter tableFormatter, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+            var preferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+
+            // Initialize verbosity from user preferences
+            CurrentVerbosity = preferences.TransformationEngineVerbosity;
         }
 
         /// <summary>
@@ -66,7 +71,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
-        public void CycleVerbosity()
+        /// <returns>The new verbosity level after cycling</returns>
+        public VerbosityLevel CycleVerbosity()
         {
             CurrentVerbosity = CurrentVerbosity switch
             {
@@ -75,6 +81,7 @@ namespace SharpBridge.Utilities
                 VerbosityLevel.Detailed => VerbosityLevel.Basic,
                 _ => VerbosityLevel.Normal
             };
+            return CurrentVerbosity;
         }
 
         /// <summary>
@@ -178,14 +185,14 @@ namespace SharpBridge.Utilities
             if (!rulesToShow.Any()) return;
 
             // Define columns for failed rules table
-            var columns = new List<ITableColumn<RuleInfo>>
+            var columns = new List<ITableColumnFormatter<RuleInfo>>
             {
-                new TextColumn<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name),
+                new TextColumnFormatter<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name),
                     minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Function",
+                new TextColumnFormatter<RuleInfo>("Function",
                     rule => TruncateText(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH, "[empty]"),
                     minWidth: FUNCTION_COLUMN_MIN_WIDTH, maxWidth: FUNCTION_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Error",
+                new TextColumnFormatter<RuleInfo>("Error",
                     rule => TruncateText(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH, "[no error]"),
                     minWidth: ERROR_COLUMN_MIN_WIDTH, maxWidth: ERROR_COLUMN_MAX_WIDTH)
             };

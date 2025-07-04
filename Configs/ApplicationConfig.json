@@ -1,11 +1,27 @@
 {
-  "EditorCommand": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"%f\"",
-  "Shortcuts": {
-    "CycleTransformationEngineVerbosity": "Alt+{",
-    "CyclePCClientVerbosity": "Alt+K",
-    "CyclePhoneClientVerbosity": "Alt+C",
-    "ReloadTransformationConfig": "Alt+Q",
-    "OpenConfigInEditor": "Ctrl+Alt+W",
-    "ShowSystemHelp": "F2"
+  "GeneralSettings": {
+    "EditorCommand": "notepad.exe \"%f\"",
+    "Shortcuts": {
+      "CycleTransformationEngineVerbosity": "Alt+T",
+      "CyclePCClientVerbosity": "Alt+P",
+      "CyclePhoneClientVerbosity": "Alt+O",
+      "ReloadTransformationConfig": "Alt+K",
+      "OpenConfigInEditor": "Ctrl+Alt+E",
+      "ShowSystemHelp": "F1"
+    }
+  },
+  "PhoneClient": {
+    "IphoneIpAddress": "192.168.1.178",
+    "IphonePort": 21412,
+    "LocalPort": 28964
+  },
+  "PCClient": {
+    "Host": "localhost",
+    "Port": 8001,
+    "UsePortDiscovery": true
+  },
+  "TransformationEngine": {
+    "ConfigPath": "Configs/vts_transforms.json",
+    "MaxEvaluationIterations": 10
   }
 }
