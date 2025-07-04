@@ -7,7 +7,7 @@ namespace SharpBridge.Utilities
     /// A simple text column that displays string content
     /// </summary>
     /// <typeparam name="T">The type of data being displayed</typeparam>
-    public class TextColumn<T> : ITableColumn<T>
+    public class TextColumnFormatter<T> : ITableColumnFormatter<T>
     {
         /// <summary>
         /// The header text for this column
@@ -39,7 +39,7 @@ namespace SharpBridge.Utilities
         /// <param name="minWidth">Minimum column width</param>
         /// <param name="maxWidth">Maximum column width (null for unlimited)</param>
         /// <param name="padLeft">Whether to pad text to the left (right-align)</param>
-        public TextColumn(string header, Func<T, string> valueSelector, int minWidth = 0, int? maxWidth = null, bool padLeft = false)
+        public TextColumnFormatter(string header, Func<T, string> valueSelector, int minWidth = 0, int? maxWidth = null, bool padLeft = false)
         {
             Header = header ?? throw new ArgumentNullException(nameof(header));
             MinWidth = Math.Max(minWidth, header.Length);

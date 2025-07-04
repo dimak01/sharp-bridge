@@ -26,16 +26,14 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IRecoveryPolicy _recoveryPolicy;
         private readonly IConsole _console;
-        private readonly ConsoleWindowManager _consoleWindowManager;
+        private readonly IConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly ApplicationConfig _applicationConfig;
         private readonly ISystemHelpRenderer _systemHelpRenderer;
-
-        // Preferred console dimensions
-        private const int PREFERRED_CONSOLE_WIDTH = 150;
-        private const int PREFERRED_CONSOLE_HEIGHT = 60;
+        private readonly UserPreferences _userPreferences;
+        private readonly ConfigManager _configManager;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -61,11 +59,14 @@ namespace SharpBridge.Services
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
         /// <param name="console">Console abstraction for window management</param>
+        /// <param name="consoleWindowManager">Console window manager for size management and tracking</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
         /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
         /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
         /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
+        /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
+        /// <param name="configManager">Configuration manager for saving user preferences</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -77,11 +78,14 @@ namespace SharpBridge.Services
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
             IConsole console,
+            IConsoleWindowManager consoleWindowManager,
             IParameterColorService colorService,
             IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
             ApplicationConfig applicationConfig,
-            ISystemHelpRenderer systemHelpRenderer)
+            ISystemHelpRenderer systemHelpRenderer,
+            UserPreferences userPreferences,
+            ConfigManager configManager)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -93,17 +97,17 @@ namespace SharpBridge.Services
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
             _console = console ?? throw new ArgumentNullException(nameof(console));
+            _consoleWindowManager = consoleWindowManager ?? throw new ArgumentNullException(nameof(consoleWindowManager));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _applicationConfig = applicationConfig ?? throw new ArgumentNullException(nameof(applicationConfig));
             _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
-
-            // Initialize console window manager
-            _consoleWindowManager = new ConsoleWindowManager(_console);
+            _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
 
             // Load shortcut configuration
-            _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig);
+            _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
         }
 
         /// <summary>
@@ -115,6 +119,17 @@ namespace SharpBridge.Services
         {
             // Set preferred console window size
             SetupConsoleWindow();
+
+            // Start console size change tracking
+            _consoleWindowManager.StartSizeChangeTracking((width, height) =>
+            {
+                // Update preferences and save asynchronously (fire-and-forget)
+                _ = UpdateUserPreferencesAsync(prefs =>
+                {
+                    prefs.PreferredConsoleWidth = width;
+                    prefs.PreferredConsoleHeight = height;
+                });
+            });
 
             await InitializeTransformationEngine();
 
@@ -146,10 +161,10 @@ namespace SharpBridge.Services
                 var currentSize = _consoleWindowManager.GetCurrentSize();
                 _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
 
-                bool success = _consoleWindowManager.SetTemporarySize(PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
                 if (success)
                 {
-                    _logger.Info("Console window resized to preferred size: {0}x{1}", PREFERRED_CONSOLE_WIDTH, PREFERRED_CONSOLE_HEIGHT);
+                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
                 }
                 else
                 {
@@ -247,6 +262,7 @@ namespace SharpBridge.Services
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     ProcessKeyboardInput();
+                    _consoleWindowManager.ProcessSizeChanges();
                     nextStatusUpdateTime = ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
                     await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
                 }
@@ -349,16 +365,8 @@ namespace SharpBridge.Services
             UnsubscribeFromEvents();
             await CloseVTubeStudioConnection();
 
-            // Restore original console window size
-            try
-            {
-                _consoleWindowManager?.RestoreOriginalSize();
-                _logger.Info("Console window size restored to original dimensions");
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error restoring console window size", ex);
-            }
+            // Console size is now preserved between application runs
+            // No restoration needed
         }
 
         private async Task CloseVTubeStudioConnection()
@@ -615,19 +623,31 @@ namespace SharpBridge.Services
                 ShortcutAction.CycleTransformationEngineVerbosity => () =>
                 {
                     var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
-                    transformationFormatter?.CycleVerbosity();
+                    var newVerbosity = transformationFormatter?.CycleVerbosity();
+                    if (newVerbosity.HasValue)
+                    {
+                        _ = UpdateUserPreferencesAsync(prefs => prefs.TransformationEngineVerbosity = newVerbosity.Value);
+                    }
                 }
                 ,
                 ShortcutAction.CyclePCClientVerbosity => () =>
                 {
                     var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
-                    pcFormatter?.CycleVerbosity();
+                    var newVerbosity = pcFormatter?.CycleVerbosity();
+                    if (newVerbosity.HasValue)
+                    {
+                        _ = UpdateUserPreferencesAsync(prefs => prefs.PCClientVerbosity = newVerbosity.Value);
+                    }
                 }
                 ,
                 ShortcutAction.CyclePhoneClientVerbosity => () =>
                 {
                     var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
-                    phoneFormatter?.CycleVerbosity();
+                    var newVerbosity = phoneFormatter?.CycleVerbosity();
+                    if (newVerbosity.HasValue)
+                    {
+                        _ = UpdateUserPreferencesAsync(prefs => prefs.PhoneClientVerbosity = newVerbosity.Value);
+                    }
                 }
                 ,
                 ShortcutAction.ReloadTransformationConfig => () => _ = ReloadTransformationConfig(),
@@ -643,6 +663,29 @@ namespace SharpBridge.Services
         private static string GetActionDescription(ShortcutAction action)
         {
             return AttributeHelper.GetDescription(action);
+        }
+
+        /// <summary>
+        /// Updates user preferences and saves them asynchronously.
+        /// Fire-and-forget operation with error logging.
+        /// </summary>
+        private async Task UpdateUserPreferencesAsync(Action<UserPreferences> updateAction)
+        {
+            try
+            {
+                // Apply the update directly to the DI instance
+                updateAction(_userPreferences);
+
+                // Save to file (fire-and-forget)
+                await _configManager.SaveUserPreferencesAsync(_userPreferences);
+
+                _logger.Debug("User preferences updated and saved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Failed to save user preferences: {ex.Message}");
+                // Continue execution - preferences saving failure is not critical
+            }
         }
 
         /// <summary>
@@ -746,9 +789,8 @@ namespace SharpBridge.Services
             {
                 if (disposing)
                 {
-                    // Dispose console window manager first to restore window size
-                    _consoleWindowManager?.Dispose();
-
+                    // Console window manager will be disposed by DI container
+                    // which will automatically stop size tracking and restore window size
                     _vtubeStudioPCClient.Dispose();
                     _vtubeStudioPhoneClient.Dispose();
                 }

@@ -74,20 +74,20 @@ namespace SharpBridge.Tests.Utilities
         public void GetPropertyDescription_WithDescriptionAttribute_ReturnsDescription()
         {
             // Act
-            var result = AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), nameof(ApplicationConfig.EditorCommand));
+            var result = AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), nameof(GeneralSettingsConfig.EditorCommand));
 
             // Assert
             result.Should().Be("External Editor Command");
         }
 
         [Fact]
-        public void GetPropertyDescription_WithAllApplicationConfigProperties_ReturnsExpectedDescriptions()
+        public void GetPropertyDescription_WithAllGeneralSettingsConfigProperties_ReturnsExpectedDescriptions()
         {
             // Act & Assert
-            AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), nameof(ApplicationConfig.EditorCommand))
+            AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), nameof(GeneralSettingsConfig.EditorCommand))
                 .Should().Be("External Editor Command");
 
-            AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), nameof(ApplicationConfig.Shortcuts))
+            AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), nameof(GeneralSettingsConfig.Shortcuts))
                 .Should().Be("Keyboard Shortcuts");
         }
 
@@ -105,7 +105,7 @@ namespace SharpBridge.Tests.Utilities
         public void GetPropertyDescription_WithNonExistentProperty_ReturnsPropertyName()
         {
             // Act
-            var result = AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), "NonExistentProperty");
+            var result = AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), "NonExistentProperty");
 
             // Assert
             result.Should().Be("NonExistentProperty");
@@ -125,7 +125,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), null!));
+                AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), null!));
             exception.ParamName.Should().Be("propertyName");
         }
 
@@ -136,7 +136,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() =>
-                AttributeHelper.GetPropertyDescription(typeof(ApplicationConfig), propertyName));
+                AttributeHelper.GetPropertyDescription(typeof(GeneralSettingsConfig), propertyName));
             exception.ParamName.Should().Be("propertyName");
         }
 

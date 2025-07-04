@@ -507,5 +507,82 @@ namespace SharpBridge.Tests.Services
         }
 
         #endregion
+
+        #region VTSParameter Validation Tests
+
+        [Fact]
+        public void VTSParameter_Constructor_WithMinGreaterThanMax_ThrowsArgumentException()
+        {
+            // Act & Assert - Test the VTSParameter validation that min > max throws exception
+            var exception = Assert.Throws<ArgumentException>(() =>
+                new VTSParameter("TestParam", 100, 50, 75)); // min=100, max=50 (invalid)
+
+            exception.Message.Should().Contain("Min");
+            exception.Message.Should().Contain("max");
+        }
+
+        [Fact]
+        public void VTSParameter_Constructor_WithValidParameters_CreatesSuccessfully()
+        {
+            // Act
+            var parameter = new VTSParameter("TestParam", 0, 100, 50);
+
+            // Assert
+            parameter.Name.Should().Be("TestParam");
+            parameter.Min.Should().Be(0);
+            parameter.Max.Should().Be(100);
+            parameter.DefaultValue.Should().Be(50);
+        }
+
+        [Fact]
+        public void VTSParameter_Constructor_WithEqualMinMax_CreatesSuccessfully()
+        {
+            // Act - Edge case where min equals max should be valid
+            var parameter = new VTSParameter("TestParam", 50, 50, 50);
+
+            // Assert
+            parameter.Name.Should().Be("TestParam");
+            parameter.Min.Should().Be(50);
+            parameter.Max.Should().Be(50);
+            parameter.DefaultValue.Should().Be(50);
+        }
+
+        #endregion
+
+        #region RuleInfo Type Property Tests
+
+        [Fact]
+        public void RuleInfo_Constructor_SetsAllProperties()
+        {
+            // Arrange
+            var name = "TestParam";
+            var func = "eyeBlinkLeft * 100";
+            var error = "Validation error";
+            var type = "BlendShape";
+
+            // Act - Test the RuleInfo constructor and properties
+            var ruleInfo = new RuleInfo(name, func, error, type);
+
+            // Assert - This covers all RuleInfo properties including Type
+            ruleInfo.Name.Should().Be(name);
+            ruleInfo.Func.Should().Be(func);
+            ruleInfo.Error.Should().Be(error);
+            ruleInfo.Type.Should().Be(type); // This covers the Type property
+        }
+
+        [Fact]
+        public void RuleInfo_Constructor_WithNullValues_HandlesCorrectly()
+        {
+            // Act - Test null handling in RuleInfo constructor
+            var ruleInfo = new RuleInfo(null!, null!, null!, null!);
+
+            // Assert - Should handle nulls by converting to empty strings
+            ruleInfo.Name.Should().Be(string.Empty);
+            ruleInfo.Func.Should().Be(string.Empty);
+            ruleInfo.Error.Should().Be(string.Empty);
+            ruleInfo.Type.Should().Be(string.Empty);
+        }
+
+        #endregion
     }
 }

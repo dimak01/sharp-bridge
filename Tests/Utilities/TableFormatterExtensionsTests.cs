@@ -23,10 +23,10 @@ namespace Tests.Utilities
             // Arrange
             var builder = new StringBuilder();
             var emptyRows = new List<TestItem>();
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F2")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F2")
             };
 
             // Act
@@ -46,10 +46,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "Item1", Value = 1.5 },
                 new TestItem { Name = "Item2", Value = 2.7 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F2")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F2")
             };
 
             // Act
@@ -76,10 +76,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "Half", Value = 0.5 },
                 new TestItem { Name = "Full", Value = 1.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new ProgressBarColumn<TestItem>("Progress", item => item.Value, tableFormatter: _tableFormatter)
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new ProgressBarColumnFormatter<TestItem>("Progress", item => item.Value, tableFormatter: _tableFormatter)
             };
 
             // Act
@@ -102,10 +102,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "Short", Value = 1.0 },
                 new TestItem { Name = "VeryLongItemName", Value = 2.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name, maxWidth: 10),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F1")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name, maxWidth: 10),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F1")
             };
 
             // Act
@@ -131,10 +131,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "Item4", Value = 4.0 },
                 new TestItem { Name = "Item5", Value = 5.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F0")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F0")
             };
 
             // Act
@@ -163,10 +163,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "C", Value = 3.0 },
                 new TestItem { Name = "D", Value = 4.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F0")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F0")
             };
 
             // Act
@@ -191,10 +191,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "Item1", Value = 1.0 },
                 new TestItem { Name = "Item2", Value = 2.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F2")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F2")
             };
 
             // Act
@@ -212,10 +212,10 @@ namespace Tests.Utilities
         {
             // Arrange
             var builder = new StringBuilder();
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F2")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F2")
             };
 
             // Act
@@ -234,10 +234,10 @@ namespace Tests.Utilities
             {
                 new TestItem { Name = "Test", Value = 42.123 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Upper", item => item.Name.ToUpper()),
-                new NumericColumn<TestItem>("Rounded", item => Math.Round(item.Value), "F0")
+                new TextColumnFormatter<TestItem>("Upper", item => item.Name.ToUpper()),
+                new NumericColumnFormatter<TestItem>("Rounded", item => Math.Round(item.Value), "F0")
             };
 
             // Act
@@ -260,10 +260,10 @@ namespace Tests.Utilities
                 new TestItem { Name = "A", Value = 1.0 },
                 new TestItem { Name = "VeryLongName", Value = 2.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F1")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F1")
             };
 
             // Act
@@ -287,10 +287,10 @@ namespace Tests.Utilities
             {
                 new TestItem { Name = "Test", Value = 1.0 }
             };
-            var columns = new List<ITableColumn<TestItem>>
+            var columns = new List<ITableColumnFormatter<TestItem>>
             {
-                new TextColumn<TestItem>("Name", item => item.Name),
-                new NumericColumn<TestItem>("Value", item => item.Value, "F1")
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F1")
             };
 
             // Act

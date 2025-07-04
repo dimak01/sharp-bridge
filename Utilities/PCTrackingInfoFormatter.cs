@@ -12,22 +12,8 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class PCTrackingInfoFormatter : IFormatter
     {
-        // Counter Keys
-        private const string TOTAL_MESSAGES_KEY = "Total Messages";
-        private const string UPTIME_SECONDS_KEY = "Uptime (seconds)";
-
         // Display Limits
         private const int PARAMETER_DISPLAY_COUNT_NORMAL = 15;
-
-        // Column Width Constants
-        private const int PARAMETER_NAME_COLUMN_MIN_WIDTH = 8;
-        private const int PARAMETER_NAME_COLUMN_MAX_WIDTH = 20;
-        private const int PARAMETER_VALUE_COLUMN_MIN_WIDTH = 8;
-        private const int PARAMETER_VALUE_COLUMN_MAX_WIDTH = 15;
-
-        // Table Formatting Constants
-        private const int TABLE_MINIMUM_ROWS = 1;
-        private const int TABLE_MINIMUM_WIDTH = 20;
 
         // Service Display Constants
         private const string SERVICE_NAME = "PC Client";
@@ -44,12 +30,17 @@ namespace SharpBridge.Utilities
         /// <param name="tableFormatter">Table formatter for generating tables</param>
         /// <param name="colorService">Parameter color service for colored display</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager)
+        /// <param name="userPreferences">User preferences for initial verbosity level</param>
+        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+            var preferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
+
+            // Initialize verbosity from user preferences
+            CurrentVerbosity = preferences.PCClientVerbosity;
         }
 
         /// <summary>
@@ -60,7 +51,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Cycles to the next verbosity level
         /// </summary>
-        public void CycleVerbosity()
+        /// <returns>The new verbosity level after cycling</returns>
+        public VerbosityLevel CycleVerbosity()
         {
             CurrentVerbosity = CurrentVerbosity switch
             {
@@ -69,6 +61,7 @@ namespace SharpBridge.Utilities
                 VerbosityLevel.Detailed => VerbosityLevel.Basic,
                 _ => VerbosityLevel.Normal
             };
+            return CurrentVerbosity;
         }
 
         /// <summary>
@@ -128,13 +121,13 @@ namespace SharpBridge.Utilities
                 .ToList();
 
             // Define columns for the generic table
-            var columns = new List<ITableColumn<TrackingParam>>
+            var columns = new List<ITableColumnFormatter<TrackingParam>>
             {
-                new TextColumn<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
-                new ProgressBarColumn<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
-                new NumericColumn<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
-                new TextColumn<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
-                new TextColumn<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
+                new TextColumnFormatter<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
+                new ProgressBarColumnFormatter<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
+                new NumericColumnFormatter<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
+                new TextColumnFormatter<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
+                new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
             };
 
             // Use the new generic table formatter - let it handle display limits

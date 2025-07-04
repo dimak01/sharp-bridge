@@ -14,7 +14,7 @@ namespace SharpBridge.Tests.Services
     {
         private readonly Mock<IAppLogger> _loggerMock;
         private readonly Mock<IProcessLauncher> _processLauncherMock;
-        private readonly ApplicationConfig _config;
+        private readonly GeneralSettingsConfig _config;
         private readonly TransformationEngineConfig _transformationConfig;
         private readonly ExternalEditorService _service;
         private readonly string _tempConfigPath;
@@ -23,7 +23,7 @@ namespace SharpBridge.Tests.Services
         {
             _loggerMock = new Mock<IAppLogger>();
             _processLauncherMock = new Mock<IProcessLauncher>();
-            _config = new ApplicationConfig
+            _config = new GeneralSettingsConfig
             {
                 EditorCommand = "notepad.exe \"%f\""
             };
@@ -56,7 +56,7 @@ namespace SharpBridge.Tests.Services
         /// <summary>
         /// Helper method to create ExternalEditorService with custom configuration
         /// </summary>
-        private ExternalEditorService CreateService(ApplicationConfig config, TransformationEngineConfig? transformationConfig = null)
+        private ExternalEditorService CreateService(GeneralSettingsConfig config, TransformationEngineConfig? transformationConfig = null)
         {
             return new ExternalEditorService(config, _loggerMock.Object, _processLauncherMock.Object, transformationConfig ?? _transformationConfig);
         }
@@ -64,7 +64,7 @@ namespace SharpBridge.Tests.Services
         /// <summary>
         /// Helper method to create ExternalEditorService with custom process launcher setup
         /// </summary>
-        private ExternalEditorService CreateService(ApplicationConfig config, bool processLauncherReturns, TransformationEngineConfig? transformationConfig = null)
+        private ExternalEditorService CreateService(GeneralSettingsConfig config, bool processLauncherReturns, TransformationEngineConfig? transformationConfig = null)
         {
             var processLauncherMock = new Mock<IProcessLauncher>();
             processLauncherMock.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
@@ -132,7 +132,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithNullEditorCommand_ReturnsFalseAndLogsWarning()
         {
             // Arrange
-            var configWithNullCommand = new ApplicationConfig { EditorCommand = null! };
+            var configWithNullCommand = new GeneralSettingsConfig { EditorCommand = null! };
             var service = CreateService(configWithNullCommand);
 
             // Act
@@ -147,7 +147,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithEmptyEditorCommand_ReturnsFalseAndLogsWarning()
         {
             // Arrange
-            var configWithEmptyCommand = new ApplicationConfig { EditorCommand = string.Empty };
+            var configWithEmptyCommand = new GeneralSettingsConfig { EditorCommand = string.Empty };
             var service = CreateService(configWithEmptyCommand);
 
             // Act
@@ -162,7 +162,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithWhitespaceEditorCommand_ReturnsFalseAndLogsWarning()
         {
             // Arrange
-            var configWithWhitespaceCommand = new ApplicationConfig { EditorCommand = "   " };
+            var configWithWhitespaceCommand = new GeneralSettingsConfig { EditorCommand = "   " };
             var service = CreateService(configWithWhitespaceCommand);
 
             // Act
@@ -253,7 +253,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_ReplacesPlaceholderWithFilePath()
         {
             // Arrange
-            var configWithPlaceholder = new ApplicationConfig { EditorCommand = "editor.exe --file \"%f\" --readonly" };
+            var configWithPlaceholder = new GeneralSettingsConfig { EditorCommand = "editor.exe --file \"%f\" --readonly" };
             var service = CreateService(configWithPlaceholder);
 
             // Act
@@ -270,7 +270,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithMultiplePlaceholders_ReplacesAll()
         {
             // Arrange
-            var configWithMultiplePlaceholders = new ApplicationConfig { EditorCommand = "editor.exe \"%f\" --backup \"%f.bak\"" };
+            var configWithMultiplePlaceholders = new GeneralSettingsConfig { EditorCommand = "editor.exe \"%f\" --backup \"%f.bak\"" };
             var service = CreateService(configWithMultiplePlaceholders);
 
             // Act
@@ -287,7 +287,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithNoPlaceholder_UsesCommandAsIs()
         {
             // Arrange
-            var configWithoutPlaceholder = new ApplicationConfig { EditorCommand = "notepad.exe" };
+            var configWithoutPlaceholder = new GeneralSettingsConfig { EditorCommand = "notepad.exe" };
             var service = CreateService(configWithoutPlaceholder);
 
             // Act
@@ -306,7 +306,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithQuotedExecutable_ParsesCorrectly()
         {
             // Arrange
-            var configWithQuotedExe = new ApplicationConfig { EditorCommand = "\"C:\\Program Files\\Editor\\editor.exe\" \"%f\"" };
+            var configWithQuotedExe = new GeneralSettingsConfig { EditorCommand = "\"C:\\Program Files\\Editor\\editor.exe\" \"%f\"" };
             var service = CreateService(configWithQuotedExe, false); // Expect failure since editor doesn't exist
 
             // Act
@@ -324,7 +324,7 @@ namespace SharpBridge.Tests.Services
         public async Task TryOpenTransformationConfigAsync_WithComplexArguments_ParsesCorrectly()
         {
             // Arrange
-            var configWithComplexArgs = new ApplicationConfig
+            var configWithComplexArgs = new GeneralSettingsConfig
             {
                 EditorCommand = "code.exe --goto \"%f\":1:1 --new-window --wait"
             };
@@ -357,7 +357,7 @@ namespace SharpBridge.Tests.Services
             string editorCommand, string expectedExecutable)
         {
             // Arrange
-            var config = new ApplicationConfig { EditorCommand = editorCommand };
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
             var service = CreateService(config);
 
             // Act

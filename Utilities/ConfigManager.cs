@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using SharpBridge.Models;
 
@@ -13,126 +14,174 @@ namespace SharpBridge.Utilities
     {
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly string _configDirectory;
-        private readonly string _pcConfigFilename;
-        private readonly string _phoneConfigFilename;
         private readonly string _applicationConfigFilename = "ApplicationConfig.json";
-        private readonly string _transformationEngineConfigFilename = "TransformationEngineConfig.json";
+        private readonly string _userPreferencesFilename = "UserPreferences.json";
 
         /// <summary>
-        /// Initializes a new instance of the ConfigManager class with specified paths.
+        /// Initializes a new instance of the ConfigManager class.
         /// </summary>
         /// <param name="configDirectory">The directory where config files are stored</param>
-        /// <param name="pcConfigFilename">Filename for the PC configuration</param>
-        /// <param name="phoneConfigFilename">Filename for the Phone configuration</param>
-        public ConfigManager(string configDirectory, string pcConfigFilename, string phoneConfigFilename)
+        public ConfigManager(string configDirectory)
         {
             _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
-            _pcConfigFilename = pcConfigFilename ?? throw new ArgumentNullException(nameof(pcConfigFilename));
-            _phoneConfigFilename = phoneConfigFilename ?? throw new ArgumentNullException(nameof(phoneConfigFilename));
 
             _jsonOptions = new JsonSerializerOptions
             {
                 WriteIndented = true,
-                PropertyNameCaseInsensitive = true
+                PropertyNameCaseInsensitive = true,
+                Converters = { new JsonStringEnumConverter() }
             };
 
             EnsureConfigDirectoryExists();
         }
 
         /// <summary>
-        /// Gets the path to the PC configuration file.
-        /// </summary>
-        public string PCConfigPath => Path.Combine(_configDirectory, _pcConfigFilename);
-
-        /// <summary>
-        /// Gets the path to the Phone configuration file.
-        /// </summary>
-        public string PhoneConfigPath => Path.Combine(_configDirectory, _phoneConfigFilename);
-
-        /// <summary>
-        /// Gets the path to the Application configuration file.
+        /// Gets the path to the consolidated Application configuration file.
         /// </summary>
         public string ApplicationConfigPath => Path.Combine(_configDirectory, _applicationConfigFilename);
 
         /// <summary>
-        /// Gets the path to the TransformationEngine configuration file.
+        /// Gets the path to the User Preferences file.
         /// </summary>
-        public string TransformationEngineConfigPath => Path.Combine(_configDirectory, _transformationEngineConfigFilename);
+        public string UserPreferencesPath => Path.Combine(_configDirectory, _userPreferencesFilename);
 
         /// <summary>
-        /// Loads the PC configuration from file or creates a default one if it doesn't exist.
+        /// Loads the consolidated application configuration from file or creates a default one if it doesn't exist.
         /// </summary>
-        /// <returns>The PC configuration.</returns>
-        public async Task<VTubeStudioPCConfig> LoadPCConfigAsync()
-        {
-            return await LoadConfigAsync<VTubeStudioPCConfig>(PCConfigPath, () => new VTubeStudioPCConfig());
-        }
-
-        /// <summary>
-        /// Loads the Phone configuration from file or creates a default one if it doesn't exist.
-        /// </summary>
-        /// <returns>The Phone configuration.</returns>
-        public async Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync()
-        {
-            return await LoadConfigAsync<VTubeStudioPhoneClientConfig>(PhoneConfigPath, () => new VTubeStudioPhoneClientConfig());
-        }
-
-        /// <summary>
-        /// Saves the PC configuration to file.
-        /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SavePCConfigAsync(VTubeStudioPCConfig config)
-        {
-            await SaveConfigAsync(PCConfigPath, config);
-        }
-
-        /// <summary>
-        /// Saves the Phone configuration to file.
-        /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SavePhoneConfigAsync(VTubeStudioPhoneClientConfig config)
-        {
-            await SaveConfigAsync(PhoneConfigPath, config);
-        }
-
-        /// <summary>
-        /// Loads the Application configuration from file or creates a default one if it doesn't exist.
-        /// </summary>
-        /// <returns>The Application configuration.</returns>
+        /// <returns>The consolidated application configuration.</returns>
         public async Task<ApplicationConfig> LoadApplicationConfigAsync()
         {
             return await LoadConfigAsync<ApplicationConfig>(ApplicationConfigPath, () => new ApplicationConfig());
         }
 
         /// <summary>
-        /// Saves the Application configuration to file.
+        /// Loads the PC configuration from the consolidated config.
         /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SaveApplicationConfigAsync(ApplicationConfig config)
+        /// <returns>The PC configuration.</returns>
+        public async Task<VTubeStudioPCConfig> LoadPCConfigAsync()
         {
-            await SaveConfigAsync(ApplicationConfigPath, config);
+            var appConfig = await LoadApplicationConfigAsync();
+            return appConfig.PCClient;
         }
 
         /// <summary>
-        /// Loads the TransformationEngine configuration from file or creates a default one if it doesn't exist.
+        /// Loads the Phone configuration from the consolidated config.
+        /// </summary>
+        /// <returns>The Phone configuration.</returns>
+        public async Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync()
+        {
+            var appConfig = await LoadApplicationConfigAsync();
+            return appConfig.PhoneClient;
+        }
+
+        /// <summary>
+        /// Loads the GeneralSettings configuration from the consolidated config.
+        /// </summary>
+        /// <returns>The GeneralSettings configuration.</returns>
+        public async Task<GeneralSettingsConfig> LoadGeneralSettingsConfigAsync()
+        {
+            var appConfig = await LoadApplicationConfigAsync();
+            return appConfig.GeneralSettings;
+        }
+
+        /// <summary>
+        /// Loads the TransformationEngine configuration from the consolidated config.
         /// </summary>
         /// <returns>The TransformationEngine configuration.</returns>
         public async Task<TransformationEngineConfig> LoadTransformationConfigAsync()
         {
-            return await LoadConfigAsync<TransformationEngineConfig>(TransformationEngineConfigPath, () => new TransformationEngineConfig());
+            var appConfig = await LoadApplicationConfigAsync();
+            return appConfig.TransformationEngine;
         }
 
         /// <summary>
-        /// Saves the TransformationEngine configuration to file.
+        /// Loads user preferences from file or creates default ones if the file doesn't exist.
+        /// </summary>
+        /// <returns>The user preferences.</returns>
+        public async Task<UserPreferences> LoadUserPreferencesAsync()
+        {
+            return await LoadConfigAsync<UserPreferences>(UserPreferencesPath, () => new UserPreferences());
+        }
+
+        /// <summary>
+        /// Saves user preferences to file.
+        /// </summary>
+        /// <param name="preferences">The preferences to save.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        public async Task SaveUserPreferencesAsync(UserPreferences preferences)
+        {
+            await SaveConfigAsync(UserPreferencesPath, preferences);
+        }
+
+        /// <summary>
+        /// Resets user preferences to defaults by deleting the file and recreating it.
+        /// </summary>
+        /// <returns>A task representing the asynchronous reset operation.</returns>
+        public async Task ResetUserPreferencesAsync()
+        {
+            if (File.Exists(UserPreferencesPath))
+            {
+                File.Delete(UserPreferencesPath);
+            }
+
+            var defaultPreferences = new UserPreferences();
+            await SaveUserPreferencesAsync(defaultPreferences);
+        }
+
+        /// <summary>
+        /// Saves the PC configuration to file (for API symmetry - unused in production).
+        /// </summary>
+        /// <param name="config">The configuration to save.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        public async Task SavePCConfigAsync(VTubeStudioPCConfig config)
+        {
+            // For API symmetry only - not used in production
+            // In the future, this could update the consolidated config
+            var appConfig = await LoadApplicationConfigAsync();
+            appConfig.PCClient = config;
+            await SaveConfigAsync(ApplicationConfigPath, appConfig);
+        }
+
+        /// <summary>
+        /// Saves the Phone configuration to file (for API symmetry - unused in production).
+        /// </summary>
+        /// <param name="config">The configuration to save.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        public async Task SavePhoneConfigAsync(VTubeStudioPhoneClientConfig config)
+        {
+            // For API symmetry only - not used in production
+            // In the future, this could update the consolidated config
+            var appConfig = await LoadApplicationConfigAsync();
+            appConfig.PhoneClient = config;
+            await SaveConfigAsync(ApplicationConfigPath, appConfig);
+        }
+
+        /// <summary>
+        /// Saves the GeneralSettings configuration to file (for API symmetry - unused in production).
+        /// </summary>
+        /// <param name="config">The configuration to save.</param>
+        /// <returns>A task representing the asynchronous save operation.</returns>
+        public async Task SaveGeneralSettingsConfigAsync(GeneralSettingsConfig config)
+        {
+            // For API symmetry only - not used in production
+            // In the future, this could update the consolidated config
+            var appConfig = await LoadApplicationConfigAsync();
+            appConfig.GeneralSettings = config;
+            await SaveConfigAsync(ApplicationConfigPath, appConfig);
+        }
+
+        /// <summary>
+        /// Saves the TransformationEngine configuration to file (for API symmetry - unused in production).
         /// </summary>
         /// <param name="config">The configuration to save.</param>
         /// <returns>A task representing the asynchronous save operation.</returns>
         public async Task SaveTransformationConfigAsync(TransformationEngineConfig config)
         {
-            await SaveConfigAsync(TransformationEngineConfigPath, config);
+            // For API symmetry only - not used in production
+            // In the future, this could update the consolidated config
+            var appConfig = await LoadApplicationConfigAsync();
+            appConfig.TransformationEngine = config;
+            await SaveConfigAsync(ApplicationConfigPath, appConfig);
         }
 
         private async Task<T> LoadConfigAsync<T>(string path, Func<T> defaultConfigFactory) where T : class
