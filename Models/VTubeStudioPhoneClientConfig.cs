@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace SharpBridge.Models;
@@ -14,16 +15,19 @@ public class VTubeStudioPhoneClientConfig
     /// <summary>
     /// IP address of the iPhone
     /// </summary>
+    [Description("iPhone IP Address")]
     public string IphoneIpAddress { get; set; } = "192.168.1.178";
 
     /// <summary>
     /// Port on the iPhone where VTube Studio is broadcasting
     /// </summary>
+    [Description("iPhone Port")]
     public int IphonePort { get; set; } = 21412;
 
     /// <summary>
     /// Local port to receive tracking data on
     /// </summary>
+    [Description("Local Port")]
     public int LocalPort { get; set; } = 28964;
 
     // ========================================

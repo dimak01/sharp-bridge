@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace SharpBridge.Models
@@ -14,11 +15,13 @@ namespace SharpBridge.Models
         /// <summary>
         /// Path to the transformation rules JSON file
         /// </summary>
+        [Description("Config File Path")]
         public string ConfigPath { get; set; } = "Configs/vts_transforms.json";
 
         /// <summary>
         /// Maximum number of evaluation iterations for parameter dependencies
         /// </summary>
+        [Description("Max Evaluation Iterations")]
         public int MaxEvaluationIterations { get; set; } = 10;
         // ========================================
         // Internal Settings (Not User-Configurable) - add these properties with[JsonIgnore] attribute

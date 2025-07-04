@@ -38,26 +38,25 @@ namespace SharpBridge.Utilities
         {
             var builder = new StringBuilder();
 
+            var systemHelpScreenWidth = Math.Min(consoleWidth, 80);
             // Create separator line based on console width
-            var separatorLine = new string('═', Math.Max(consoleWidth, 80));
+            var separatorLine = new string('═', systemHelpScreenWidth);
 
             // Header
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F2)", consoleWidth));
+            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F2)", systemHelpScreenWidth));
             builder.AppendLine(separatorLine);
             builder.AppendLine();
 
             // Application Configuration sections
             builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
-            builder.AppendLine();
 
-            // Keyboard Shortcuts section
-            builder.AppendLine(RenderShortcutsTable(consoleWidth));
+            builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
 
             // Footer
             builder.AppendLine();
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("Press any key to return to main display", consoleWidth));
+            builder.AppendLine(CenterText("Press any key to return to main display", systemHelpScreenWidth));
             builder.AppendLine(separatorLine);
 
             return builder.ToString();
@@ -72,9 +71,6 @@ namespace SharpBridge.Utilities
         {
             var builder = new StringBuilder();
 
-            builder.AppendLine("APPLICATION CONFIGURATION:");
-            builder.AppendLine("═════════════════════════");
-
             if (applicationConfig == null)
             {
                 builder.AppendLine("  No configuration loaded");
@@ -83,26 +79,22 @@ namespace SharpBridge.Utilities
 
             // General Settings Section
             builder.AppendLine();
-            builder.AppendLine("GENERAL SETTINGS:");
-            builder.AppendLine("─────────────────");
+            builder.AppendLine(CreateSectionHeader("GENERAL SETTINGS"));
             RenderConfigSection(builder, applicationConfig.GeneralSettings, skipProperties: new[] { nameof(GeneralSettingsConfig.Shortcuts) });
 
             // Phone Client Section  
             builder.AppendLine();
-            builder.AppendLine("PHONE CLIENT:");
-            builder.AppendLine("─────────────");
+            builder.AppendLine(CreateSectionHeader("PHONE CLIENT"));
             RenderConfigSection(builder, applicationConfig.PhoneClient);
 
             // PC Client Section
             builder.AppendLine();
-            builder.AppendLine("PC CLIENT:");
-            builder.AppendLine("──────────");
+            builder.AppendLine(CreateSectionHeader("PC CLIENT"));
             RenderConfigSection(builder, applicationConfig.PCClient);
 
             // Transformation Engine Section
             builder.AppendLine();
-            builder.AppendLine("TRANSFORMATION ENGINE:");
-            builder.AppendLine("──────────────────────");
+            builder.AppendLine(CreateSectionHeader("TRANSFORMATION ENGINE"));
             RenderConfigSection(builder, applicationConfig.TransformationEngine);
 
             return builder.ToString();
@@ -138,27 +130,13 @@ namespace SharpBridge.Utilities
 
                 var displayName = AttributeHelper.GetPropertyDescription(configSection.GetType(), property.Name);
                 var value = property.GetValue(configSection);
-                var displayValue = FormatPropertyValue(value);
+                var displayValue = ConsoleColors.ColorizeBasicType(value);
 
-                builder.AppendLine($"  {displayName}: {displayValue}");
+                builder.AppendLine($"  {ConsoleColors.Colorize(displayName, ConsoleColors.ConfigPropertyName)}: {displayValue}");
             }
         }
 
-        /// <summary>
-        /// Formats property values for display
-        /// </summary>
-        /// <param name="value">Property value to format</param>
-        /// <returns>Formatted display string</returns>
-        private static string FormatPropertyValue(object? value)
-        {
-            return value switch
-            {
-                null => "Not set",
-                string str when string.IsNullOrWhiteSpace(str) => "Not set",
-                bool b => b ? "Yes" : "No",
-                _ => value.ToString() ?? "Not set"
-            };
-        }
+
 
         /// <summary>
         /// Renders just the keyboard shortcuts section with status information
@@ -176,15 +154,15 @@ namespace SharpBridge.Utilities
             {
                 var row = new ShortcutDisplayRow
                 {
-                    Action = GetActionDisplayName(action),
-                    Shortcut = _shortcutConfigurationManager.GetDisplayString(action),
+                    Action = ConsoleColors.Colorize(AttributeHelper.GetDescription(action), ConsoleColors.ShortcutActionColor),
+                    Shortcut = ConsoleColors.Colorize(_shortcutConfigurationManager.GetDisplayString(action), ConsoleColors.ShortcutKeyColor),
                     Status = GetStatusDisplay(action)
                 };
                 shortcutRows.Add(row);
             }
 
             // Sort by action name for consistent display
-            shortcutRows = shortcutRows.OrderBy(r => r.Action).ToList();
+            shortcutRows = shortcutRows.OrderBy(r => ConsoleColors.RemoveAnsiEscapeCodes(r.Action)).ToList();
 
             // Create table columns
             var columns = new List<ITableColumnFormatter<ShortcutDisplayRow>>
@@ -194,10 +172,13 @@ namespace SharpBridge.Utilities
                 new TextColumnFormatter<ShortcutDisplayRow>("Status", r => r.Status, 15, 40)
             };
 
-            // Use TableFormatter to create the shortcuts table
+            // Add the header with underline manually to match other sections
+            builder.AppendLine(CreateSectionHeader("KEYBOARD SHORTCUTS"));
+
+            // Use TableFormatter to create the shortcuts table (without title since we added it manually)
             _tableFormatter.AppendTable(
                 builder,
-                "KEYBOARD SHORTCUTS:",
+                "", // Empty title since we added it manually above
                 shortcutRows,
                 columns,
                 targetColumnCount: 1,
@@ -208,21 +189,6 @@ namespace SharpBridge.Utilities
             return builder.ToString();
         }
 
-        /// <summary>
-        /// Renders the shortcuts table section of the help display
-        /// </summary>
-        private string RenderShortcutsTable(int consoleWidth)
-        {
-            return RenderKeyboardShortcuts(consoleWidth);
-        }
-
-        /// <summary>
-        /// Gets a human-readable display name for a shortcut action using Description attributes
-        /// </summary>
-        private static string GetActionDisplayName(ShortcutAction action)
-        {
-            return AttributeHelper.GetDescription(action);
-        }
 
         /// <summary>
         /// Centers text within the specified width
@@ -240,6 +206,19 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
+        /// Creates a section header with consistent formatting
+        /// </summary>
+        /// <param name="title">Section title</param>
+        /// <param name="maxWidth">Maximum width for the header (default 60)</param>
+        /// <returns>Formatted section header</returns>
+        private static string CreateSectionHeader(string title, int maxWidth = 60)
+        {
+            var headerWidth = Math.Min(title.Length + 2, maxWidth);
+            var underline = new string('─', headerWidth);
+            return $"{title}:\n{underline}";
+        }
+
+        /// <summary>
         /// Gets the status display text for a shortcut using the new status system
         /// </summary>
         private string GetStatusDisplay(ShortcutAction action)
@@ -248,10 +227,10 @@ namespace SharpBridge.Utilities
 
             return status switch
             {
-                ShortcutStatus.Active => "✓ Active",
-                ShortcutStatus.Invalid => "✗ Invalid Format",
-                ShortcutStatus.ExplicitlyDisabled => "✗ Disabled",
-                _ => "✗ Unknown"
+                ShortcutStatus.Active => ConsoleColors.Colorize("✓ Active", ConsoleColors.Success),
+                ShortcutStatus.Invalid => ConsoleColors.Colorize("✗ Invalid Format", ConsoleColors.Error),
+                ShortcutStatus.ExplicitlyDisabled => ConsoleColors.Colorize("✗ Disabled", ConsoleColors.Warning),
+                _ => ConsoleColors.Colorize("✗ Unknown", ConsoleColors.Error)
             };
         }
 

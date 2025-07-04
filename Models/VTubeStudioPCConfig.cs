@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace SharpBridge.Models
@@ -15,16 +16,19 @@ namespace SharpBridge.Models
         /// <summary>
         /// Host address of VTube Studio, defaults to localhost
         /// </summary>
+        [Description("Host Address")]
         public string Host { get; set; } = "localhost";
 
         /// <summary>
         /// Port number of VTube Studio API, defaults to 8001
         /// </summary>
+        [Description("Port Number")]
         public int Port { get; set; } = 8001;
 
         /// <summary>
         /// Use port discovery if the specified port doesn't connect
         /// </summary>
+        [Description("Use Port Discovery")]
         public bool UsePortDiscovery { get; set; } = true;
 
         // ========================================
