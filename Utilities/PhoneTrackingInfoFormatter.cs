@@ -233,13 +233,13 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Creates columns for the blend shapes table
         /// </summary>
-        private List<ITableColumn<BlendShape>> CreateBlendShapeColumns()
+        private List<ITableColumnFormatter<BlendShape>> CreateBlendShapeColumns()
         {
-            return new List<ITableColumn<BlendShape>>
+            return new List<ITableColumnFormatter<BlendShape>>
             {
-                new TextColumn<BlendShape>("Expression", shape => _colorService.GetColoredBlendShapeName(shape.Key), minWidth: 10, maxWidth: 20),
-                new ProgressBarColumn<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
-                new NumericColumn<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
+                new TextColumnFormatter<BlendShape>("Expression", shape => _colorService.GetColoredBlendShapeName(shape.Key), minWidth: 10, maxWidth: 20),
+                new ProgressBarColumnFormatter<BlendShape>("", shape => shape.Value, minWidth: 6, maxWidth: 15, _tableFormatter),
+                new NumericColumnFormatter<BlendShape>("Value", shape => shape.Value, "F2", minWidth: 6, padLeft: true)
             };
         }
 

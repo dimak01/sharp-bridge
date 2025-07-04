@@ -185,14 +185,14 @@ namespace SharpBridge.Utilities
             if (!rulesToShow.Any()) return;
 
             // Define columns for failed rules table
-            var columns = new List<ITableColumn<RuleInfo>>
+            var columns = new List<ITableColumnFormatter<RuleInfo>>
             {
-                new TextColumn<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name),
+                new TextColumnFormatter<RuleInfo>("Rule Name", rule => ConsoleColors.ColorizeRuleErrorName(rule.Name),
                     minWidth: RULE_NAME_COLUMN_MIN_WIDTH, maxWidth: RULE_NAME_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Function",
+                new TextColumnFormatter<RuleInfo>("Function",
                     rule => TruncateText(rule.Func, DEFAULT_TEXT_TRUNCATION_LENGTH, "[empty]"),
                     minWidth: FUNCTION_COLUMN_MIN_WIDTH, maxWidth: FUNCTION_COLUMN_MAX_WIDTH),
-                new TextColumn<RuleInfo>("Error",
+                new TextColumnFormatter<RuleInfo>("Error",
                     rule => TruncateText(rule.Error, DEFAULT_TEXT_TRUNCATION_LENGTH, "[no error]"),
                     minWidth: ERROR_COLUMN_MIN_WIDTH, maxWidth: ERROR_COLUMN_MAX_WIDTH)
             };

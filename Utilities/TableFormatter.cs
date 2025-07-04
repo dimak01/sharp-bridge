@@ -24,7 +24,7 @@ namespace SharpBridge.Utilities
         /// <param name="singleColumnBarWidth">Progress bar width for single-column mode (default 20)</param>
         /// <param name="singleColumnMaxItems">Maximum items to show in single-column mode (default: show all)</param>
         public void AppendTable<T>(StringBuilder builder, string title,
-            IEnumerable<T> rows, IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth,
+            IEnumerable<T> rows, IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth,
             int singleColumnBarWidth = 20, int? singleColumnMaxItems = null)
         {
             // Add title first, regardless of whether we have rows
@@ -72,7 +72,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends a single-column table using strongly-typed column definitions
         /// </summary>
-        private static void AppendSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumn<T>> columns, int barWidth)
+        private static void AppendSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumnFormatter<T>> columns, int barWidth)
         {
             if (!rows.Any() || !columns.Any()) return;
 
@@ -116,7 +116,7 @@ namespace SharpBridge.Utilities
         /// Attempts to append a multi-column table using generic column definitions
         /// </summary>
         private static bool TryAppendMultiColumnTable<T>(StringBuilder builder, List<T> rows,
-            IList<ITableColumn<T>> columns, int targetColumnCount, int consoleWidth)
+            IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth)
         {
             if (!rows.Any() || !columns.Any()) return false;
 
@@ -189,7 +189,7 @@ namespace SharpBridge.Utilities
         /// Appends the header rows for generic multi-column layout
         /// </summary>
         private static void AppendMultiColumnHeaders<T>(StringBuilder builder, int targetColumnCount,
-            IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
+            IList<ITableColumnFormatter<T>> columns, int[] columnWidths, int columnPadding)
         {
             // Header row using column's FormatHeader method
             var headerBuilder = new StringBuilder();
@@ -220,7 +220,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         private static void AppendMultiColumnDataRow<T>(StringBuilder builder,
             List<List<T>> tableColumnData, int rowIndex, int targetColumnCount,
-            IList<ITableColumn<T>> columns, int[] columnWidths, int columnPadding)
+            IList<ITableColumnFormatter<T>> columns, int[] columnWidths, int columnPadding)
         {
             var lineBuilder = new StringBuilder();
 

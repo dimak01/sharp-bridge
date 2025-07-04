@@ -187,11 +187,11 @@ namespace SharpBridge.Utilities
             shortcutRows = shortcutRows.OrderBy(r => r.Action).ToList();
 
             // Create table columns
-            var columns = new List<ITableColumn<ShortcutDisplayRow>>
+            var columns = new List<ITableColumnFormatter<ShortcutDisplayRow>>
             {
-                new TextColumn<ShortcutDisplayRow>("Action", r => r.Action, 30, 50),
-                new TextColumn<ShortcutDisplayRow>("Shortcut", r => r.Shortcut, 12, 20),
-                new TextColumn<ShortcutDisplayRow>("Status", r => r.Status, 15, 40)
+                new TextColumnFormatter<ShortcutDisplayRow>("Action", r => r.Action, 30, 50),
+                new TextColumnFormatter<ShortcutDisplayRow>("Shortcut", r => r.Shortcut, 12, 20),
+                new TextColumnFormatter<ShortcutDisplayRow>("Status", r => r.Status, 15, 40)
             };
 
             // Use TableFormatter to create the shortcuts table
