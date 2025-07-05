@@ -21,7 +21,8 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private readonly VTubeStudioPhoneClientConfig _config;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly IAppLogger _logger;
-    
+    private readonly IFileChangeWatcher? _appConfigWatcher;
+
     private long _totalFramesReceived = 0;
     private long _failedFrames = 0;
     private DateTime _startTime;
@@ -29,39 +30,48 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private PhoneClientStatus _status = PhoneClientStatus.Initializing;
     private string _lastInitializationError = string.Empty;
     private DateTime _lastSuccessfulOperation;
-    
+    private bool _configChanged = false;
+
     // Health check timeout - consider unhealthy if no successful operation in this many seconds
     private const int HEALTH_TIMEOUT_SECONDS = 3;
-    
+
     /// <summary>
     /// Event raised when tracking data is received from the iPhone
     /// </summary>
     public event EventHandler<PhoneTrackingInfo> TrackingDataReceived = delegate { };
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="VTubeStudioPhoneClient"/> class.
     /// </summary>
     /// <param name="udpClient">The UDP client to use.</param>
     /// <param name="config">The configuration for the phone client.</param>
     /// <param name="logger">The logger to use.</param>
-    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, VTubeStudioPhoneClientConfig config, IAppLogger logger)
+    /// <param name="appConfigWatcher">Optional file watcher for application config changes.</param>
+    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, VTubeStudioPhoneClientConfig config, IAppLogger logger, IFileChangeWatcher? appConfigWatcher = null)
     {
         _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+        _appConfigWatcher = appConfigWatcher;
+
         if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
         {
             throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(config));
         }
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         };
-        
+
         _startTime = DateTime.UtcNow;
         _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress, _config.IphonePort);
+
+        // Subscribe to application config changes if watcher is provided
+        if (_appConfigWatcher != null)
+        {
+            _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+        }
     }
 
     /// <summary>
@@ -70,6 +80,13 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     public void Dispose()
     {
         _logger.Debug("Disposing VTubeStudioPhoneClient");
+
+        // Unsubscribe from file watcher events
+        if (_appConfigWatcher != null)
+        {
+            _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
+        }
+
         _udpClient.Dispose();
     }
 
@@ -87,10 +104,10 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         {
             _lastInitializationError = string.Empty;
             _status = PhoneClientStatus.Initializing;
-            
+
             // Send initial tracking request
             await SendTrackingRequestAsync();
-            
+
             // Wait for first response
             var received = await ReceiveResponseAsync(cancellationToken);
             if (!received)
@@ -99,7 +116,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
                 _status = PhoneClientStatus.InitializationFailed;
                 return false;
             }
-            
+
             _lastSuccessfulOperation = DateTime.UtcNow;
             _status = PhoneClientStatus.Connected;
             return true;
@@ -124,7 +141,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             { "Failed Frames", _failedFrames },
             { "Uptime (seconds)", (long)(DateTime.UtcNow - _startTime).TotalSeconds }
         };
-        
+
         if (_lastTrackingData != null && _totalFramesReceived > 0)
         {
             var timeSinceStart = (DateTime.UtcNow - _startTime).TotalSeconds;
@@ -134,16 +151,17 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             }
         }
 
-        var isHealthy = _totalFramesReceived > 0 && 
-                        _lastSuccessfulOperation != default(DateTime) &&
-                        (DateTime.UtcNow - _lastSuccessfulOperation).TotalSeconds < HEALTH_TIMEOUT_SECONDS;
-        
+        var isHealthy = _totalFramesReceived > 0 &&
+                _lastSuccessfulOperation != default(DateTime) &&
+                (DateTime.UtcNow - _lastSuccessfulOperation).TotalSeconds < HEALTH_TIMEOUT_SECONDS &&
+                !_configChanged;
+
         // Only provide current entity if the client is in a healthy/operational state
-        var currentEntity = isHealthy ? _lastTrackingData 
+        var currentEntity = isHealthy ? _lastTrackingData
                            : null;
-        
+
         return new ServiceStats(
-            "Phone Client", 
+            "Phone Client",
             _status.ToString(),
             currentEntity,
             isHealthy: isHealthy,
@@ -222,7 +240,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             // Use a separate cancellation token with timeout to prevent blocking indefinitely
             using var receiveTimeoutCts = new CancellationTokenSource(_config.ReceiveTimeoutMs);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, receiveTimeoutCts.Token);
-            
+
             var result = await _udpClient.ReceiveAsync(linkedCts.Token);
             ProcessReceivedData(result.Buffer);
             return true;
@@ -240,4 +258,26 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
             return false;
         }
     }
-} 
+
+    /// <summary>
+    /// Handles application configuration changes
+    /// </summary>
+    /// <param name="sender">The event sender</param>
+    /// <param name="e">The file change event arguments</param>
+    private void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+    {
+        try
+        {
+            _logger.Debug("Application config changed, checking if phone client config was affected");
+
+            // TODO: Load new config and compare phone client section
+            // For now, mark as changed to trigger recovery
+            _configChanged = true;
+            _logger.Info("Phone client configuration changed, marking for recovery");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error handling application config change: {0}", ex.Message);
+        }
+    }
+}

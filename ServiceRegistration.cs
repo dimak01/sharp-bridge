@@ -86,27 +86,50 @@ namespace SharpBridge
             services.AddTransient<IVTubeStudioPhoneClient>(provider =>
             {
                 var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
+                var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
                 return new VTubeStudioPhoneClient(
                     factory.CreateForPhoneClient(),
                     provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
-                    provider.GetRequiredService<IAppLogger>()
+                    provider.GetRequiredService<IAppLogger>(),
+                    appConfigWatcher
                 );
             });
 
             // Register file system watcher factory
             services.AddSingleton<IFileSystemWatcherFactory, FileSystemWatcherFactory>();
 
-            // Register file change watcher
-            services.AddSingleton<IFileChangeWatcher, SharpBridge.Utilities.FileSystemChangeWatcher>();
+            // Register file change watchers - multiple instances for different config files
+            services.AddKeyedSingleton<IFileChangeWatcher>("TransformationRules", (provider, key) =>
+                new SharpBridge.Utilities.FileSystemChangeWatcher(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IFileSystemWatcherFactory>()));
+
+            services.AddKeyedSingleton<IFileChangeWatcher>("ApplicationConfig", (provider, key) =>
+                new SharpBridge.Utilities.FileSystemChangeWatcher(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IFileSystemWatcherFactory>()));
 
             // Register transformation rules repository
-            services.AddSingleton<ITransformationRulesRepository, SharpBridge.Repositories.FileBasedTransformationRulesRepository>();
+            services.AddSingleton<ITransformationRulesRepository>(provider =>
+                new SharpBridge.Repositories.FileBasedTransformationRulesRepository(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetKeyedService<IFileChangeWatcher>("TransformationRules")!));
 
 
             services.AddTransient<ITransformationEngine, TransformationEngine>();
 
             // Register VTubeStudioPCClient as a singleton
-            services.AddSingleton<VTubeStudioPCClient>();
+            services.AddSingleton<VTubeStudioPCClient>(provider =>
+            {
+                var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
+                return new VTubeStudioPCClient(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<VTubeStudioPCConfig>(),
+                    provider.GetRequiredService<IWebSocketWrapper>(),
+                    provider.GetRequiredService<IPortDiscoveryService>(),
+                    appConfigWatcher
+                );
+            });
             services.AddSingleton<IVTubeStudioPCClient>(provider => provider.GetRequiredService<VTubeStudioPCClient>());
 
             // Register VTubeStudioPCParameterManager
