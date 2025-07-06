@@ -18,7 +18,7 @@ namespace SharpBridge.Services
     public class VTubeStudioPCClient : IVTubeStudioPCClient, IAuthTokenProvider, IServiceStatsProvider, IInitializable
     {
         private readonly IAppLogger _logger;
-        private readonly VTubeStudioPCConfig _config;
+        private readonly IConfigManager _configManager;
         private readonly IWebSocketWrapper _webSocket;
         private readonly IPortDiscoveryService _portDiscoveryService;
         private readonly IFileChangeWatcher? _appConfigWatcher;
@@ -33,6 +33,7 @@ namespace SharpBridge.Services
         private DateTime _lastSuccessfulOperation;
         private PCClientStatus _status = PCClientStatus.Initializing;
         private bool _configChanged = false;
+        private VTubeStudioPCConfig _config;
 
         /// <summary>
         /// Gets the current state of the WebSocket connection
@@ -55,26 +56,32 @@ namespace SharpBridge.Services
         public string LastInitializationError => _lastInitializationError;
 
         /// <summary>
+        /// Gets whether the configuration has changed (for testing purposes)
+        /// </summary>
+        public bool ConfigChanged => _configChanged;
+
+        /// <summary>
         /// Creates a new instance of the VTubeStudioPCClient
         /// </summary>
         /// <param name="logger">Application logger</param>
-        /// <param name="config">VTube Studio PC configuration</param>
+        /// <param name="configManager">Configuration manager for loading configs</param>
         /// <param name="webSocket">WebSocket wrapper for communication</param>
         /// <param name="portDiscoveryService">Service for discovering VTube Studio's port</param>
         /// <param name="appConfigWatcher">Optional file watcher for application config changes</param>
         public VTubeStudioPCClient(
             IAppLogger logger,
-            VTubeStudioPCConfig config,
+            IConfigManager configManager,
             IWebSocketWrapper webSocket,
             IPortDiscoveryService portDiscoveryService,
             IFileChangeWatcher? appConfigWatcher = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
             _appConfigWatcher = appConfigWatcher;
             _startTime = DateTime.Now;
+            _config = _configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
 
             // Subscribe to application config changes if watcher is provided
             if (_appConfigWatcher != null)
@@ -297,6 +304,7 @@ namespace SharpBridge.Services
                 _lastInitializationError = string.Empty;
                 _lastSuccessfulOperation = DateTime.UtcNow;
                 _status = PCClientStatus.Connected;
+                _configChanged = false;
                 return true;
             }
             catch (Exception ex)
@@ -496,16 +504,23 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="sender">The event sender</param>
         /// <param name="e">The file change event arguments</param>
-        private void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+        private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
         {
             try
             {
                 _logger.Debug("Application config changed, checking if PC client config was affected");
 
-                // TODO: Load new config and compare PC client section
-                // For now, mark as changed to trigger recovery
-                _configChanged = true;
-                _logger.Info("PC client configuration changed, marking for recovery");
+                // Load new config and compare PC client section
+                var newConfig = await _configManager.LoadApplicationConfigAsync();
+                if (!ConfigComparers.PCClientConfigsEqual(_config, newConfig.PCClient))
+                {
+                    _logger.Info("PC client configuration changed, updating internal config");
+                    _config = newConfig.PCClient;
+                    _configChanged = true;
+
+                    _logger.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",
+                        _config.Host, _config.Port, _config.PluginName);
+                }
             }
             catch (Exception ex)
             {

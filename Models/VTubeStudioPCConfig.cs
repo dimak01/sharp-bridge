@@ -57,7 +57,7 @@ namespace SharpBridge.Models
         /// Connection timeout in milliseconds, defaults to 1000 (1 second)
         /// </summary>
         [JsonIgnore]
-        public int ConnectionTimeoutMs { get; set; } = 1000;
+        public int ConnectionTimeoutMs { get; set; } = 5000;
 
         /// <summary>
         /// Reconnection delay in milliseconds, defaults to 2000 (2 seconds)

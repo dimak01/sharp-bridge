@@ -38,13 +38,13 @@ public class VTubeStudioPhoneClientConfig
     /// How often to request tracking data (in seconds)
     /// </summary>
     [JsonIgnore]
-    public double RequestIntervalSeconds { get; set; } = 4.9;
+    public double RequestIntervalSeconds { get; set; } = 3;
 
     /// <summary>
     /// How long to ask the iPhone to send data for (in seconds)
     /// </summary>
     [JsonIgnore]
-    public int SendForSeconds { get; set; } = 5;
+    public int SendForSeconds { get; set; } = 4;
 
     /// <summary>
     /// Timeout for receiving data (in milliseconds)

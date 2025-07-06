@@ -18,17 +18,38 @@ namespace SharpBridge.Tests.Services
 {
     public class VTubeStudioPhoneClientTests
     {
+        private readonly Mock<IConfigManager> _mockConfigManager;
+        private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
+
+        public VTubeStudioPhoneClientTests()
+        {
+            _mockConfigManager = new Mock<IConfigManager>();
+            _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
+        }
+
+        private VTubeStudioPhoneClient CreateClient(IUdpClientWrapper udpClient, IAppLogger logger, VTubeStudioPhoneClientConfig? config = null)
+        {
+
+            config ??= new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "127.0.0.1"
+            };
+
+            // Setup the config manager to return the provided config
+            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(config);
+            return new VTubeStudioPhoneClient(udpClient, _mockConfigManager.Object, logger, _mockAppConfigWatcher.Object);
+        }
+
         // Test that we can create the phone client
         [Fact]
         public void Constructor_InitializesCorrectly()
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig();
             var mockLogger = new Mock<IAppLogger>();
 
             // Act
-            var receiver = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var receiver = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Assert
             receiver.Should().NotBeNull();
@@ -88,7 +109,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(100);
 
             // Create receiver
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, config);
 
             // Act - directly call SendTrackingRequestAsync
             await client.SendTrackingRequestAsync();
@@ -150,7 +171,7 @@ namespace SharpBridge.Tests.Services
                 })
                 .ThrowsAsync(new OperationCanceledException());
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, config);
 
             // Act
             var cts = new CancellationTokenSource();
@@ -169,11 +190,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig
-            {
-                IphoneIpAddress = "127.0.0.1"
-            };
-
             // Create expected tracking data with EyeRight (matching our updated model)
             var expectedData = new PhoneTrackingInfo
             {
@@ -201,7 +217,7 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
 
             // Create the receiver and track event raising
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
             var eventWasRaised = false;
             PhoneTrackingInfo receivedData = null!;
 
@@ -235,11 +251,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig
-            {
-                IphoneIpAddress = "127.0.0.1"
-            };
-
             // Prepare invalid and valid data
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
             var validData = new PhoneTrackingInfo { FaceFound = true };
@@ -258,7 +269,7 @@ namespace SharpBridge.Tests.Services
                         : new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0));
                 });
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Set up tracking
             var eventRaisedCount = 0;
@@ -280,10 +291,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig
-            {
-                IphoneIpAddress = "127.0.0.1"
-            };
 
             // Invalid JSON data
             var invalidJson = Encoding.UTF8.GetBytes("{ this is not valid json }");
@@ -292,7 +299,7 @@ namespace SharpBridge.Tests.Services
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(invalidJson, new System.Net.IPEndPoint(0, 0)));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             bool eventRaised = false;
             client.TrackingDataReceived += (s, e) => eventRaised = true;
@@ -318,7 +325,7 @@ namespace SharpBridge.Tests.Services
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() =>
-                new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object))
+                CreateClient(mockUdpClient.Object, mockLogger.Object, config))
                 .ParamName.Should().Be("config");
         }
 
@@ -328,11 +335,10 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             mockUdpClient.Setup(c => c.Dispose());
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             client.Dispose();
@@ -347,13 +353,12 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Test exception"));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             var result = await client.ReceiveResponseAsync(CancellationToken.None);
@@ -371,13 +376,12 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
                 .ThrowsAsync(new SocketException(10054));  // Connection reset by peer
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<SocketException>(() => client.SendTrackingRequestAsync());
@@ -391,11 +395,10 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new VTubeStudioPhoneClient(null!, config, mockLogger.Object))
+                new VTubeStudioPhoneClient(null!, _mockConfigManager.Object, mockLogger.Object, _mockAppConfigWatcher.Object))
                 .ParamName.Should().Be("udpClient");
         }
 
@@ -408,8 +411,8 @@ namespace SharpBridge.Tests.Services
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new VTubeStudioPhoneClient(mockUdpClient.Object, null!, mockLogger.Object))
-                .ParamName.Should().Be("config");
+                new VTubeStudioPhoneClient(mockUdpClient.Object, null!, mockLogger.Object, _mockAppConfigWatcher.Object))
+                .ParamName.Should().Be("configManager");
         }
 
         [Fact]
@@ -417,11 +420,10 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new VTubeStudioPhoneClient(mockUdpClient.Object, config, null!))
+                new VTubeStudioPhoneClient(mockUdpClient.Object, _mockConfigManager.Object, null!, _mockAppConfigWatcher.Object))
                 .ParamName.Should().Be("logger");
         }
 
@@ -431,7 +433,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             var validData = new PhoneTrackingInfo { FaceFound = true };
             var validJson = JsonSerializer.Serialize(validData);
@@ -441,7 +442,7 @@ namespace SharpBridge.Tests.Services
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(validJsonBytes, new System.Net.IPEndPoint(0, 0)));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act - No subscribers to TrackingDataReceived event
             var result = await client.ReceiveResponseAsync(CancellationToken.None);
@@ -457,7 +458,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Configure mock to throw OperationCanceledException when the token is cancelled
             mockUdpClient
@@ -471,7 +471,7 @@ namespace SharpBridge.Tests.Services
                 })
                 .ThrowsAsync(new OperationCanceledException());
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Create a cancelled token
             var cts = new CancellationTokenSource();
@@ -490,14 +490,13 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup to throw a SocketException with error code 10053 (Software caused connection abort)
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
                 .ThrowsAsync(new SocketException(10053));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act & Assert
             // Should rethrow the exception
@@ -510,9 +509,8 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             var stats = client.GetServiceStats();
@@ -534,7 +532,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup tracking data
             var trackingData = new PhoneTrackingInfo { FaceFound = true };
@@ -545,7 +542,7 @@ namespace SharpBridge.Tests.Services
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Receive some data to populate stats
             await client.ReceiveResponseAsync(CancellationToken.None);
@@ -571,14 +568,13 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup to throw an error
             mockUdpClient
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Test error"));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act - trigger an error
             await client.ReceiveResponseAsync(CancellationToken.None);
@@ -595,13 +591,12 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(100);
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act - send a request
             await client.SendTrackingRequestAsync();
@@ -619,7 +614,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup successful send
             mockUdpClient
@@ -635,7 +629,7 @@ namespace SharpBridge.Tests.Services
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -654,7 +648,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup successful send
             mockUdpClient
@@ -666,7 +659,7 @@ namespace SharpBridge.Tests.Services
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new OperationCanceledException());
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -685,14 +678,13 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup send to throw an exception
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
                 .ThrowsAsync(new Exception("Network error"));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -714,9 +706,8 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act & Assert
             client.LastInitializationError.Should().BeEmpty("no error should be present initially");
@@ -728,14 +719,13 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             // Setup to fail during send
             mockUdpClient
                 .Setup(c => c.SendAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<int>()))
                 .ThrowsAsync(new InvalidOperationException("Test initialization error"));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             await client.TryInitializeAsync(CancellationToken.None);
@@ -750,9 +740,8 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             // Act
             var stats = client.GetServiceStats();
@@ -769,7 +758,6 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var mockUdpClient = new Mock<IUdpClientWrapper>();
             var mockLogger = new Mock<IAppLogger>();
-            var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "127.0.0.1" };
 
             var trackingData = new PhoneTrackingInfo { FaceFound = true };
             var json = JsonSerializer.Serialize(trackingData);
@@ -779,7 +767,7 @@ namespace SharpBridge.Tests.Services
                 .Setup(c => c.ReceiveAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new UdpReceiveResult(jsonBytes, new System.Net.IPEndPoint(0, 0)));
 
-            var client = new VTubeStudioPhoneClient(mockUdpClient.Object, config, mockLogger.Object);
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object);
 
             bool eventInvoked = false;
             PhoneTrackingInfo receivedData = null!;

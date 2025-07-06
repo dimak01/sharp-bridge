@@ -15,6 +15,7 @@ namespace SharpBridge.Services
         private readonly IAppLogger _logger;
         private readonly IProcessLauncher _processLauncher;
         private readonly TransformationEngineConfig _transformationEngineConfig;
+        private readonly IConfigManager _configManager;
 
         /// <summary>
         /// Initializes a new instance of the ExternalEditorService
@@ -23,15 +24,15 @@ namespace SharpBridge.Services
         /// <param name="logger">Logger for recording operations and errors</param>
         /// <param name="processLauncher">Process launcher for starting external processes</param>
         /// <param name="transformationEngineConfig">Configuration for the transformation engine</param>
-        public ExternalEditorService(GeneralSettingsConfig config, IAppLogger logger, IProcessLauncher processLauncher, TransformationEngineConfig transformationEngineConfig)
+        /// <param name="configManager">Configuration manager for accessing file paths</param>
+        public ExternalEditorService(GeneralSettingsConfig config, IAppLogger logger, IProcessLauncher processLauncher, TransformationEngineConfig transformationEngineConfig, IConfigManager configManager)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _processLauncher = processLauncher ?? throw new ArgumentNullException(nameof(processLauncher));
             _transformationEngineConfig = transformationEngineConfig ?? throw new ArgumentNullException(nameof(transformationEngineConfig));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
         }
-
-
 
         /// <summary>
         /// Attempts to open the transformation configuration file in the configured external editor
@@ -39,27 +40,45 @@ namespace SharpBridge.Services
         /// <returns>True if the editor was launched successfully, false otherwise</returns>
         public Task<bool> TryOpenTransformationConfigAsync()
         {
+            return TryOpenFileInEditorAsync(_transformationEngineConfig.ConfigPath, "transformation config");
+        }
+
+        /// <summary>
+        /// Attempts to open the application configuration file in the configured external editor
+        /// </summary>
+        /// <returns>True if the editor was launched successfully, false otherwise</returns>
+        public Task<bool> TryOpenApplicationConfigAsync()
+        {
+            return TryOpenFileInEditorAsync(_configManager.ApplicationConfigPath, "application config");
+        }
+
+        /// <summary>
+        /// Attempts to open the specified file in the configured external editor
+        /// </summary>
+        /// <param name="filePath">Path to the file to open</param>
+        /// <param name="configType">Type of configuration for logging purposes</param>
+        /// <returns>True if the editor was launched successfully, false otherwise</returns>
+        private Task<bool> TryOpenFileInEditorAsync(string filePath, string configType)
+        {
             try
             {
-                var filePath = _transformationEngineConfig.ConfigPath;
-
                 // Validate file path
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
-                    _logger.Warning("Cannot open transformation config in editor: file path is null or empty");
+                    _logger.Warning("Cannot open {0} in editor: file path is null or empty", configType);
                     return Task.FromResult(false);
                 }
 
                 if (!File.Exists(filePath))
                 {
-                    _logger.Warning("Cannot open transformation config in editor: file does not exist: {0}", filePath);
+                    _logger.Warning("Cannot open {0} in editor: file does not exist: {1}", configType, filePath);
                     return Task.FromResult(false);
                 }
 
                 // Validate editor command
                 if (string.IsNullOrWhiteSpace(_config.EditorCommand))
                 {
-                    _logger.Warning("Cannot open transformation config in editor: editor command is not configured");
+                    _logger.Warning("Cannot open {0} in editor: editor command is not configured", configType);
                     return Task.FromResult(false);
                 }
 
@@ -85,7 +104,7 @@ namespace SharpBridge.Services
             }
             catch (Exception ex)
             {
-                _logger.ErrorWithException("Error launching external editor for transformation config", ex);
+                _logger.ErrorWithException("Error launching external editor for {0}", ex, configType);
                 return Task.FromResult(false);
             }
         }

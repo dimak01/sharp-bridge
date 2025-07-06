@@ -33,7 +33,7 @@ namespace SharpBridge.Services
         private readonly ApplicationConfig _applicationConfig;
         private readonly ISystemHelpRenderer _systemHelpRenderer;
         private readonly UserPreferences _userPreferences;
-        private readonly ConfigManager _configManager;
+        private readonly IConfigManager _configManager;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -85,7 +85,7 @@ namespace SharpBridge.Services
             ApplicationConfig applicationConfig,
             ISystemHelpRenderer systemHelpRenderer,
             UserPreferences userPreferences,
-            ConfigManager configManager)
+            IConfigManager configManager)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -261,7 +261,7 @@ namespace SharpBridge.Services
                     await ProcessRecoveryIfNeeded(cancellationToken);
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
-                    ProcessKeyboardInput();
+                    _keyboardInputHandler.CheckForKeyboardInput();
                     _consoleWindowManager.ProcessSizeChanges();
                     nextStatusUpdateTime = ProcessConsoleUpdateIfNeeded(nextStatusUpdateTime);
                     await ProcessIdleDelayIfNeeded(dataReceived, cancellationToken);
@@ -318,13 +318,6 @@ namespace SharpBridge.Services
             return await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
         }
 
-        /// <summary>
-        /// Processes keyboard input checking
-        /// </summary>
-        private void ProcessKeyboardInput()
-        {
-            CheckForKeyboardInput();
-        }
 
         /// <summary>
         /// Processes console status update if it's time to do so
@@ -419,37 +412,6 @@ namespace SharpBridge.Services
             }
         }
 
-        /// <summary>
-        /// Checks for keyboard input and handles key combinations
-        /// </summary>
-        private void CheckForKeyboardInput()
-        {
-            if (_isShowingSystemHelp)
-            {
-                // In help mode - any key exits help
-                if (_keyboardInputHandler.ConsumeAnyKeyPress())
-                {
-                    ExitSystemHelp();
-                }
-            }
-            else
-            {
-                // Normal mode - process shortcuts
-                _keyboardInputHandler.CheckForKeyboardInput();
-            }
-        }
-
-        /// <summary>
-        /// Exits system help mode and returns to normal display
-        /// </summary>
-        private void ExitSystemHelp()
-        {
-            _isShowingSystemHelp = false;
-            _logger.Debug("Exiting system help, returning to normal display");
-
-            // Clear console and let the normal update cycle refresh the display
-            _console.Clear();
-        }
 
         /// <summary>
         /// Reloads the transformation configuration
@@ -489,22 +451,60 @@ namespace SharpBridge.Services
         {
             try
             {
-                _logger.Info("Opening transformation config in external editor...");
-
+                _logger.Info("Opening transformation configuration in external editor...");
                 var success = await _externalEditorService.TryOpenTransformationConfigAsync();
-
                 if (success)
                 {
-                    _logger.Info("External editor launched successfully");
+                    _logger.Info("Successfully opened transformation configuration in external editor");
                 }
                 else
                 {
-                    _logger.Warning("Failed to launch external editor");
+                    _logger.Warning("Failed to open transformation configuration in external editor");
                 }
             }
             catch (Exception ex)
             {
-                _logger.ErrorWithException("Error opening transformation config in external editor", ex);
+                _logger.ErrorWithException("Error opening transformation configuration in external editor", ex);
+            }
+        }
+
+        /// <summary>
+        /// Opens the application configuration file in the configured external editor
+        /// </summary>
+        private async Task OpenApplicationConfigInEditor()
+        {
+            try
+            {
+                _logger.Info("Opening application configuration in external editor...");
+                var success = await _externalEditorService.TryOpenApplicationConfigAsync();
+                if (success)
+                {
+                    _logger.Info("Successfully opened application configuration in external editor");
+                }
+                else
+                {
+                    _logger.Warning("Failed to open application configuration in external editor");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error opening application configuration in external editor", ex);
+            }
+        }
+
+        /// <summary>
+        /// Opens the appropriate configuration file in external editor based on current context
+        /// </summary>
+        private async Task OpenConfigInEditor()
+        {
+            // If we're showing system help, open application config; otherwise open transformation config
+            if (_isShowingSystemHelp)
+            {
+                await OpenApplicationConfigInEditor();
+            }
+            else
+            {
+                await OpenTransformationConfigInEditor();
             }
         }
 
@@ -651,8 +651,8 @@ namespace SharpBridge.Services
                 }
                 ,
                 ShortcutAction.ReloadTransformationConfig => () => _ = ReloadTransformationConfig(),
-                ShortcutAction.OpenConfigInEditor => () => _ = OpenTransformationConfigInEditor(),
-                ShortcutAction.ShowSystemHelp => () => ShowShortcutHelp(),
+                ShortcutAction.OpenConfigInEditor => () => _ = OpenConfigInEditor(),
+                ShortcutAction.ShowSystemHelp => () => ToggleShortcutHelp(),
                 _ => null
             };
         }
@@ -691,19 +691,28 @@ namespace SharpBridge.Services
         /// <summary>
         /// Shows the system help display (F1 functionality)
         /// </summary>
-        private void ShowShortcutHelp()
+        private void ToggleShortcutHelp()
         {
             if (_isShowingSystemHelp)
             {
-                // Already showing help, ignore additional F1 presses
-                return;
+                ExitSystemHelp();
             }
+            else
+            {
+                UpdateConsoleWithSystemHelp();
+            }
+        }
 
-            _isShowingSystemHelp = true;
-            _logger.Debug("Displaying system help (F1)");
+        /// <summary>
+        /// Exits system help mode and returns to normal display
+        /// </summary>
+        private void ExitSystemHelp()
+        {
+            _isShowingSystemHelp = false;
+            _logger.Debug("Exiting system help, returning to normal display");
 
-            // Force immediate console update to show help
-            UpdateConsoleWithSystemHelp();
+            // Clear console and let the normal update cycle refresh the display
+            _console.Clear();
         }
 
         /// <summary>
@@ -713,6 +722,10 @@ namespace SharpBridge.Services
         {
             try
             {
+
+                _isShowingSystemHelp = true;
+                _logger.Debug("Displaying system help (F1)");
+
                 var consoleSize = _consoleWindowManager.GetCurrentSize();
                 var helpContent = _systemHelpRenderer.RenderSystemHelp(_applicationConfig, consoleSize.width);
 

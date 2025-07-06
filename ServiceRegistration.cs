@@ -32,47 +32,47 @@ namespace SharpBridge
                 throw new ArgumentException("Config directory cannot be null or empty", nameof(configDirectory));
 
             // Register config manager
-            services.AddSingleton<ConfigManager>(provider =>
+            services.AddSingleton<IConfigManager>(provider =>
                 new ConfigManager(configDirectory));
 
             // Register configurations
             services.AddSingleton(provider =>
             {
-                var configManager = provider.GetRequiredService<ConfigManager>();
+                var configManager = provider.GetRequiredService<IConfigManager>();
                 return configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
             });
 
             services.AddSingleton(provider =>
             {
-                var configManager = provider.GetRequiredService<ConfigManager>();
+                var configManager = provider.GetRequiredService<IConfigManager>();
                 return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
             });
 
             // Register GeneralSettingsConfig
             services.AddSingleton(provider =>
             {
-                var configManager = provider.GetRequiredService<ConfigManager>();
+                var configManager = provider.GetRequiredService<IConfigManager>();
                 return configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
             });
 
             // Register ApplicationConfig (full consolidated config)
             services.AddSingleton(provider =>
             {
-                var configManager = provider.GetRequiredService<ConfigManager>();
+                var configManager = provider.GetRequiredService<IConfigManager>();
                 return configManager.LoadApplicationConfigAsync().GetAwaiter().GetResult();
             });
 
             // Register TransformationEngineConfig
             services.AddSingleton(provider =>
             {
-                var configManager = provider.GetRequiredService<ConfigManager>();
+                var configManager = provider.GetRequiredService<IConfigManager>();
                 return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
             });
 
             // Register UserPreferences
             services.AddSingleton(provider =>
             {
-                var configManager = provider.GetRequiredService<ConfigManager>();
+                var configManager = provider.GetRequiredService<IConfigManager>();
                 return configManager.LoadUserPreferencesAsync().GetAwaiter().GetResult();
             });
 
@@ -89,7 +89,7 @@ namespace SharpBridge
                 var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
                 return new VTubeStudioPhoneClient(
                     factory.CreateForPhoneClient(),
-                    provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
+                    provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IAppLogger>(),
                     appConfigWatcher
                 );
@@ -116,7 +116,14 @@ namespace SharpBridge
                     provider.GetKeyedService<IFileChangeWatcher>("TransformationRules")!));
 
 
-            services.AddTransient<ITransformationEngine, TransformationEngine>();
+            services.AddTransient<ITransformationEngine>(provider =>
+                new TransformationEngine(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<ITransformationRulesRepository>(),
+                    provider.GetRequiredService<TransformationEngineConfig>(),
+                    provider.GetRequiredService<IConfigManager>(),
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                ));
 
             // Register VTubeStudioPCClient as a singleton
             services.AddSingleton<VTubeStudioPCClient>(provider =>
@@ -124,7 +131,7 @@ namespace SharpBridge
                 var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
                 return new VTubeStudioPCClient(
                     provider.GetRequiredService<IAppLogger>(),
-                    provider.GetRequiredService<VTubeStudioPCConfig>(),
+                    provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IWebSocketWrapper>(),
                     provider.GetRequiredService<IPortDiscoveryService>(),
                     appConfigWatcher
@@ -170,11 +177,24 @@ namespace SharpBridge
             services.AddSingleton<IProcessLauncher, ProcessLauncher>();
 
             // Register external editor service
-            services.AddSingleton<IExternalEditorService, ExternalEditorService>();
+            services.AddSingleton<IExternalEditorService>(provider =>
+                new ExternalEditorService(
+                    provider.GetRequiredService<GeneralSettingsConfig>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IProcessLauncher>(),
+                    provider.GetRequiredService<TransformationEngineConfig>(),
+                    provider.GetRequiredService<IConfigManager>()
+                ));
 
             // Register shortcut services
             services.AddSingleton<IShortcutParser, ShortcutParser>();
-            services.AddSingleton<IShortcutConfigurationManager, ShortcutConfigurationManager>();
+            services.AddSingleton<IShortcutConfigurationManager>(provider =>
+                new ShortcutConfigurationManager(
+                    provider.GetRequiredService<IShortcutParser>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IConfigManager>(),
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")
+                ));
             services.AddSingleton<ISystemHelpRenderer, SystemHelpRenderer>();
 
             // Register formatters
