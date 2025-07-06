@@ -14,13 +14,15 @@ namespace SharpBridge.Tests.Utilities
     {
         private readonly Mock<IShortcutParser> _parserMock;
         private readonly Mock<IAppLogger> _loggerMock;
+        private readonly Mock<IConfigManager> _mockConfigManager;
         private readonly ShortcutConfigurationManager _manager;
 
         public ShortcutConfigurationManagerTests()
         {
             _parserMock = new Mock<IShortcutParser>();
             _loggerMock = new Mock<IAppLogger>();
-            _manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object);
+            _mockConfigManager = new Mock<IConfigManager>();
+            _manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object);
         }
 
         #region Constructor Tests
@@ -30,7 +32,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ShortcutConfigurationManager(null!, _loggerMock.Object));
+                new ShortcutConfigurationManager(null!, _loggerMock.Object, _mockConfigManager.Object));
             exception.ParamName.Should().Be("parser");
         }
 
@@ -39,7 +41,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ShortcutConfigurationManager(_parserMock.Object, null!));
+                new ShortcutConfigurationManager(_parserMock.Object, null!, _mockConfigManager.Object));
             exception.ParamName.Should().Be("logger");
         }
 

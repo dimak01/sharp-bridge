@@ -2619,7 +2619,7 @@ namespace SharpBridge.Tests.Services
             await task;
 
             // Assert
-            _loggerMock.Verify(x => x.Warning("Failed to launch external editor"), Times.Once);
+            _loggerMock.Verify(x => x.Warning("Failed to open transformation configuration in external editor"), Times.Once);
         }
 
         #endregion
@@ -2923,17 +2923,14 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
-        public async Task CheckForKeyboardInput_InHelpMode_ExitsOnAnyKey()
+        public async Task CheckForKeyboardInput_InHelpMode_ExitsOnF1Repeat()
         {
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
             await orchestrator.InitializeAsync(CancellationToken.None);
 
-            // Setup help mode
-            _keyboardInputHandlerMock.Setup(x => x.ConsumeAnyKeyPress()).Returns(true);
-
-            // Get the help action and trigger it
+            // Get the help action and trigger it to enter help mode
             Action? helpAction = null;
             _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
                 ConsoleKey.F1,
@@ -2946,15 +2943,16 @@ namespace SharpBridge.Tests.Services
             await newOrchestrator.InitializeAsync(CancellationToken.None);
             helpAction!(); // Enter help mode
 
-            // Use reflection to call CheckForKeyboardInput
-            var method = typeof(ApplicationOrchestrator)
-                .GetMethod("CheckForKeyboardInput", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            // Now simulate that we're in help mode and F1 is pressed again to exit
+            // We need to use reflection to set the private field _isShowingSystemHelp to true
+            var isShowingSystemHelpField = typeof(ApplicationOrchestrator)
+                .GetField("_isShowingSystemHelp", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            isShowingSystemHelpField!.SetValue(newOrchestrator, true);
 
-            // Act
-            method!.Invoke(newOrchestrator, null);
+            // Act - call the help action again to exit help mode
+            helpAction!();
 
             // Assert
-            _keyboardInputHandlerMock.Verify(x => x.ConsumeAnyKeyPress(), Times.Once);
             _consoleMock.Verify(x => x.Clear(), Times.AtLeast(1)); // Called when exiting help
         }
 
@@ -3024,7 +3022,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _loggerMock.Verify(x => x.Warning("Failed to launch external editor"), Times.Once);
+            _loggerMock.Verify(x => x.Warning("Failed to open transformation configuration in external editor"), Times.Once);
         }
 
         #endregion

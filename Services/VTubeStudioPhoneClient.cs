@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 using System.Collections.Generic;
+using System.IO;
 using SharpBridge.Models;
 using SharpBridge.Interfaces;
 using SharpBridge.Utilities;
@@ -18,7 +19,7 @@ namespace SharpBridge.Services;
 public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProvider, IDisposable, IInitializable
 {
     private readonly IUdpClientWrapper _udpClient;
-    private readonly VTubeStudioPhoneClientConfig _config;
+    private readonly IConfigManager _configManager;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly IAppLogger _logger;
     private readonly IFileChangeWatcher? _appConfigWatcher;
@@ -31,6 +32,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     private string _lastInitializationError = string.Empty;
     private DateTime _lastSuccessfulOperation;
     private bool _configChanged = false;
+    private VTubeStudioPhoneClientConfig _config;
 
     // Health check timeout - consider unhealthy if no successful operation in this many seconds
     private const int HEALTH_TIMEOUT_SECONDS = 3;
@@ -44,20 +46,15 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     /// Initializes a new instance of the <see cref="VTubeStudioPhoneClient"/> class.
     /// </summary>
     /// <param name="udpClient">The UDP client to use.</param>
-    /// <param name="config">The configuration for the phone client.</param>
+    /// <param name="configManager">The configuration manager for loading configs.</param>
     /// <param name="logger">The logger to use.</param>
     /// <param name="appConfigWatcher">Optional file watcher for application config changes.</param>
-    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, VTubeStudioPhoneClientConfig config, IAppLogger logger, IFileChangeWatcher? appConfigWatcher = null)
+    public VTubeStudioPhoneClient(IUdpClientWrapper udpClient, IConfigManager configManager, IAppLogger logger, IFileChangeWatcher? appConfigWatcher = null)
     {
         _udpClient = udpClient ?? throw new ArgumentNullException(nameof(udpClient));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
+        _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _appConfigWatcher = appConfigWatcher;
-
-        if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
-        {
-            throw new ArgumentException("iPhone IP address cannot be null or empty", nameof(config));
-        }
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -65,6 +62,9 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         };
 
         _startTime = DateTime.UtcNow;
+        _config = _configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
+        if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
+            throw new ArgumentException("iPhone IP address must not be empty", "config");
         _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress, _config.IphonePort);
 
         // Subscribe to application config changes if watcher is provided
@@ -96,6 +96,11 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     public string LastInitializationError => _lastInitializationError;
 
     /// <summary>
+    /// Gets whether the configuration has changed (for testing purposes)
+    /// </summary>
+    public bool ConfigChanged => _configChanged;
+
+    /// <summary>
     /// Attempts to initialize the client
     /// </summary>
     public async Task<bool> TryInitializeAsync(CancellationToken cancellationToken)
@@ -119,6 +124,10 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
 
             _lastSuccessfulOperation = DateTime.UtcNow;
             _status = PhoneClientStatus.Connected;
+
+            // Reset config changed flag on successful initialization
+            _configChanged = false;
+
             return true;
         }
         catch (Exception ex)
@@ -264,16 +273,23 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
     /// </summary>
     /// <param name="sender">The event sender</param>
     /// <param name="e">The file change event arguments</param>
-    private void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+    private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
     {
         try
         {
             _logger.Debug("Application config changed, checking if phone client config was affected");
 
-            // TODO: Load new config and compare phone client section
-            // For now, mark as changed to trigger recovery
-            _configChanged = true;
-            _logger.Info("Phone client configuration changed, marking for recovery");
+            // Load new config and compare phone client section
+            var newConfig = await _configManager.LoadApplicationConfigAsync();
+            if (!ConfigComparers.PhoneClientConfigsEqual(_config, newConfig.PhoneClient))
+            {
+                _logger.Info("Phone client configuration changed, updating internal config");
+                _config = newConfig.PhoneClient;
+                _configChanged = true;
+
+                _logger.Debug("Phone client config updated - IP: {0}:{1}, LocalPort: {2}",
+                    _config.IphoneIpAddress, _config.IphonePort, _config.LocalPort);
+            }
         }
         catch (Exception ex)
         {

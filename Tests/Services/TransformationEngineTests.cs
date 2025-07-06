@@ -16,11 +16,15 @@ namespace SharpBridge.Tests.Services
     {
         private readonly Mock<IAppLogger> _mockLogger;
         private readonly Mock<ITransformationRulesRepository> _mockRepository;
+        private readonly Mock<IConfigManager> _mockConfigManager;
+        private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
 
         public TransformationEngineTests()
         {
             _mockLogger = new Mock<IAppLogger>();
             _mockRepository = new Mock<ITransformationRulesRepository>();
+            _mockConfigManager = new Mock<IConfigManager>();
+            _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
         }
 
         #region Helper Methods
@@ -32,7 +36,7 @@ namespace SharpBridge.Tests.Services
                 ConfigPath = configPath,
                 MaxEvaluationIterations = 10
             };
-            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object, config);
+            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object, config, _mockConfigManager.Object, _mockAppConfigWatcher.Object);
         }
 
         private PhoneTrackingInfo CreateValidTrackingData()
@@ -97,7 +101,7 @@ namespace SharpBridge.Tests.Services
         public void Constructor_ThrowsArgumentNullException_WhenLoggerIsNull()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null!, _mockRepository.Object, new TransformationEngineConfig()));
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(null!, _mockRepository.Object, new TransformationEngineConfig(), _mockConfigManager.Object, _mockAppConfigWatcher.Object));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -105,7 +109,7 @@ namespace SharpBridge.Tests.Services
         public void Constructor_WithNullRepository_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(_mockLogger.Object, null!, new TransformationEngineConfig()));
+            var exception = Assert.Throws<ArgumentNullException>(() => new TransformationEngine(_mockLogger.Object, null!, new TransformationEngineConfig(), _mockConfigManager.Object, _mockAppConfigWatcher.Object));
             exception.ParamName.Should().Be("rulesRepository");
         }
 
