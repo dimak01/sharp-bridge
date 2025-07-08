@@ -24,8 +24,8 @@ This document outlines the implementation plan for adding hot reload functionali
   - [x] Add `_configChanged` flag
   - [x] Subscribe to `FileChanged` events
   - [x] Implement `OnApplicationConfigChanged` handler
-  - [ ] Add config comparison logic using `ConfigComparers.PhoneClientConfigsEqual`
-  - [ ] Update internal config when changes detected
+  - [x] Add config comparison logic using `ConfigComparers.PhoneClientConfigsEqual`
+  - [x] Update internal config when changes detected
   - [x] Set `_configChanged = true` when config changes
   - [x] Modify `GetServiceStats()` to include config change in health calculation
   - [ ] Add `MarkConfigChanged()` and `ResetConfigChanged()` methods
@@ -35,19 +35,29 @@ This document outlines the implementation plan for adding hot reload functionali
   - [x] Add `_configChanged` flag
   - [x] Subscribe to `FileChanged` events
   - [x] Implement `OnApplicationConfigChanged` handler
-  - [ ] Add config comparison logic using `ConfigComparers.PCClientConfigsEqual`
-  - [ ] Update internal config when changes detected
+  - [x] Add config comparison logic using `ConfigComparers.PCClientConfigsEqual`
+  - [x] Update internal config when changes detected
   - [x] Set `_configChanged = true` when config changes
   - [x] Modify `GetServiceStats()` to include config change in health calculation
   - [ ] Add `MarkConfigChanged()` and `ResetConfigChanged()` methods
 
-- [ ] **ShortcutConfigurationManager**
-  - [ ] Inject `IFileChangeWatcher` app config watcher
-  - [ ] Subscribe to `FileChanged` events
-  - [ ] Implement `OnApplicationConfigChanged` handler
-  - [ ] Add config comparison logic using `ConfigComparers.GeneralSettingsEqual`
-  - [ ] Call `LoadFromConfiguration()` when general settings change
-  - [ ] No health flags needed (not an IServiceStatsProvider)
+- [x] **ShortcutConfigurationManager**
+  - [x] Inject `IFileChangeWatcher` app config watcher
+  - [x] Subscribe to `FileChanged` events
+  - [x] Implement `OnApplicationConfigChanged` handler
+  - [x] Add config comparison logic using `ConfigComparers.GeneralSettingsEqual`
+  - [x] Call `LoadFromConfiguration()` when general settings change
+  - [x] No health flags needed (not an IServiceStatsProvider)
+
+- [x] **TransformationEngine**
+  - [x] Inject `IFileChangeWatcher` app config watcher
+  - [x] Add `_configChanged` flag
+  - [x] Subscribe to `FileChanged` events
+  - [x] Implement `OnApplicationConfigChanged` handler
+  - [x] Add config comparison logic using `ConfigComparers.TransformationEngineConfigsEqual`
+  - [x] Update internal config when changes detected
+  - [x] Set `_configChanged = true` when config changes
+  - [x] Modify `GetServiceStats()` to include config change in health calculation
 
 ### Phase 3: Configuration Comparers ✅
 - [x] **Create ConfigComparers static class**
@@ -60,22 +70,29 @@ This document outlines the implementation plan for adding hot reload functionali
   - [x] Include all relevant properties in each comparison
 
 ### Phase 4: External Editor Service Enhancement ✅
-- [ ] **Extend IExternalEditorService**
-  - [ ] Add `TryOpenApplicationConfigAsync()` method
-  - [ ] Update interface documentation
+- [x] **Extend IExternalEditorService**
+  - [x] Add `TryOpenApplicationConfigAsync()` method
+  - [x] Update interface documentation
 
-- [ ] **Extend ExternalEditorService**
-  - [ ] Implement `TryOpenApplicationConfigAsync()`
-  - [ ] Use same `%f` placeholder replacement logic
-  - [ ] Use same error handling and logging patterns
-  - [ ] Load `ApplicationConfig.json` path from `ConfigManager`
+- [x] **Extend ExternalEditorService**
+  - [x] Implement `TryOpenApplicationConfigAsync()`
+  - [x] Use same `%f` placeholder replacement logic
+  - [x] Use same error handling and logging patterns
+  - [x] Load `ApplicationConfig.json` path from `ConfigManager`
+  - [x] Implement hot reload pattern with config change monitoring (following ShortcutConfigurationManager pattern)
+  - [x] Inject `IFileChangeWatcher` instead of `GeneralSettingsConfig` directly
+  - [x] Update service registration to use new constructor signature
+  - [x] Update all unit tests to match new constructor signature
+  - [x] Refactor to store important state (transformation config, app config path) as fields
+  - [x] Implement consistent config loading in constructor and change handler
+  - [x] Avoid excessive config loading by caching state
 
 - [ ] **Add new ShortcutAction**
   - [ ] Add `OpenApplicationConfigInEditor` to `ShortcutAction` enum
   - [ ] Update `ShortcutConfigurationManager` default shortcuts
   - [ ] Add description attribute for help screen
 
-### Phase 5: Context-Aware Shortcut Behavior ✅
+### Phase 5: Context-Aware Shortcut Behavior ⏳
 - [ ] **Modify ApplicationOrchestrator**
   - [ ] Update `GetActionMethod()` to handle context-aware behavior
   - [ ] Check `_isShowingSystemHelp` flag for context detection
@@ -87,15 +104,15 @@ This document outlines the implementation plan for adding hot reload functionali
   - [ ] Change shortcut description to "Open Application Config in Editor"
   - [ ] Ensure description only shows on system help screen
 
-### Phase 6: File Watching Integration ✅
+### Phase 6: File Watching Integration ⏳
 - [ ] **Start file watching**
   - [ ] Ensure app config watcher starts watching `ApplicationConfig.json`
   - [ ] Verify watcher is properly disposed when services are disposed
   - [ ] Test file change detection and event handling
 
-### Phase 7: Testing ✅
+### Phase 7: Testing ⏳
 - [ ] **Unit Tests**
-  - [ ] Test config comparers with various scenarios
+  - [x] Test config comparers with various scenarios
   - [ ] Test service config change detection
   - [ ] Test health flag setting/resetting
   - [ ] Test external editor service for app config
@@ -114,11 +131,13 @@ This document outlines the implementation plan for adding hot reload functionali
   - [ ] Update `UserGuide.md` with new shortcut behavior
   - [ ] Add examples of config change scenarios
 
-- [ ] **Code cleanup**
-  - [ ] Remove any temporary implementation artifacts
-  - [ ] Ensure consistent error handling patterns
-  - [ ] Verify logging is comprehensive and useful
-  - [ ] Check for any memory leaks in event subscriptions
+- [x] **Code cleanup**
+  - [x] Remove any temporary implementation artifacts
+  - [x] Ensure consistent error handling patterns
+  - [x] Verify logging is comprehensive and useful
+  - [x] Check for any memory leaks in event subscriptions
+  - [x] Implement IDisposable pattern for services with event subscriptions
+  - [x] Fix memory leaks in ExternalEditorService, ShortcutConfigurationManager, and TransformationEngine
 
 ## Key Design Principles
 1. **Minimal blast radius**: Changes isolated to individual services
@@ -129,11 +148,11 @@ This document outlines the implementation plan for adding hot reload functionali
 6. **Comprehensive testing**: Unit and integration test coverage
 
 ## Success Criteria
-- [ ] Application config changes trigger selective service reloading
-- [ ] Only affected services restart, others continue running
+- [x] Application config changes trigger selective service reloading
+- [x] Only affected services restart, others continue running
 - [ ] Context-aware shortcut opens correct config file
-- [ ] Health system properly detects and recovers from config changes
-- [ ] All existing functionality remains intact
+- [x] Health system properly detects and recovers from config changes
+- [x] All existing functionality remains intact
 - [ ] Comprehensive test coverage achieved
 - [ ] Documentation updated and accurate
 

@@ -10,7 +10,7 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Implementation of IShortcutConfigurationManager for managing keyboard shortcut configurations
     /// </summary>
-    public class ShortcutConfigurationManager : IShortcutConfigurationManager
+    public class ShortcutConfigurationManager : IShortcutConfigurationManager, IDisposable
     {
         private readonly IShortcutParser _parser;
         private readonly IAppLogger _logger;
@@ -27,6 +27,8 @@ namespace SharpBridge.Utilities
         // Legacy support
         private GeneralSettingsConfig _config;
 
+        // Disposal tracking
+        private bool _isDisposed;
 
         /// <summary>
         /// Initializes a new instance of the ShortcutConfigurationManager
@@ -52,6 +54,35 @@ namespace SharpBridge.Utilities
             if (_appConfigWatcher != null)
             {
                 _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+            }
+        }
+
+        /// <summary>
+        /// Releases all resources used by the shortcut configuration manager
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases all resources used by the shortcut configuration manager
+        /// </summary>
+        /// <param name="disposing">True if called from Dispose, false if called from finalizer</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed && disposing)
+            {
+                _logger.Debug("Disposing ShortcutConfigurationManager");
+
+                // Unsubscribe from file watcher events
+                if (_appConfigWatcher != null)
+                {
+                    _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
+                }
+
+                _isDisposed = true;
             }
         }
 
@@ -123,8 +154,6 @@ namespace SharpBridge.Utilities
 
             return ShortcutStatus.ExplicitlyDisabled;
         }
-
-
 
         /// <summary>
         /// Loads shortcut configuration from the provided application configuration
@@ -238,8 +267,6 @@ namespace SharpBridge.Utilities
                 [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, 0)
             };
         }
-
-
 
         /// <summary>
         /// Gets a human-readable display name for a shortcut action using Description attributes

@@ -3,35 +3,102 @@ using System.IO;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services
 {
     /// <summary>
     /// Service for opening files in external editors
     /// </summary>
-    public class ExternalEditorService : IExternalEditorService
+    public class ExternalEditorService : IExternalEditorService, IDisposable
     {
-        private readonly GeneralSettingsConfig _config;
         private readonly IAppLogger _logger;
         private readonly IProcessLauncher _processLauncher;
-        private readonly TransformationEngineConfig _transformationEngineConfig;
         private readonly IConfigManager _configManager;
+        private readonly IFileChangeWatcher _configWatcher;
+        private GeneralSettingsConfig _generalSettingsConfig;
+        private TransformationEngineConfig _transformationConfig;
+        private bool _isDisposed;
 
         /// <summary>
         /// Initializes a new instance of the ExternalEditorService
         /// </summary>
-        /// <param name="config">Application configuration containing editor command</param>
+        /// <param name="configManager">Configuration manager for accessing application configuration</param>
         /// <param name="logger">Logger for recording operations and errors</param>
         /// <param name="processLauncher">Process launcher for starting external processes</param>
-        /// <param name="transformationEngineConfig">Configuration for the transformation engine</param>
-        /// <param name="configManager">Configuration manager for accessing file paths</param>
-        public ExternalEditorService(GeneralSettingsConfig config, IAppLogger logger, IProcessLauncher processLauncher, TransformationEngineConfig transformationEngineConfig, IConfigManager configManager)
+        /// <param name="configWatcher">File change watcher for application configuration</param>
+        public ExternalEditorService(IConfigManager configManager, IAppLogger logger, IProcessLauncher processLauncher, IFileChangeWatcher configWatcher)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _processLauncher = processLauncher ?? throw new ArgumentNullException(nameof(processLauncher));
-            _transformationEngineConfig = transformationEngineConfig ?? throw new ArgumentNullException(nameof(transformationEngineConfig));
-            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
+            _configWatcher = configWatcher ?? throw new ArgumentNullException(nameof(configWatcher));
+
+            // Load initial configuration
+            LoadConfiguration();
+
+            // Subscribe to configuration changes
+            _configWatcher.FileChanged += OnApplicationConfigChanged;
+        }
+
+        /// <summary>
+        /// Releases all resources used by the external editor service
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases all resources used by the external editor service
+        /// </summary>
+        /// <param name="disposing">True if called from Dispose, false if called from finalizer</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed && disposing)
+            {
+                _logger.Debug("Disposing ExternalEditorService");
+
+                // Unsubscribe from file watcher events
+                _configWatcher.FileChanged -= OnApplicationConfigChanged;
+
+                _isDisposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Loads and stores all configuration data
+        /// </summary>
+        private void LoadConfiguration()
+        {
+            _generalSettingsConfig = _configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+            _transformationConfig = _configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Handles application configuration changes
+        /// </summary>
+        /// <param name="sender">Event sender</param>
+        /// <param name="e">File change event arguments</param>
+        private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+        {
+            try
+            {
+                _logger.Debug("Application config changed, checking if general settings were affected");
+
+                // Load new config and compare general settings section
+                var newConfig = await _configManager.LoadApplicationConfigAsync();
+                if (!ConfigComparers.GeneralSettingsEqual(_generalSettingsConfig, newConfig.GeneralSettings))
+                {
+                    _logger.Info("General settings changed, updating external editor service");
+                    LoadConfiguration();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Error handling application config change: {0}", ex.Message);
+            }
         }
 
         /// <summary>
@@ -40,7 +107,7 @@ namespace SharpBridge.Services
         /// <returns>True if the editor was launched successfully, false otherwise</returns>
         public Task<bool> TryOpenTransformationConfigAsync()
         {
-            return TryOpenFileInEditorAsync(_transformationEngineConfig.ConfigPath, "transformation config");
+            return TryOpenFileInEditorAsync(_transformationConfig.ConfigPath, "transformation config");
         }
 
         /// <summary>
@@ -76,14 +143,14 @@ namespace SharpBridge.Services
                 }
 
                 // Validate editor command
-                if (string.IsNullOrWhiteSpace(_config.EditorCommand))
+                if (string.IsNullOrWhiteSpace(_generalSettingsConfig.EditorCommand))
                 {
                     _logger.Warning("Cannot open {0} in editor: editor command is not configured", configType);
                     return Task.FromResult(false);
                 }
 
                 // Replace %f placeholder with actual file path
-                var commandWithFile = _config.EditorCommand.Replace("%f", filePath);
+                var commandWithFile = _generalSettingsConfig.EditorCommand.Replace("%f", filePath);
 
                 _logger.Debug("Executing editor command: {0}", commandWithFile);
 

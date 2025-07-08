@@ -30,10 +30,11 @@ namespace SharpBridge.Services
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
-        private readonly ApplicationConfig _applicationConfig;
+        private ApplicationConfig _applicationConfig;
         private readonly ISystemHelpRenderer _systemHelpRenderer;
         private readonly UserPreferences _userPreferences;
         private readonly IConfigManager _configManager;
+        private readonly IFileChangeWatcher _appConfigWatcher;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -67,6 +68,7 @@ namespace SharpBridge.Services
         /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
+        /// <param name="appConfigWatcher">File change watcher for application configuration</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -85,7 +87,8 @@ namespace SharpBridge.Services
             ApplicationConfig applicationConfig,
             ISystemHelpRenderer systemHelpRenderer,
             UserPreferences userPreferences,
-            IConfigManager configManager)
+            IConfigManager configManager,
+            IFileChangeWatcher appConfigWatcher)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -105,6 +108,7 @@ namespace SharpBridge.Services
             _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
+            _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -132,6 +136,10 @@ namespace SharpBridge.Services
             });
 
             await InitializeTransformationEngine();
+
+            // Start watching application config file for hot reload
+            _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
+            _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
 
             // Initialize clients directly during startup
             _logger.Info("Attempting initial client connections...");
@@ -236,11 +244,13 @@ namespace SharpBridge.Services
         private void SubscribeToEvents()
         {
             _vtubeStudioPhoneClient.TrackingDataReceived += OnTrackingDataReceived;
+            _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
         }
 
         private void UnsubscribeFromEvents()
         {
             _vtubeStudioPhoneClient.TrackingDataReceived -= OnTrackingDataReceived;
+            _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
         }
 
         private async Task RunUntilCancelled(CancellationToken cancellationToken)
@@ -541,6 +551,37 @@ namespace SharpBridge.Services
                 _logger.ErrorWithException("Error processing tracking data", ex);
             }
         }
+
+        /// <summary>
+        /// Handles application configuration file changes
+        /// </summary>
+        private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+        {
+            try
+            {
+                _logger.Info("Application configuration file changed: {0}", e.FilePath);
+
+                // Reload the application configuration
+                var newApplicationConfig = await _configManager.LoadApplicationConfigAsync();
+
+                // Update the internal reference
+                _applicationConfig = newApplicationConfig;
+
+                // Reload shortcut configuration with new settings
+                _shortcutConfigurationManager.LoadFromConfiguration(newApplicationConfig.GeneralSettings);
+
+                // Re-register keyboard shortcuts with new configuration
+                RegisterKeyboardShortcuts();
+
+                _logger.Info("Application configuration reloaded successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error reloading application configuration", ex);
+            }
+        }
+
+
 
         /// <summary>
         /// Initializes the color service with transformation expressions and blend shape names
