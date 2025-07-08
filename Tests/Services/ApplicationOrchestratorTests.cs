@@ -31,6 +31,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IExternalEditorService> _externalEditorServiceMock;
         private readonly Mock<IShortcutConfigurationManager> _shortcutConfigurationManagerMock;
         private readonly Mock<ISystemHelpRenderer> _systemHelpRendererMock;
+        private readonly Mock<IFileChangeWatcher> _appConfigWatcherMock;
         private ApplicationConfig _applicationConfig;
         private UserPreferences _userPreferences;
         private Mock<ConfigManager> _configManagerMock;
@@ -59,6 +60,7 @@ namespace SharpBridge.Tests.Services
             _externalEditorServiceMock = new Mock<IExternalEditorService>();
             _shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
             _systemHelpRendererMock = new Mock<ISystemHelpRenderer>();
+            _appConfigWatcherMock = new Mock<IFileChangeWatcher>();
             _configManagerMock = new Mock<ConfigManager>("test-config");
 
             // Create user preferences with default values
@@ -159,7 +161,8 @@ namespace SharpBridge.Tests.Services
                 _applicationConfig,
                 _systemHelpRendererMock.Object,
                 _userPreferences,
-                _configManagerMock.Object
+                _configManagerMock.Object,
+                _appConfigWatcherMock.Object
             );
 
             // Create temp config file for tests
@@ -186,7 +189,8 @@ namespace SharpBridge.Tests.Services
                 _applicationConfig,
                 _systemHelpRendererMock.Object,
                 _userPreferences,
-                _configManagerMock.Object
+                _configManagerMock.Object,
+                _appConfigWatcherMock.Object
             );
         }
 
@@ -215,7 +219,8 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object,
+                    _appConfigWatcherMock.Object),
                 "vtubeStudioPhoneClient" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     null!,
@@ -234,7 +239,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "transformationEngine" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -253,7 +258,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "phoneConfig" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -272,7 +277,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "logger" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -291,7 +296,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "consoleRenderer" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -310,7 +315,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "keyboardInputHandler" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -329,7 +334,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "parameterManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -348,7 +353,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "recoveryPolicy" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -367,7 +372,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "console" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -386,7 +391,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "consoleWindowManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -405,7 +410,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "colorService" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -424,7 +429,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "externalEditorService" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -443,7 +448,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "shortcutConfigurationManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -462,7 +467,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "applicationConfig" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -481,7 +486,7 @@ namespace SharpBridge.Tests.Services
                     null!,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "systemHelpRenderer" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -500,7 +505,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     null!,
                     _userPreferences,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "userPreferences" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -519,7 +524,7 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     null!,
-                    _configManagerMock.Object),
+                    _configManagerMock.Object, _appConfigWatcherMock.Object),
                 "configManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -538,7 +543,8 @@ namespace SharpBridge.Tests.Services
                     _applicationConfig,
                     _systemHelpRendererMock.Object,
                     _userPreferences,
-                    null!),
+                    null!,
+                    _appConfigWatcherMock.Object),
                 _ => throw new ArgumentException($"Unknown parameter: {parameterName}")
             };
         }
@@ -2796,7 +2802,7 @@ namespace SharpBridge.Tests.Services
                 _applicationConfig,
                 _systemHelpRendererMock.Object,
                 _userPreferences,
-                _configManagerMock.Object);
+                _configManagerMock.Object, _appConfigWatcherMock.Object);
 
             // Act & Assert - Should not throw
             var exception = Record.Exception(() => orchestrator.Dispose());

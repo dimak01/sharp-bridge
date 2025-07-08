@@ -446,7 +446,7 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public async Task AuthenticateAsync_WithValidToken_ReturnsTrue()
         {
-            // Arrange 
+            // Arrange
             var config = new VTubeStudioPCConfig();
             var client = CreateClient(config: config);
             var testToken = "test_token_123";
@@ -501,7 +501,7 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public async Task SaveTokenAsync_SavesTokenToFile()
         {
-            // Arrange 
+            // Arrange
             var config = new VTubeStudioPCConfig
             {
                 TokenFilePath = "test_token.txt"

@@ -15,6 +15,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IAppLogger> _loggerMock;
         private readonly Mock<IProcessLauncher> _processLauncherMock;
         private readonly Mock<IConfigManager> _mockConfigManager;
+        private readonly Mock<IFileChangeWatcher> _mockFileWatcher;
         private readonly GeneralSettingsConfig _config;
         private readonly TransformationEngineConfig _transformationConfig;
         private readonly ExternalEditorService _service;
@@ -25,6 +26,8 @@ namespace SharpBridge.Tests.Services
             _loggerMock = new Mock<IAppLogger>();
             _processLauncherMock = new Mock<IProcessLauncher>();
             _mockConfigManager = new Mock<IConfigManager>();
+            _mockFileWatcher = new Mock<IFileChangeWatcher>();
+
             _config = new GeneralSettingsConfig
             {
                 EditorCommand = "notepad.exe \"%f\""
@@ -39,11 +42,16 @@ namespace SharpBridge.Tests.Services
                 ConfigPath = _tempConfigPath
             };
 
+            // Setup config manager
+            _mockConfigManager.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            _mockConfigManager.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
+            _mockConfigManager.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(_transformationConfig);
+
             // Default setup: process launcher succeeds
             _processLauncherMock.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(true);
 
-            _service = new ExternalEditorService(_config, _loggerMock.Object, _processLauncherMock.Object, _transformationConfig, _mockConfigManager.Object);
+            _service = new ExternalEditorService(_mockConfigManager.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
         }
 
         public void Dispose()
@@ -58,20 +66,31 @@ namespace SharpBridge.Tests.Services
         /// <summary>
         /// Helper method to create ExternalEditorService with custom configuration
         /// </summary>
-        private ExternalEditorService CreateService(GeneralSettingsConfig config, TransformationEngineConfig? transformationConfig = null)
+        private ExternalEditorService CreateService(GeneralSettingsConfig config)
         {
-            return new ExternalEditorService(config, _loggerMock.Object, _processLauncherMock.Object, transformationConfig ?? _transformationConfig, _mockConfigManager.Object);
+            var configManagerMock = new Mock<IConfigManager>();
+            configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(config);
+            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(_transformationConfig);
+
+            return new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
         }
 
         /// <summary>
         /// Helper method to create ExternalEditorService with custom process launcher setup
         /// </summary>
-        private ExternalEditorService CreateService(GeneralSettingsConfig config, bool processLauncherReturns, TransformationEngineConfig? transformationConfig = null)
+        private ExternalEditorService CreateService(GeneralSettingsConfig config, bool processLauncherReturns)
         {
             var processLauncherMock = new Mock<IProcessLauncher>();
             processLauncherMock.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(processLauncherReturns);
-            return new ExternalEditorService(config, _loggerMock.Object, processLauncherMock.Object, transformationConfig ?? _transformationConfig, _mockConfigManager.Object);
+
+            var configManagerMock = new Mock<IConfigManager>();
+            configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(config);
+            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(_transformationConfig);
+
+            return new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, processLauncherMock.Object, _mockFileWatcher.Object);
         }
 
         #region Constructor Tests
@@ -80,20 +99,20 @@ namespace SharpBridge.Tests.Services
         public void Constructor_WithValidParameters_CreatesInstance()
         {
             // Arrange & Act
-            var service = new ExternalEditorService(_config, _loggerMock.Object, _processLauncherMock.Object, _transformationConfig, _mockConfigManager.Object);
+            var service = new ExternalEditorService(_mockConfigManager.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
 
             // Assert
             service.Should().NotBeNull();
         }
 
         [Fact]
-        public void Constructor_WithNullConfig_ThrowsArgumentNullException()
+        public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(null!, _loggerMock.Object, _processLauncherMock.Object, _transformationConfig, _mockConfigManager.Object));
+                new ExternalEditorService(null!, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object));
 
-            exception.ParamName.Should().Be("config");
+            exception.ParamName.Should().Be("configManager");
         }
 
         [Fact]
@@ -101,7 +120,7 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(_config, null!, _processLauncherMock.Object, _transformationConfig, _mockConfigManager.Object));
+                new ExternalEditorService(_mockConfigManager.Object, null!, _processLauncherMock.Object, _mockFileWatcher.Object));
 
             exception.ParamName.Should().Be("logger");
         }
@@ -111,19 +130,19 @@ namespace SharpBridge.Tests.Services
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(_config, _loggerMock.Object, null!, _transformationConfig, _mockConfigManager.Object));
+                new ExternalEditorService(_mockConfigManager.Object, _loggerMock.Object, null!, _mockFileWatcher.Object));
 
             exception.ParamName.Should().Be("processLauncher");
         }
 
         [Fact]
-        public void Constructor_WithNullTransformationConfig_ThrowsArgumentNullException()
+        public void Constructor_WithNullConfigWatcher_ThrowsArgumentNullException()
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ExternalEditorService(_config, _loggerMock.Object, _processLauncherMock.Object, null!, _mockConfigManager.Object));
+                new ExternalEditorService(_mockConfigManager.Object, _loggerMock.Object, _processLauncherMock.Object, null!));
 
-            exception.ParamName.Should().Be("transformationEngineConfig");
+            exception.ParamName.Should().Be("configWatcher");
         }
 
         #endregion
@@ -185,7 +204,11 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             var configWithNonExistentFile = new TransformationEngineConfig { ConfigPath = nonExistentPath };
-            var service = CreateService(_config, configWithNonExistentFile);
+            var configManagerMock = new Mock<IConfigManager>();
+            configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithNonExistentFile);
+            var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
 
             // Act
             var result = await service.TryOpenTransformationConfigAsync();
@@ -236,7 +259,7 @@ namespace SharpBridge.Tests.Services
             mockProcessLauncher.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
                 .Throws(new InvalidOperationException("Test exception"));
 
-            var service = new ExternalEditorService(_config, _loggerMock.Object, mockProcessLauncher.Object, _transformationConfig, _mockConfigManager.Object);
+            var service = new ExternalEditorService(_mockConfigManager.Object, _loggerMock.Object, mockProcessLauncher.Object, _mockFileWatcher.Object);
 
             // Act
             var result = await service.TryOpenTransformationConfigAsync();

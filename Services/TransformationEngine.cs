@@ -12,7 +12,7 @@ namespace SharpBridge.Services
     /// <summary>
     /// Transforms tracking data into VTube Studio parameters according to transformation rules
     /// </summary>
-    public class TransformationEngine : ITransformationEngine, IServiceStatsProvider
+    public class TransformationEngine : ITransformationEngine, IServiceStatsProvider, IDisposable
     {
         private const string EVALUATION_ERROR_MESSAGE = "Failed to evaluate - missing dependencies or evaluation error";
         private const string EVALUATION_ERROR_TYPE = "Evaluation";
@@ -21,6 +21,7 @@ namespace SharpBridge.Services
         private readonly IAppLogger _logger;
         private readonly ITransformationRulesRepository _rulesRepository;
         private readonly IConfigManager _configManager;
+        private readonly IFileChangeWatcher _appConfigWatcher;
         private TransformationEngineConfig _config;
 
         // Statistics tracking fields
@@ -39,6 +40,9 @@ namespace SharpBridge.Services
         // Configuration change tracking
         private bool _configChanged = false;
 
+        // Disposal tracking
+        private bool _isDisposed;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="TransformationEngine"/> class
         /// </summary>
@@ -54,11 +58,39 @@ namespace SharpBridge.Services
             _rulesRepository = rulesRepository ?? throw new ArgumentNullException(nameof(rulesRepository));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
-
-            if (appConfigWatcher == null) throw new ArgumentNullException(nameof(appConfigWatcher));
+            _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
 
             _rulesRepository.RulesChanged += OnRulesChanged;
-            appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+            _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+        }
+
+        /// <summary>
+        /// Releases all resources used by the transformation engine
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases all resources used by the transformation engine
+        /// </summary>
+        /// <param name="disposing">True if called from Dispose, false if called from finalizer</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed && disposing)
+            {
+                _logger.Debug("Disposing TransformationEngine");
+
+                // Unsubscribe from file watcher events
+                _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
+
+                // Unsubscribe from rules repository events
+                _rulesRepository.RulesChanged -= OnRulesChanged;
+
+                _isDisposed = true;
+            }
         }
 
         private void OnRulesChanged(object? sender, RulesChangedEventArgs e)
@@ -78,11 +110,11 @@ namespace SharpBridge.Services
                 _logger.Debug("Application config changed, checking if transformation engine config was affected");
 
                 // Load new config and compare transformation engine section
-                var newConfig = await _configManager.LoadApplicationConfigAsync();
-                if (!ConfigComparers.TransformationEngineConfigsEqual(_config, newConfig.TransformationEngine))
+                var newConfig = await _configManager.LoadTransformationConfigAsync();
+                if (!ConfigComparers.TransformationEngineConfigsEqual(_config, newConfig))
                 {
                     _logger.Info("Transformation engine configuration changed, updating internal config");
-                    _config = newConfig.TransformationEngine;
+                    _config = newConfig;
                     _configChanged = true;
                     _logger.Debug("Transformation engine config marked as changed");
                 }
@@ -112,10 +144,10 @@ namespace SharpBridge.Services
             // Track hot reload attempts
             _hotReloadAttempts++;
 
-            var result = await _rulesRepository.LoadRulesAsync(_config.ConfigPath);
+            var result = await _rulesRepository.LoadRulesAsync();
 
             // Update config file path for stats
-            _configFilePath = _rulesRepository.CurrentFilePath;
+            _configFilePath = _rulesRepository.TransformationRulesPath;
 
             // Always update rules with whatever we got (cached or fresh)
             _rules.Clear();
@@ -142,10 +174,6 @@ namespace SharpBridge.Services
             {
                 // Normal success path
                 UpdateRulesLoadedStatus(result.ValidRules.Count, result.InvalidRules.Count, result.ValidationErrors);
-
-                // Reset config changed flag on successful load
-                _configChanged = false;
-                _logger.Debug("Transformation engine config changed flag reset");
             }
         }
 

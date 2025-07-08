@@ -113,7 +113,9 @@ namespace SharpBridge
             services.AddSingleton<ITransformationRulesRepository>(provider =>
                 new SharpBridge.Repositories.FileBasedTransformationRulesRepository(
                     provider.GetRequiredService<IAppLogger>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("TransformationRules")!));
+                    provider.GetKeyedService<IFileChangeWatcher>("TransformationRules")!,
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetRequiredService<IConfigManager>()));
 
 
             services.AddTransient<ITransformationEngine>(provider =>
@@ -179,11 +181,10 @@ namespace SharpBridge
             // Register external editor service
             services.AddSingleton<IExternalEditorService>(provider =>
                 new ExternalEditorService(
-                    provider.GetRequiredService<GeneralSettingsConfig>(),
+                    provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IProcessLauncher>(),
-                    provider.GetRequiredService<TransformationEngineConfig>(),
-                    provider.GetRequiredService<IConfigManager>()
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
             // Register shortcut services
@@ -213,7 +214,28 @@ namespace SharpBridge
             });
 
             // Register the orchestrator - scoped to ensure one instance per execution context
-            services.AddScoped<IApplicationOrchestrator, ApplicationOrchestrator>();
+            services.AddScoped<IApplicationOrchestrator>(provider =>
+                new ApplicationOrchestrator(
+                    provider.GetRequiredService<IVTubeStudioPCClient>(),
+                    provider.GetRequiredService<IVTubeStudioPhoneClient>(),
+                    provider.GetRequiredService<ITransformationEngine>(),
+                    provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IConsoleRenderer>(),
+                    provider.GetRequiredService<IKeyboardInputHandler>(),
+                    provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
+                    provider.GetRequiredService<IRecoveryPolicy>(),
+                    provider.GetRequiredService<IConsole>(),
+                    provider.GetRequiredService<IConsoleWindowManager>(),
+                    provider.GetRequiredService<IParameterColorService>(),
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IShortcutConfigurationManager>(),
+                    provider.GetRequiredService<ApplicationConfig>(),
+                    provider.GetRequiredService<ISystemHelpRenderer>(),
+                    provider.GetRequiredService<UserPreferences>(),
+                    provider.GetRequiredService<IConfigManager>(),
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                ));
 
             return services;
         }

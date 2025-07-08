@@ -13,27 +13,33 @@ namespace SharpBridge.Interfaces
         /// Event raised when the rules file changes on disk
         /// </summary>
         event EventHandler<RulesChangedEventArgs> RulesChanged;
-        
+
+        /// <summary>
+        /// Loads transformation rules from the configured path in application config
+        /// </summary>
+        /// <returns>Result containing loaded rules, validation errors, and cache information</returns>
+        Task<RulesLoadResult> LoadRulesAsync();
+
         /// <summary>
         /// Loads transformation rules from the specified file path
         /// </summary>
         /// <param name="filePath">Path to the transformation rules file</param>
         /// <returns>Result containing loaded rules, validation errors, and cache information</returns>
         Task<RulesLoadResult> LoadRulesAsync(string filePath);
-        
+
         /// <summary>
         /// Gets whether the currently loaded rules are up to date with the source
         /// </summary>
         bool IsUpToDate { get; }
-        
+
         /// <summary>
         /// Gets the path to the currently loaded rules file
         /// </summary>
-        string CurrentFilePath { get; }
-        
+        string TransformationRulesPath { get; }
+
         /// <summary>
         /// Gets the timestamp when rules were last successfully loaded
         /// </summary>
         DateTime LastLoadTime { get; }
     }
-} 
+}

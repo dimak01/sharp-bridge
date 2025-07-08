@@ -71,7 +71,7 @@ namespace SharpBridge.Tests.Services
                 false,
                 null);
 
-            _mockRepository.Setup(r => r.LoadRulesAsync(It.IsAny<string>())).ReturnsAsync(result);
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(result);
             _mockRepository.Setup(r => r.IsUpToDate).Returns(true);
         }
 
@@ -84,13 +84,13 @@ namespace SharpBridge.Tests.Services
                 hasCache,
                 errorMessage);
 
-            _mockRepository.Setup(r => r.LoadRulesAsync(It.IsAny<string>())).ReturnsAsync(result);
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(result);
             _mockRepository.Setup(r => r.IsUpToDate).Returns(false);
         }
 
         private void SetupRepositoryWithException(Exception exception)
         {
-            _mockRepository.Setup(r => r.LoadRulesAsync(It.IsAny<string>())).ThrowsAsync(exception);
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ThrowsAsync(exception);
         }
 
         #endregion
@@ -128,7 +128,7 @@ namespace SharpBridge.Tests.Services
             await engine.LoadRulesAsync();
 
             // Assert
-            _mockRepository.Verify(r => r.LoadRulesAsync("test.json"), Times.Once);
+            _mockRepository.Verify(r => r.LoadRulesAsync(), Times.Once);
         }
 
         [Fact]
