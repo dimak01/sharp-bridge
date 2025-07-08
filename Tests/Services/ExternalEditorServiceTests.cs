@@ -6,6 +6,7 @@ using Moq;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
+using SharpBridge.Utilities;
 using Xunit;
 
 namespace SharpBridge.Tests.Services
@@ -147,6 +148,131 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
+        #region Dispose Tests
+
+        [Fact]
+        public void Dispose_LogsDisposalMessage()
+        {
+            // Act
+            _service.Dispose();
+
+            // Assert
+            _loggerMock.Verify(x => x.Debug("Disposing ExternalEditorService"), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_CanBeCalledMultipleTimesSafely()
+        {
+            // Act
+            _service.Dispose();
+            _service.Dispose();
+
+            // Assert - Should only log disposal once
+            _loggerMock.Verify(x => x.Debug("Disposing ExternalEditorService"), Times.Once);
+        }
+
+        #endregion
+
+        #region Configuration Change Tests
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WhenGeneralSettingsChanged_ReloadsConfiguration()
+        {
+            // Arrange
+            var newConfig = new ApplicationConfig
+            {
+                GeneralSettings = new GeneralSettingsConfig { EditorCommand = "new-editor.exe \"%f\"" }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync()).ReturnsAsync(newConfig);
+
+            // Act - Simulate config change event
+            _mockFileWatcher.Raise(x => x.FileChanged += null, this, new FileChangeEventArgs("test.json"));
+
+            // Wait a bit for async operation to complete
+            await Task.Delay(100);
+
+            // Assert
+            _loggerMock.Verify(x => x.Debug("Application config changed, checking if general settings were affected"), Times.Once);
+            _loggerMock.Verify(x => x.Info("General settings changed, updating external editor service"), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WhenGeneralSettingsUnchanged_DoesNotReloadConfiguration()
+        {
+            // Arrange
+            var newConfig = new ApplicationConfig
+            {
+                GeneralSettings = _config // Same config
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync()).ReturnsAsync(newConfig);
+
+            // Act - Simulate config change event
+            _mockFileWatcher.Raise(x => x.FileChanged += null, this, new FileChangeEventArgs("test.json"));
+
+            // Wait a bit for async operation to complete
+            await Task.Delay(100);
+
+            // Assert
+            _loggerMock.Verify(x => x.Debug("Application config changed, checking if general settings were affected"), Times.Once);
+            _loggerMock.Verify(x => x.Info("General settings changed, updating external editor service"), Times.Never);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WhenConfigLoadingFails_LogsError()
+        {
+            // Arrange
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ThrowsAsync(new IOException("Config file not found"));
+
+            // Act - Simulate config change event
+            _mockFileWatcher.Raise(x => x.FileChanged += null, this, new FileChangeEventArgs("test.json"));
+
+            // Wait a bit for async operation to complete
+            await Task.Delay(100);
+
+            // Assert
+            _loggerMock.Verify(x => x.Error("Error handling application config change: {0}", "Config file not found"), Times.Once);
+        }
+
+        #endregion
+
+        #region Application Config Opening Tests
+
+        [Fact]
+        public async Task TryOpenApplicationConfigAsync_WithValidConfig_OpensApplicationConfig()
+        {
+            // Act
+            var result = await _service.TryOpenApplicationConfigAsync();
+
+            // Assert
+            result.Should().BeTrue();
+            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
+                It.Is<string>(cmd => cmd.Contains(_tempConfigPath))), Times.Once);
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", "notepad.exe"), Times.Once);
+            _processLauncherMock.Verify(x => x.TryStartProcess("notepad.exe",
+                It.Is<string>(args => args.Contains(_tempConfigPath))), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryOpenApplicationConfigAsync_WithNonExistentFile_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _mockConfigManager.Setup(x => x.ApplicationConfigPath).Returns(nonExistentPath);
+            var service = new ExternalEditorService(_mockConfigManager.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
+
+            // Act
+            var result = await service.TryOpenApplicationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Cannot open {0} in editor: file does not exist: {1}", "application config", nonExistentPath), Times.Once);
+        }
+
+        #endregion
+
         #region Editor Command Validation Tests
 
         [Fact]
@@ -197,6 +323,63 @@ namespace SharpBridge.Tests.Services
         #endregion
 
         #region File Path Validation Tests
+
+        [Fact]
+        public async Task TryOpenTransformationConfigAsync_WithNullFilePath_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var configWithNullPath = new TransformationEngineConfig { ConfigPath = null! };
+            var configManagerMock = new Mock<IConfigManager>();
+            configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithNullPath);
+            var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Cannot open {0} in editor: file path is null or empty", "transformation config"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryOpenTransformationConfigAsync_WithEmptyFilePath_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var configWithEmptyPath = new TransformationEngineConfig { ConfigPath = string.Empty };
+            var configManagerMock = new Mock<IConfigManager>();
+            configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithEmptyPath);
+            var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Cannot open {0} in editor: file path is null or empty", "transformation config"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryOpenTransformationConfigAsync_WithWhitespaceFilePath_ReturnsFalseAndLogsWarning()
+        {
+            // Arrange
+            var configWithWhitespacePath = new TransformationEngineConfig { ConfigPath = "   " };
+            var configManagerMock = new Mock<IConfigManager>();
+            configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
+            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithWhitespacePath);
+            var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Cannot open {0} in editor: file path is null or empty", "transformation config"), Times.Once);
+        }
 
         [Fact]
         public async Task TryOpenTransformationConfigAsync_WithNonExistentFile_ReturnsFalseAndLogsWarning()
