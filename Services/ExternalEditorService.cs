@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Utilities;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace SharpBridge.Services
 {
@@ -155,7 +158,13 @@ namespace SharpBridge.Services
                 _logger.Debug("Executing editor command: {0}", commandWithFile);
 
                 // Parse command and arguments
-                var (executable, arguments) = ParseCommand(commandWithFile);
+                if (!TryParseCommand(commandWithFile, out var parseResult))
+                {
+                    _logger.Warning("Malformed editor command: {0}", commandWithFile);
+                    return Task.FromResult(false);
+                }
+
+                var (executable, arguments) = parseResult;
 
                 // Execute the command using the process launcher
                 if (_processLauncher.TryStartProcess(executable, arguments))
@@ -177,44 +186,41 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
-        /// Parses a command line into executable and arguments
+        /// Attempts to parse a command line into executable and arguments
         /// </summary>
         /// <param name="commandLine">Full command line to parse</param>
-        /// <returns>Tuple containing executable path and arguments</returns>
-        private static (string executable, string arguments) ParseCommand(string commandLine)
+        /// <param name="result">Tuple containing executable path and arguments</param>
+        /// <returns>True if parsing succeeded, false if the command line is malformed</returns>
+        private static bool TryParseCommand(string commandLine, out (string executable, string arguments) result)
         {
-            if (string.IsNullOrWhiteSpace(commandLine))
-            {
-                return (string.Empty, string.Empty);
-            }
+            result = (string.Empty, string.Empty);
 
             var trimmedCommand = commandLine.Trim();
 
-            // Handle quoted executables
-            if (trimmedCommand.StartsWith('"'))
+            // Pattern: mandatory executable followed by optional space-delimited arguments
+            var pattern = @"^(?<executable>(""[^""]+""|[^\s""']+))(?:\s+(?<argument>(""[^""]*""|[^""']+)))*$";
+
+            var match = Regex.Match(trimmedCommand, pattern, RegexOptions.None, TimeSpan.FromSeconds(1));
+            if (!match.Success)
+                return false;
+
+            var executable = match.Groups["executable"].Value;
+            var arguments = new List<string>();
+
+            // Extract all arguments
+            foreach (Capture capture in match.Groups["argument"].Captures)
             {
-                var closingQuoteIndex = trimmedCommand.IndexOf('"', 1);
-                if (closingQuoteIndex > 0)
-                {
-                    var executable = trimmedCommand.Substring(1, closingQuoteIndex - 1);
-                    var arguments = trimmedCommand.Length > closingQuoteIndex + 1
-                        ? trimmedCommand.Substring(closingQuoteIndex + 1).Trim()
-                        : string.Empty;
-                    return (executable, arguments);
-                }
+                arguments.Add(capture.Value);
             }
 
-            // Handle unquoted executables
-            var spaceIndex = trimmedCommand.IndexOf(' ');
-            if (spaceIndex > 0)
-            {
-                var executable = trimmedCommand.Substring(0, spaceIndex);
-                var arguments = trimmedCommand.Substring(spaceIndex + 1).Trim();
-                return (executable, arguments);
-            }
+            // Remove quotes from executable if present
+            executable = executable.Trim('"');
 
-            // Command has no arguments
-            return (trimmedCommand, string.Empty);
+            // Remove quotes from arguments if present
+            arguments = arguments.Select(arg => arg.Trim('"')).ToList();
+
+            result = (executable, string.Join(" ", arguments));
+            return true;
         }
     }
 }
