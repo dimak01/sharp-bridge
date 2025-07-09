@@ -507,47 +507,192 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
-        #region Command Parsing Tests
+        #region Malformed Editor Command Tests
 
         [Fact]
-        public async Task TryOpenTransformationConfigAsync_WithQuotedExecutable_ParsesCorrectly()
+        public async Task TryOpenTransformationConfigAsync_WithMalformedQuotedEditorCommand_ReturnsFalseAndLogsWarning()
         {
-            // Arrange
-            var configWithQuotedExe = new GeneralSettingsConfig { EditorCommand = "\"C:\\Program Files\\Editor\\editor.exe\" \"%f\"" };
-            var service = CreateService(configWithQuotedExe, false); // Expect failure since editor doesn't exist
+            // Arrange: EditorCommand is missing a closing quote
+            var malformedEditorCommand = "\"C:\\Program Files\\Editor\\editor.exe";
+            var config = new GeneralSettingsConfig { EditorCommand = malformedEditorCommand };
+            var service = CreateService(config);
 
             // Act
             var result = await service.TryOpenTransformationConfigAsync();
 
-            // Assert - Verify command was parsed and executed (will likely fail since editor doesn't exist)
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
-                It.Is<string>(cmd => cmd.Contains("C:\\Program Files\\Editor\\editor.exe") && cmd.Contains(_tempConfigPath))), Times.Once);
-            // Should fail gracefully since the editor doesn't exist
-            _loggerMock.Verify(x => x.Warning("Failed to start external editor process"), Times.Once);
+            // Assert: Should reject malformed command and return false
             result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Malformed editor command: {0}", malformedEditorCommand), Times.Once);
+            _processLauncherMock.Verify(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
-        [Fact]
-        public async Task TryOpenTransformationConfigAsync_WithComplexArguments_ParsesCorrectly()
+        #endregion
+
+        #region Corner Case Tests
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        public async Task TryOpenTransformationConfigAsync_WithEmptyOrWhitespaceEditorCommand_ReturnsFalseAndLogsWarning(string editorCommand)
         {
             // Arrange
-            var configWithComplexArgs = new GeneralSettingsConfig
-            {
-                EditorCommand = "code.exe --goto \"%f\":1:1 --new-window --wait"
-            };
-            var service = CreateService(configWithComplexArgs, false); // Expect failure
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
 
             // Act
             var result = await service.TryOpenTransformationConfigAsync();
 
-            // Assert - Verify command was parsed correctly with complex arguments
-            _loggerMock.Verify(x => x.Debug("Executing editor command: {0}",
-                It.Is<string>(cmd => cmd.Contains("code.exe") && cmd.Contains("--goto") &&
-                                     cmd.Contains(_tempConfigPath) && cmd.Contains(":1:1") &&
-                                     cmd.Contains("--new-window") && cmd.Contains("--wait"))), Times.Once);
-            // Should fail gracefully since code.exe likely doesn't exist
-            _loggerMock.Verify(x => x.Warning("Failed to start external editor process"), Times.Once);
+            // Assert
             result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Cannot open {0} in editor: editor command is not configured", "transformation config"), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("\"C:\\Program Files\\Editor.exe")]
+        [InlineData("C:\\Program Files\\Editor.exe\"")]
+        [InlineData("\"C:\\Program Files\\Editor.exe\" \"arg1")]
+        [InlineData("C:\\Program Files\\Editor.exe\" \"arg1\"")]
+        [InlineData("\"C:\\Program Files\\Editor.exe arg1")]
+        public async Task TryOpenTransformationConfigAsync_WithUnclosedQuotes_ReturnsFalseAndLogsWarning(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Malformed editor command: {0}", editorCommand), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("\"C:\\Program Files\\Editor.exe\" \"arg1\" \"arg2")]
+        [InlineData("C:\\Editor.exe\" \"arg1\" \"arg2\"")]
+        [InlineData("\"C:\\Editor.exe arg1\" \"arg2")]
+        public async Task TryOpenTransformationConfigAsync_WithMismatchedQuotes_ReturnsFalseAndLogsWarning(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Malformed editor command: {0}", editorCommand), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("C:\\Editor.exe    arg1   arg2")]
+        [InlineData("C:\\Editor.exe\targ1\t\targ2")]
+        [InlineData("C:\\Editor.exe  \t  arg1  \t  arg2")]
+        public async Task TryOpenTransformationConfigAsync_WithMultipleSpacesAndTabs_HandlesCorrectly(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert - Should handle multiple spaces and tabs correctly
+            result.Should().BeTrue();
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", "C:\\Editor.exe"), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("\"C:\\Editor.exe\" \"\" \"arg2\"")]
+        [InlineData("\"C:\\Editor.exe\" \"\"")]
+        [InlineData("C:\\Editor.exe \"\" \"arg2\"")]
+        [InlineData("C:\\Editor.exe \"\"")]
+        public async Task TryOpenTransformationConfigAsync_WithQuotedEmptyArgument_HandlesCorrectly(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert - Should handle empty quoted arguments correctly
+            result.Should().BeTrue();
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", "C:\\Editor.exe"), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("C:\\Editor.exe\" \"arg with \\\"quote\\\" inside\"")]
+        [InlineData("C:\\Editor.exe\" \"arg with \\\"nested\\\" quotes\"")]
+        public async Task TryOpenTransformationConfigAsync_WithEmbeddedQuotes_ReturnsFalseAndLogsWarning(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert - Current regex doesn't support escaped quotes, so should fail
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Malformed editor command: {0}", editorCommand), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("C:\\Editor.exe\" arg1 garbage\"")]
+        [InlineData("C:\\Editor.exe\" arg1 \"garbage")]
+        [InlineData("C:\\Editor.exe arg1\" garbage")]
+        public async Task TryOpenTransformationConfigAsync_WithTrailingGarbage_ReturnsFalseAndLogsWarning(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _loggerMock.Verify(x => x.Warning("Malformed editor command: {0}", editorCommand), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("C:\\Editor.exe")]
+        [InlineData("notepad.exe")]
+        [InlineData("vim")]
+        public async Task TryOpenTransformationConfigAsync_WithSingleUnquotedToken_HandlesCorrectly(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert - Should handle single unquoted tokens correctly
+            result.Should().BeTrue();
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", editorCommand), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("\"C:\\Program Files\\Editor.exe\"")]
+        [InlineData("\"notepad.exe\"")]
+        [InlineData("\"vim\"")]
+        public async Task TryOpenTransformationConfigAsync_WithSingleQuotedToken_HandlesCorrectly(string editorCommand)
+        {
+            // Arrange
+            var config = new GeneralSettingsConfig { EditorCommand = editorCommand };
+            var service = CreateService(config);
+
+            // Act
+            var result = await service.TryOpenTransformationConfigAsync();
+
+            // Assert - Should handle single quoted tokens correctly
+            result.Should().BeTrue();
+            var expectedExecutable = editorCommand.Trim('"');
+            _loggerMock.Verify(x => x.Info("External editor launched successfully: {0}", expectedExecutable), Times.Once);
         }
 
         #endregion
