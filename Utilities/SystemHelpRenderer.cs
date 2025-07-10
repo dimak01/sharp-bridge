@@ -42,9 +42,12 @@ namespace SharpBridge.Utilities
             // Create separator line based on console width
             var separatorLine = new string('═', systemHelpScreenWidth);
 
+            // Get the help shortcut dynamically
+            var helpShortcut = _shortcutConfigurationManager.GetDisplayString(ShortcutAction.ShowSystemHelp);
+
             // Header
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("SHARP BRIDGE - SYSTEM HELP (F2)", systemHelpScreenWidth));
+            builder.AppendLine(CenterText($"SHARP BRIDGE - SYSTEM HELP ({helpShortcut})", systemHelpScreenWidth));
             builder.AppendLine(separatorLine);
             builder.AppendLine();
 
@@ -56,7 +59,7 @@ namespace SharpBridge.Utilities
             // Footer
             builder.AppendLine();
             builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText("Press any key to return to main display", systemHelpScreenWidth));
+            builder.AppendLine(CenterText($"Press {helpShortcut} again to return to main display", systemHelpScreenWidth));
             builder.AppendLine(separatorLine);
 
             return builder.ToString();
