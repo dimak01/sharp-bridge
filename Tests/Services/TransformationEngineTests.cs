@@ -737,6 +737,40 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
+        #region OnApplicationConfigChanged Tests
+
+        [Fact]
+        public void OnApplicationConfigChanged_ShouldLogDebugMessage()
+        {
+            // Arrange
+            CreateEngine(); // Create engine to set up event handlers
+            var fileChangeArgs = new FileChangeEventArgs("config.json");
+
+            // Act
+            _mockAppConfigWatcher.Raise(w => w.FileChanged += null, fileChangeArgs);
+
+            // Assert
+            _mockLogger.Verify(l => l.Debug("Application config changed, checking if transformation engine config was affected"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_ShouldSetConfigChangedFlag()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var fileChangeArgs = new FileChangeEventArgs("config.json");
+
+            // Act
+            _mockAppConfigWatcher.Raise(w => w.FileChanged += null, fileChangeArgs);
+
+            // Assert
+            engine.ConfigChanged.Should().BeTrue();
+        }
+
+
+
+        #endregion
+
         #region LogValidationErrors Tests
 
         [Fact]
