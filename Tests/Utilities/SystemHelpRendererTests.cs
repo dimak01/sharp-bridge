@@ -137,7 +137,7 @@ namespace SharpBridge.Tests.Utilities
             result.Should().Contain("GENERAL SETTINGS");
             result.Should().Contain("KEYBOARD SHORTCUTS");
             result.Should().Contain("Test Table");
-            result.Should().Contain("Press any key to return to main display");
+            result.Should().Contain("Press None again to return to main display");
         }
 
         [Fact]
@@ -408,6 +408,8 @@ namespace SharpBridge.Tests.Utilities
             _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts())
                 .Returns(new Dictionary<ShortcutAction, string>());
             _shortcutManagerMock.Setup(x => x.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.Active);
+            _shortcutManagerMock.Setup(x => x.GetDisplayString(ShortcutAction.ShowSystemHelp))
+                .Returns("F1");
             _tableFormatterMock.Setup(x => x.AppendTable(
     It.IsAny<StringBuilder>(),
     It.IsAny<string>(),
@@ -432,7 +434,7 @@ namespace SharpBridge.Tests.Utilities
             result.Should().Contain("SHARP BRIDGE - SYSTEM HELP");
             result.Should().Contain("GENERAL SETTINGS");
             result.Should().Contain("KEYBOARD SHORTCUTS");
-            result.Should().Contain("Press any key to return to main display");
+            result.Should().Contain("Press F1 again to return to main display");
             result.Should().Contain("External Editor Command");
             result.Should().Contain("notepad.exe");
         }
@@ -770,6 +772,8 @@ namespace SharpBridge.Tests.Utilities
                 });
             _shortcutManagerMock.Setup(x => x.GetIncorrectShortcuts())
                 .Returns(new Dictionary<ShortcutAction, string>());
+            _shortcutManagerMock.Setup(x => x.GetDisplayString(ShortcutAction.ShowSystemHelp))
+                .Returns("F1");
 
             _tableFormatterMock.Setup(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
@@ -826,7 +830,7 @@ namespace SharpBridge.Tests.Utilities
             result.Should().Contain("PC CLIENT");
             result.Should().Contain("TRANSFORMATION ENGINE");
             result.Should().Contain("KEYBOARD SHORTCUTS");
-            result.Should().Contain("Press any key to return to main display");
+            result.Should().Contain("Press F1 again to return to main display");
         }
 
         #endregion
