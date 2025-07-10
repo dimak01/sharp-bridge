@@ -269,14 +269,6 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Gets a human-readable display name for a shortcut action using Description attributes
-        /// </summary>
-        private static string GetActionDisplayName(ShortcutAction action)
-        {
-            return AttributeHelper.GetDescription(action);
-        }
-
-        /// <summary>
         /// Handles application configuration changes
         /// </summary>
         /// <param name="sender">The event sender</param>
