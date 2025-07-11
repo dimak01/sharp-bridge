@@ -767,6 +767,128 @@ namespace SharpBridge.Tests.Services
             engine.ConfigChanged.Should().BeTrue();
         }
 
+        [Fact]
+        public void OnRulesChanged_ShouldLogDebugMessage()
+        {
+            // Arrange
+            CreateEngine(); // Create engine to subscribe to events
+            var eventArgs = new RulesChangedEventArgs("test-rules.json");
+
+            // Act - Raise the event that the engine is subscribed to
+            _mockRepository.Raise(x => x.RulesChanged += null, this, eventArgs);
+
+            // Assert
+            _mockLogger.Verify(x => x.Debug("Rules file changed: test-rules.json"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenExceptionOccurs_ShouldLogError()
+        {
+            // Arrange
+            CreateEngine(); // Create engine to subscribe to events
+            _mockConfigManager.Setup(x => x.LoadTransformationConfigAsync())
+                .ThrowsAsync(new InvalidOperationException("Test exception"));
+
+            // Act - Raise the event that the engine is subscribed to
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null, this, new FileChangeEventArgs("test.json"));
+
+            // Assert
+            _mockLogger.Verify(x => x.ErrorWithException("Error handling application config change", It.IsAny<InvalidOperationException>()), Times.Once);
+        }
+
+        [Fact]
+        public void Constructor_WithNullConfig_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new TransformationEngine(_mockLogger.Object, _mockRepository.Object, null!, _mockConfigManager.Object, _mockAppConfigWatcher.Object));
+            exception.ParamName.Should().Be("config");
+        }
+
+        [Fact]
+        public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new TransformationEngine(_mockLogger.Object, _mockRepository.Object, new TransformationEngineConfig(), null!, _mockAppConfigWatcher.Object));
+            exception.ParamName.Should().Be("configManager");
+        }
+
+        [Fact]
+        public void Constructor_WithNullAppConfigWatcher_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new TransformationEngine(_mockLogger.Object, _mockRepository.Object, new TransformationEngineConfig(), _mockConfigManager.Object, null!));
+            exception.ParamName.Should().Be("appConfigWatcher");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithMixedValidAndInvalidRules_ShouldSetPartiallyValidStatus()
+        {
+            // Arrange
+            var validRules = new List<ParameterTransformation>
+            {
+                CreateTestTransformation("ValidRule", "eyeBlinkLeft * 100")
+            };
+            var invalidRules = new List<RuleInfo>
+            {
+                new RuleInfo("InvalidRule", "invalid expression", "Syntax error", "Syntax")
+            };
+            var validationErrors = new List<string> { "InvalidRule: Syntax error" };
+
+            var result = new RulesLoadResult(validRules, invalidRules, validationErrors, false, null);
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(result);
+
+            var engine = CreateEngine();
+
+            // Act
+            await engine.LoadRulesAsync();
+
+            // Assert
+            var stats = engine.GetServiceStats();
+            stats.Status.Should().Be("RulesPartiallyValid");
+            stats.LastError.Should().Be(string.Empty);
+        }
+
+        [Fact]
+        public void TransformData_WithMissingParameter_ShouldHandleGracefully()
+        {
+            // Arrange
+            var rule = CreateTestTransformation("TestRule", "MissingParam + 1");
+            SetupRepositoryWithRules(rule);
+            var engine = CreateEngine();
+            engine.LoadRulesAsync().Wait();
+
+            var trackingData = CreateValidTrackingData();
+
+            // Act
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.FaceFound.Should().BeTrue();
+            result.Parameters.Should().BeEmpty(); // No parameters should be added due to missing dependency
+        }
+
+        [Fact]
+        public void TransformData_WithEvaluationException_ShouldHandleGracefully()
+        {
+            // Arrange
+            var rule = CreateTestTransformation("TestRule", "invalid syntax here"); // Invalid syntax
+            SetupRepositoryWithRules(rule);
+            var engine = CreateEngine();
+            engine.LoadRulesAsync().Wait();
+
+            var trackingData = CreateValidTrackingData();
+
+            // Act
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.FaceFound.Should().BeTrue();
+            result.Parameters.Should().BeEmpty(); // No parameters should be added due to evaluation error
+        }
+
 
 
         #endregion
