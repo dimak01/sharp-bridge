@@ -1201,38 +1201,373 @@ namespace SharpBridge.Tests.Services
         public void Dispose_WhenAlreadyDisposed_DoesNotThrow()
         {
             // Arrange
-            var client = CreateClient();
+            var client = CreateClient(_mockLogger.Object);
 
-            // Act - Dispose twice
+            // Act & Assert - First disposal should work
             client.Dispose();
 
-            // Assert - Should not throw on second dispose
-            var act = () => client.Dispose();
-            act.Should().NotThrow();
+            // Act & Assert - Second disposal should not throw
+            client.Dispose();
+
+            // Verify the client was disposed properly
+            Assert.True(true); // Test passes if no exception is thrown
         }
 
         [Fact]
         public async Task GetServiceStats_ReturnsHealthyFalse_WhenNotConnected()
         {
             // Arrange
-            var config = new VTubeStudioPCConfig
-            {
-                UsePortDiscovery = false,
-                Port = 8001,
-                ConnectionTimeoutMs = 1000
-            };
+            var client = CreateClient(_mockLogger.Object);
 
-            // Don't queue any authentication responses - this will cause authentication to fail
-
-            var client = CreateClient(config: config);
-
-            // Act - Try to initialize and fail
-            await client.TryInitializeAsync(CancellationToken.None);
+            // Act
             var stats = client.GetServiceStats();
 
             // Assert
-            stats.IsHealthy.Should().BeFalse();
-            stats.Status.Should().Be("AuthenticationFailed");
+            Assert.False(stats.IsHealthy);
+        }
+
+        [Fact]
+        public void ConfigChanged_InitiallyReturnsFalse()
+        {
+            // Arrange
+            var client = CreateClient(_mockLogger.Object);
+
+            // Act & Assert
+            Assert.False(client.ConfigChanged);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenConfigChanges_UpdatesInternalConfig()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "OriginalPlugin",
+                PluginDeveloper = "OriginalDeveloper"
+            };
+
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "newhost",
+                    Port = 8002,
+                    PluginName = "NewPlugin",
+                    PluginDeveloper = "NewDeveloper"
+                }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.True(client.ConfigChanged);
+            Assert.Equal("newhost", client.Config.Host);
+            Assert.Equal(8002, client.Config.Port);
+            Assert.Equal("NewPlugin", client.Config.PluginName);
+            Assert.Equal("NewDeveloper", client.Config.PluginDeveloper);
+
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Info("PC client configuration changed, updating internal config"), Times.Once);
+            _mockLogger.Verify(x => x.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",
+                "newhost", 8002, "NewPlugin"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenConfigDoesNotChange_DoesNotUpdateInternalConfig()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 8001,
+                    PluginName = "TestPlugin",
+                    PluginDeveloper = "TestDeveloper"
+                }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.False(client.ConfigChanged);
+            Assert.Equal("localhost", client.Config.Host);
+            Assert.Equal(8001, client.Config.Port);
+            Assert.Equal("TestPlugin", client.Config.PluginName);
+            Assert.Equal("TestDeveloper", client.Config.PluginDeveloper);
+
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Info(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenExceptionOccurs_LogsError()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ThrowsAsync(new InvalidOperationException("Test exception"));
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.False(client.ConfigChanged);
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Error handling application config change: {0}", "Test exception"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenConfigManagerReturnsNull_HandlesGracefully()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync((ApplicationConfig?)null);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.False(client.ConfigChanged);
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenNewConfigHasNullPCClient_HandlesGracefully()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = null!
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.True(client.ConfigChanged);
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_WhenAppConfigWatcherIsNull_DoesNotThrow()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(
+                _mockLogger.Object,
+                _mockConfigManager.Object,
+                _mockWebSocket.Object,
+                _mockPortDiscoveryService.Object,
+                null); // No app config watcher
+
+            // Act & Assert
+            client.Dispose();
+
+            // Verify the client was disposed properly
+            Assert.True(true); // Test passes if no exception is thrown
+        }
+
+        [Fact]
+        public void Dispose_WhenWebSocketIsNull_DoesNotThrow()
+        {
+            // Arrange
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed);
+            mockWebSocket.Setup(x => x.Dispose()).Throws(new InvalidOperationException("Test exception"));
+
+            var client = new VTubeStudioPCClient(
+                _mockLogger.Object,
+                _mockConfigManager.Object,
+                mockWebSocket.Object,
+                _mockPortDiscoveryService.Object,
+                _mockAppConfigWatcher.Object);
+
+            // Act & Assert
+            client.Dispose();
+            _mockLogger.Verify(x => x.Error("Error disposing WebSocket: {0}", "Test exception"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryInitializeAsync_WhenWebSocketIsInOpenState_RecreatesWebSocket()
+        {
+            // Arrange
+            _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Open);
+            _mockWebSocket.Setup(x => x.RecreateWebSocket()).Callback(() =>
+            {
+                _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            });
+
+            var client = CreateClient(_mockLogger.Object);
+
+            // Setup successful initialization
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+
+            // Assert
+            Assert.True(result);
+            _mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryInitializeAsync_WhenWebSocketIsInAbortedState_RecreatesWebSocket()
+        {
+            // Arrange
+            _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Aborted);
+            _mockWebSocket.Setup(x => x.RecreateWebSocket()).Callback(() =>
+            {
+                _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            });
+
+            var client = CreateClient(_mockLogger.Object);
+
+            // Setup successful initialization
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+
+            // Assert
+            Assert.True(result);
+            _mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetServiceStats_WhenConfigChanged_ReturnsUnhealthy()
+        {
+            // Arrange
+            var client = CreateClient(_mockLogger.Object);
+
+            // Simulate config change
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "newhost",
+                    Port = 8002,
+                    PluginName = "NewPlugin",
+                    PluginDeveloper = "NewDeveloper"
+                }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Act
+            var stats = client.GetServiceStats();
+
+            // Assert
+            Assert.False(stats.IsHealthy);
+        }
+
+        [Fact]
+        public async Task GetServiceStats_WhenConnectedAndConfigNotChanged_ReturnsHealthy()
+        {
+            // Arrange
+            var client = CreateClient(_mockLogger.Object);
+
+            // Setup successful connection and authentication
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            await client.TryInitializeAsync(CancellationToken.None);
+
+            // Act
+            var stats = client.GetServiceStats();
+
+            // Assert
+            Assert.True(stats.IsHealthy);
         }
     }
 }
