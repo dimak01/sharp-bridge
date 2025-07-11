@@ -14,13 +14,15 @@ namespace SharpBridge.Tests.Utilities
     {
         private readonly Mock<IShortcutParser> _parserMock;
         private readonly Mock<IAppLogger> _loggerMock;
+        private readonly Mock<IConfigManager> _mockConfigManager;
         private readonly ShortcutConfigurationManager _manager;
 
         public ShortcutConfigurationManagerTests()
         {
             _parserMock = new Mock<IShortcutParser>();
             _loggerMock = new Mock<IAppLogger>();
-            _manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object);
+            _mockConfigManager = new Mock<IConfigManager>();
+            _manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object);
         }
 
         #region Constructor Tests
@@ -30,7 +32,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ShortcutConfigurationManager(null!, _loggerMock.Object));
+                new ShortcutConfigurationManager(null!, _loggerMock.Object, _mockConfigManager.Object));
             exception.ParamName.Should().Be("parser");
         }
 
@@ -39,7 +41,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ShortcutConfigurationManager(_parserMock.Object, null!));
+                new ShortcutConfigurationManager(_parserMock.Object, null!, _mockConfigManager.Object));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -523,6 +525,223 @@ namespace SharpBridge.Tests.Utilities
             // Verify the FromKeyInfo method created the shortcut correctly
             shortcutFromKeyInfo.Key.Should().Be(ConsoleKey.T);
             shortcutFromKeyInfo.Modifiers.Should().Be(ConsoleModifiers.Alt);
+        }
+
+        #endregion
+
+        #region Disposal Tests
+
+        [Fact]
+        public void Dispose_ShouldUnsubscribeFromFileWatcherEvents()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+            var manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
+
+            // Act
+            manager.Dispose();
+
+            // Assert
+            _loggerMock.Verify(l => l.Debug("Disposing ShortcutConfigurationManager"), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_WhenAlreadyDisposed_ShouldNotThrow()
+        {
+            // Arrange
+            var manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object);
+            manager.Dispose();
+
+            // Act & Assert
+            manager.Dispose(); // Should not throw
+            _loggerMock.Verify(l => l.Debug("Disposing ShortcutConfigurationManager"), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_WithNullFileWatcher_ShouldNotThrow()
+        {
+            // Arrange
+            var manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, null);
+
+            // Act & Assert
+            manager.Dispose(); // Should not throw
+            _loggerMock.Verify(l => l.Debug("Disposing ShortcutConfigurationManager"), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_ShouldBeIdempotent()
+        {
+            // Arrange
+            var manager = new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object);
+
+            // Act
+            manager.Dispose();
+            manager.Dispose();
+            manager.Dispose();
+
+            // Assert
+            _loggerMock.Verify(l => l.Debug("Disposing ShortcutConfigurationManager"), Times.Once);
+        }
+
+        #endregion
+
+        #region Event Handler Tests
+
+        [Fact]
+        public void Constructor_WithFileWatcher_ShouldSubscribeToEvents()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+
+            // Act & Assert
+            // Verify that the manager was created successfully (subscription happens in constructor)
+            // The test passes if no exception is thrown during construction
+            new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object).Should().NotBeNull();
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_ShouldLogDebugMessage()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+            new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
+            var fileChangeArgs = new FileChangeEventArgs("config.json");
+
+            // Act
+            mockWatcher.Raise(w => w.FileChanged += null, fileChangeArgs);
+
+            // Assert
+            _loggerMock.Verify(l => l.Debug("Application config changed, checking if general settings were affected"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenGeneralSettingsChanged_ShouldReloadConfiguration()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+            var defaultConfig = new GeneralSettingsConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+            var newConfig = new ApplicationConfig
+            {
+                GeneralSettings = new GeneralSettingsConfig
+                {
+                    EditorCommand = "new-editor.exe",
+                    Shortcuts = new Dictionary<string, string>
+                    {
+                        ["ShowSystemHelp"] = "F2"
+                    }
+                }
+            };
+
+            // Setup mock to return different configs to trigger the change
+            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+                .ReturnsAsync(defaultConfig);
+            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
+            var fileChangeArgs = new FileChangeEventArgs("config.json");
+
+            // Act
+            mockWatcher.Raise(w => w.FileChanged += null, fileChangeArgs);
+
+            // Assert
+            _loggerMock.Verify(l => l.Info("General settings changed, updating internal config and reloading shortcuts"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenGeneralSettingsUnchanged_ShouldNotReloadConfiguration()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+            var defaultConfig = new GeneralSettingsConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+            var newConfig = new ApplicationConfig
+            {
+                GeneralSettings = new GeneralSettingsConfig
+                {
+                    EditorCommand = "notepad.exe \"%f\"", // Same as default
+                    Shortcuts = new Dictionary<string, string>()
+                }
+            };
+
+            // Setup mock to return the same config for both initial load and reload
+            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+                .ReturnsAsync(defaultConfig);
+            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
+            var fileChangeArgs = new FileChangeEventArgs("config.json");
+
+            // Act
+            mockWatcher.Raise(w => w.FileChanged += null, fileChangeArgs);
+
+            // Assert
+            _loggerMock.Verify(l => l.Info("General settings changed, updating internal config and reloading shortcuts"), Times.Never);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenExceptionOccurs_ShouldLogError()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
+                .ThrowsAsync(new Exception("Test exception"));
+
+            new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
+            var fileChangeArgs = new FileChangeEventArgs("config.json");
+
+            // Act
+            mockWatcher.Raise(w => w.FileChanged += null, fileChangeArgs);
+
+            // Assert
+            _loggerMock.Verify(l => l.Error("Error handling application config change: {0}", "Test exception"), Times.Once);
+        }
+
+        #endregion
+
+        #region UpdateConfig Tests
+
+        [Fact]
+        public void UpdateConfig_ShouldUpdateInternalConfiguration()
+        {
+            // Arrange
+            var mockWatcher = new Mock<IFileChangeWatcher>();
+            var defaultConfig = new GeneralSettingsConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+            var newGeneralSettings = new GeneralSettingsConfig
+            {
+                EditorCommand = "new-editor.exe",
+                Shortcuts = new Dictionary<string, string>
+                {
+                    ["ShowSystemHelp"] = "F2"
+                }
+            };
+
+            // Setup mock to return different configs to trigger the change
+            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+                .ReturnsAsync(defaultConfig);
+            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
+                .ReturnsAsync(new ApplicationConfig { GeneralSettings = newGeneralSettings });
+
+            new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
+
+            // Act
+            // Trigger the event handler which calls UpdateConfig
+            mockWatcher.Raise(w => w.FileChanged += null, new FileChangeEventArgs("config.json"));
+
+            // Assert
+            _loggerMock.Verify(l => l.Debug("General settings config updated"), Times.Once);
         }
 
         #endregion

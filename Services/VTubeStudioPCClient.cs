@@ -18,9 +18,10 @@ namespace SharpBridge.Services
     public class VTubeStudioPCClient : IVTubeStudioPCClient, IAuthTokenProvider, IServiceStatsProvider, IInitializable
     {
         private readonly IAppLogger _logger;
-        private readonly VTubeStudioPCConfig _config;
+        private readonly IConfigManager _configManager;
         private readonly IWebSocketWrapper _webSocket;
         private readonly IPortDiscoveryService _portDiscoveryService;
+        private readonly IFileChangeWatcher? _appConfigWatcher;
         private bool _isDisposed;
         private DateTime _startTime;
         private int _messagesSent;
@@ -31,47 +32,64 @@ namespace SharpBridge.Services
         private string _lastInitializationError = string.Empty;
         private DateTime _lastSuccessfulOperation;
         private PCClientStatus _status = PCClientStatus.Initializing;
-        
+        private bool _configChanged = false;
+        private VTubeStudioPCConfig _config;
+
         /// <summary>
         /// Gets the current state of the WebSocket connection
         /// </summary>
         public WebSocketState State => _webSocket.State;
-        
+
         /// <summary>
         /// Gets the current authentication token
         /// </summary>
         public string Token => _authToken;
-        
+
         /// <summary>
         /// Gets the client configuration
         /// </summary>
         public VTubeStudioPCConfig Config => _config;
-        
+
         /// <summary>
         /// Gets the last error that occurred during initialization
         /// </summary>
         public string LastInitializationError => _lastInitializationError;
-        
+
+        /// <summary>
+        /// Gets whether the configuration has changed (for testing purposes)
+        /// </summary>
+        public bool ConfigChanged => _configChanged;
+
         /// <summary>
         /// Creates a new instance of the VTubeStudioPCClient
         /// </summary>
         /// <param name="logger">Application logger</param>
-        /// <param name="config">VTube Studio PC configuration</param>
+        /// <param name="configManager">Configuration manager for loading configs</param>
         /// <param name="webSocket">WebSocket wrapper for communication</param>
         /// <param name="portDiscoveryService">Service for discovering VTube Studio's port</param>
+        /// <param name="appConfigWatcher">Optional file watcher for application config changes</param>
         public VTubeStudioPCClient(
-            IAppLogger logger, 
-            VTubeStudioPCConfig config, 
+            IAppLogger logger,
+            IConfigManager configManager,
             IWebSocketWrapper webSocket,
-            IPortDiscoveryService portDiscoveryService)
+            IPortDiscoveryService portDiscoveryService,
+            IFileChangeWatcher? appConfigWatcher = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
+            _appConfigWatcher = appConfigWatcher;
             _startTime = DateTime.Now;
+            _config = _configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
+
+            // Subscribe to application config changes if watcher is provided
+            if (_appConfigWatcher != null)
+            {
+                _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+            }
         }
-        
+
         /// <summary>
         /// Connects to VTube Studio using the configured host and port
         /// </summary>
@@ -81,10 +99,10 @@ namespace SharpBridge.Services
             {
                 throw new InvalidOperationException($"Cannot connect in state {_webSocket.State}");
             }
-            
+
             _connectionAttempts++;
             _logger.Info("Connecting to VTube Studio at {0}:{1}", _config.Host, _config.Port);
-            
+
             try
             {
                 var uri = new Uri($"ws://{_config.Host}:{_config.Port}");
@@ -99,7 +117,7 @@ namespace SharpBridge.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Closes the WebSocket connection gracefully
         /// </summary>
@@ -109,9 +127,9 @@ namespace SharpBridge.Services
             {
                 return;
             }
-            
+
             _logger.Info("Closing connection to VTube Studio: {0}", statusDescription);
-            
+
             try
             {
                 await _webSocket.CloseAsync(closeStatus, statusDescription, cancellationToken);
@@ -125,7 +143,7 @@ namespace SharpBridge.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Authenticates with VTube Studio, using stored token if available or requesting a new one
         /// </summary>
@@ -135,9 +153,9 @@ namespace SharpBridge.Services
             {
                 throw new InvalidOperationException("Must be connected to authenticate");
             }
-            
+
             _logger.Info("Authenticating with VTube Studio");
-            
+
             try
             {
                 if (string.IsNullOrEmpty(_authToken))
@@ -145,7 +163,7 @@ namespace SharpBridge.Services
                     _logger.Info("No token found, requesting new authentication token");
                     await GetTokenAsync(cancellationToken);
                 }
-                
+
                 // Authenticate with token
                 var authRequest = new AuthRequest
                 {
@@ -153,21 +171,21 @@ namespace SharpBridge.Services
                     PluginDeveloper = _config.PluginDeveloper,
                     AuthenticationToken = _authToken
                 };
-                
+
                 var authResponse = await _webSocket.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                     "AuthenticationRequest", authRequest, cancellationToken);
-                
+
                 if (!authResponse.Authenticated)
                 {
                     _logger.Info("Authentication failed: {0}. Requesting new token.", authResponse.Reason);
                     await GetTokenAsync(cancellationToken);
-                    
+
                     // Try authenticating again with new token
                     authRequest.AuthenticationToken = _authToken;
                     authResponse = await _webSocket.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                         "AuthenticationRequest", authRequest, cancellationToken);
                 }
-                
+
                 _logger.Info("Authentication result: {0}", authResponse.Authenticated);
                 return authResponse.Authenticated;
             }
@@ -177,7 +195,7 @@ namespace SharpBridge.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Discovers the port VTube Studio is running on via UDP broadcast
         /// </summary>
@@ -187,18 +205,18 @@ namespace SharpBridge.Services
             {
                 return _config.Port;
             }
-            
+
             _logger.Info("Discovering VTube Studio port");
-            
+
             var response = await _portDiscoveryService.DiscoverAsync(_config.ConnectionTimeoutMs, cancellationToken);
             if (response != null)
             {
                 return response.Port;
             }
-            
+
             return _config.Port;
         }
-        
+
         /// <summary>
         /// Sends tracking data to VTube Studio
         /// </summary>
@@ -208,21 +226,21 @@ namespace SharpBridge.Services
             {
                 throw new InvalidOperationException("Must be connected to send tracking data");
             }
-            
+
             try
             {
                 _status = PCClientStatus.SendingData;
-                
+
                 var request = new InjectParamsRequest
                 {
                     FaceFound = trackingData.FaceFound,
                     Mode = "set",
                     ParameterValues = trackingData.Parameters
                 };
-                
+
                 await _webSocket.SendRequestAsync<InjectParamsRequest, object>(
                     "InjectParameterDataRequest", request, cancellationToken);
-                
+
                 _messagesSent++;
                 _lastTrackingData = trackingData;
                 _lastSuccessfulOperation = DateTime.UtcNow;
@@ -235,7 +253,7 @@ namespace SharpBridge.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Attempts to initialize the client
         /// </summary>
@@ -245,17 +263,17 @@ namespace SharpBridge.Services
             {
                 _status = PCClientStatus.Initializing;
                 _logger.Info("Attempting to initialize VTube Studio PC Client...");
-                
+
                 // Load existing auth token first
                 LoadAuthToken();
-                
+
                 // Recreate WebSocket if it's in a closed or aborted state
                 if (_webSocket.State == WebSocketState.Closed || _webSocket.State == WebSocketState.Aborted || _webSocket.State == WebSocketState.Open)
                 {
                     _logger.Info("WebSocket is in an invalid state, recreating...");
                     _webSocket.RecreateWebSocket();
                 }
-                
+
                 // Discover port
                 _status = PCClientStatus.DiscoveringPort;
                 var port = await DiscoverPortAsync(cancellationToken);
@@ -266,11 +284,11 @@ namespace SharpBridge.Services
                     _status = PCClientStatus.PortDiscoveryFailed;
                     return false;
                 }
-                
+
                 // Connect
                 _status = PCClientStatus.Connecting;
                 await ConnectAsync(cancellationToken);
-                
+
                 // Authenticate
                 _status = PCClientStatus.Authenticating;
                 var authSuccess = await AuthenticateAsync(cancellationToken);
@@ -281,11 +299,12 @@ namespace SharpBridge.Services
                     _status = PCClientStatus.AuthenticationFailed;
                     return false;
                 }
-                
+
                 _logger.Info("VTube Studio PC Client initialized successfully");
                 _lastInitializationError = string.Empty;
                 _lastSuccessfulOperation = DateTime.UtcNow;
                 _status = PCClientStatus.Connected;
+                _configChanged = false;
                 return true;
             }
             catch (Exception ex)
@@ -296,7 +315,7 @@ namespace SharpBridge.Services
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Gets the current service statistics
         /// </summary>
@@ -309,9 +328,9 @@ namespace SharpBridge.Services
                 ["FailedConnections"] = _failedConnections,
                 ["UptimeSeconds"] = (int)(DateTime.Now - _startTime).TotalSeconds
             };
-            
-            var isHealthy = _status == PCClientStatus.Connected || _status == PCClientStatus.SendingData;
-            
+
+            var isHealthy = (_status == PCClientStatus.Connected || _status == PCClientStatus.SendingData) && !_configChanged;
+
             return new ServiceStats(
                 serviceName: "VTubeStudioPCClient",
                 status: _status.ToString(),
@@ -322,7 +341,7 @@ namespace SharpBridge.Services
                 counters: counters
             );
         }
-        
+
         /// <summary>
         /// Disposes resources
         /// </summary>
@@ -331,7 +350,7 @@ namespace SharpBridge.Services
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         /// <summary>
         /// Disposes resources
         /// </summary>
@@ -343,6 +362,12 @@ namespace SharpBridge.Services
                 {
                     try
                     {
+                        // Unsubscribe from file watcher events
+                        if (_appConfigWatcher != null)
+                        {
+                            _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
+                        }
+
                         _webSocket?.Dispose();
                         _logger.Debug("VTubeStudioPCClient disposed");
                     }
@@ -351,11 +376,11 @@ namespace SharpBridge.Services
                         _logger.Error("Error disposing WebSocket: {0}", ex.Message);
                     }
                 }
-                
+
                 _isDisposed = true;
             }
         }
-        
+
         #region Token Management
         /// <inheritdoc />
         public void LoadAuthToken()
@@ -381,9 +406,9 @@ namespace SharpBridge.Services
             {
                 throw new InvalidOperationException("Must be connected to get token");
             }
-            
+
             _logger.Info("Requesting new authentication token");
-            
+
             try
             {
                 var tokenRequest = new AuthTokenRequest
@@ -391,10 +416,10 @@ namespace SharpBridge.Services
                     PluginName = _config.PluginName,
                     PluginDeveloper = _config.PluginDeveloper
                 };
-                
+
                 var response = await _webSocket.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
                     "AuthenticationTokenRequest", tokenRequest, cancellationToken);
-                
+
                 _authToken = response.AuthenticationToken;
                 await SaveTokenAsync(_authToken);
                 return _authToken;
@@ -405,7 +430,7 @@ namespace SharpBridge.Services
                 throw;
             }
         }
-        
+
         /// <inheritdoc />
         public async Task SaveTokenAsync(string token)
         {
@@ -420,7 +445,7 @@ namespace SharpBridge.Services
                 _logger.Warning("Failed to save authentication token: {0}", ex.Message);
             }
         }
-        
+
         /// <inheritdoc />
         public async Task ClearTokenAsync()
         {
@@ -439,7 +464,7 @@ namespace SharpBridge.Services
             }
         }
         #endregion
-        
+
         #region Authentication
         /// <inheritdoc />
         public async Task<bool> AuthenticateAsync(string token, CancellationToken cancellationToken)
@@ -448,9 +473,9 @@ namespace SharpBridge.Services
             {
                 throw new InvalidOperationException("Must be connected to authenticate");
             }
-            
+
             _logger.Info("Authenticating with VTube Studio");
-            
+
             try
             {
                 var authRequest = new AuthRequest
@@ -459,10 +484,10 @@ namespace SharpBridge.Services
                     PluginDeveloper = _config.PluginDeveloper,
                     AuthenticationToken = token
                 };
-                
+
                 var response = await _webSocket.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                     "AuthenticationRequest", authRequest, cancellationToken);
-                
+
                 _logger.Info("Authentication result: {0}", response.Authenticated);
                 return response.Authenticated;
             }
@@ -473,5 +498,34 @@ namespace SharpBridge.Services
             }
         }
         #endregion
+
+        /// <summary>
+        /// Handles application configuration changes
+        /// </summary>
+        /// <param name="sender">The event sender</param>
+        /// <param name="e">The file change event arguments</param>
+        private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+        {
+            try
+            {
+                _logger.Debug("Application config changed, checking if PC client config was affected");
+
+                // Load new config and compare PC client section
+                var newConfig = await _configManager.LoadApplicationConfigAsync();
+                if (!ConfigComparers.PCClientConfigsEqual(_config, newConfig.PCClient))
+                {
+                    _logger.Info("PC client configuration changed, updating internal config");
+                    _config = newConfig.PCClient;
+                    _configChanged = true;
+
+                    _logger.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",
+                        _config.Host, _config.Port, _config.PluginName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Error handling application config change: {0}", ex.Message);
+            }
+        }
     }
-} 
+}

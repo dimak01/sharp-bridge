@@ -12,5 +12,11 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <returns>True if the editor was launched successfully, false otherwise</returns>
         Task<bool> TryOpenTransformationConfigAsync();
+
+        /// <summary>
+        /// Attempts to open the application configuration file in the configured external editor
+        /// </summary>
+        /// <returns>True if the editor was launched successfully, false otherwise</returns>
+        Task<bool> TryOpenApplicationConfigAsync();
     }
 }

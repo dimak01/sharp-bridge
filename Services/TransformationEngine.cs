@@ -5,13 +5,14 @@ using System.Threading.Tasks;
 using NCalc;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services
 {
     /// <summary>
     /// Transforms tracking data into VTube Studio parameters according to transformation rules
     /// </summary>
-    public class TransformationEngine : ITransformationEngine, IServiceStatsProvider
+    public class TransformationEngine : ITransformationEngine, IServiceStatsProvider, IDisposable
     {
         private const string EVALUATION_ERROR_MESSAGE = "Failed to evaluate - missing dependencies or evaluation error";
         private const string EVALUATION_ERROR_TYPE = "Evaluation";
@@ -19,7 +20,9 @@ namespace SharpBridge.Services
         private readonly List<ParameterTransformation> _rules = new();
         private readonly IAppLogger _logger;
         private readonly ITransformationRulesRepository _rulesRepository;
-        private readonly TransformationEngineConfig _config;
+        private readonly IConfigManager _configManager;
+        private readonly IFileChangeWatcher _appConfigWatcher;
+        private TransformationEngineConfig _config;
 
         // Statistics tracking fields
         private long _totalTransformations = 0;
@@ -34,25 +37,98 @@ namespace SharpBridge.Services
         private TransformationEngineStatus _currentStatus = TransformationEngineStatus.NeverLoaded;
         private readonly List<RuleInfo> _invalidRules = new();
 
+        // Configuration change tracking
+        private bool _configChanged = false;
+
+        // Disposal tracking
+        private bool _isDisposed;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="TransformationEngine"/> class
         /// </summary>
         /// <param name="logger">The logger instance for logging transformation operations</param>
         /// <param name="rulesRepository">The repository for loading and managing transformation rules</param>
         /// <param name="config">The configuration for the transformation engine</param>
-        /// <exception cref="ArgumentNullException">Thrown when logger, rulesRepository, or config is null</exception>
-        public TransformationEngine(IAppLogger logger, ITransformationRulesRepository rulesRepository, TransformationEngineConfig config)
+        /// <param name="configManager">The configuration manager for loading application config</param>
+        /// <param name="appConfigWatcher">The file watcher for application configuration changes</param>
+        /// <exception cref="ArgumentNullException">Thrown when logger, rulesRepository, config, configManager, or appConfigWatcher is null</exception>
+        public TransformationEngine(IAppLogger logger, ITransformationRulesRepository rulesRepository, TransformationEngineConfig config, IConfigManager configManager, IFileChangeWatcher appConfigWatcher)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _rulesRepository = rulesRepository ?? throw new ArgumentNullException(nameof(rulesRepository));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
+            _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
+
             _rulesRepository.RulesChanged += OnRulesChanged;
+            _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+        }
+
+        /// <summary>
+        /// Releases all resources used by the transformation engine
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases all resources used by the transformation engine
+        /// </summary>
+        /// <param name="disposing">True if called from Dispose, false if called from finalizer</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed && disposing)
+            {
+                _logger.Debug("Disposing TransformationEngine");
+
+                // Unsubscribe from file watcher events
+                _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
+
+                // Unsubscribe from rules repository events
+                _rulesRepository.RulesChanged -= OnRulesChanged;
+
+                _isDisposed = true;
+            }
         }
 
         private void OnRulesChanged(object? sender, RulesChangedEventArgs e)
         {
             _logger.Debug($"Rules file changed: {e.FilePath}");
         }
+
+        /// <summary>
+        /// Handles application configuration changes
+        /// </summary>
+        /// <param name="sender">The event sender</param>
+        /// <param name="e">The file change event arguments</param>
+        private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+        {
+            try
+            {
+                _logger.Debug("Application config changed, checking if transformation engine config was affected");
+
+                // Load new config and compare transformation engine section
+                var newConfig = await _configManager.LoadTransformationConfigAsync();
+                if (!ConfigComparers.TransformationEngineConfigsEqual(_config, newConfig))
+                {
+                    _logger.Info("Transformation engine configuration changed, updating internal config");
+                    _config = newConfig;
+                    _configChanged = true;
+                    _logger.Debug("Transformation engine config marked as changed");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error handling application config change", ex);
+            }
+        }
+
+        /// <summary>
+        /// Gets whether the configuration has changed (for testing purposes)
+        /// </summary>
+        public bool ConfigChanged => _configChanged;
 
         /// <summary>
         /// Gets whether the currently loaded configuration is up to date with the file on disk
@@ -68,10 +144,10 @@ namespace SharpBridge.Services
             // Track hot reload attempts
             _hotReloadAttempts++;
 
-            var result = await _rulesRepository.LoadRulesAsync(_config.ConfigPath);
+            var result = await _rulesRepository.LoadRulesAsync();
 
             // Update config file path for stats
-            _configFilePath = _rulesRepository.CurrentFilePath;
+            _configFilePath = _rulesRepository.TransformationRulesPath;
 
             // Always update rules with whatever we got (cached or fresh)
             _rules.Clear();
@@ -246,8 +322,6 @@ namespace SharpBridge.Services
             return new PCTrackingInfo() { FaceFound = trackingData.FaceFound };
         }
 
-
-
         private void UpdateRulesLoadedStatus(int validRules, int invalidRules, List<string> validationErrors)
         {
             if (validRules > 0 && invalidRules == 0)
@@ -421,8 +495,9 @@ namespace SharpBridge.Services
                 invalidRules: _invalidRules.AsReadOnly(),
                 isConfigUpToDate: IsConfigUpToDate);
 
-            bool isHealthy = _currentStatus == TransformationEngineStatus.AllRulesValid ||
-                           _currentStatus == TransformationEngineStatus.RulesPartiallyValid;
+            bool isHealthy = (_currentStatus == TransformationEngineStatus.AllRulesValid ||
+                           _currentStatus == TransformationEngineStatus.RulesPartiallyValid) &&
+                           !_configChanged;
 
             return new ServiceStats(
                 serviceName: "Transformation Engine",

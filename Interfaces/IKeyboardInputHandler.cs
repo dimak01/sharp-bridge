@@ -26,11 +26,5 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <returns>Array of tuples containing shortcut key, modifiers, and description</returns>
         (ConsoleKey Key, ConsoleModifiers Modifiers, string Description)[] GetRegisteredShortcuts();
-
-        /// <summary>
-        /// Checks if any key is pressed and consumes it (for help mode exit)
-        /// </summary>
-        /// <returns>True if a key was pressed and consumed</returns>
-        bool ConsumeAnyKeyPress();
     }
 }

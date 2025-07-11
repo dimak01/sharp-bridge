@@ -15,6 +15,8 @@ namespace SharpBridge.Tests.Repositories
     {
         private readonly Mock<IAppLogger> _mockLogger;
         private readonly Mock<IFileChangeWatcher> _mockFileWatcher;
+        private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
+        private readonly Mock<IConfigManager> _mockConfigManager;
         private readonly FileBasedTransformationRulesRepository _repository;
         private readonly List<string> _tempFiles = new();
 
@@ -22,7 +24,9 @@ namespace SharpBridge.Tests.Repositories
         {
             _mockLogger = new Mock<IAppLogger>();
             _mockFileWatcher = new Mock<IFileChangeWatcher>();
-            _repository = new FileBasedTransformationRulesRepository(_mockLogger.Object, _mockFileWatcher.Object);
+            _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
+            _mockConfigManager = new Mock<IConfigManager>();
+            _repository = new FileBasedTransformationRulesRepository(_mockLogger.Object, _mockFileWatcher.Object, _mockAppConfigWatcher.Object, _mockConfigManager.Object);
         }
 
         public void Dispose()
@@ -96,8 +100,8 @@ namespace SharpBridge.Tests.Repositories
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => 
-                new FileBasedTransformationRulesRepository(null!, _mockFileWatcher.Object));
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new FileBasedTransformationRulesRepository(null!, _mockFileWatcher.Object, _mockAppConfigWatcher.Object, _mockConfigManager.Object));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -105,8 +109,8 @@ namespace SharpBridge.Tests.Repositories
         public void Constructor_WithNullFileWatcher_ThrowsArgumentNullException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => 
-                new FileBasedTransformationRulesRepository(_mockLogger.Object, null!));
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new FileBasedTransformationRulesRepository(_mockLogger.Object, null!, _mockAppConfigWatcher.Object, _mockConfigManager.Object));
             exception.ParamName.Should().Be("fileWatcher");
         }
 
@@ -115,7 +119,7 @@ namespace SharpBridge.Tests.Repositories
         {
             // Act & Assert
             _repository.IsUpToDate.Should().BeTrue();
-            _repository.CurrentFilePath.Should().BeEmpty();
+            _repository.TransformationRulesPath.Should().BeEmpty();
             _repository.LastLoadTime.Should().Be(default(DateTime)); // Test LastLoadTime property access
         }
 
@@ -148,7 +152,7 @@ namespace SharpBridge.Tests.Repositories
             rule.DefaultValue.Should().Be(0);
 
             _repository.IsUpToDate.Should().BeTrue();
-            _repository.CurrentFilePath.Should().Be(Path.GetFullPath(filePath));
+            _repository.TransformationRulesPath.Should().Be(Path.GetFullPath(filePath));
             _repository.LastLoadTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5)); // Test LastLoadTime is updated
         }
 
@@ -239,12 +243,12 @@ namespace SharpBridge.Tests.Repositories
             // Arrange - Create a directory with the same name as our file to force IOException
             var tempDir = Path.GetTempPath();
             var conflictingPath = Path.Combine(tempDir, Guid.NewGuid().ToString());
-            
+
             try
             {
                 // Create a directory with the file name we want to use
                 Directory.CreateDirectory(conflictingPath);
-                
+
                 // Act - Try to read the directory as if it were a file - this should trigger IOException
                 var result = await _repository.LoadRulesAsync(conflictingPath);
 
@@ -271,7 +275,7 @@ namespace SharpBridge.Tests.Repositories
             // Arrange - Create a scenario that will cause an unexpected exception
             // We'll use a very long path name that exceeds system limits to trigger PathTooLongException
             var longPath = Path.Combine(Path.GetTempPath(), new string('a', 300), "test.json");
-            
+
             // Act
             var result = await _repository.LoadRulesAsync(longPath);
 
@@ -362,10 +366,10 @@ namespace SharpBridge.Tests.Repositories
         {
             // Arrange
             var validFile = CreateTempRuleFile(GetValidRuleContent());
-            
+
             // First load - successful
             await _repository.LoadRulesAsync(validFile);
-            
+
             // Delete the file to simulate error
             File.Delete(validFile);
             var nonExistentPath = validFile; // Same path but file is gone
@@ -382,7 +386,7 @@ namespace SharpBridge.Tests.Repositories
 
             result.ValidRules[0].Name.Should().Be("TestParam"); // Cached rule
             _repository.IsUpToDate.Should().BeFalse(); // Error occurred
-            
+
             // LastLoadTime should still reflect the original successful load time
             _repository.LastLoadTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
         }
@@ -402,7 +406,7 @@ namespace SharpBridge.Tests.Repositories
             result.LoadedFromCache.Should().BeFalse();
             result.LoadError.Should().Contain("Rules file not found");
             _repository.IsUpToDate.Should().BeFalse();
-            
+
             // LastLoadTime should remain default when no successful load occurred
             _repository.LastLoadTime.Should().Be(default(DateTime));
         }
@@ -429,7 +433,7 @@ namespace SharpBridge.Tests.Repositories
         {
             // Arrange
             var filePath = "/test/path.json";
-            
+
             // Simulate the repository tracking this file
             var currentFilePathProperty = typeof(FileBasedTransformationRulesRepository)
                 .GetField("_currentFilePath", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -452,7 +456,7 @@ namespace SharpBridge.Tests.Repositories
             // Arrange
             var trackedFile = "/test/tracked.json";
             var differentFile = "/test/different.json";
-            
+
             // Simulate the repository tracking a specific file
             var currentFilePathProperty = typeof(FileBasedTransformationRulesRepository)
                 .GetField("_currentFilePath", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -595,7 +599,7 @@ namespace SharpBridge.Tests.Repositories
             _repository.Dispose();
 
             // Act & Assert
-            await Assert.ThrowsAsync<ObjectDisposedException>(() => 
+            await Assert.ThrowsAsync<ObjectDisposedException>(() =>
                 _repository.LoadRulesAsync("test.json"));
         }
 
@@ -605,9 +609,11 @@ namespace SharpBridge.Tests.Repositories
             // Arrange - Create repository that will have null file watcher
             var mockLogger = new Mock<IAppLogger>();
             var mockFileWatcher = new Mock<IFileChangeWatcher>();
-            
-            var repository = new FileBasedTransformationRulesRepository(mockLogger.Object, mockFileWatcher.Object);
-            
+
+            var mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
+            var mockConfigManager = new Mock<IConfigManager>();
+            var repository = new FileBasedTransformationRulesRepository(mockLogger.Object, mockFileWatcher.Object, mockAppConfigWatcher.Object, mockConfigManager.Object);
+
             // Use reflection to set _fileWatcher to null to test the bug in dispose method
             var fileWatcherField = typeof(FileBasedTransformationRulesRepository)
                 .GetField("_fileWatcher", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -620,4 +626,4 @@ namespace SharpBridge.Tests.Repositories
 
         #endregion
     }
-} 
+}
