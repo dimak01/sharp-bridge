@@ -96,73 +96,100 @@ namespace SharpBridge.Utilities
         /// </summary>
         private static bool TryParseConsoleKey(string keyString, out ConsoleKey consoleKey)
         {
-            // Handle special key name mappings
-            switch (keyString.ToUpper())
+            // Handle invalid modifier keys
+            if (IsModifierKey(keyString))
             {
-                case "CTRL":
-                case "CONTROL":
-                case "ALT":
-                case "SHIFT":
-                    // Invalid - modifiers shouldn't be keys
-                    consoleKey = default;
-                    return false;
-                default:
-                    // Handle user-friendly number keys (0-9 instead of D0-D9) FIRST
-                    // This must come before enum parsing because both ConsoleKey.0 and ConsoleKey.D0 exist
-                    if (keyString.Length == 1 && char.IsDigit(keyString[0]))
-                    {
-                        var digit = keyString[0] - '0';
-                        consoleKey = ConsoleKey.D0 + digit;
-                        return true;
-                    }
-
-                    // Try direct enum parsing for standard keys
-                    if (Enum.TryParse<ConsoleKey>(keyString, true, out consoleKey))
-                        return true;
-
-                    // Handle common symbols that users might want to bind
-                    consoleKey = keyString switch
-                    {
-                        "!" => ConsoleKey.D1,      // Shift+1
-                        "@" => ConsoleKey.D2,      // Shift+2
-                        "#" => ConsoleKey.D3,      // Shift+3
-                        "$" => ConsoleKey.D4,      // Shift+4
-                        "%" => ConsoleKey.D5,      // Shift+5
-                        "^" => ConsoleKey.D6,      // Shift+6
-                        "&" => ConsoleKey.D7,      // Shift+7
-                        "*" => ConsoleKey.D8,      // Shift+8
-                        "(" => ConsoleKey.D9,      // Shift+9
-                        ")" => ConsoleKey.D0,      // Shift+0
-                        "_" => ConsoleKey.OemMinus,   // Shift+Minus
-                        "+" => ConsoleKey.OemPlus,    // Shift+Plus
-                        "{" => ConsoleKey.Oem4,       // Shift+[ (US layout)
-                        "}" => ConsoleKey.Oem6,       // Shift+] (US layout)
-                        "|" => ConsoleKey.Oem5,       // Shift+\ (US layout)
-                        ":" => ConsoleKey.Oem1,       // Shift+; (US layout)
-                        "\"" => ConsoleKey.Oem7,      // Shift+' (US layout)
-                        "<" => ConsoleKey.OemComma,   // Shift+,
-                        ">" => ConsoleKey.OemPeriod,  // Shift+.
-                        "?" => ConsoleKey.Oem2,       // Shift+/ (US layout)
-                        "~" => ConsoleKey.Oem3,       // Shift+` (US layout)
-                        // Unshifted symbols
-                        "-" => ConsoleKey.OemMinus,
-                        "=" => ConsoleKey.OemPlus,
-                        "[" => ConsoleKey.Oem4,
-                        "]" => ConsoleKey.Oem6,
-                        "\\" => ConsoleKey.Oem5,
-                        ";" => ConsoleKey.Oem1,
-                        "'" => ConsoleKey.Oem7,
-                        "," => ConsoleKey.OemComma,
-                        "." => ConsoleKey.OemPeriod,
-                        "/" => ConsoleKey.Oem2,
-                        "`" => ConsoleKey.Oem3,
-                        " " => ConsoleKey.Spacebar,
-                        _ => default
-                    };
-
-                    return consoleKey != default;
+                consoleKey = default;
+                return false;
             }
+
+            // Handle user-friendly number keys (0-9 instead of D0-D9)
+            if (TryParseDigitKey(keyString, out consoleKey))
+                return true;
+
+            // Try direct enum parsing for standard keys
+            if (Enum.TryParse<ConsoleKey>(keyString, true, out consoleKey))
+                return true;
+
+            // Handle common symbols
+            consoleKey = GetSymbolKey(keyString);
+            return consoleKey != default;
         }
+
+        /// <summary>
+        /// Checks if the key string represents a modifier key
+        /// </summary>
+        private static bool IsModifierKey(string keyString)
+        {
+            var upperKey = keyString.ToUpper();
+            return upperKey is "CTRL" or "CONTROL" or "ALT" or "SHIFT";
+        }
+
+        /// <summary>
+        /// Attempts to parse a single digit character as a ConsoleKey
+        /// </summary>
+        private static bool TryParseDigitKey(string keyString, out ConsoleKey consoleKey)
+        {
+            if (keyString.Length == 1 && char.IsDigit(keyString[0]))
+            {
+                var digit = keyString[0] - '0';
+                consoleKey = ConsoleKey.D0 + digit;
+                return true;
+            }
+
+            consoleKey = default;
+            return false;
+        }
+
+        /// <summary>
+        /// Maps symbol strings to ConsoleKey values
+        /// </summary>
+        private static ConsoleKey GetSymbolKey(string symbol)
+        {
+            return _symbolKeyMap.TryGetValue(symbol, out var key) ? key : default;
+        }
+
+        /// <summary>
+        /// Static dictionary mapping symbol strings to ConsoleKey values
+        /// </summary>
+        private static readonly Dictionary<string, ConsoleKey> _symbolKeyMap = new()
+        {
+            // Shifted symbols
+            ["!"] = ConsoleKey.D1,      // Shift+1
+            ["@"] = ConsoleKey.D2,      // Shift+2
+            ["#"] = ConsoleKey.D3,      // Shift+3
+            ["$"] = ConsoleKey.D4,      // Shift+4
+            ["%"] = ConsoleKey.D5,      // Shift+5
+            ["^"] = ConsoleKey.D6,      // Shift+6
+            ["&"] = ConsoleKey.D7,      // Shift+7
+            ["*"] = ConsoleKey.D8,      // Shift+8
+            ["("] = ConsoleKey.D9,      // Shift+9
+            [")"] = ConsoleKey.D0,      // Shift+0
+            ["_"] = ConsoleKey.OemMinus,   // Shift+Minus
+            ["+"] = ConsoleKey.OemPlus,    // Shift+Plus
+            ["{"] = ConsoleKey.Oem4,       // Shift+[ (US layout)
+            ["}"] = ConsoleKey.Oem6,       // Shift+] (US layout)
+            ["|"] = ConsoleKey.Oem5,       // Shift+\ (US layout)
+            [":"] = ConsoleKey.Oem1,       // Shift+; (US layout)
+            ["\""] = ConsoleKey.Oem7,      // Shift+' (US layout)
+            ["<"] = ConsoleKey.OemComma,   // Shift+,
+            [">"] = ConsoleKey.OemPeriod,  // Shift+.
+            ["?"] = ConsoleKey.Oem2,       // Shift+/ (US layout)
+            ["~"] = ConsoleKey.Oem3,       // Shift+` (US layout)
+            // Unshifted symbols
+            ["-"] = ConsoleKey.OemMinus,
+            ["="] = ConsoleKey.OemPlus,
+            ["["] = ConsoleKey.Oem4,
+            ["]"] = ConsoleKey.Oem6,
+            ["\\"] = ConsoleKey.Oem5,
+            [";"] = ConsoleKey.Oem1,
+            ["'"] = ConsoleKey.Oem7,
+            [","] = ConsoleKey.OemComma,
+            ["."] = ConsoleKey.OemPeriod,
+            ["/"] = ConsoleKey.Oem2,
+            ["`"] = ConsoleKey.Oem3,
+            [" "] = ConsoleKey.Spacebar,
+        };
 
         /// <summary>
         /// Attempts to parse a string into a ConsoleModifiers value
@@ -192,49 +219,53 @@ namespace SharpBridge.Utilities
         /// </summary>
         private static string FormatConsoleKey(ConsoleKey key)
         {
-            // Handle special formatting for common keys
-            return key switch
-            {
-                ConsoleKey.Spacebar => "Space",
-                ConsoleKey.Enter => "Enter",
-                ConsoleKey.Escape => "Esc",
-                ConsoleKey.Tab => "Tab",
-                ConsoleKey.Backspace => "Backspace",
-                ConsoleKey.Delete => "Delete",
-                ConsoleKey.Insert => "Insert",
-                ConsoleKey.Home => "Home",
-                ConsoleKey.End => "End",
-                ConsoleKey.PageUp => "PageUp",
-                ConsoleKey.PageDown => "PageDown",
-                ConsoleKey.UpArrow => "Up",
-                ConsoleKey.DownArrow => "Down",
-                ConsoleKey.LeftArrow => "Left",
-                ConsoleKey.RightArrow => "Right",
-                // Format numbers without the 'D' prefix
-                ConsoleKey.D0 => "0",
-                ConsoleKey.D1 => "1",
-                ConsoleKey.D2 => "2",
-                ConsoleKey.D3 => "3",
-                ConsoleKey.D4 => "4",
-                ConsoleKey.D5 => "5",
-                ConsoleKey.D6 => "6",
-                ConsoleKey.D7 => "7",
-                ConsoleKey.D8 => "8",
-                ConsoleKey.D9 => "9",
-                // Format common OEM keys in a user-friendly way
-                ConsoleKey.OemMinus => "-",
-                ConsoleKey.OemPlus => "=",
-                ConsoleKey.Oem4 => "[",
-                ConsoleKey.Oem6 => "]",
-                ConsoleKey.Oem5 => "\\",
-                ConsoleKey.Oem1 => ";",
-                ConsoleKey.Oem7 => "'",
-                ConsoleKey.OemComma => ",",
-                ConsoleKey.OemPeriod => ".",
-                ConsoleKey.Oem2 => "/",
-                ConsoleKey.Oem3 => "`",
-                _ => key.ToString()
-            };
+            return _consoleKeyFormatMap.TryGetValue(key, out var formatted) ? formatted : key.ToString();
         }
+
+        /// <summary>
+        /// Static dictionary mapping ConsoleKey values to user-friendly string representations
+        /// </summary>
+        private static readonly Dictionary<ConsoleKey, string> _consoleKeyFormatMap = new()
+        {
+            // Special keys with user-friendly names
+            [ConsoleKey.Spacebar] = "Space",
+            [ConsoleKey.Enter] = "Enter",
+            [ConsoleKey.Escape] = "Esc",
+            [ConsoleKey.Tab] = "Tab",
+            [ConsoleKey.Backspace] = "Backspace",
+            [ConsoleKey.Delete] = "Delete",
+            [ConsoleKey.Insert] = "Insert",
+            [ConsoleKey.Home] = "Home",
+            [ConsoleKey.End] = "End",
+            [ConsoleKey.PageUp] = "PageUp",
+            [ConsoleKey.PageDown] = "PageDown",
+            [ConsoleKey.UpArrow] = "Up",
+            [ConsoleKey.DownArrow] = "Down",
+            [ConsoleKey.LeftArrow] = "Left",
+            [ConsoleKey.RightArrow] = "Right",
+            // Format numbers without the 'D' prefix
+            [ConsoleKey.D0] = "0",
+            [ConsoleKey.D1] = "1",
+            [ConsoleKey.D2] = "2",
+            [ConsoleKey.D3] = "3",
+            [ConsoleKey.D4] = "4",
+            [ConsoleKey.D5] = "5",
+            [ConsoleKey.D6] = "6",
+            [ConsoleKey.D7] = "7",
+            [ConsoleKey.D8] = "8",
+            [ConsoleKey.D9] = "9",
+            // Format common OEM keys in a user-friendly way
+            [ConsoleKey.OemMinus] = "-",
+            [ConsoleKey.OemPlus] = "=",
+            [ConsoleKey.Oem4] = "[",
+            [ConsoleKey.Oem6] = "]",
+            [ConsoleKey.Oem5] = "\\",
+            [ConsoleKey.Oem1] = ";",
+            [ConsoleKey.Oem7] = "'",
+            [ConsoleKey.OemComma] = ",",
+            [ConsoleKey.OemPeriod] = ".",
+            [ConsoleKey.Oem2] = "/",
+            [ConsoleKey.Oem3] = "`",
+        };
     }
 }

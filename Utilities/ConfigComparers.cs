@@ -1,4 +1,5 @@
 using SharpBridge.Models;
+using System;
 
 namespace SharpBridge.Utilities
 {
@@ -22,7 +23,7 @@ namespace SharpBridge.Utilities
             return x.IphoneIpAddress == y.IphoneIpAddress &&
                    x.IphonePort == y.IphonePort &&
                    x.LocalPort == y.LocalPort &&
-                   x.RequestIntervalSeconds == y.RequestIntervalSeconds &&
+                   Math.Abs(x.RequestIntervalSeconds - y.RequestIntervalSeconds) < 0.001 &&
                    x.SendForSeconds == y.SendForSeconds &&
                    x.ReceiveTimeoutMs == y.ReceiveTimeoutMs &&
                    x.ErrorDelayMs == y.ErrorDelayMs;
