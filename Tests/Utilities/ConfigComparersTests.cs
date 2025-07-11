@@ -189,6 +189,50 @@ namespace SharpBridge.Tests.Utilities
             Assert.False(result);
         }
 
+        [Fact]
+        public void PhoneClientConfigsEqual_WithFloatingPointValuesWithinTolerance_ReturnsTrue()
+        {
+            // Arrange
+            var config1 = new VTubeStudioPhoneClientConfig
+            {
+                RequestIntervalSeconds = 3.0,
+                SendForSeconds = 4
+            };
+            var config2 = new VTubeStudioPhoneClientConfig
+            {
+                RequestIntervalSeconds = 3.0001, // Very close, within 0.001 tolerance
+                SendForSeconds = 4
+            };
+
+            // Act
+            var result = ConfigComparers.PhoneClientConfigsEqual(config1, config2);
+
+            // Assert
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void PhoneClientConfigsEqual_WithFloatingPointValuesOutsideTolerance_ReturnsFalse()
+        {
+            // Arrange
+            var config1 = new VTubeStudioPhoneClientConfig
+            {
+                RequestIntervalSeconds = 3.0,
+                SendForSeconds = 4
+            };
+            var config2 = new VTubeStudioPhoneClientConfig
+            {
+                RequestIntervalSeconds = 3.002, // Outside 0.001 tolerance
+                SendForSeconds = 4
+            };
+
+            // Act
+            var result = ConfigComparers.PhoneClientConfigsEqual(config1, config2);
+
+            // Assert
+            Assert.False(result);
+        }
+
         #endregion
 
         #region PCClientConfigsEqual Tests
