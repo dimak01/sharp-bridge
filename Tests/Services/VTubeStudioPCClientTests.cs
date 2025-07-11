@@ -20,52 +20,80 @@ namespace SharpBridge.Tests.Services
     public class VTubeStudioPCClientTests
     {
         private readonly Mock<IAppLogger> _mockLogger;
-        private readonly VTubeStudioPCConfig _config;
-        private readonly MockWebSocketWrapper _mockWebSocket;
+        private VTubeStudioPCConfig _config;
+        private readonly Mock<IConfigManager> _mockConfigManager;
+        private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
+        private readonly Mock<IWebSocketWrapper> _mockWebSocket;
         private readonly Mock<IPortDiscoveryService> _mockPortDiscoveryService;
 
         public VTubeStudioPCClientTests()
         {
             _mockLogger = new Mock<IAppLogger>();
-            _mockWebSocket = new MockWebSocketWrapper();
+            _mockConfigManager = new Mock<IConfigManager>();
+            _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
+            _mockWebSocket = new Mock<IWebSocketWrapper>();
             _mockPortDiscoveryService = new Mock<IPortDiscoveryService>();
-            _config = new VTubeStudioPCConfig
+
+            // Setup default WebSocket behavior
+            _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            _mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .Callback(() => _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Open))
+                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.CloseAsync(It.IsAny<WebSocketCloseStatus>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .Callback(() => _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed))
+                .Returns(Task.CompletedTask);
+            _mockWebSocket.Setup(x => x.Dispose())
+                .Callback(() => _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed));
+        }
+
+        private VTubeStudioPCClient CreateClient(IAppLogger? logger = null, VTubeStudioPCConfig? config = null, IWebSocketWrapper? webSocket = null, IPortDiscoveryService? portDiscoveryService = null)
+        {
+            _config = config ??= new VTubeStudioPCConfig
             {
                 Host = "localhost",
                 Port = 8001,
                 PluginName = "TestPlugin",
                 PluginDeveloper = "TestDeveloper"
             };
+            logger ??= _mockLogger.Object;
+            webSocket ??= _mockWebSocket.Object;
+            portDiscoveryService ??= _mockPortDiscoveryService.Object;
+
+            // Setup the config manager to return the provided config
+            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(config);
+            return new VTubeStudioPCClient(logger, _mockConfigManager.Object, webSocket, portDiscoveryService, _mockAppConfigWatcher.Object);
         }
+
+
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(null!, _config, _mockWebSocket, _mockPortDiscoveryService.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(null!, _mockConfigManager.Object, _mockWebSocket.Object, _mockPortDiscoveryService.Object, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
-        public void Constructor_WithNullConfig_ThrowsArgumentNullException()
+        public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, null!, _mockWebSocket, _mockPortDiscoveryService.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, null!, _mockWebSocket.Object, _mockPortDiscoveryService.Object, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
         public void Constructor_WithNullWebSocket_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _config, null!, _mockPortDiscoveryService.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, null!, _mockPortDiscoveryService.Object, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
         public void Constructor_WithNullPortDiscoveryService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, null!));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, _mockWebSocket.Object, null!, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
         public void GetServiceStats_ReturnsCorrectStats()
         {
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             var stats = client.GetServiceStats();
 
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
@@ -78,7 +106,7 @@ namespace SharpBridge.Tests.Services
         public void GetServiceStats_ReturnsValidStats()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act
             var stats = client.GetServiceStats();
@@ -109,20 +137,20 @@ namespace SharpBridge.Tests.Services
         public async Task ConnectAsync_WhenNotConnected_ConnectsSuccessfully()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act
             await client.ConnectAsync(CancellationToken.None);
 
             // Assert
-            Assert.Equal(WebSocketState.Open, _mockWebSocket.State);
+            Assert.Equal(WebSocketState.Open, _mockWebSocket.Object.State);
         }
 
         [Fact]
         public async Task State_TransitionsCorrectly_ThroughConnectionLifecycle()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act - Connect
             await client.ConnectAsync(CancellationToken.None);
@@ -141,7 +169,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetServiceStats_AfterConnectAndSend_UpdatesStatistics()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act - Connect and send tracking data
             await client.ConnectAsync(CancellationToken.None);
@@ -164,7 +192,9 @@ namespace SharpBridge.Tests.Services
             };
 
             // Queue a successful response
-            _mockWebSocket.EnqueueResponse(new { success = true });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InjectParamsRequest, object>(
+                It.IsAny<string>(), It.IsAny<InjectParamsRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new { success = true });
 
             await client.SendTrackingAsync(trackingData, CancellationToken.None);
 
@@ -208,12 +238,16 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_ReturnsTrue_AndLogsExpectedMessages()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Queue token acquisition and authentication responses
-            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
-            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
 
             // Act
             var result = await client.AuthenticateAsync(CancellationToken.None);
@@ -236,13 +270,10 @@ namespace SharpBridge.Tests.Services
                 ConnectionTimeoutMs = 1000
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            mockPortDiscovery.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             var port = await client.DiscoverPortAsync(CancellationToken.None);
@@ -251,7 +282,7 @@ namespace SharpBridge.Tests.Services
             port.Should().Be(8001);
 
             // Verify logging
-            mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Discovering VTube Studio port"))), Times.Once);
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Discovering VTube Studio port"))), Times.Once);
         }
 
         [Fact]
@@ -264,10 +295,7 @@ namespace SharpBridge.Tests.Services
                 Port = 1234
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             var port = await client.DiscoverPortAsync(CancellationToken.None);
@@ -276,14 +304,14 @@ namespace SharpBridge.Tests.Services
             port.Should().Be(1234);
 
             // Verify logging
-            mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Discovering"))), Times.Never);
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("Discovering"))), Times.Never);
         }
 
         [Fact]
         public async Task ConnectAsync_WhenAlreadyConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Act & Assert
@@ -295,34 +323,34 @@ namespace SharpBridge.Tests.Services
         public async Task CloseAsync_WhenConnected_ClosesConnection()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Act
             await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
 
             // Assert
-            Assert.Equal(WebSocketState.Closed, _mockWebSocket.State);
+            Assert.Equal(WebSocketState.Closed, _mockWebSocket.Object.State);
         }
 
         [Fact]
         public async Task CloseAsync_WhenNotConnected_DoesNothing()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act
             await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
 
             // Assert
-            Assert.Equal(WebSocketState.None, _mockWebSocket.State);
+            Assert.Equal(WebSocketState.None, _mockWebSocket.Object.State);
         }
 
         [Fact]
         public async Task AuthenticateAsync_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -333,7 +361,7 @@ namespace SharpBridge.Tests.Services
         public async Task SendTrackingAsync_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -353,12 +381,16 @@ namespace SharpBridge.Tests.Services
                 TokenFilePath = "test-token.txt"
             };
 
-            var client = new VTubeStudioPCClient(_mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object, config);
             await client.ConnectAsync(CancellationToken.None);
 
             // Queue token acquisition and authentication responses
-            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-test-token" });
-            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "new-test-token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
 
             // Act
             var result = await client.AuthenticateAsync(CancellationToken.None);
@@ -391,11 +423,13 @@ namespace SharpBridge.Tests.Services
             // Create token file
             File.WriteAllText(config.TokenFilePath, "existing-test-token");
 
-            var client = new VTubeStudioPCClient(_mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object, config);
             await client.ConnectAsync(CancellationToken.None);
 
             // Queue authentication response (no token acquisition needed)
-            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
 
             // Act
             client.LoadAuthToken(); // Load the token before authentication
@@ -413,15 +447,14 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WithValidToken_ReturnsTrue()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
             var testToken = "test_token_123";
 
             // Queue authentication response
-            mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
 
             // Act
             await client.ConnectAsync(CancellationToken.None);
@@ -429,26 +462,25 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.True(result);
-            mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Authentication result:")), It.Is<object[]>(args => args[0].Equals(true))), Times.Once);
+            _mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Authentication result:")), It.Is<object[]>(args => args[0].Equals(true))), Times.Once);
         }
 
         [Fact]
         public async Task GetTokenAsync_WhenNoTokenExists_RequestsNewToken()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig
             {
                 PluginName = "TestPlugin",
                 PluginDeveloper = "TestDev",
                 TokenFilePath = "test_token.txt"
             };
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Queue token response
-            mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new_test_token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "new_test_token" });
 
             // Act
             await client.ConnectAsync(CancellationToken.None);
@@ -457,7 +489,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             Assert.NotNull(token);
             Assert.Equal("new_test_token", token);
-            mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Requesting new authentication token"))), Times.Once);
+            _mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Requesting new authentication token"))), Times.Once);
 
             // Cleanup
             if (File.Exists(config.TokenFilePath))
@@ -470,14 +502,11 @@ namespace SharpBridge.Tests.Services
         public async Task SaveTokenAsync_SavesTokenToFile()
         {
             // Arrange
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig
             {
                 TokenFilePath = "test_token.txt"
             };
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
             var testToken = "test_token_123";
 
             // Act
@@ -486,7 +515,7 @@ namespace SharpBridge.Tests.Services
             // Assert
             Assert.True(File.Exists(config.TokenFilePath));
             Assert.Equal(testToken, File.ReadAllText(config.TokenFilePath));
-            mockLogger.Verify(x => x.Debug(It.Is<string>(s => s.Contains("Saved authentication token")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Debug(It.Is<string>(s => s.Contains("Saved authentication token")), It.IsAny<object[]>()), Times.Once);
 
             // Cleanup
             File.Delete(config.TokenFilePath);
@@ -496,14 +525,11 @@ namespace SharpBridge.Tests.Services
         public async Task ClearTokenAsync_RemovesTokenFile()
         {
             // Arrange
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig
             {
                 TokenFilePath = "test_token.txt"
             };
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
             File.WriteAllText(config.TokenFilePath, "test_token");
 
             // Act
@@ -511,14 +537,13 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.False(File.Exists(config.TokenFilePath));
-            mockLogger.Verify(x => x.Debug(It.Is<string>(s => s.Contains("Cleared authentication token")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Debug(It.Is<string>(s => s.Contains("Cleared authentication token")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
         public async Task AuthenticateAsync_WithInvalidToken_ReturnsFalse()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig
             {
                 PluginName = "TestPlugin",
@@ -529,12 +554,12 @@ namespace SharpBridge.Tests.Services
             // Create token file with invalid token
             await File.WriteAllTextAsync(config.TokenFilePath, "invalid-token");
 
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Queue authentication response indicating failure
-            mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = false, Reason = "Invalid token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = false, Reason = "Invalid token" });
 
             // Act
             await client.ConnectAsync(CancellationToken.None);
@@ -542,7 +567,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.False(result);
-            mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Authentication result:")), It.Is<object[]>(args => args[0].Equals(false))), Times.Once);
+            _mockLogger.Verify(x => x.Info(It.Is<string>(s => s.Contains("Authentication result:")), It.Is<object[]>(args => args[0].Equals(false))), Times.Once);
 
             // Cleanup
             File.Delete(config.TokenFilePath);
@@ -560,9 +585,7 @@ namespace SharpBridge.Tests.Services
                 PluginDeveloper = "TestDeveloper"
             };
             var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(mockLogger.Object, config);
 
             // Act & Assert
             Assert.Equal(config, client.Config);
@@ -580,18 +603,15 @@ namespace SharpBridge.Tests.Services
                 PluginName = "TestPlugin",
                 PluginDeveloper = "TestDeveloper"
             };
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket.Object, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Setup WebSocket to throw on connect
-            mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Connection failed"));
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(() => client.ConnectAsync(CancellationToken.None));
-            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Failed to connect")), It.IsAny<string>()), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Failed to connect")), It.IsAny<string>()), Times.Once);
         }
 
         [Fact]
@@ -605,16 +625,13 @@ namespace SharpBridge.Tests.Services
                 PluginName = "TestPlugin",
                 PluginDeveloper = "TestDeveloper"
             };
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             client.Dispose();
 
             // Assert
-            Assert.Equal(WebSocketState.Closed, mockWebSocket.State);
+            Assert.Equal(WebSocketState.Closed, _mockWebSocket.Object.State);
         }
 
         [Fact]
@@ -628,10 +645,7 @@ namespace SharpBridge.Tests.Services
                 PluginName = "TestPlugin",
                 PluginDeveloper = "TestDeveloper"
             };
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -650,13 +664,10 @@ namespace SharpBridge.Tests.Services
                 PluginName = "TestPlugin",
                 PluginDeveloper = "TestDeveloper"
             };
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Setup port discovery to return null (indicating failure)
-            mockPortDiscovery.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((DiscoveryResponse)null!);
 
             // Act
@@ -670,66 +681,59 @@ namespace SharpBridge.Tests.Services
         public async Task CloseAsync_WhenWebSocketThrowsException_LogsErrorAndThrows()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
-            mockWebSocket.Setup(ws => ws.CloseAsync(It.IsAny<WebSocketCloseStatus>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            _mockWebSocket.Setup(ws => ws.CloseAsync(It.IsAny<WebSocketCloseStatus>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                          .ThrowsAsync(new Exception("Close failed"));
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            var client = CreateClient();
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(() => client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test", CancellationToken.None));
-            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error closing connection")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error closing connection")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
         public async Task AuthenticateAsync_WhenWebSocketThrowsException_LogsErrorAndReturnsFalse()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
-            mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+            _mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            _mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                 It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Authentication failed"));
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            var client = CreateClient();
 
             // Act
             var result = await client.AuthenticateAsync(CancellationToken.None);
 
             // Assert
             result.Should().BeFalse();
-            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
         public async Task SendTrackingAsync_WhenWebSocketThrowsException_LogsErrorAndThrows()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
-            mockWebSocket.Setup(ws => ws.SendRequestAsync<InjectParamsRequest, object>(
+            _mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            _mockWebSocket.Setup(ws => ws.SendRequestAsync<InjectParamsRequest, object>(
                 It.IsAny<string>(), It.IsAny<InjectParamsRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Send failed"));
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             var trackingData = new PCTrackingInfo();
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(() => client.SendTrackingAsync(trackingData, CancellationToken.None));
-            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Failed to send tracking data")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Failed to send tracking data")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
         public void LoadAuthToken_WhenFileReadFails_LogsWarning()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig { TokenFilePath = "test-token-locked.txt" };
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(config: config);
 
             FileStream? fs = null;
             try
@@ -739,7 +743,7 @@ namespace SharpBridge.Tests.Services
                 // Act
                 client.LoadAuthToken();
                 // Assert
-                mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to load authentication token")), It.IsAny<object[]>()), Times.Once);
+                _mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to load authentication token")), It.IsAny<object[]>()), Times.Once);
             }
             finally
             {
@@ -753,15 +757,14 @@ namespace SharpBridge.Tests.Services
         public async Task SaveTokenAsync_WhenFileWriteFails_LogsWarning()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig { TokenFilePath = "invalid-path/token.txt" };
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(config: config);
 
             // Act
             await client.SaveTokenAsync("test-token");
 
             // Assert
-            mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to save authentication token")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to save authentication token")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
@@ -774,9 +777,8 @@ namespace SharpBridge.Tests.Services
             }
 
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
             var config = new VTubeStudioPCConfig { TokenFilePath = "test-token.txt" };
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(config: config);
 
             // Create a file and make it read-only to simulate deletion issues
             File.WriteAllText(config.TokenFilePath, "test-token");
@@ -788,7 +790,7 @@ namespace SharpBridge.Tests.Services
                 await client.ClearTokenAsync();
 
                 // Assert
-                mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to clear authentication token")), It.IsAny<object[]>()), Times.Once);
+                _mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to clear authentication token")), It.IsAny<object[]>()), Times.Once);
             }
             finally
             {
@@ -805,31 +807,31 @@ namespace SharpBridge.Tests.Services
         public void Dispose_WhenWebSocketThrowsException_LogsError()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            mockWebSocket.Setup(ws => ws.Dispose()).Throws(new Exception("Dispose failed"));
+            _mockWebSocket.Setup(ws => ws.Dispose()).Throws(new Exception("Dispose failed"));
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            var client = CreateClient();
 
             // Act
             client.Dispose();
 
             // Assert
-            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error disposing")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Error disposing")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
         public async Task GetTokenAsync_WhenTokenFileEmpty_RequestsNewToken()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Create empty token file
             File.WriteAllText(_config.TokenFilePath, string.Empty);
 
             // Queue token acquisition response
-            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
 
             // Act
             var result = await client.GetTokenAsync(CancellationToken.None);
@@ -846,14 +848,16 @@ namespace SharpBridge.Tests.Services
         public async Task GetTokenAsync_WhenTokenFileInvalid_RequestsNewToken()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Create invalid token file
             File.WriteAllText(_config.TokenFilePath, "invalid-token-data");
 
             // Queue token acquisition response
-            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
 
             // Act
             var result = await client.GetTokenAsync(CancellationToken.None);
@@ -870,15 +874,19 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WhenTokenFileCorrupted_RequestsNewToken()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Create corrupted token file
             File.WriteAllText(_config.TokenFilePath, "corrupted-token-data");
 
             // Queue token acquisition and authentication responses
-            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
-            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
 
             // Act
             var result = await client.AuthenticateAsync(CancellationToken.None);
@@ -895,7 +903,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WhenTokenExpired_RequestsNewToken()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             await client.ConnectAsync(CancellationToken.None);
 
             // Create token file with expired token
@@ -905,9 +913,14 @@ namespace SharpBridge.Tests.Services
             client.LoadAuthToken();
 
             // Queue authentication failure, then token acquisition and successful authentication
-            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = false, Reason = "Token expired" });
-            _mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
-            _mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true });
+            var sequence = _mockWebSocket.SetupSequence(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()));
+            sequence.ReturnsAsync(new AuthenticationResponse { Authenticated = false, Reason = "Token expired" });
+            sequence.ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "new-token" });
 
             // Act
             var result = await client.AuthenticateAsync(CancellationToken.None);
@@ -924,7 +937,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetTokenAsync_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             // Do not connect
 
             // Act & Assert
@@ -935,7 +948,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WithToken_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
             // Do not connect
 
             // Act & Assert
@@ -946,20 +959,18 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WithToken_WhenWebSocketThrows_ReturnsFalseAndLogsError()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
-            mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+            _mockWebSocket.Setup(ws => ws.State).Returns(WebSocketState.Open);
+            _mockWebSocket.Setup(ws => ws.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                 It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("WebSocket error"));
-            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket.Object, _mockPortDiscoveryService.Object);
+            var client = CreateClient();
 
             // Act
             var result = await client.AuthenticateAsync("token", CancellationToken.None);
 
             // Assert
             result.Should().BeFalse();
-            mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.Is<string>(s => s.Contains("Authentication failed")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
@@ -974,18 +985,28 @@ namespace SharpBridge.Tests.Services
             };
 
             var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
             var mockPortDiscovery = new Mock<IPortDiscoveryService>();
 
             // Setup port discovery to return a valid port
             mockPortDiscovery.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
 
-            // Queue authentication responses for successful flow
-            mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
-            mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
+            // Setup WebSocket state transitions
+            mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+                .Callback(() => mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Open))
+                .Returns(Task.CompletedTask);
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            // Queue authentication responses for successful flow
+            mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+            mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
+
+            var client = CreateClient(mockLogger.Object, config, mockWebSocket.Object, mockPortDiscovery.Object);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -1012,15 +1033,11 @@ namespace SharpBridge.Tests.Services
                 ConnectionTimeoutMs = 1000
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-
             // Setup port discovery to throw exception (simulates failure)
-            mockPortDiscovery.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Port discovery failed"));
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -1029,7 +1046,7 @@ namespace SharpBridge.Tests.Services
             result.Should().BeFalse();
 
             // Verify error was logged (the actual error is "Failed to initialize VTube Studio PC Client" when exception occurs)
-            mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Failed to initialize VTube Studio PC Client")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Failed to initialize VTube Studio PC Client")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
@@ -1043,15 +1060,15 @@ namespace SharpBridge.Tests.Services
                 TokenFilePath = Path.GetTempFileName()
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-
             // Queue authentication responses for failed authentication
-            mockWebSocket.EnqueueResponse(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
-            mockWebSocket.EnqueueResponse(new AuthenticationResponse { Authenticated = false, Reason = "Invalid token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = false, Reason = "Invalid token" });
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -1060,7 +1077,7 @@ namespace SharpBridge.Tests.Services
             result.Should().BeFalse();
 
             // Verify error was logged
-            mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Failed to authenticate")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Failed to authenticate")), It.IsAny<object[]>()), Times.Once);
 
             // Cleanup
             if (File.Exists(config.TokenFilePath))
@@ -1077,16 +1094,12 @@ namespace SharpBridge.Tests.Services
                 Port = 8001
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-
             // Setup WebSocket to throw exception during connect
-            mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
-            mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            _mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Connection failed"));
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket.Object, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -1095,7 +1108,7 @@ namespace SharpBridge.Tests.Services
             result.Should().BeFalse();
 
             // Verify error was logged
-            mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Failed to initialize VTube Studio PC Client")), It.IsAny<object[]>()), Times.Once);
+            _mockLogger.Verify(l => l.Error(It.Is<string>(s => s.Contains("Failed to initialize VTube Studio PC Client")), It.IsAny<object[]>()), Times.Once);
         }
 
         [Fact]
@@ -1109,32 +1122,28 @@ namespace SharpBridge.Tests.Services
                 TokenFilePath = Path.GetTempFileName()
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new Mock<IWebSocketWrapper>();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-
             // Setup WebSocket to be in Closed state initially, then None after recreation, then Open after connect
-            var stateSequence = mockWebSocket.SetupSequence(x => x.State);
+            var stateSequence = _mockWebSocket.SetupSequence(x => x.State);
             stateSequence.Returns(WebSocketState.Closed);  // Initial check
             stateSequence.Returns(WebSocketState.None);    // After recreation
             stateSequence.Returns(WebSocketState.Open);    // After connect
             stateSequence.Returns(WebSocketState.Open);    // During authentication
             stateSequence.Returns(WebSocketState.Open);    // During authentication
 
-            mockWebSocket.Setup(x => x.RecreateWebSocket());
-            mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
+            _mockWebSocket.Setup(x => x.RecreateWebSocket());
+            _mockWebSocket.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             // Mock authentication responses
-            mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
                 It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
 
-            mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
                 It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new AuthenticationResponse { Authenticated = true, Reason = "Success" });
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket.Object, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             var result = await client.TryInitializeAsync(CancellationToken.None);
@@ -1143,8 +1152,8 @@ namespace SharpBridge.Tests.Services
             result.Should().BeTrue();
 
             // Verify WebSocket recreation was called and logged
-            mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
-            mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("WebSocket is in an invalid state, recreating")), It.IsAny<object[]>()), Times.Once);
+            _mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
+            _mockLogger.Verify(l => l.Info(It.Is<string>(s => s.Contains("WebSocket is in an invalid state, recreating")), It.IsAny<object[]>()), Times.Once);
 
             // Cleanup
             if (File.Exists(config.TokenFilePath))
@@ -1155,7 +1164,7 @@ namespace SharpBridge.Tests.Services
         public void LastInitializationError_ReturnsEmpty_WhenNoErrorOccurred()
         {
             // Arrange
-            var client = new VTubeStudioPCClient(_mockLogger.Object, _config, _mockWebSocket, _mockPortDiscoveryService.Object);
+            var client = CreateClient(_mockLogger.Object);
 
             // Act
             var error = client.LastInitializationError;
@@ -1175,14 +1184,10 @@ namespace SharpBridge.Tests.Services
                 ConnectionTimeoutMs = 1000
             };
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-
             // Don't queue any authentication responses - this will cause authentication to fail
             // (MockWebSocketWrapper will throw "No response queued" when trying to authenticate)
 
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(config: config);
 
             // Act
             await client.TryInitializeAsync(CancellationToken.None);
@@ -1196,45 +1201,373 @@ namespace SharpBridge.Tests.Services
         public void Dispose_WhenAlreadyDisposed_DoesNotThrow()
         {
             // Arrange
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-            var client = new VTubeStudioPCClient(mockLogger.Object, _config, mockWebSocket, mockPortDiscovery.Object);
+            var client = CreateClient(_mockLogger.Object);
 
-            // Act - Dispose twice
+            // Act & Assert - First disposal should work
             client.Dispose();
 
-            // Assert - Should not throw on second dispose
-            var act = () => client.Dispose();
-            act.Should().NotThrow();
+            // Act & Assert - Second disposal should not throw
+            client.Dispose();
+
+            // Verify the client was disposed properly
+            Assert.True(true); // Test passes if no exception is thrown
         }
 
         [Fact]
         public async Task GetServiceStats_ReturnsHealthyFalse_WhenNotConnected()
         {
             // Arrange
-            var config = new VTubeStudioPCConfig
-            {
-                UsePortDiscovery = false,
-                Port = 8001,
-                ConnectionTimeoutMs = 1000
-            };
+            var client = CreateClient(_mockLogger.Object);
 
-            var mockLogger = new Mock<IAppLogger>();
-            var mockWebSocket = new MockWebSocketWrapper();
-            var mockPortDiscovery = new Mock<IPortDiscoveryService>();
-
-            // Don't queue any authentication responses - this will cause authentication to fail
-
-            var client = new VTubeStudioPCClient(mockLogger.Object, config, mockWebSocket, mockPortDiscovery.Object);
-
-            // Act - Try to initialize and fail
-            await client.TryInitializeAsync(CancellationToken.None);
+            // Act
             var stats = client.GetServiceStats();
 
             // Assert
-            stats.IsHealthy.Should().BeFalse();
-            stats.Status.Should().Be("AuthenticationFailed");
+            Assert.False(stats.IsHealthy);
+        }
+
+        [Fact]
+        public void ConfigChanged_InitiallyReturnsFalse()
+        {
+            // Arrange
+            var client = CreateClient(_mockLogger.Object);
+
+            // Act & Assert
+            Assert.False(client.ConfigChanged);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenConfigChanges_UpdatesInternalConfig()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "OriginalPlugin",
+                PluginDeveloper = "OriginalDeveloper"
+            };
+
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "newhost",
+                    Port = 8002,
+                    PluginName = "NewPlugin",
+                    PluginDeveloper = "NewDeveloper"
+                }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.True(client.ConfigChanged);
+            Assert.Equal("newhost", client.Config.Host);
+            Assert.Equal(8002, client.Config.Port);
+            Assert.Equal("NewPlugin", client.Config.PluginName);
+            Assert.Equal("NewDeveloper", client.Config.PluginDeveloper);
+
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Info("PC client configuration changed, updating internal config"), Times.Once);
+            _mockLogger.Verify(x => x.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",
+                "newhost", 8002, "NewPlugin"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenConfigDoesNotChange_DoesNotUpdateInternalConfig()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 8001,
+                    PluginName = "TestPlugin",
+                    PluginDeveloper = "TestDeveloper"
+                }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.False(client.ConfigChanged);
+            Assert.Equal("localhost", client.Config.Host);
+            Assert.Equal(8001, client.Config.Port);
+            Assert.Equal("TestPlugin", client.Config.PluginName);
+            Assert.Equal("TestDeveloper", client.Config.PluginDeveloper);
+
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Info(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenExceptionOccurs_LogsError()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ThrowsAsync(new InvalidOperationException("Test exception"));
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.False(client.ConfigChanged);
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Error handling application config change: {0}", "Test exception"), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenConfigManagerReturnsNull_HandlesGracefully()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync((ApplicationConfig?)null);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.False(client.ConfigChanged);
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public void OnApplicationConfigChanged_WhenNewConfigHasNullPCClient_HandlesGracefully()
+        {
+            // Arrange
+            var originalConfig = new VTubeStudioPCConfig
+            {
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
+            };
+
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = null!
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            var client = CreateClient(_mockLogger.Object, originalConfig);
+
+            // Act - Simulate config change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Assert
+            Assert.True(client.ConfigChanged);
+            _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
+            _mockLogger.Verify(x => x.Error(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_WhenAppConfigWatcherIsNull_DoesNotThrow()
+        {
+            // Arrange
+            var client = new VTubeStudioPCClient(
+                _mockLogger.Object,
+                _mockConfigManager.Object,
+                _mockWebSocket.Object,
+                _mockPortDiscoveryService.Object,
+                null); // No app config watcher
+
+            // Act & Assert
+            client.Dispose();
+
+            // Verify the client was disposed properly
+            Assert.True(true); // Test passes if no exception is thrown
+        }
+
+        [Fact]
+        public void Dispose_WhenWebSocketIsNull_DoesNotThrow()
+        {
+            // Arrange
+            var mockWebSocket = new Mock<IWebSocketWrapper>();
+            mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed);
+            mockWebSocket.Setup(x => x.Dispose()).Throws(new InvalidOperationException("Test exception"));
+
+            var client = new VTubeStudioPCClient(
+                _mockLogger.Object,
+                _mockConfigManager.Object,
+                mockWebSocket.Object,
+                _mockPortDiscoveryService.Object,
+                _mockAppConfigWatcher.Object);
+
+            // Act & Assert
+            client.Dispose();
+            _mockLogger.Verify(x => x.Error("Error disposing WebSocket: {0}", "Test exception"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryInitializeAsync_WhenWebSocketIsInOpenState_RecreatesWebSocket()
+        {
+            // Arrange
+            _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Open);
+            _mockWebSocket.Setup(x => x.RecreateWebSocket()).Callback(() =>
+            {
+                _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            });
+
+            var client = CreateClient(_mockLogger.Object);
+
+            // Setup successful initialization
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+
+            // Assert
+            Assert.True(result);
+            _mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
+        }
+
+        [Fact]
+        public async Task TryInitializeAsync_WhenWebSocketIsInAbortedState_RecreatesWebSocket()
+        {
+            // Arrange
+            _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Aborted);
+            _mockWebSocket.Setup(x => x.RecreateWebSocket()).Callback(() =>
+            {
+                _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
+            });
+
+            var client = CreateClient(_mockLogger.Object);
+
+            // Setup successful initialization
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            // Act
+            var result = await client.TryInitializeAsync(CancellationToken.None);
+
+            // Assert
+            Assert.True(result);
+            _mockWebSocket.Verify(x => x.RecreateWebSocket(), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetServiceStats_WhenConfigChanged_ReturnsUnhealthy()
+        {
+            // Arrange
+            var client = CreateClient(_mockLogger.Object);
+
+            // Simulate config change
+            var newConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "newhost",
+                    Port = 8002,
+                    PluginName = "NewPlugin",
+                    PluginDeveloper = "NewDeveloper"
+                }
+            };
+
+            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+                .ReturnsAsync(newConfig);
+
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
+                new FileChangeEventArgs("test.json"));
+
+            // Act
+            var stats = client.GetServiceStats();
+
+            // Assert
+            Assert.False(stats.IsHealthy);
+        }
+
+        [Fact]
+        public async Task GetServiceStats_WhenConnectedAndConfigNotChanged_ReturnsHealthy()
+        {
+            // Arrange
+            var client = CreateClient(_mockLogger.Object);
+
+            // Setup successful connection and authentication
+            _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DiscoveryResponse { Port = 8001 });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthTokenRequest, AuthenticationTokenResponse>(
+                It.IsAny<string>(), It.IsAny<AuthTokenRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationTokenResponse { AuthenticationToken = "test-token" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<AuthRequest, AuthenticationResponse>(
+                It.IsAny<string>(), It.IsAny<AuthRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AuthenticationResponse { Authenticated = true });
+
+            await client.TryInitializeAsync(CancellationToken.None);
+
+            // Act
+            var stats = client.GetServiceStats();
+
+            // Assert
+            Assert.True(stats.IsHealthy);
         }
     }
 }

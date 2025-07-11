@@ -4,13 +4,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using SharpBridge.Models;
+using SharpBridge.Interfaces;
 
 namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Manages configuration file loading and saving.
     /// </summary>
-    public class ConfigManager
+    public class ConfigManager : IConfigManager
     {
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly string _configDirectory;

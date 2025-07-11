@@ -18,11 +18,15 @@ namespace SharpBridge.Tests.Services
         private readonly string _configPath = Path.Combine("Tests", "TestData", "transform-config.json");
         private readonly Mock<IAppLogger> _mockLogger;
         private readonly Mock<ITransformationRulesRepository> _mockRepository;
+        private readonly Mock<IConfigManager> _mockConfigManager;
+        private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
 
         public TransformConfigTests()
         {
             _mockLogger = new Mock<IAppLogger>();
             _mockRepository = new Mock<ITransformationRulesRepository>();
+            _mockConfigManager = new Mock<IConfigManager>();
+            _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
         }
 
         private TransformationEngine CreateEngine()
@@ -32,7 +36,7 @@ namespace SharpBridge.Tests.Services
                 ConfigPath = _configPath,
                 MaxEvaluationIterations = 10
             };
-            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object, config);
+            return new TransformationEngine(_mockLogger.Object, _mockRepository.Object, config, _mockConfigManager.Object, _mockAppConfigWatcher.Object);
         }
 
         [Fact]

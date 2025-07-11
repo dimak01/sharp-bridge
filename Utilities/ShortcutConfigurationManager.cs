@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
@@ -9,10 +10,12 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Implementation of IShortcutConfigurationManager for managing keyboard shortcut configurations
     /// </summary>
-    public class ShortcutConfigurationManager : IShortcutConfigurationManager
+    public class ShortcutConfigurationManager : IShortcutConfigurationManager, IDisposable
     {
         private readonly IShortcutParser _parser;
         private readonly IAppLogger _logger;
+        private readonly IConfigManager _configManager;
+        private readonly IFileChangeWatcher? _appConfigWatcher;
 
         // Core storage
         private readonly Dictionary<ShortcutAction, Shortcut?> _mappedShortcuts = new();
@@ -22,20 +25,65 @@ namespace SharpBridge.Utilities
         private readonly HashSet<ShortcutAction> _explicitlyDisabled = new();
 
         // Legacy support
+        private GeneralSettingsConfig _config;
 
+        // Disposal tracking
+        private bool _isDisposed;
 
         /// <summary>
         /// Initializes a new instance of the ShortcutConfigurationManager
         /// </summary>
         /// <param name="parser">Shortcut parser for converting strings to key combinations</param>
         /// <param name="logger">Logger for recording configuration issues</param>
-        public ShortcutConfigurationManager(IShortcutParser parser, IAppLogger logger)
+        /// <param name="configManager">Configuration manager for loading configs</param>
+        /// <param name="appConfigWatcher">Optional file watcher for application config changes</param>
+        public ShortcutConfigurationManager(IShortcutParser parser, IAppLogger logger, IConfigManager configManager, IFileChangeWatcher? appConfigWatcher = null)
         {
             _parser = parser ?? throw new ArgumentNullException(nameof(parser));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
+            _appConfigWatcher = appConfigWatcher;
 
             // Initialize with defaults - ensures shortcuts are always available
             InitializeWithDefaults();
+
+            // Load initial config
+            _config = _configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+
+            // Subscribe to application config changes if watcher is provided
+            if (_appConfigWatcher != null)
+            {
+                _appConfigWatcher.FileChanged += OnApplicationConfigChanged;
+            }
+        }
+
+        /// <summary>
+        /// Releases all resources used by the shortcut configuration manager
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases all resources used by the shortcut configuration manager
+        /// </summary>
+        /// <param name="disposing">True if called from Dispose, false if called from finalizer</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed && disposing)
+            {
+                _logger.Debug("Disposing ShortcutConfigurationManager");
+
+                // Unsubscribe from file watcher events
+                if (_appConfigWatcher != null)
+                {
+                    _appConfigWatcher.FileChanged -= OnApplicationConfigChanged;
+                }
+
+                _isDisposed = true;
+            }
         }
 
         /// <summary>
@@ -106,8 +154,6 @@ namespace SharpBridge.Utilities
 
             return ShortcutStatus.ExplicitlyDisabled;
         }
-
-
 
         /// <summary>
         /// Loads shortcut configuration from the provided application configuration
@@ -206,9 +252,9 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Gets the default shortcut mappings used when no configuration is provided
+        /// Gets the default shortcuts for all actions
         /// </summary>
-        /// <returns>Dictionary of default shortcut action to Shortcut mappings</returns>
+        /// <returns>Dictionary mapping actions to their default shortcuts</returns>
         public Dictionary<ShortcutAction, Shortcut> GetDefaultShortcuts()
         {
             return new Dictionary<ShortcutAction, Shortcut>
@@ -222,14 +268,43 @@ namespace SharpBridge.Utilities
             };
         }
 
+        /// <summary>
+        /// Handles application configuration changes
+        /// </summary>
+        /// <param name="sender">The event sender</param>
+        /// <param name="e">The file change event arguments</param>
+        private async void OnApplicationConfigChanged(object? sender, FileChangeEventArgs e)
+        {
+            try
+            {
+                _logger.Debug("Application config changed, checking if general settings were affected");
 
+                // Load new config and compare general settings section
+                var newConfig = await _configManager.LoadApplicationConfigAsync();
+                if (!ConfigComparers.GeneralSettingsEqual(_config, newConfig.GeneralSettings))
+                {
+                    _logger.Info("General settings changed, updating internal config and reloading shortcuts");
+                    UpdateConfig(newConfig.GeneralSettings);
+                    LoadFromConfiguration(newConfig.GeneralSettings);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Error handling application config change: {0}", ex.Message);
+            }
+        }
 
         /// <summary>
-        /// Gets a human-readable display name for a shortcut action using Description attributes
+        /// Updates the internal configuration with new values
         /// </summary>
-        private static string GetActionDisplayName(ShortcutAction action)
+        /// <param name="newGeneralSettings">The new general settings configuration</param>
+        private void UpdateConfig(GeneralSettingsConfig newGeneralSettings)
         {
-            return AttributeHelper.GetDescription(action);
+            // Update all config properties
+            _config.EditorCommand = newGeneralSettings.EditorCommand;
+            _config.Shortcuts = newGeneralSettings.Shortcuts;
+
+            _logger.Debug("General settings config updated");
         }
     }
 }

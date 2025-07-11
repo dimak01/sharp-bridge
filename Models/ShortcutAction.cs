@@ -32,7 +32,7 @@ namespace SharpBridge.Models
         ReloadTransformationConfig,
 
         /// <summary>
-        /// Open the transformation configuration file in external editor
+        /// Open the configuration file in external editor (context-aware: transformation config in normal mode, application config in help mode)
         /// </summary>
         [Description("Open Config in External Editor")]
         OpenConfigInEditor,
