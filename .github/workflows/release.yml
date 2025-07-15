@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      run-sonarqube: false
+      enforce-coverage-threshold: true
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Extract version and determine release type
+        id: release-info
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+          
+          # Determine if this is a pre-release
+          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-rc"* ]]; then
+            echo "is-prerelease=true" >> $GITHUB_OUTPUT
+            echo "release-title=Sharp Bridge v$VERSION (Pre-release)" >> $GITHUB_OUTPUT
+            echo "release-body=⚠️ **This is a pre-release version for testing purposes**" >> $GITHUB_OUTPUT
+          else
+            echo "is-prerelease=false" >> $GITHUB_OUTPUT
+            echo "release-title=Sharp Bridge v$VERSION" >> $GITHUB_OUTPUT
+            echo "release-body=" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Release type: ${{ steps.release-info.outputs.is-prerelease }}"
+
+      - name: Publish for different platforms
+        run: |
+          VERSION=${{ steps.release-info.outputs.version }}
+          
+          # Currently only testing Windows - Linux and macOS commented out for future use
+          for platform in win-x64; do
+          # for platform in win-x64 linux-x64 osx-x64; do
+            echo "Publishing for $platform..."
+            dotnet publish SharpBridge/SharpBridge.csproj \
+              -c Release -r $platform \
+              --self-contained true \
+              -p:PublishSingleFile=true \
+              -p:PublishTrimmed=true \
+              -p:Version=$VERSION \
+              -p:AssemblyVersion=$VERSION.0 \
+              -p:FileVersion=$VERSION.0 \
+              -o ./publish/$platform
+          done
+
+      - name: Create release artifacts
+        run: |
+          VERSION=${{ steps.release-info.outputs.version }}
+          mkdir -p artifacts
+          
+          # Currently only Windows - Linux and macOS commented out for future use
+          # Windows (ZIP)
+          cd ./publish/win-x64
+          zip -r ../../artifacts/SharpBridge-v$VERSION-win-x64.zip .
+          cd ../..
+          
+          # Linux (TAR) - commented out for future use
+          # cd ./publish/linux-x64
+          # tar -czf ../../artifacts/SharpBridge-v$VERSION-linux-x64.tar.gz .
+          # cd ../..
+          
+          # macOS (TAR) - commented out for future use
+          # cd ./publish/osx-x64
+          # tar -czf ../../artifacts/SharpBridge-v$VERSION-osx-x64.tar.gz .
+          # cd ../..
+
+      - name: Extract release notes
+        id: release-notes
+        run: |
+          VERSION=${{ steps.release-info.outputs.version }}
+          RELEASE_FILE="Docs/ReleaseNotes/v$VERSION.md"
+          
+          if [ -f "$RELEASE_FILE" ]; then
+            echo "Found release notes file: $RELEASE_FILE"
+            RELEASE_NOTES=$(cat "$RELEASE_FILE")
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "❌ RELEASE FAILURE: No release notes file found: $RELEASE_FILE"
+            echo ""
+            echo "Please create the release notes file before creating the release tag:"
+            echo "1. Copy the template: cp Docs/ReleaseNotes/ReleaseNotesTemplate.md $RELEASE_FILE"
+            echo "2. Edit the release notes: nano $RELEASE_FILE"
+            echo "3. Commit and push: git add $RELEASE_FILE && git commit -m 'Add release notes for v$VERSION' && git push"
+            echo "4. Then create the tag: git tag v$VERSION && git push origin v$VERSION"
+            echo ""
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-win-x64.zip
+            # artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-linux-x64.tar.gz
+            # artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-osx-x64.tar.gz
+          body: ${{ steps.release-notes.outputs.release_notes }}
+          draft: ${{ steps.release-info.outputs.is-prerelease == 'true' }}
+          prerelease: ${{ steps.release-info.outputs.is-prerelease == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
