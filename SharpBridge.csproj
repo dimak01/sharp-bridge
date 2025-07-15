@@ -6,6 +6,10 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Company>Dimak@Shift</Company>
+    <Product>Sharp Bridge</Product>
+    <Description>A .NET/C# bridge application for connecting iPhone's VTube Studio to PC</Description>
+    <Copyright> GPLv3 © 2025</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
