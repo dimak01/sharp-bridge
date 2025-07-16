@@ -12,3 +12,5 @@ jobs:
     with:
       run-sonarqube: true
       enforce-coverage-threshold: true
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
