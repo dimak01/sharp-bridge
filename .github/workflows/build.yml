@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       coverage: ${{ steps.coverage-check.outputs.coverage }}
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,8 +78,6 @@ jobs:
 
       - name: Begin SonarQube analysis
         if: inputs.run-sonarqube
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           ./.sonar/scanner/dotnet-sonarscanner begin \
             /k:"dimak01_sharp-bridge" \
