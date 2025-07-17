@@ -65,7 +65,7 @@ echo.
 echo IMPORTANT SECURITY NOTES:
 echo 1. Only the specific UDP port %LOCAL_PORT% is now open, not all traffic to the application
 echo 2. The rule applies to both private and public networks
-echo 3. To remove this rule, use firewall-remove.bat or run: netsh advfirewall firewall delete rule name="SharpBridge UDP Port %LOCAL_PORT%"
+echo 3. To remove this rule, use firewall-cleanup.bat or run: netsh advfirewall firewall delete rule name="SharpBridge UDP Port %LOCAL_PORT%"
 echo.
 
 echo Secure firewall rule added successfully!

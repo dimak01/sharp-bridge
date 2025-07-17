@@ -9,7 +9,7 @@
     <Company>Dimak@Shift</Company>
     <Product>Sharp Bridge</Product>
     <Description>A .NET/C# bridge application for connecting iPhone's VTube Studio to PC</Description>
-    <Copyright> GPLv3 © 2025</Copyright>
+    <Copyright> Copyright © 2025 Dimak@Shift</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +34,9 @@
 
   <ItemGroup>
     <Content Include="Configs\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Scripts\**\*.bat">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
