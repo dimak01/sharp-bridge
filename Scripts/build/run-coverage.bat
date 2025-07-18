@@ -2,6 +2,7 @@
 echo Running tests with code coverage...
 
 REM Create TestResults directory if it doesn't exist
+cd ../..
 if not exist TestResults mkdir TestResults
 
 REM Run tests with coverage and collect results with explicit output directory
