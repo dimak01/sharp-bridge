@@ -67,7 +67,6 @@ jobs:
               -c Release -r $platform \
               --self-contained true \
               -p:PublishSingleFile=true \
-              -p:PublishTrimmed=true \
               -p:Version=$VERSION \
               -p:AssemblyVersion=${{ steps.release-info.outputs.clean_version }}.0 \
               -p:FileVersion=${{ steps.release-info.outputs.clean_version }}.0 \
