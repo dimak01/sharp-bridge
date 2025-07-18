@@ -10,11 +10,7 @@
     <Product>Sharp Bridge</Product>
     <Description>A .NET/C# bridge application for connecting iPhone's VTube Studio to PC</Description>
     <Copyright> Copyright © 2025 Dimak@Shift</Copyright>
-    <!-- Exclude debug symbols and documentation from release builds -->
-    <DebugType>none</DebugType>
-    <DebugSymbols>false</DebugSymbols>
-    <!-- Exclude XML documentation from publish -->
-    <GenerateDocumentationFile Condition="'$(Configuration)'=='Release'">false</GenerateDocumentationFile>
+
   </PropertyGroup>
 
   <ItemGroup>
