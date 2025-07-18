@@ -55,7 +55,7 @@ jobs:
           for platform in win-x64; do
           # for platform in win-x64 linux-x64 osx-x64; do
             echo "Publishing for $platform..."
-            dotnet publish SharpBridge/SharpBridge.csproj \
+            dotnet publish SharpBridge.csproj \
               -c Release -r $platform \
               --self-contained true \
               -p:PublishSingleFile=true \
@@ -77,7 +77,7 @@ jobs:
           
           # Create tools directory and copy deployment scripts
           mkdir -p tools
-          cp ../../scripts/deployment/win-x64/*.bat tools/
+          cp ../../Scripts/deployment/win-x64/*.bat tools/
           
           zip -r ../../artifacts/SharpBridge-v$VERSION-win-x64.zip .
           cd ../..
