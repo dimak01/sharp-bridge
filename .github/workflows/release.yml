@@ -34,6 +34,11 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
           
+          # Extract clean version for assembly (remove pre-release part)
+          CLEAN_VERSION=$(echo $VERSION | sed 's/-.*//')
+          echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          echo "Clean version: $CLEAN_VERSION"
+          
           # Determine if this is a pre-release
           if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-rc"* ]]; then
             echo "is-prerelease=true" >> $GITHUB_OUTPUT
@@ -61,8 +66,8 @@ jobs:
               -p:PublishSingleFile=true \
               -p:PublishTrimmed=true \
               -p:Version=$VERSION \
-              -p:AssemblyVersion=0.1.0.0 \
-              -p:FileVersion=0.1.0.0 \
+              -p:AssemblyVersion=${{ steps.release-info.outputs.clean_version }}.0 \
+              -p:FileVersion=${{ steps.release-info.outputs.clean_version }}.0 \
               -o ./publish/$platform
           done
 
