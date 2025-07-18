@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: ./.github/workflows/build.yml
@@ -126,8 +129,6 @@ jobs:
         with:
           files: |
             artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-win-x64.zip
-            # artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-linux-x64.tar.gz
-            # artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-osx-x64.tar.gz
           body: ${{ steps.release-notes.outputs.release_notes }}
           draft: ${{ steps.release-info.outputs.is-prerelease == 'true' }}
           prerelease: ${{ steps.release-info.outputs.is-prerelease == 'true' }}
