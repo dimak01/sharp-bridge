@@ -18,15 +18,10 @@ This project is inspired by [rusty-bridge](https://github.com/ovROG/rusty-bridge
 - VTube Studio on PC
 - VTube Studio app on iPhone (connected to same network)
 
-### Basic Setup
-1. Download and extract SharpBridge
-2. **Firewall Configuration** (Required for most users):
-   - Run `Scripts\firewall-secure.bat` as Administrator to allow SharpBridge network access
-   - This opens the UDP port needed for iPhone communication
-   - If you need to remove the firewall rules later, run `Scripts\firewall-cleanup.bat`
-3. Run: `SharpBridge.exe`
-4. Start VTube Studio on PC
-5. Start tracking on iPhone VTube Studio
+### Basic Usage
+1. Run: `SharpBridge.exe`
+2. Start VTube Studio on PC
+3. Start tracking on iPhone VTube Studio
 
 The application will create default configuration files on first run.
 
@@ -48,10 +43,14 @@ Download the latest release from the [Releases](https://github.com/dimak01/sharp
 ### Requirements
 - Windows 10/11 (x64)
 
-### First Run
+### Setup
 1. Extract the downloaded archive
-2. Run `SharpBridge.exe`
-3. The application will create default configuration files in the `Configs` directory
+2. **Firewall Configuration** (Required for most users):
+   - Run `tools\setup-firewall.bat` as Administrator to allow SharpBridge network access
+   - This opens the UDP port needed for iPhone communication
+   - If you need to remove the firewall rules later, run `tools\cleanup-firewall.bat`
+3. Run `SharpBridge.exe` for the first time
+4. The application will create default configuration files in the `Configs` directory
 
 ## Configuration
 
@@ -91,6 +90,26 @@ All settings are managed in a single configuration file:
 }
 ```
 
+**Configuration Parameters:**
+
+**GeneralSettings:**
+- `EditorCommand`: Command to open configuration files in external editor (use `%f` for file path)
+- `Shortcuts`: Keyboard shortcuts for interactive controls (see [Usage](#usage) section for details)
+
+**PhoneClient:**
+- `IphoneIpAddress`: IP address of your iPhone on the local network
+- `IphonePort`: UDP port used by iPhone VTube Studio (default: 21412)
+- `LocalPort`: UDP port for receiving tracking data from iPhone (default: 28964)
+
+**PCClient:**
+- `Host`: VTube Studio PC WebSocket host (default: localhost)
+- `Port`: VTube Studio PC WebSocket port (default: 8001)
+- `UsePortDiscovery`: Automatically discover VTube Studio port (recommended: true)
+
+**TransformationEngine:**
+- `ConfigPath`: Path to transformation rules configuration file
+- `MaxEvaluationIterations`: Maximum iterations for complex parameter dependencies calculation (default: 10)
+
 ### Transformation Rules (`Configs/vts_transforms.json`)
 
 Define how iPhone tracking data maps to PC VTube Studio parameters:
@@ -114,57 +133,7 @@ Define how iPhone tracking data maps to PC VTube Studio parameters:
 ]
 ```
 
-**Available Tracking Parameters:**
-- Head: `HeadPosX`, `HeadPosY`, `HeadPosZ`, `HeadRotX`, `HeadRotY`, `HeadRotZ`
-- Eyes: `EyeLeftX`, `EyeLeftY`, `EyeLeftZ`, `EyeRightX`, `EyeRightY`, `EyeRightZ`  
-- Blend Shapes: `EyeBlinkLeft`, `EyeBlinkRight`, `JawOpen`, `MouthClose`, etc.
-
-## Usage
-
-### Basic Usage
-```bash
-SharpBridge.exe
-```
-
-### Command Line Options
-```bash
-SharpBridge.exe --config-dir <path> --transform-config <file>
-```
-
-- `--config-dir`: Configuration directory (default: Configs)
-- `--transform-config`: Transformation rules file (default: vts_transforms.json)
-
-### Interactive Controls
-
-While running, use these keyboard shortcuts:
-
-| Key | Action |
-|-----|--------|
-| **Alt+P** | Cycle PC client verbosity (Basic → Normal → Detailed) |
-| **Alt+O** | Cycle Phone client verbosity (Basic → Normal → Detailed) |
-| **Alt+T** | Cycle Transformation Engine verbosity (Basic → Normal → Detailed) |
-| **Alt+K** | Hot-reload transformation configuration |
-| **Ctrl+Alt+E** | Open configuration in external editor |
-| **F1** | Show system help |
-| **Ctrl+C** | Graceful shutdown |
-
-### Console Interface
-
-The application provides real-time status monitoring with color-coded indicators:
-
-- 🟢 **Green**: Service healthy and operating normally
-- 🔴 **Red**: Service error, automatic recovery in progress
-- 🟡 **Yellow**: Warning or partial functionality
-- 🔵 **Cyan**: Informational status
-
-**Service Sections:**
-- **Phone Client**: Connection status, frame rate, tracking data reception
-- **Transformation Engine**: Rule validation, performance metrics, error details
-- **PC Client**: VTube Studio connection, authentication, parameter transmission
-
-## Advanced Usage
-
-### Custom Parameter Dependencies
+**Custom Parameter Dependencies**
 
 Rules can reference other custom parameters with automatic dependency resolution:
 
@@ -178,23 +147,136 @@ Rules can reference other custom parameters with automatic dependency resolution
 }
 ```
 
+**Available Tracking Parameters:**
+
+**Head Position & Rotation:**
+- `HeadPosX`, `HeadPosY`, `HeadPosZ` - Head position in 3D space
+- `HeadRotX`, `HeadRotY`, `HeadRotZ` - Head rotation angles
+
+**Blend Shapes (Facial Expressions):**
+- `BrowDownLeft`, `BrowDownRight`, `BrowInnerUp`, `BrowOuterUpLeft`, `BrowOuterUpRight`
+- `CheekPuff`, `CheekSquintLeft`, `CheekSquintRight`
+- `EyeBlinkLeft`, `EyeBlinkRight`, `EyeLookDownLeft`, `EyeLookDownRight`, `EyeLookInLeft`, `EyeLookInRight`, `EyeLookOutLeft`, `EyeLookOutRight`, `EyeLookUpLeft`, `EyeLookUpRight`, `EyeSquintLeft`, `EyeSquintRight`, `EyeWideLeft`, `EyeWideRight`
+- `JawForward`, `JawLeft`, `JawOpen`, `JawRight`
+- `MouthClose`, `MouthDimpleLeft`, `MouthDimpleRight`, `MouthFrownLeft`, `MouthFrownRight`, `MouthFunnel`, `MouthLeft`, `MouthLowerDownLeft`, `MouthLowerDownRight`, `MouthPressLeft`, `MouthPressRight`, `MouthPucker`, `MouthRight`, `MouthRollLower`, `MouthRollUpper`, `MouthShrugLower`, `MouthShrugUpper`, `MouthSmileLeft`, `MouthSmileRight`, `MouthStretchLeft`, `MouthStretchRight`, `MouthUpperUpLeft`, `MouthUpperUpRight`
+- `NoseSneerLeft`, `NoseSneerRight`
+- `TongueOut`
+
+For detailed parameter information, refer to the [VTube Studio API documentation](https://github.com/1996scarlet/VTubeStudio/blob/master/README.mdhttps://github.com/DenchiSoft/VTubeStudio?tab=readme-ov-file).
+
+## Usage
+
+### Basic Usage
+```bash
+SharpBridge.exe
+```
+
+### Interactive Controls
+
+While running, use these keyboard shortcuts (configurable in `ApplicationConfig.json`):
+
+| Key | Action |
+|-----|--------|
+| **Alt+P** | Cycle PC client verbosity (Basic → Normal → Detailed) |
+| **Alt+O** | Cycle Phone client verbosity (Basic → Normal → Detailed) |
+| **Alt+T** | Cycle Transformation Engine verbosity (Basic → Normal → Detailed) |
+| **Alt+K** | Hot-reload transformation configuration |
+| **Ctrl+Alt+E** | Open configuration in external editor |
+| **F1** | Show system help |
+| **Ctrl+C** | Graceful shutdown |
+
+### Console Interface
+
+The application provides a real-time console interface with adaptive verbosity levels and detailed service monitoring:
+
+**Service Status Display:**
+- **Phone Client**: Face detection status, head position/rotation, blend shape tracking data
+- **Transformation Engine**: Rule validation status, configuration file monitoring, error details for failed rules
+- **PC Client**: VTube Studio connection status, parameter transmission, authentication state
+
+**Verbosity Levels** (configurable per service):
+- **Basic**: Essential status and health indicators
+- **Normal**: Detailed tracking data, blend shape tables, parameter information
+- **Detailed**: Full debugging information, error tables, performance metrics
+
+**Visual Features:**
+- **Color-coded Parameters**: Blend shapes (cyan), head parameters (magenta), calculated parameters (yellow)
+- **Progress Bars**: Real-time tracking parameter visualization
+- **Status Indicators**: Service health, connection state, error conditions
+- **Adaptive Layout**: Automatically adjusts to console window size
+
+## Advanced Usage
+
+### Logging
+
+SharpBridge provides comprehensive logging to help with debugging and monitoring:
+
+**Log Files:**
+- **Location**: `Logs/` directory (created automatically)
+- **Format**: Timestamped entries with detailed error information
+- **Rotation**: Automatic log file management (daily rotation, 1MB size limit, 31 files retained)
+- **Current Level**: Warning (only Warning and Error levels logged - focused on important events)
+- **Customization**: Log level configuration is planned for future releases
+
+**What Gets Logged:**
+- Service initialization and connection attempts
+- Network communication details
+- Configuration file changes and validation errors
+- Transformation rule evaluation failures
+- Performance metrics and recovery attempts
+- User interactions and shortcut usage
+
+**Log Analysis Tips:**
+- Check timestamps to correlate with console events
+- Look for `ERROR` entries for troubleshooting
+- `WARNING` entries indicate recoverable issues
+
+### Configuration Management
+
+SharpBridge provides multiple ways to update configuration:
+
+**Application Configuration (`ApplicationConfig.json`):**
+- **Hot Reload**: Changes are automatically detected and applied without restart
+- **Manual Editing**: Edit the file directly in any text editor
+- **External Editor**: Use `Ctrl+Alt+E` shortcut to open in your configured editor
+
+**Transformation Rules (`vts_transforms.json`):**
+- **Manual Reload**: Use `Alt+K` shortcut to reload transformation rules
+- **Manual Editing**: Edit the file directly in any text editor
+- **External Editor**: Use `Ctrl+Alt+E` shortcut to open in your configured editor
+
+**Configuration Tips:**
+- Application config changes are applied immediately
+- Transformation rule changes require manual reload (`Alt+K`)
+- Use `F1` for system help to see current configuration values
+- Verbosity levels can be cycled per service for detailed debugging
+
 ### Network Configuration
 
 For different network setups:
 
+**Firewall Configuration:**
+- **iPhone Connection**: Run `tools\setup-firewall.bat` as Administrator (opens UDP port 28964 for receiving tracking data)
+- **Default Port Only**: The firewall scripts use the default `LocalPort` (28964). If you change this port in configuration, you can either:
+  - Edit the scripts to use your custom port, or
+  - Manually create firewall rules for your chosen port
+- **VTube Studio Discovery**: Port discovery (UDP 47779) typically works without firewall rules when VTube Studio is on the same machine
+- **PC Connection**: WebSocket connection to VTube Studio (port 8001) is outbound and typically doesn't need firewall rules
+- **Note**: These connections assume VTube Studio is running on the same machine as SharpBridge. Network scenarios (different machines) have not been tested and may require additional firewall configuration
+- **Cleanup**: Use `tools\cleanup-firewall.bat` to remove firewall rules
+- **Multiple Port Changes**: If you've switched ports multiple times, the cleanup script searches for and removes all firewall rules matching "SharpBridge UDP Port" pattern, ensuring a clean slate
+
 **Phone Configuration:**
 - Update `IphoneIpAddress` to match your iPhone's IP address
 - Modify `IphonePort` and `LocalPort` if needed
+- **Port Changes**: If you change `LocalPort` from default (28964), you must either:
+  - Run `tools\cleanup-firewall.bat` to remove old rules, then edit scripts to use your new port and run `tools\setup-firewall.bat`
+  - Or manually create firewall rules for your custom port
 
 **PC Configuration:**
 - Change `Host` for remote VTube Studio instances
 - Adjust `Port` if VTube Studio uses a different port
-
-### Performance Optimization
-
-- Use simpler expressions for better performance
-- Minimize the number of transformation rules
-- Use Basic verbosity mode for production use
+- **Note**: If you configure a non-localhost connection (different machine), you may need to update the firewall scripts to use the correct port for your setup
 
 ## Troubleshooting
 
@@ -233,6 +315,13 @@ Check `Logs/` directory for detailed error information:
 - Error details for troubleshooting
 - Performance metrics history
 
+**When to Check Logs:**
+- Console doesn't provide enough detail about an issue
+- Network connectivity problems
+- Configuration file errors
+- Transformation rule failures
+- Performance issues or unexpected behavior
+
 ## Development
 
 ### Building from Source
@@ -240,29 +329,19 @@ Check `Logs/` directory for detailed error information:
 ```bash
 git clone https://github.com/dimak01/sharp-bridge.git
 cd sharp-bridge
-dotnet build
+dotnet build sharp-bridge.sln
 ```
 
 ### Running Tests
 
 ```bash
-dotnet test
+dotnet test Tests/Tests.csproj
 ```
-
-### Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
 
 ## Support & Documentation
 
-- **User Guide**: [Docs/UserGuide.md](Docs/UserGuide.md) - Detailed usage instructions
 - **Architecture**: [Docs/ProjectOverview.md](Docs/ProjectOverview.md) - Technical architecture documentation
 - **Issues**: [GitHub Issues](https://github.com/dimak01/sharp-bridge/issues) - Report bugs and request features
-- **Discussions**: [GitHub Discussions](https://github.com/dimak01/sharp-bridge/discussions) - Community support
 
 ## License
 

@@ -74,6 +74,11 @@ jobs:
           # Currently only Windows - Linux and macOS commented out for future use
           # Windows (ZIP)
           cd ./publish/win-x64
+          
+          # Create tools directory and copy deployment scripts
+          mkdir -p tools
+          cp ../../scripts/deployment/win-x64/*.bat tools/
+          
           zip -r ../../artifacts/SharpBridge-v$VERSION-win-x64.zip .
           cd ../..
           
