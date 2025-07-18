@@ -160,11 +160,12 @@ namespace SharpBridge.Utilities
         {
             if (serviceStats.CurrentEntity is TransformationEngineInfo engineInfo)
             {
-                // Get dynamic shortcut instead of hardcoded "Ctrl+Alt+E"
+                // Get dynamic shortcuts instead of hardcoded values
                 var editConfigShortcut = _shortcutManager.GetDisplayString(ShortcutAction.OpenConfigInEditor);
+                var reloadConfigShortcut = _shortcutManager.GetDisplayString(ShortcutAction.ReloadTransformationConfig);
 
                 var colorized_config_path = ConsoleColors.Colorize(engineInfo.ConfigFilePath, ConsoleColors.ConfigPathColor);
-                builder.AppendLine($"Config File Path ({editConfigShortcut} to edit): {colorized_config_path}");
+                builder.AppendLine($"Config File Path ({editConfigShortcut} to edit, {reloadConfigShortcut} to reload): {colorized_config_path}");
 
                 var upToDateStatus = engineInfo.IsConfigUpToDate ? "Yes" : "No";
                 var colorizedStatus = engineInfo.IsConfigUpToDate
