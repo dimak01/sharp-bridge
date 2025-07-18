@@ -86,6 +86,9 @@ jobs:
           mkdir -p tools
           cp ../../Scripts/deployment/win-x64/*.bat tools/
           
+          # Copy README.md to the package
+          cp ../../README.md .
+          
           zip -r ../../artifacts/SharpBridge-v$VERSION-win-x64.zip .
           cd ../..
           
