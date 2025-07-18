@@ -43,8 +43,8 @@ if exist "%APP_PATH%SharpBridge.exe" (
     set PROGRAM_PATH=%ProgramFiles%\dotnet\dotnet.exe
 )
 
-:: Using the fixed port - 21413
-set LOCAL_PORT=21413
+:: Using the fixed port - 28964 (matches application default)
+set LOCAL_PORT=28964
 echo Using static port %LOCAL_PORT% for firewall rule
 
 echo Creating minimal firewall rule for UDP port %LOCAL_PORT% only...
@@ -65,7 +65,7 @@ echo.
 echo IMPORTANT SECURITY NOTES:
 echo 1. Only the specific UDP port %LOCAL_PORT% is now open, not all traffic to the application
 echo 2. The rule applies to both private and public networks
-echo 3. To remove this rule, use firewall-remove.bat or run: netsh advfirewall firewall delete rule name="SharpBridge UDP Port %LOCAL_PORT%"
+echo 3. To remove this rule, use cleanup-firewall.bat or run: netsh advfirewall firewall delete rule name="SharpBridge UDP Port %LOCAL_PORT%"
 echo.
 
 echo Secure firewall rule added successfully!

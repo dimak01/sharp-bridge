@@ -1,0 +1,153 @@
+name: Build and Test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: false
+        type: string
+        description: "Version to use for build (optional)"
+      run-sonarqube:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to run SonarQube analysis"
+      enforce-coverage-threshold:
+        required: false
+        type: boolean
+        default: true
+        description: "Whether to enforce 90% coverage threshold"
+    secrets:
+      SONAR_TOKEN:
+        required: false
+        description: "SonarQube token for code analysis"
+    outputs:
+      coverage:
+        description: "Test coverage percentage"
+        value: ${{ jobs.build.outputs.coverage }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      coverage: ${{ steps.coverage-check.outputs.coverage }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17 (if SonarQube needed)
+        if: inputs.run-sonarqube
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache SonarQube Cloud packages
+        if: inputs.run-sonarqube
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache SonarQube Cloud scanner
+        if: inputs.run-sonarqube
+        id: cache-sonar-scanner
+        uses: actions/cache@v4
+        with:
+          path: ./.sonar/scanner
+          key: ${{ runner.os }}-sonar-scanner
+          restore-keys: ${{ runner.os }}-sonar-scanner
+
+      - name: Install SonarQube Cloud scanner
+        if: inputs.run-sonarqube && steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ./.sonar/scanner
+          dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
+
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Restore dependencies
+        run: dotnet restore sharp-bridge.sln
+
+      - name: Begin SonarQube analysis
+        if: inputs.run-sonarqube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          ./.sonar/scanner/dotnet-sonarscanner begin \
+            /k:"dimak01_sharp-bridge" \
+            /o:"dimak01" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.coverageReportPaths="TestResults/CoverageReport/SonarQube.xml" \
+            /d:sonar.qualitygate.wait=true \
+            /d:sonar.inclusions="**/*.cs" \
+            /d:sonar.exclusions="**/bin/**,**/obj/**,**/Tests/**" \
+            /d:sonar.coverage.exclusions="**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**"
+
+      - name: Build
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            dotnet build sharp-bridge.sln \
+              --configuration Release \
+              --no-restore \
+              -p:Version=${{ inputs.version }} \
+              -p:AssemblyVersion=${{ inputs.version }}.0 \
+              -p:FileVersion=${{ inputs.version }}.0
+          else
+            dotnet build sharp-bridge.sln \
+              --configuration Release \
+              --no-restore
+          fi
+
+      - name: Test with coverage
+        run: |
+          dotnet test sharp-bridge.sln \
+            --no-build \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --results-directory TestResults \
+            --settings coverlet.runsettings \
+            --logger "console;verbosity=detailed"
+
+      - name: Generate coverage report
+        run: |
+          reportgenerator -reports:"TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"TestResults/CoverageReport" \
+            -reporttypes:"Html;JsonSummary;SonarQube"
+
+      - name: Check coverage threshold
+        id: coverage-check
+        if: inputs.enforce-coverage-threshold
+        run: |
+          coverage=$(jq -r '.summary.linecoverage' TestResults/CoverageReport/Summary.json)
+          echo "coverage=$coverage" >> $GITHUB_OUTPUT
+          echo "=============================================="
+          echo "📊 COVERAGE RESULTS"
+          echo "=============================================="
+          echo "Line coverage: $coverage%"
+          echo "Required threshold: 90%"
+          
+          if (( $(echo "$coverage < 90" | bc -l) )); then
+            echo "❌ COVERAGE FAILURE: Coverage $coverage% is below required 90%"
+            echo "=============================================="
+            exit 1
+          else
+            echo "✅ COVERAGE PASSED: Coverage $coverage% meets required 90%"
+            echo "=============================================="
+          fi
+
+      - name: End SonarQube analysis
+        if: inputs.run-sonarqube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}" 
