@@ -36,6 +36,7 @@ namespace SharpBridge.Tests.Utilities
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity)).Returns("Alt+T");
             mockShortcutManager.Setup(m => m.GetDisplayString(ShortcutAction.OpenConfigInEditor)).Returns("Ctrl+Alt+E");
+            mockShortcutManager.Setup(m => m.GetDisplayString(ShortcutAction.ReloadTransformationConfig)).Returns("Alt+K");
 
             _userPreferences = new UserPreferences { TransformationEngineVerbosity = VerbosityLevel.Normal };
 
@@ -340,7 +341,7 @@ namespace SharpBridge.Tests.Utilities
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit): Configs/custom_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit, Alt+K to reload): Configs/custom_rules.json");
         }
 
         [Fact]
@@ -688,7 +689,7 @@ namespace SharpBridge.Tests.Utilities
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit): Configs/test_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit, Alt+K to reload): Configs/test_rules.json");
             plainResult.Should().Contain($"Up to Date: {(isConfigUpToDate ? "Yes" : "No")}");
         }
 
