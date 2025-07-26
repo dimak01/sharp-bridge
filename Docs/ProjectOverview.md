@@ -48,6 +48,7 @@ The application follows a **resilient, orchestrated data flow architecture** wit
                                          │   + Real-time Display │
                                          │   + Dynamic Shortcuts │
                                          │   + User Preferences  │
+                                         │   + Customizable UI   │
                                          └───────────────────────┘
 ```
 
@@ -66,7 +67,7 @@ The application uses a **consolidated configuration system** with hot-reload cap
 - **Application Config Hot Reload** - File watchers monitor `ApplicationConfig.json` for automatic reload
 - **Transformation Rules Change Detection** - File watchers detect transformation rule changes and notify user (manual reload required)
 - **Dynamic Shortcuts** - Keyboard shortcuts configurable via JSON
-- **User Preferences** - Persistent user settings (verbosity, console dimensions)
+- **User Preferences** - Persistent user settings (verbosity, console dimensions, parameter table customization)
 - **Validation** - Configuration change detection and validation
 
 ## Console UI & Display System
@@ -102,6 +103,14 @@ The application features a **console-based user interface** with dynamic configu
 │                          │ + Status Colors  │    │ + PCTrackingInfoFormatter      │ │
 │                          │ + Health Indicators│   │ + TransformationEngineFormatter│ │
 │                          └──────────────────┘    └─────────────────────────────────┘ │
+│                                   │                                                 │
+│                                   ▼                                                 │
+│                          ┌──────────────────┐    ┌─────────────────────────────────┐ │
+│                          │ Configuration    │    │ System Help Renderer            │ │
+│                          │ Managers         │    │ + Dynamic Content              │ │
+│                          │ + Shortcut Mgmt  │    │ + Configuration Display        │ │
+│                          │ + Parameter Mgmt │    │ + User Preferences Display     │ │
+│                          └──────────────────┘    └─────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -124,11 +133,13 @@ The application features a **console-based user interface** with dynamic configu
    - **Persistent Settings** - Verbosity levels and console dimensions saved
    - **Automatic Restoration** - User preferences restored on startup
    - **Runtime Updates** - Preferences updated during operation
+   - **Customizable UI** - Parameter table column configuration
 
 4. **Adaptive Formatting System**
    - **Verbosity Levels** - Three levels of detail for different debugging needs
    - **Multi-column Layout** - Automatically switches between single/multi-column based on available space
    - **Progress Visualization** - Real-time progress bars for tracking parameters
+   - **Customizable Tables** - User-configurable column display for parameter tables
 
 ### Console UI Components
 
@@ -138,15 +149,23 @@ The application features a **console-based user interface** with dynamic configu
 - **IFormatter** - Pluggable formatters for different data types with verbosity support
 - **IKeyboardInputHandler** - Keyboard shortcut registration and processing
 
+#### Configuration Management Interfaces
+- **IShortcutConfigurationManager** - Manages keyboard shortcut configurations
+- **IParameterTableConfigurationManager** - Manages parameter table column display configuration
+- **ISystemHelpRenderer** - Renders dynamic system help with configuration information
+
 #### Implementations
 - **ConsoleRenderer** - Central hub that coordinates all console output
 - **SystemConsole** - Production console wrapper with window management
 - **KeyboardInputHandler** - Real-time keyboard input processing
 - **ConsoleWindowManager** - Window size management with user preferences
+- **ShortcutConfigurationManager** - Loads and manages keyboard shortcut configurations
+- **ParameterTableConfigurationManager** - Manages parameter table column display with graceful degradation
+- **SystemHelpRenderer** - Dynamic help system with configuration display
 
 #### Specialized Formatters
 - **PhoneTrackingInfoFormatter** - Displays iPhone tracking data with multi-column parameter tables
-- **PCTrackingInfoFormatter** - Shows PC client status and outgoing parameter data
+- **PCTrackingInfoFormatter** - Shows PC client status and outgoing parameter data with customizable columns
 - **TransformationEngineInfoFormatter** - Real-time transformation engine statistics with rule status tables
 - **TableFormatter** - Utility for complex tabular data with responsive layout
 
@@ -165,6 +184,7 @@ The application uses a **DI system** with keyed services and factory patterns:
 - **Network Services** - `IWebSocketWrapper`, `IUdpClientWrapperFactory`
 - **File Watching** - Multiple `IFileChangeWatcher` instances
 - **Console Services** - `IConsoleRenderer`, `IKeyboardInputHandler`, formatters
+- **Configuration Managers** - `IShortcutConfigurationManager`, `IParameterTableConfigurationManager`
 - **Business Services** - `ITransformationEngine`, `IVTubeStudioPCClient`, `IVTubeStudioPhoneClient`
 
 ## Resiliency & Recovery Architecture
@@ -227,6 +247,7 @@ All core architectural components are implemented:
 - **Parameter Synchronization** - Automatic VTube Studio parameter management
 - **External Editor Integration** - Configurable file opening capabilities
 - **System Help** - Dynamic help system with context awareness
+- **Parameter Table Customization** - User-configurable column display for parameter tables
 
 ## Core Interfaces
 
@@ -252,62 +273,80 @@ All core architectural components are implemented:
    - `CheckForKeyboardInput()` - Non-blocking input processing
    - `GetRegisteredShortcuts()` - Runtime shortcut discovery
 
+### Configuration Management Interfaces
+
+5. **IShortcutConfigurationManager** - Keyboard shortcut configuration management
+   - `GetShortcuts()` - Retrieves configured keyboard shortcuts
+   - `LoadFromConfiguration()` - Loads shortcuts from application configuration
+   - `GetShortcutDescription()` - Provides human-readable shortcut descriptions
+
+6. **IParameterTableConfigurationManager** - Parameter table column configuration management
+   - `GetParameterTableColumns()` - Retrieves currently configured columns
+   - `GetDefaultParameterTableColumns()` - Provides default column configuration
+   - `LoadFromUserPreferences()` - Loads column configuration from user preferences
+   - `GetColumnDisplayName()` - Provides human-readable column names
+
+7. **ISystemHelpRenderer** - Dynamic system help rendering
+   - `RenderSystemHelp()` - Renders complete system help display
+   - `RenderKeyboardShortcuts()` - Renders keyboard shortcuts section
+   - `RenderParameterTableColumns()` - Renders parameter table column configuration
+
 ### Resiliency Interfaces
 
-5. **IInitializable** - Enables graceful initialization and recovery
+8. **IInitializable** - Enables graceful initialization and recovery
    - `TryInitializeAsync()` - Non-blocking initialization that returns success/failure
    - `LastInitializationError` - Provides detailed error information for diagnostics
 
-6. **IServiceStats** - Enhanced service monitoring
+9. **IServiceStats** - Enhanced service monitoring
    - `IsHealthy` - Real-time health status indicator
    - `LastSuccessfulOperation` - Timestamp of last successful operation
    - `LastError` - Most recent error message for troubleshooting
 
-7. **IRecoveryPolicy** - Defines recovery timing and behavior
-   - `GetNextDelay()` - Determines interval between recovery attempts
+10. **IRecoveryPolicy** - Defines recovery timing and behavior
+    - `GetNextDelay()` - Determines interval between recovery attempts
 
 ### Core Application Interfaces
 
-8. **IVTubeStudioPhoneClient** - Interface for receiving tracking data from the phone
-   - Handles UDP socket communication with automatic recovery
-   - Parses tracking data with error resilience
-   - Provides events for new data
-   - Implements health monitoring and status reporting
+11. **IVTubeStudioPhoneClient** - Interface for receiving tracking data from the phone
+    - Handles UDP socket communication with automatic recovery
+    - Parses tracking data with error resilience
+    - Provides events for new data
+    - Implements health monitoring and status reporting
 
-9. **IUdpClientWrapper** - Abstraction over UDP client for testability
-   - Wraps UDP operations for easier mocking
-   - Enables thorough testing of network components
-   - Provides clean separation of concerns
+12. **IUdpClientWrapper** - Abstraction over UDP client for testability
+    - Wraps UDP operations for easier mocking
+    - Enables thorough testing of network components
+    - Provides clean separation of concerns
 
-10. **ITransformationEngine** - Interface for transforming tracking data
+13. **ITransformationEngine** - Interface for transforming tracking data
     - Loads and parses transformation rules
     - Applies expressions to track data
     - Manages parameter boundaries
 
-11. **IVTubeStudioPCClient** - Interface for VTube Studio communication
+14. **IVTubeStudioPCClient** - Interface for VTube Studio communication
     - Manages WebSocket connections with automatic recovery
     - Handles authentication with token persistence
     - Supports port discovery and parameter sending
     - Implements comprehensive health monitoring
 
-12. **IApplicationOrchestrator** - Primary service that coordinates the flow
+15. **IApplicationOrchestrator** - Primary service that coordinates the flow
     - Initializes and connects all components with graceful degradation
     - Manages component lifecycle with automatic recovery
     - Processes tracking data from phone to PC
     - Handles keyboard input for runtime configuration changes
     - Manages console window and user interface
 
-13. **IServiceStatsProvider** - Interface for components that provide statistics
+16. **IServiceStatsProvider** - Interface for components that provide statistics
     - Returns structured statistics about component state and health
     - Enables centralized monitoring of application health
     - Supports console status display with health indicators
 
-14. **IConfigManager** - Interface for configuration management
+17. **IConfigManager** - Interface for configuration management
     - Loads and saves consolidated application configuration
     - Manages user preferences persistence
     - Provides configuration file paths and validation
 
-15. **IFileChangeWatcher** - Interface for file change monitoring
+18. **IFileChangeWatcher** - Interface for file change monitoring
     - Monitors configuration files for changes
     - Provides change events for hot-reload functionality
     - Supports multiple watcher instances for different files
@@ -352,7 +391,8 @@ The code follows clean architecture principles with resiliency built-in:
 13. **User Preferences** - Persistent user settings for console behavior
 14. **File Change Watching** - Comprehensive file monitoring for configuration changes
 15. **Parameter Synchronization** - Automatic VTube Studio parameter management
+16. **Customizable UI** - User-configurable parameter table columns for focused display
 
 ## Runtime Features
 
-The application provides real-time status display, dynamic keyboard shortcuts, adaptive console management, performance metrics, health indicators, automatic recovery, and configuration hot-reload capabilities.
+The application provides real-time status display, dynamic keyboard shortcuts, adaptive console management, performance metrics, health indicators, automatic recovery, configuration hot-reload capabilities, and customizable parameter table display.
