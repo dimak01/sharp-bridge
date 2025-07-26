@@ -3,5 +3,12 @@
     "PCClientVerbosity": "Normal",
     "TransformationEngineVerbosity": "Normal",
     "PreferredConsoleWidth": 150,
-    "PreferredConsoleHeight": 60
+    "PreferredConsoleHeight": 60,
+    "PCParameterTableColumns": [
+        "ParameterName",
+        "ProgressBar",
+        "Value",
+        "Range",
+        "Expression"
+    ]
 }

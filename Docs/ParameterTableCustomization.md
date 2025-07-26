@@ -9,13 +9,26 @@ This feature adds customizable column display for the PC tracking parameter tabl
 ### 1. Enum Definition
 
 ```csharp
-public enum ParameterTableColumn
+using System.ComponentModel;
+
+namespace SharpBridge.Models
 {
-    ParameterName,  // Parameter name with color coding
-    ProgressBar,    // Visual progress bar representation  
-    Value,          // Raw numeric value
-    Range,          // Weight and min/default/max information
-    Expression      // Transformation expression
+    /// <summary>
+    /// Defines the available columns for the PC tracking parameter table.
+    /// </summary>
+    public enum ParameterTableColumn
+    {
+        [Description("Parameter Name")]
+        ParameterName,
+        [Description("Progress Bar")]
+        ProgressBar,
+        [Description("Value")]
+        Value,
+        [Description("Range")]
+        Range,
+        [Description("Expression")]
+        Expression
+    }
 }
 ```
 
@@ -38,32 +51,44 @@ Add to `UserPreferences.json`:
 
 ```csharp
 // Interfaces/IParameterTableConfigurationManager.cs
-public interface IParameterTableConfigurationManager
+using System.Collections.Generic;
+using SharpBridge.Models;
+
+namespace SharpBridge.Interfaces
 {
     /// <summary>
-    /// Gets the currently configured parameter table columns
+    /// Manages the configuration for columns displayed in the PC parameter table.
     /// </summary>
-    /// <returns>Array of parameter table columns to display</returns>
-    ParameterTableColumn[] GetParameterTableColumns();
+    public interface IParameterTableConfigurationManager
+    {
+        /// <summary>
+        /// Gets the currently configured parameter table columns.
+        /// This will be either the user-defined columns or the default columns if not specified.
+        /// </summary>
+        /// <returns>An array of <see cref="ParameterTableColumn"/> representing the configured columns.</returns>
+        ParameterTableColumn[] GetParameterTableColumns();
 
-    /// <summary>
-    /// Gets the default parameter table columns used when no configuration is provided
-    /// </summary>
-    /// <returns>Array of default parameter table columns</returns>
-    ParameterTableColumn[] GetDefaultParameterTableColumns();
+        /// <summary>
+        /// Gets the default set of parameter table columns.
+        /// </summary>
+        /// <returns>An array of <see cref="ParameterTableColumn"/> representing the default columns.</returns>
+        ParameterTableColumn[] GetDefaultParameterTableColumns();
 
-    /// <summary>
-    /// Loads parameter table configuration from user preferences
-    /// </summary>
-    /// <param name="userPreferences">User preferences containing column configuration</param>
-    void LoadFromUserPreferences(UserPreferences userPreferences);
+        /// <summary>
+        /// Loads the parameter table column configuration from user preferences.
+        /// If the preferences are null or empty, default columns are loaded.
+        /// Invalid column names in preferences are ignored with a warning.
+        /// </summary>
+        /// <param name="userPreferences">The user preferences object containing column configuration.</param>
+        void LoadFromUserPreferences(UserPreferences userPreferences);
 
-    /// <summary>
-    /// Gets the display string for a column (for debugging/help purposes)
-    /// </summary>
-    /// <param name="column">The parameter table column</param>
-    /// <returns>Human-readable column name for display</returns>
-    string GetColumnDisplayName(ParameterTableColumn column);
+        /// <summary>
+        /// Gets the human-readable display name for a given <see cref="ParameterTableColumn"/>.
+        /// </summary>
+        /// <param name="column">The parameter table column enum value.</param>
+        /// <returns>The display name of the column.</returns>
+        string GetColumnDisplayName(ParameterTableColumn column);
+    }
 }
 ```
 
@@ -71,14 +96,21 @@ public interface IParameterTableConfigurationManager
 
 ```csharp
 // In UserPreferences.cs
-public class UserPreferences
+using System;
+using SharpBridge.Models;
+
+namespace SharpBridge.Models
 {
-    // ... existing properties ...
-    
-    /// <summary>
-    /// Customizable columns for PC parameter table display
-    /// </summary>
-    public ParameterTableColumn[] PCParameterTableColumns { get; set; } = Array.Empty<ParameterTableColumn>();
+    public class UserPreferences
+    {
+        public PCClientVerbosity PCClientVerbosity { get; set; } = PCClientVerbosity.Normal;
+
+        /// <summary>
+        /// Gets or sets the preferred order and visibility of columns in the PC parameter table.
+        /// If empty, the default columns will be used by the ParameterTableConfigurationManager.
+        /// </summary>
+        public ParameterTableColumn[] PCParameterTableColumns { get; set; } = Array.Empty<ParameterTableColumn>();
+    }
 }
 ```
 
@@ -86,89 +118,93 @@ public class UserPreferences
 
 ```csharp
 // Utilities/ParameterTableConfigurationManager.cs
-public class ParameterTableConfigurationManager : IParameterTableConfigurationManager
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using SharpBridge.Interfaces;
+using SharpBridge.Models;
+
+namespace SharpBridge.Utilities
 {
-    private readonly IAppLogger _logger;
-    private ParameterTableColumn[] _currentColumns;
-
-    public ParameterTableConfigurationManager(IAppLogger logger)
+    public class ParameterTableConfigurationManager : IParameterTableConfigurationManager
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _currentColumns = GetDefaultParameterTableColumns();
-    }
+        private ParameterTableColumn[] _currentColumns;
+        private readonly IConsole _console;
 
-    public ParameterTableColumn[] GetParameterTableColumns()
-    {
-        return _currentColumns;
-    }
-
-    public ParameterTableColumn[] GetDefaultParameterTableColumns()
-    {
-        return new[]
+        public ParameterTableConfigurationManager(IConsole console)
         {
-            ParameterTableColumn.ParameterName,
-            ParameterTableColumn.ProgressBar,
-            ParameterTableColumn.Value,
-            ParameterTableColumn.Range,
-            ParameterTableColumn.Expression
-        };
-    }
-
-    public void LoadFromUserPreferences(UserPreferences userPreferences)
-    {
-        if (userPreferences?.PCParameterTableColumns == null || 
-            userPreferences.PCParameterTableColumns.Length == 0)
-        {
-            _logger.Debug("No parameter table columns configured in user preferences, using defaults");
-            _currentColumns = GetDefaultParameterTableColumns();
-            return;
+            _console = console ?? throw new ArgumentNullException(nameof(console));
+            _currentColumns = GetDefaultParameterTableColumns(); // Initialize with defaults
         }
 
-        // Validate and filter columns
-        var validColumns = new List<ParameterTableColumn>();
-        var invalidColumns = new List<string>();
-
-        foreach (var column in userPreferences.PCParameterTableColumns)
+        /// <inheritdoc />
+        public ParameterTableColumn[] GetParameterTableColumns()
         {
-            if (Enum.IsDefined(typeof(ParameterTableColumn), column))
+            return _currentColumns;
+        }
+
+        /// <inheritdoc />
+        public ParameterTableColumn[] GetDefaultParameterTableColumns()
+        {
+            return new[]
             {
-                validColumns.Add(column);
+                ParameterTableColumn.ParameterName,
+                ParameterTableColumn.ProgressBar,
+                ParameterTableColumn.Value,
+                ParameterTableColumn.Range,
+                ParameterTableColumn.Expression
+            };
+        }
+
+        /// <inheritdoc />
+        public void LoadFromUserPreferences(UserPreferences userPreferences)
+        {
+            if (userPreferences == null)
+            {
+                _console.LogWarning("User preferences are null. Loading default parameter table columns.");
+                _currentColumns = GetDefaultParameterTableColumns();
+                return;
+            }
+
+            if (userPreferences.PCParameterTableColumns == null || !userPreferences.PCParameterTableColumns.Any())
+            {
+                _console.LogInfo("No custom parameter table columns found in user preferences. Loading default columns.");
+                _currentColumns = GetDefaultParameterTableColumns();
+                return;
+            }
+
+            var validColumns = new List<ParameterTableColumn>();
+            var allPossibleColumns = Enum.GetValues(typeof(ParameterTableColumn)).Cast<ParameterTableColumn>().ToList();
+
+            foreach (var column in userPreferences.PCParameterTableColumns)
+            {
+                if (allPossibleColumns.Contains(column))
+                {
+                    validColumns.Add(column);
+                }
+                else
+                {
+                    _console.LogWarning($"Invalid parameter table column '{column}' found in user preferences. Ignoring.");
+                }
+            }
+
+            if (!validColumns.Any())
+            {
+                _console.LogWarning("All specified parameter table columns in user preferences were invalid. Loading default columns.");
+                _currentColumns = GetDefaultParameterTableColumns();
             }
             else
             {
-                invalidColumns.Add(column.ToString());
+                _currentColumns = validColumns.ToArray();
+                _console.LogInfo($"Loaded {_currentColumns.Length} parameter table columns from user preferences.");
             }
         }
 
-        if (invalidColumns.Count > 0)
+        /// <inheritdoc />
+        public string GetColumnDisplayName(ParameterTableColumn column)
         {
-            _logger.Warning("Invalid parameter table columns found: {0}. These will be ignored.", 
-                string.Join(", ", invalidColumns));
+            return AttributeHelper.GetDescription(column);
         }
-
-        if (validColumns.Count == 0)
-        {
-            _logger.Warning("No valid parameter table columns found, using defaults");
-            _currentColumns = GetDefaultParameterTableColumns();
-        }
-        else
-        {
-            _currentColumns = validColumns.ToArray();
-            _logger.Debug("Loaded {0} parameter table columns from user preferences", validColumns.Count);
-        }
-    }
-
-    public string GetColumnDisplayName(ParameterTableColumn column)
-    {
-        return column switch
-        {
-            ParameterTableColumn.ParameterName => "Parameter Name",
-            ParameterTableColumn.ProgressBar => "Progress Bar",
-            ParameterTableColumn.Value => "Value",
-            ParameterTableColumn.Range => "Range",
-            ParameterTableColumn.Expression => "Expression",
-            _ => column.ToString()
-        };
     }
 }
 ```
@@ -186,48 +222,73 @@ Update the `PCTrackingInfoFormatter.cs` constructor and `AppendParameters` metho
 
 ```csharp
 // In PCTrackingInfoFormatter constructor
-public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, 
-    IParameterColorService colorService, IShortcutConfigurationManager shortcutManager, 
-    UserPreferences userPreferences, IParameterTableConfigurationManager columnConfigManager)
+public PCTrackingInfoFormatter(IConsole console, IParameterTableConfigurationManager columnConfigManager)
 {
-    // ... existing initialization ...
-    _columnConfigManager = columnConfigManager;
-    
-    // Load initial column configuration
-    _columnConfigManager.LoadFromUserPreferences(userPreferences);
+    _console = console ?? throw new ArgumentNullException(nameof(console));
+    _columnConfigManager = columnConfigManager ?? throw new ArgumentNullException(nameof(columnConfigManager));
+    _activeColumns = _columnConfigManager.GetParameterTableColumns(); // Load initial columns
 }
 
 // In AppendParameters method
-private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo)
+private void AppendParameters(StringBuilder builder, List<PCParameter> parameters)
 {
-    var parameters = trackingInfo.Parameters.ToList();
-    var parametersToShow = parameters.OrderBy(p => p.Id).ToList();
-
-    // Get column configuration from the manager
-    var columnConfig = _columnConfigManager.GetParameterTableColumns();
-
-    // Column definitions mapping
-    var columnMap = new Dictionary<ParameterTableColumn, ITableColumnFormatter<TrackingParam>>
+    if (parameters == null || !parameters.Any())
     {
-        [ParameterTableColumn.ParameterName] = new TextColumnFormatter<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
-        [ParameterTableColumn.ProgressBar] = new ProgressBarColumnFormatter<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
-        [ParameterTableColumn.Value] = new NumericColumnFormatter<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
-        [ParameterTableColumn.Range] = new TextColumnFormatter<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
-        [ParameterTableColumn.Expression] = new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
-    };
+        builder.AppendLine("\n  No parameters tracked yet.");
+        return;
+    }
 
-    // Filter columns based on configuration
-    var columns = columnConfig
-        .Where(col => columnMap.ContainsKey(col))
-        .Select(col => columnMap[col])
-        .ToList();
+    builder.AppendLine("\n" + ConsoleColors.Colorize("TRACKED PARAMETERS", ConsoleColors.SectionHeader));
+    builder.AppendLine(ConsoleColors.Colorize(new string('═', "TRACKED PARAMETERS".Length), ConsoleColors.SectionHeader));
 
-    // Use existing table formatter logic
-    var singleColumnLimit = CurrentVerbosity == VerbosityLevel.Detailed ? (int?)null : PARAMETER_DISPLAY_COUNT_NORMAL;
-    _tableFormatter.AppendTable(builder, "=== Parameters ===", parametersToShow, columns, 2, _console.WindowWidth, 20, singleColumnLimit);
+    // Refresh active columns in case user preferences changed
+    _activeColumns = _columnConfigManager.GetParameterTableColumns();
 
-    builder.AppendLine();
-    builder.AppendLine($"Total Parameters: {parameters.Count}");
+    var columnFormatters = new List<ITableColumnFormatter<PCParameter>>();
+
+    foreach (var column in _activeColumns)
+    {
+        switch (column)
+        {
+            case ParameterTableColumn.ParameterName:
+                columnFormatters.Add(new TextColumnFormatter<PCParameter>(
+                    _columnConfigManager.GetColumnDisplayName(ParameterTableColumn.ParameterName),
+                    p => p.Name, 20, 40));
+                break;
+            case ParameterTableColumn.ProgressBar:
+                columnFormatters.Add(new ProgressBarColumnFormatter<PCParameter>(
+                    _columnConfigManager.GetColumnDisplayName(ParameterTableColumn.ProgressBar),
+                    p => p.Value, 20));
+                break;
+            case ParameterTableColumn.Value:
+                columnFormatters.Add(new TextColumnFormatter<PCParameter>(
+                    _columnConfigManager.GetColumnDisplayName(ParameterTableColumn.Value),
+                    p => p.Value.ToString("F2"), 10, 15));
+                break;
+            case ParameterTableColumn.Range:
+                columnFormatters.Add(new TextColumnFormatter<PCParameter>(
+                    _columnConfigManager.GetColumnDisplayName(ParameterTableColumn.Range),
+                    p => $"{p.Min:F2}-{p.Max:F2}", 15, 20));
+                break;
+            case ParameterTableColumn.Expression:
+                columnFormatters.Add(new TextColumnFormatter<PCParameter>(
+                    _columnConfigManager.GetColumnDisplayName(ParameterTableColumn.Expression),
+                    p => p.Expression, 20, 50));
+                break;
+            default:
+                _console.LogWarning($"Unknown parameter table column: {column}. It will not be displayed.");
+                break;
+        }
+    }
+
+    if (!columnFormatters.Any())
+    {
+        builder.AppendLine("  No columns configured for display.");
+        return;
+    }
+
+    var tableFormatter = new TableFormatter(); // This could be injected if needed elsewhere
+    tableFormatter.AppendTable(builder, "", parameters, columnFormatters, 2, 80);
 }
 ```
 
@@ -284,14 +345,13 @@ private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo
 - Column width calculations handled by existing `TableFormatter`
 - Configuration changes apply immediately via existing UserPreferences save/load system
 - Defaults are automatically propagated to saved JSON when first loaded
-- Parameter table column configuration is displayed in the system help screen (F2) showing current columns, their order, and status (Default/Custom)
+- Parameter table column configuration is displayed in the system help screen (F2) showing current columns and their order
 
 ## System Help Integration
 
 The parameter table column configuration is now integrated into the system help screen (accessible via F2). The help screen displays:
 
 - **Current Column Configuration**: Shows all currently active columns in their display order
-- **Column Status**: Indicates whether each column is part of the default configuration or a custom selection
 - **Order Information**: Displays the position of each column in the table
 - **Consistent Formatting**: Uses the same table formatting as other help sections
 
@@ -333,10 +393,10 @@ This provides users with immediate visibility into their current column configur
 - [x] **3.6** Test formatter with different column configurations
 
 ### Phase 4: Configuration & Documentation
-- [ ] **4.1** Update `Configs/UserPreferences.json` with example configuration
+- [x] **4.1** Update `Configs/UserPreferences.json` with example configuration
 - [ ] **4.2** Test default propagation to saved JSON
-- [ ] **4.3** Update README.md with new configuration option
-- [ ] **4.4** Add configuration examples to documentation
+- [x] **4.3** Update README.md with new configuration option
+- [x] **4.4** Add configuration examples to documentation
 - [ ] **4.5** Test end-to-end functionality with different column combinations
 - [x] **4.6** Add parameter table column information to system help screen
 

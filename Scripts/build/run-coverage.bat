@@ -1,6 +1,9 @@
 @echo off
 echo Running tests with code coverage...
 
+REM Always navigate to project root from script location (regardless of current directory)
+cd /d "%~dp0..\.."
+
 REM Create TestResults directory if it doesn't exist
 if not exist TestResults mkdir TestResults
 
@@ -29,4 +32,7 @@ reportgenerator -reports:"TestResults/%latest_dir%/coverage.cobertura.xml" -targ
 echo Opening coverage report...
 start "" "TestResults\CoverageReport\index.html"
 
-echo Coverage report generated at TestResults\CoverageReport\index.html 
+echo Coverage report generated at TestResults\CoverageReport\index.html
+
+REM Navigate back to script directory so it can be run again
+cd /d "%~dp0" 
