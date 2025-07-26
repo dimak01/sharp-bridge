@@ -83,7 +83,7 @@ namespace SharpBridge.Tests.Utilities
             var userPreferences = new UserPreferences();
             _mockTransformationFormatter = new Mock<TransformationEngineInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IShortcutConfigurationManager>(), userPreferences);
             _mockPhoneFormatter = new Mock<PhoneTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>(), userPreferences);
-            _mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>(), userPreferences);
+            _mockPCFormatter = new Mock<PCTrackingInfoFormatter>(Mock.Of<IConsole>(), _mockTableFormatter.Object, Mock.Of<IParameterColorService>(), Mock.Of<IShortcutConfigurationManager>(), userPreferences, Mock.Of<IParameterTableConfigurationManager>());
 
             // Create renderer with mocked dependencies
             _renderer = new ConsoleRenderer(_testConsole, _mockLogger.Object, _mockTransformationFormatter.Object, _mockPhoneFormatter.Object, _mockPCFormatter.Object, _mockShortcutManager.Object);

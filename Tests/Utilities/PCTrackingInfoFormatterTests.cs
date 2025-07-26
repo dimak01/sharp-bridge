@@ -66,7 +66,11 @@ namespace SharpBridge.Tests.Utilities
 
             _userPreferences = new UserPreferences { PCClientVerbosity = VerbosityLevel.Normal };
 
-            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
+            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.Expression });
+            mockColumnConfigManager.Setup(x => x.GetDefaultParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.Expression });
+
+            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
 
         #region Helper Methods
@@ -791,10 +795,11 @@ namespace SharpBridge.Tests.Utilities
             var mockTableFormatter = new Mock<ITableFormatter>();
             var mockColorService = new Mock<IParameterColorService>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
             // Act & Assert
             var mockUserPreferences = new Mock<UserPreferences>();
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object);
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object, mockColumnConfigManager.Object);
             formatter.Should().NotBeNull();
         }
 
@@ -802,8 +807,91 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences);
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
+            Action act = () => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
+        }
+
+        [Fact]
+        public void Constructor_WithNullColumnConfigManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Action act = () => new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, null!);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("columnConfigManager");
+        }
+
+        [Fact]
+        public void Constructor_LoadsColumnConfigurationFromUserPreferences()
+        {
+            // Arrange
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
+            var userPreferences = new UserPreferences
+            {
+                PCParameterTableColumns = new[] { ParameterTableColumn.Value, ParameterTableColumn.ProgressBar }
+            };
+
+            // Act
+            _ = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, userPreferences, mockColumnConfigManager.Object);
+
+            // Assert
+            mockColumnConfigManager.Verify(x => x.LoadFromUserPreferences(userPreferences), Times.Once);
+        }
+
+        [Fact]
+        public void Format_WithCustomColumnConfiguration_UsesConfiguredColumns()
+        {
+            // Arrange
+            var customColumns = new[] { ParameterTableColumn.Value, ParameterTableColumn.Expression };
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
+            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(customColumns);
+
+            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Act
+            formatter.Format(serviceStats);
+
+            // Assert
+            mockColumnConfigManager.Verify(x => x.GetParameterTableColumns(), Times.Once);
+        }
+
+        [Fact]
+        public void Format_WithEmptyColumnConfiguration_HandlesGracefully()
+        {
+            // Arrange
+            var emptyColumns = Array.Empty<ParameterTableColumn>();
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
+            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(emptyColumns);
+
+            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Act
+            _ = formatter.Format(serviceStats);
+
+            // Assert
+            mockColumnConfigManager.Verify(x => x.GetParameterTableColumns(), Times.Once);
+        }
+
+        [Fact]
+        public void Format_WithSingleColumnConfiguration_DisplaysOnlyThatColumn()
+        {
+            // Arrange
+            var singleColumn = new[] { ParameterTableColumn.Value };
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
+            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(singleColumn);
+
+            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Act
+            formatter.Format(serviceStats);
+
+            // Assert
+            mockColumnConfigManager.Verify(x => x.GetParameterTableColumns(), Times.Once);
         }
 
         [Fact]
@@ -816,8 +904,9 @@ namespace SharpBridge.Tests.Utilities
             var mockColorService = new Mock<IParameterColorService>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences);
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -850,8 +939,9 @@ namespace SharpBridge.Tests.Utilities
             var mockColorService = new Mock<IParameterColorService>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
-            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences);
+            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
 
         private PCTrackingInfoFormatter CreateFormatterWithColorService(IParameterColorService colorService, int windowWidth = 120)
@@ -862,8 +952,9 @@ namespace SharpBridge.Tests.Utilities
             var mockTableFormatter = new Mock<ITableFormatter>();
             var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
+            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
-            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, colorService, mockShortcutManager.Object, _userPreferences);
+            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, colorService, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
     }
 }

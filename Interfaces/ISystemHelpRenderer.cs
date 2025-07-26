@@ -29,5 +29,12 @@ namespace SharpBridge.Interfaces
         /// <param name="consoleWidth">Available console width for table formatting</param>
         /// <returns>Formatted shortcuts section</returns>
         string RenderKeyboardShortcuts(int consoleWidth);
+
+        /// <summary>
+        /// Renders the parameter table column configuration section
+        /// </summary>
+        /// <param name="consoleWidth">Available console width for table formatting</param>
+        /// <returns>Formatted parameter table column configuration section</returns>
+        string RenderParameterTableColumns(int consoleWidth);
     }
 }
