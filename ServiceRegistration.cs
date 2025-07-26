@@ -198,6 +198,9 @@ namespace SharpBridge
                 ));
             services.AddSingleton<ISystemHelpRenderer, SystemHelpRenderer>();
 
+            // Register parameter table configuration manager
+            services.AddSingleton<IParameterTableConfigurationManager, ParameterTableConfigurationManager>();
+
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();
             services.AddSingleton<PCTrackingInfoFormatter>();
