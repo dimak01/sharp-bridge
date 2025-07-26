@@ -196,11 +196,27 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")
                 ));
-            services.AddSingleton<ISystemHelpRenderer, SystemHelpRenderer>();
+            services.AddSingleton<ISystemHelpRenderer>(provider =>
+                new SystemHelpRenderer(
+                    provider.GetRequiredService<IShortcutConfigurationManager>(),
+                    provider.GetRequiredService<IParameterTableConfigurationManager>(),
+                    provider.GetRequiredService<ITableFormatter>()
+                ));
+
+            // Register parameter table configuration manager
+            services.AddSingleton<IParameterTableConfigurationManager, ParameterTableConfigurationManager>();
 
             // Register formatters
             services.AddSingleton<PhoneTrackingInfoFormatter>();
-            services.AddSingleton<PCTrackingInfoFormatter>();
+            services.AddSingleton<PCTrackingInfoFormatter>(provider =>
+                new PCTrackingInfoFormatter(
+                    provider.GetRequiredService<IConsole>(),
+                    provider.GetRequiredService<ITableFormatter>(),
+                    provider.GetRequiredService<IParameterColorService>(),
+                    provider.GetRequiredService<IShortcutConfigurationManager>(),
+                    provider.GetRequiredService<UserPreferences>(),
+                    provider.GetRequiredService<IParameterTableConfigurationManager>()
+                ));
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
             // Register console renderer - dependencies will be resolved automatically
