@@ -16,14 +16,16 @@ namespace SharpBridge.Tests.Utilities
     public class SystemHelpRendererTests
     {
         private readonly Mock<IShortcutConfigurationManager> _shortcutManagerMock;
+        private readonly Mock<IParameterTableConfigurationManager> _parameterTableConfigManagerMock;
         private readonly Mock<ITableFormatter> _tableFormatterMock;
         private readonly SystemHelpRenderer _renderer;
 
         public SystemHelpRendererTests()
         {
             _shortcutManagerMock = new Mock<IShortcutConfigurationManager>();
+            _parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             _tableFormatterMock = new Mock<ITableFormatter>();
-            _renderer = new SystemHelpRenderer(_shortcutManagerMock.Object, _tableFormatterMock.Object);
+            _renderer = new SystemHelpRenderer(_shortcutManagerMock.Object, _parameterTableConfigManagerMock.Object, _tableFormatterMock.Object);
         }
 
         #region Constructor Tests
@@ -32,9 +34,20 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullShortcutConfigurationManager_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
+            var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
-            Action act = () => new SystemHelpRenderer(null!, tableFormatterMock.Object);
+            Action act = () => new SystemHelpRenderer(null!, parameterTableConfigManagerMock.Object, tableFormatterMock.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutConfigurationManager");
+        }
+
+        [Fact]
+        public void Constructor_WithNullParameterTableConfigurationManager_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
+            var tableFormatterMock = new Mock<ITableFormatter>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, null!, tableFormatterMock.Object);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("parameterTableConfigurationManager");
         }
 
         [Fact]
@@ -42,7 +55,8 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange & Act & Assert
             var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
-            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, null!);
+            var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, null!);
             act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
         }
 
@@ -51,8 +65,9 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange & Act & Assert
             var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
+            var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
-            var renderer = new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, tableFormatterMock.Object);
+            var renderer = new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object);
             renderer.Should().NotBeNull();
         }
 
@@ -221,7 +236,7 @@ namespace SharpBridge.Tests.Utilities
                 It.IsAny<int>(),
                 80,
                 It.IsAny<int>(),
-                It.IsAny<int?>()), Times.Once);
+                It.IsAny<int?>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -1074,7 +1089,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Create a renderer with a real TableFormatter to ensure the column creation code executes
             var realTableFormatter = new TableFormatter();
-            var rendererWithRealFormatter = new SystemHelpRenderer(_shortcutManagerMock.Object, realTableFormatter);
+            var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
+            var rendererWithRealFormatter = new SystemHelpRenderer(_shortcutManagerMock.Object, parameterTableConfigManagerMock.Object, realTableFormatter);
 
             // Act - This will execute the column creation code on lines 192-194 since we're using a real TableFormatter
             var result = rendererWithRealFormatter.RenderKeyboardShortcuts(120);
@@ -1126,5 +1142,208 @@ namespace SharpBridge.Tests.Utilities
             // Assert - Should return "Not set" when ToString() returns null
             Assert.Equal("Not set", result);
         }
+
+        #region RenderParameterTableColumns Tests
+
+        [Fact]
+        public void RenderParameterTableColumns_WithDefaultColumns_ReturnsFormattedOutput()
+        {
+            // Arrange
+            var defaultColumns = new[]
+            {
+                ParameterTableColumn.ParameterName,
+                ParameterTableColumn.ProgressBar,
+                ParameterTableColumn.Value,
+                ParameterTableColumn.Range,
+                ParameterTableColumn.Expression
+            };
+
+            _parameterTableConfigManagerMock.Setup(x => x.GetParameterTableColumns()).Returns(defaultColumns);
+            _parameterTableConfigManagerMock.Setup(x => x.GetDefaultParameterTableColumns()).Returns(defaultColumns);
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.ParameterName)).Returns("Parameter Name");
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.ProgressBar)).Returns("Progress Bar");
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.Value)).Returns("Value");
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.Range)).Returns("Range");
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.Expression)).Returns("Expression");
+
+            _tableFormatterMock.Setup(x => x.AppendTable(
+                It.IsAny<StringBuilder>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<It.IsAnyType>>(),
+                It.IsAny<IList<ITableColumnFormatter<It.IsAnyType>>>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int?>()))
+                .Callback(new InvocationAction(invocation =>
+                {
+                    var sb = (StringBuilder)invocation.Arguments[0];
+                    var title = (string)invocation.Arguments[1];
+                    sb.AppendLine(title);
+                    sb.AppendLine("Parameter Name");
+                    sb.AppendLine("Progress Bar");
+                    sb.AppendLine("Value");
+                    sb.AppendLine("Range");
+                    sb.AppendLine("Expression");
+                }));
+
+            // Act
+            var result = _renderer.RenderParameterTableColumns(120);
+
+            // Assert
+            result.Should().NotBeNullOrEmpty();
+            result.Should().Contain("PC PARAMETER TABLE COLUMNS:");
+            result.Should().Contain("Parameter Name");
+            result.Should().Contain("Progress Bar");
+            result.Should().Contain("Value");
+            result.Should().Contain("Range");
+            result.Should().Contain("Expression");
+
+            _parameterTableConfigManagerMock.Verify(x => x.GetParameterTableColumns(), Times.Once);
+            _parameterTableConfigManagerMock.Verify(x => x.GetColumnDisplayName(It.IsAny<ParameterTableColumn>()), Times.Exactly(5));
+        }
+
+        [Fact]
+        public void RenderParameterTableColumns_WithCustomColumns_ShowsColumns()
+        {
+            // Arrange
+            var customColumns = new[]
+            {
+                ParameterTableColumn.Value,
+                ParameterTableColumn.Expression
+            };
+
+            _parameterTableConfigManagerMock.Setup(x => x.GetParameterTableColumns()).Returns(customColumns);
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.Value)).Returns("Value");
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.Expression)).Returns("Expression");
+
+            _tableFormatterMock.Setup(x => x.AppendTable(
+                It.IsAny<StringBuilder>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<It.IsAnyType>>(),
+                It.IsAny<IList<ITableColumnFormatter<It.IsAnyType>>>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int?>()))
+                .Callback(new InvocationAction(invocation =>
+                {
+                    var sb = (StringBuilder)invocation.Arguments[0];
+                    var title = (string)invocation.Arguments[1];
+                    sb.AppendLine(title);
+                    sb.AppendLine("Value");
+                    sb.AppendLine("Expression");
+                }));
+
+            // Act
+            var result = _renderer.RenderParameterTableColumns(120);
+
+            // Assert
+            result.Should().NotBeNullOrEmpty();
+            result.Should().Contain("PC PARAMETER TABLE COLUMNS:");
+            result.Should().Contain("Value");
+            result.Should().Contain("Expression");
+
+            _parameterTableConfigManagerMock.Verify(x => x.GetParameterTableColumns(), Times.Once);
+        }
+
+        [Fact]
+        public void RenderParameterTableColumns_WithEmptyColumns_HandlesGracefully()
+        {
+            // Arrange
+            var emptyColumns = Array.Empty<ParameterTableColumn>();
+
+            _parameterTableConfigManagerMock.Setup(x => x.GetParameterTableColumns()).Returns(emptyColumns);
+
+            // Act
+            var result = _renderer.RenderParameterTableColumns(120);
+
+            // Assert
+            result.Should().NotBeNullOrEmpty();
+            result.Should().Contain("PC PARAMETER TABLE COLUMNS:");
+            result.Should().NotContain("Parameter Name"); // Should be empty
+
+            _parameterTableConfigManagerMock.Verify(x => x.GetParameterTableColumns(), Times.Once);
+        }
+
+        [Fact]
+        public void RenderParameterTableColumns_CreatesCorrectTableStructure()
+        {
+            // Arrange
+            var columns = new[]
+            {
+                ParameterTableColumn.ParameterName,
+                ParameterTableColumn.Value
+            };
+
+            _parameterTableConfigManagerMock.Setup(x => x.GetParameterTableColumns()).Returns(columns);
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.ParameterName)).Returns("Parameter Name");
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(ParameterTableColumn.Value)).Returns("Value");
+
+            // Act
+            var result = _renderer.RenderParameterTableColumns(120);
+
+            // Assert
+            result.Should().NotBeNullOrEmpty();
+            result.Should().Contain("PC PARAMETER TABLE COLUMNS:");
+
+            // Verify table formatter was called
+            _tableFormatterMock.Verify(x => x.AppendTable(
+                It.IsAny<StringBuilder>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<It.IsAnyType>>(),
+                It.IsAny<IList<ITableColumnFormatter<It.IsAnyType>>>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int?>()
+            ), Times.Once);
+        }
+
+        [Fact]
+        public void RenderSystemHelp_IncludesParameterTableColumnsSection()
+        {
+            // Arrange
+            var config = new ApplicationConfig
+            {
+                GeneralSettings = new GeneralSettingsConfig
+                {
+                    EditorCommand = "notepad.exe \"%f\"",
+                    Shortcuts = new Dictionary<string, string>()
+                }
+            };
+
+            var shortcuts = new Dictionary<ShortcutAction, Shortcut?>
+            {
+                [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, ConsoleModifiers.None)
+            };
+
+            _shortcutManagerMock.Setup(m => m.GetMappedShortcuts()).Returns(shortcuts);
+            _shortcutManagerMock.Setup(m => m.GetDisplayString(ShortcutAction.ShowSystemHelp)).Returns("F1");
+            _shortcutManagerMock.Setup(m => m.GetShortcutStatus(ShortcutAction.ShowSystemHelp)).Returns(ShortcutStatus.Active);
+
+            var defaultColumns = new[]
+            {
+                ParameterTableColumn.ParameterName,
+                ParameterTableColumn.ProgressBar,
+                ParameterTableColumn.Value,
+                ParameterTableColumn.Range,
+                ParameterTableColumn.Expression
+            };
+
+            _parameterTableConfigManagerMock.Setup(x => x.GetParameterTableColumns()).Returns(defaultColumns);
+            _parameterTableConfigManagerMock.Setup(x => x.GetDefaultParameterTableColumns()).Returns(defaultColumns);
+            _parameterTableConfigManagerMock.Setup(x => x.GetColumnDisplayName(It.IsAny<ParameterTableColumn>())).Returns("Test Column");
+
+            // Act
+            var result = _renderer.RenderSystemHelp(config, 120);
+
+            // Assert
+            result.Should().Contain("PC PARAMETER TABLE COLUMNS:");
+            result.Should().Contain("SHARP BRIDGE - SYSTEM HELP");
+            result.Should().Contain("KEYBOARD SHORTCUTS:");
+        }
+
+        #endregion
     }
 }

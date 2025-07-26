@@ -15,16 +15,19 @@ namespace SharpBridge.Utilities
     public class SystemHelpRenderer : ISystemHelpRenderer
     {
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
+        private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
 
         /// <summary>
         /// Initializes a new instance of the SystemHelpRenderer
         /// </summary>
         /// <param name="shortcutConfigurationManager">Configuration manager for shortcut information</param>
+        /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
-        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, ITableFormatter tableFormatter)
+        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
+            _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
         }
 
@@ -55,6 +58,8 @@ namespace SharpBridge.Utilities
             builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
 
             builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
+
+            builder.AppendLine(RenderParameterTableColumns(consoleWidth));
 
             // Footer
             builder.AppendLine();
@@ -192,6 +197,57 @@ namespace SharpBridge.Utilities
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Renders the parameter table column configuration section
+        /// </summary>
+        /// <param name="consoleWidth">Available console width for table formatting</param>
+        /// <returns>Formatted parameter table column configuration section</returns>
+        public string RenderParameterTableColumns(int consoleWidth)
+        {
+            var builder = new StringBuilder();
+            var columnRows = new List<ParameterTableColumnDisplayRow>();
+
+            var currentColumns = _parameterTableConfigurationManager.GetParameterTableColumns();
+
+            // Create rows for each column
+            foreach (var column in currentColumns)
+            {
+                var row = new ParameterTableColumnDisplayRow
+                {
+                    ColumnName = ConsoleColors.Colorize(_parameterTableConfigurationManager.GetColumnDisplayName(column), ConsoleColors.ConfigPropertyName),
+                    Order = Array.IndexOf(currentColumns, column) + 1
+                };
+                columnRows.Add(row);
+            }
+
+            // Sort by order for consistent display
+            columnRows = columnRows.OrderBy(r => r.Order).ToList();
+
+            // Create table columns
+            var columns = new List<ITableColumnFormatter<ParameterTableColumnDisplayRow>>
+                    {
+                        new TextColumnFormatter<ParameterTableColumnDisplayRow>("Order", r => r.Order.ToString(), 5, 8),
+                        new TextColumnFormatter<ParameterTableColumnDisplayRow>("Column", r => r.ColumnName, 20, 40)
+                    };
+
+            // Add the header with underline manually to match other sections
+            builder.AppendLine(CreateSectionHeader("PC PARAMETER TABLE COLUMNS"));
+
+            // Use TableFormatter to create the columns table (without title since we added it manually)
+            _tableFormatter.AppendTable(
+                builder,
+                "", // Empty title since we added it manually above
+                columnRows,
+                columns,
+                targetColumnCount: 1,
+                consoleWidth: consoleWidth,
+                singleColumnBarWidth: 20
+            );
+
+            return builder.ToString();
+        }
+
+
 
         /// <summary>
         /// Centers text within the specified width
@@ -245,6 +301,15 @@ namespace SharpBridge.Utilities
             public string Action { get; set; } = string.Empty;
             public string Shortcut { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// Data class for parameter table column display rows
+        /// </summary>
+        private class ParameterTableColumnDisplayRow
+        {
+            public string ColumnName { get; set; } = string.Empty;
+            public int Order { get; set; }
         }
     }
 }

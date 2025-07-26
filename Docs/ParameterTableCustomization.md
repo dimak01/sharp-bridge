@@ -284,6 +284,18 @@ private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo
 - Column width calculations handled by existing `TableFormatter`
 - Configuration changes apply immediately via existing UserPreferences save/load system
 - Defaults are automatically propagated to saved JSON when first loaded
+- Parameter table column configuration is displayed in the system help screen (F2) showing current columns, their order, and status (Default/Custom)
+
+## System Help Integration
+
+The parameter table column configuration is now integrated into the system help screen (accessible via F2). The help screen displays:
+
+- **Current Column Configuration**: Shows all currently active columns in their display order
+- **Column Status**: Indicates whether each column is part of the default configuration or a custom selection
+- **Order Information**: Displays the position of each column in the table
+- **Consistent Formatting**: Uses the same table formatting as other help sections
+
+This provides users with immediate visibility into their current column configuration without needing to check the configuration files directly.
 
 ## Future Enhancements
 
@@ -297,26 +309,28 @@ private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo
 ## Action Items Checklist
 
 ### Phase 1: Core Infrastructure
-- [ ] **1.1** Create `ParameterTableColumn` enum in `Models/` directory
-- [ ] **1.2** Add `PCParameterTableColumns` property to `UserPreferences.cs`
-- [ ] **1.3** Create `IParameterTableConfigurationManager` interface
-- [ ] **1.4** Implement `ParameterTableConfigurationManager` class
-- [ ] **1.5** Add service registration in `ServiceRegistration.cs`
+- [x] **1.1** Create `ParameterTableColumn` enum in `Models/` directory
+- [x] **1.2** Add `PCParameterTableColumns` property to `UserPreferences.cs`
+- [x] **1.3** Create `IParameterTableConfigurationManager` interface
+- [x] **1.4** Implement `ParameterTableConfigurationManager` class
+- [x] **1.5** Add service registration in `ServiceRegistration.cs`
 
 ### Phase 2: Integration
-- [ ] **2.1** Update `PCTrackingInfoFormatter` constructor to accept `IParameterTableConfigurationManager`
-- [ ] **2.2** Add private field `_columnConfigManager` to `PCTrackingInfoFormatter`
-- [ ] **2.3** Update `PCTrackingInfoFormatter` constructor to load initial configuration
-- [ ] **2.4** Modify `AppendParameters` method to use configuration manager
-- [ ] **2.5** Update `ServiceRegistration.cs` to inject the new dependency
+- [x] **2.1** Update `PCTrackingInfoFormatter` constructor to accept `IParameterTableConfigurationManager`
+- [x] **2.2** Add private field `_columnConfigManager` to `PCTrackingInfoFormatter`
+- [x] **2.3** Update `PCTrackingInfoFormatter` constructor to load initial configuration
+- [x] **2.4** Modify `AppendParameters` method to use configuration manager
+- [x] **2.5** Update `ServiceRegistration.cs` to inject the new dependency
+- [x] **2.6** Fix all test files to use updated constructor signature
+- [x] **2.7** Verify all tests pass successfully
 
 ### Phase 3: Testing
-- [ ] **3.1** Create unit tests for `ParameterTableConfigurationManager`
-- [ ] **3.2** Test default column loading when no configuration provided
-- [ ] **3.3** Test invalid column handling and logging
-- [ ] **3.4** Test valid column configuration loading
-- [ ] **3.5** Update existing `PCTrackingInfoFormatter` tests to include new dependency
-- [ ] **3.6** Test formatter with different column configurations
+- [x] **3.1** Create unit tests for `ParameterTableConfigurationManager`
+- [x] **3.2** Test default column loading when no configuration provided
+- [x] **3.3** Test invalid column handling and logging
+- [x] **3.4** Test valid column configuration loading
+- [x] **3.5** Update existing `PCTrackingInfoFormatter` tests to include new dependency
+- [x] **3.6** Test formatter with different column configurations
 
 ### Phase 4: Configuration & Documentation
 - [ ] **4.1** Update `Configs/UserPreferences.json` with example configuration
@@ -324,6 +338,7 @@ private void AppendParameters(StringBuilder builder, PCTrackingInfo trackingInfo
 - [ ] **4.3** Update README.md with new configuration option
 - [ ] **4.4** Add configuration examples to documentation
 - [ ] **4.5** Test end-to-end functionality with different column combinations
+- [x] **4.6** Add parameter table column information to system help screen
 
 ### Phase 5: Validation & Polish
 - [ ] **5.1** Verify graceful degradation with invalid configurations
