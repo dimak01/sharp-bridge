@@ -1,3 +1,4 @@
+using System;
 using SharpBridge.Interfaces;
 
 namespace SharpBridge.Models
@@ -31,5 +32,10 @@ namespace SharpBridge.Models
         /// Preferred console window height
         /// </summary>
         public int PreferredConsoleHeight { get; set; } = 60;
+
+        /// <summary>
+        /// Customizable columns for PC parameter table display
+        /// </summary>
+        public ParameterTableColumn[] PCParameterTableColumns { get; set; } = [];
     }
 }

@@ -30,6 +30,7 @@ The application will create default configuration files on first run.
 - **Real-time Tracking Bridge** - Seamless iPhone to PC VTube Studio data flow
 - **Dynamic Configuration** - Hot-reload application settings without restart
 - **Interactive Console UI** - Real-time monitoring with verbosity controls
+- **Parameter Table Customization** - Configure which columns to display in the PC parameter table
 - **Automatic Recovery** - Self-healing from network and service failures
 - **Parameter Synchronization** - Automatic VTube Studio parameter management
 - **External Editor Integration** - Open configuration files in your preferred editor
@@ -110,6 +111,40 @@ All settings are managed in a single configuration file:
 - `ConfigPath`: Path to transformation rules configuration file
 - `MaxEvaluationIterations`: Maximum iterations for complex parameter dependencies calculation (default: 10)
 
+### User Preferences (`Configs/UserPreferences.json`)
+
+User-specific display preferences and customization options:
+
+```json
+{
+  "PhoneClientVerbosity": "Normal",
+  "PCClientVerbosity": "Normal",
+  "TransformationEngineVerbosity": "Normal",
+  "PreferredConsoleWidth": 150,
+  "PreferredConsoleHeight": 60,
+  "PCParameterTableColumns": ["ParameterName", "ProgressBar", "Value", "Range", "Expression"]
+}
+```
+
+**User Preferences Parameters:**
+
+**Verbosity Controls:**
+- `PhoneClientVerbosity`: Console output detail level for iPhone tracking data (Basic/Normal/Detailed)
+- `PCClientVerbosity`: Console output detail level for PC VTube Studio data (Basic/Normal/Detailed)
+- `TransformationEngineVerbosity`: Console output detail level for transformation processing (Basic/Normal/Detailed)
+
+**Display Preferences:**
+- `PreferredConsoleWidth`: Preferred console window width (default: 150)
+- `PreferredConsoleHeight`: Preferred console window height (default: 60)
+
+**Parameter Table Customization:**
+- `PCParameterTableColumns`: Array of column names to display in the PC parameter table. Available options:
+  - `ParameterName`: Parameter name with color coding
+  - `ProgressBar`: Visual progress bar representation
+  - `Value`: Raw numeric value
+  - `Range`: Weight and min/default/max information
+  - `Expression`: Transformation expression
+
 ### Transformation Rules (`Configs/vts_transforms.json`)
 
 Define how iPhone tracking data maps to PC VTube Studio parameters:
@@ -164,6 +199,29 @@ Rules can reference other custom parameters with automatic dependency resolution
 
 For detailed parameter information, refer to the [VTube Studio API documentation](https://github.com/1996scarlet/VTubeStudio/blob/master/README.mdhttps://github.com/DenchiSoft/VTubeStudio?tab=readme-ov-file).
 
+### Configuration Examples
+
+**Minimal Display:**
+```json
+{
+  "PCParameterTableColumns": ["ParameterName", "Value"]
+}
+```
+
+**Debug Mode:**
+```json
+{
+  "PCParameterTableColumns": ["ParameterName", "ProgressBar", "Value", "Range", "Expression"]
+}
+```
+
+**Performance Focus:**
+```json
+{
+  "PCParameterTableColumns": ["ParameterName", "ProgressBar", "Value"]
+}
+```
+
 ## Usage
 
 ### Basic Usage
@@ -182,7 +240,7 @@ While running, use these keyboard shortcuts (configurable in `ApplicationConfig.
 | **Alt+T** | Cycle Transformation Engine verbosity (Basic → Normal → Detailed) |
 | **Alt+K** | Hot-reload transformation configuration |
 | **Ctrl+Alt+E** | Open configuration in external editor |
-| **F1** | Show system help |
+| **F1** | Show system help (includes parameter table column configuration) |
 | **Ctrl+C** | Graceful shutdown |
 
 ### Console Interface
@@ -204,6 +262,7 @@ The application provides a real-time console interface with adaptive verbosity l
 - **Progress Bars**: Real-time tracking parameter visualization
 - **Status Indicators**: Service health, connection state, error conditions
 - **Adaptive Layout**: Automatically adjusts to console window size
+- **Customizable Parameter Table**: Configure which columns to display via UserPreferences.json
 
 ## Advanced Usage
 
@@ -240,6 +299,12 @@ SharpBridge provides multiple ways to update configuration:
 - **Manual Editing**: Edit the file directly in any text editor
 - **External Editor**: Use `Ctrl+Alt+E` shortcut to open in your configured editor
 
+**User Preferences (`UserPreferences.json`):**
+- **Hot Reload**: Changes are automatically detected and applied without restart
+- **Manual Editing**: Edit the file directly in any text editor
+- **External Editor**: Use `Ctrl+Alt+E` shortcut to open in your configured editor
+- **Parameter Table Customization**: Configure which columns to display in the PC parameter table
+
 **Transformation Rules (`vts_transforms.json`):**
 - **Manual Reload**: Use `Alt+K` shortcut to reload transformation rules
 - **Manual Editing**: Edit the file directly in any text editor
@@ -247,8 +312,9 @@ SharpBridge provides multiple ways to update configuration:
 
 **Configuration Tips:**
 - Application config changes are applied immediately
+- User preferences changes are applied immediately
 - Transformation rule changes require manual reload (`Alt+K`)
-- Use `F1` for system help to see current configuration values
+- Use `F1` for system help to see current configuration values including parameter table columns
 - Verbosity levels can be cycled per service for detailed debugging
 
 ### Network Configuration
