@@ -81,8 +81,9 @@ namespace SharpBridge.Utilities
 
             if (invalidColumns.Count > 0)
             {
+                var invalidColumnsString = string.Join(", ", invalidColumns);
                 _logger.Warning("Invalid parameter table columns found: {0}. These will be ignored.",
-                    string.Join(", ", invalidColumns));
+                    invalidColumnsString);
             }
 
             if (validColumns.Count == 0)
