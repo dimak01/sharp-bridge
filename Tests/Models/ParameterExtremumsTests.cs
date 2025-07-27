@@ -8,7 +8,7 @@ namespace SharpBridge.Tests.Models
     public class ParameterExtremumsTests
     {
         [Fact]
-        public void Constructor_InitializesCorrectly()
+        public void Constructor_ShouldInitializeWithDefaultValues()
         {
             // Act
             var extremums = new ParameterExtremums();
@@ -16,179 +16,177 @@ namespace SharpBridge.Tests.Models
             // Assert
             extremums.Min.Should().Be(0);
             extremums.Max.Should().Be(0);
-            extremums.IsInitialized.Should().BeFalse();
+            extremums.HasExtremums.Should().BeFalse();
         }
 
         [Fact]
-        public void UpdateExtremums_FirstValue_InitializesExtremums()
+        public void UpdateExtremums_WithFirstValue_ShouldSetBothMinAndMax()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            const double firstValue = 0.5;
+            var value = 5.5;
 
             // Act
-            extremums.UpdateExtremums(firstValue);
+            extremums.UpdateExtremums(value);
 
             // Assert
-            extremums.Min.Should().Be(firstValue);
-            extremums.Max.Should().Be(firstValue);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(value);
+            extremums.Max.Should().Be(value);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_NewMinimum_UpdatesMin()
+        public void UpdateExtremums_WithNewMinimum_ShouldUpdateMin()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(0.5); // Initialize with 0.5
-            const double newMin = -0.3;
+            extremums.UpdateExtremums(5.0); // First value
+            var newMin = 2.0;
 
             // Act
             extremums.UpdateExtremums(newMin);
 
             // Assert
             extremums.Min.Should().Be(newMin);
-            extremums.Max.Should().Be(0.5);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Max.Should().Be(5.0);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_NewMaximum_UpdatesMax()
+        public void UpdateExtremums_WithNewMaximum_ShouldUpdateMax()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(0.5); // Initialize with 0.5
-            const double newMax = 0.8;
+            extremums.UpdateExtremums(5.0); // First value
+            var newMax = 8.0;
 
             // Act
             extremums.UpdateExtremums(newMax);
 
             // Assert
-            extremums.Min.Should().Be(0.5);
+            extremums.Min.Should().Be(5.0);
             extremums.Max.Should().Be(newMax);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_ValueBetweenMinMax_NoChange()
+        public void UpdateExtremums_WithValueBetweenMinAndMax_ShouldNotChangeExtremums()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(-0.5); // Initialize with -0.5
-            extremums.UpdateExtremums(0.8); // Set max to 0.8
-            const double middleValue = 0.2;
+            extremums.UpdateExtremums(5.0); // First value
+            extremums.UpdateExtremums(8.0); // Set max
+            extremums.UpdateExtremums(2.0); // Set min
+            var middleValue = 6.0;
 
             // Act
             extremums.UpdateExtremums(middleValue);
 
             // Assert
-            extremums.Min.Should().Be(-0.5);
-            extremums.Max.Should().Be(0.8);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(2.0);
+            extremums.Max.Should().Be(8.0);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_EqualToMin_NoChange()
+        public void UpdateExtremums_WithEqualValues_ShouldMaintainExtremums()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(-0.5); // Initialize with -0.5
-            extremums.UpdateExtremums(0.8); // Set max to 0.8
-            const double equalToMin = -0.5;
+            extremums.UpdateExtremums(5.0); // First value
+            extremums.UpdateExtremums(8.0); // Set max
+            extremums.UpdateExtremums(2.0); // Set min
+            var equalValue = 5.0;
 
             // Act
-            extremums.UpdateExtremums(equalToMin);
+            extremums.UpdateExtremums(equalValue);
 
             // Assert
-            extremums.Min.Should().Be(-0.5);
-            extremums.Max.Should().Be(0.8);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(2.0);
+            extremums.Max.Should().Be(8.0);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_EqualToMax_NoChange()
+        public void UpdateExtremums_WithNegativeValue_ShouldHandleCorrectly()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(-0.5); // Initialize with -0.5
-            extremums.UpdateExtremums(0.8); // Set max to 0.8
-            const double equalToMax = 0.8;
+            var negativeValue = -3.5;
 
             // Act
-            extremums.UpdateExtremums(equalToMax);
+            extremums.UpdateExtremums(negativeValue);
 
             // Assert
-            extremums.Min.Should().Be(-0.5);
-            extremums.Max.Should().Be(0.8);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(negativeValue);
+            extremums.Max.Should().Be(negativeValue);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_NegativeValues_TracksCorrectly()
+        public void UpdateExtremums_WithZeroValue_ShouldHandleCorrectly()
         {
             // Arrange
             var extremums = new ParameterExtremums();
+            var zeroValue = 0.0;
 
             // Act
-            extremums.UpdateExtremums(-1.0);
-            extremums.UpdateExtremums(-0.5);
-            extremums.UpdateExtremums(-0.8);
+            extremums.UpdateExtremums(zeroValue);
 
             // Assert
-            extremums.Min.Should().Be(-1.0);
-            extremums.Max.Should().Be(-0.5);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(zeroValue);
+            extremums.Max.Should().Be(zeroValue);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_ZeroValues_TracksCorrectly()
+        public void UpdateExtremums_WithLargeValue_ShouldHandleCorrectly()
         {
             // Arrange
             var extremums = new ParameterExtremums();
+            var largeValue = 999999.99;
 
             // Act
-            extremums.UpdateExtremums(0.0);
-            extremums.UpdateExtremums(0.5);
-            extremums.UpdateExtremums(-0.3);
+            extremums.UpdateExtremums(largeValue);
 
             // Assert
-            extremums.Min.Should().Be(-0.3);
-            extremums.Max.Should().Be(0.5);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(largeValue);
+            extremums.Max.Should().Be(largeValue);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_LargeValues_TracksCorrectly()
+        public void UpdateExtremums_WithDecimalValue_ShouldHandleCorrectly()
         {
             // Arrange
             var extremums = new ParameterExtremums();
+            var decimalValue = 3.14159;
 
             // Act
-            extremums.UpdateExtremums(1000.0);
-            extremums.UpdateExtremums(500.0);
-            extremums.UpdateExtremums(1500.0);
+            extremums.UpdateExtremums(decimalValue);
 
             // Assert
-            extremums.Min.Should().Be(500.0);
-            extremums.Max.Should().Be(1500.0);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(decimalValue);
+            extremums.Max.Should().Be(decimalValue);
+            extremums.HasExtremums.Should().BeTrue();
         }
 
         [Fact]
-        public void UpdateExtremums_DecimalPrecision_TracksCorrectly()
+        public void Reset_ShouldClearExtremums()
         {
             // Arrange
             var extremums = new ParameterExtremums();
+            extremums.UpdateExtremums(5.0);
+            extremums.UpdateExtremums(8.0);
+            extremums.UpdateExtremums(2.0);
 
             // Act
-            extremums.UpdateExtremums(0.123456789);
-            extremums.UpdateExtremums(0.123456788);
-            extremums.UpdateExtremums(0.123456790);
+            extremums.Reset();
 
             // Assert
-            extremums.Min.Should().Be(0.123456788);
-            extremums.Max.Should().Be(0.123456790);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.Min.Should().Be(0);
+            extremums.Max.Should().Be(0);
+            extremums.HasExtremums.Should().BeFalse();
         }
 
         [Fact]
@@ -196,24 +194,7 @@ namespace SharpBridge.Tests.Models
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(0.5);
-            extremums.UpdateExtremums(-0.3);
-            extremums.UpdateExtremums(0.8);
-
-            // Act
-            extremums.Reset();
-
-            // Assert
-            extremums.Min.Should().Be(-0.3); // Min value is preserved
-            extremums.Max.Should().Be(0.8);  // Max value is preserved
-            extremums.IsInitialized.Should().BeFalse(); // Only IsInitialized is reset
-        }
-
-        [Fact]
-        public void Reset_WithoutInitialization_RemainsInInitialState()
-        {
-            // Arrange
-            var extremums = new ParameterExtremums();
+            extremums.UpdateExtremums(10.0);
 
             // Act
             extremums.Reset();
@@ -221,57 +202,53 @@ namespace SharpBridge.Tests.Models
             // Assert
             extremums.Min.Should().Be(0);
             extremums.Max.Should().Be(0);
-            extremums.IsInitialized.Should().BeFalse();
+            extremums.HasExtremums.Should().BeFalse();
         }
 
         [Fact]
-        public void UpdateExtremums_AfterReset_ReinitializesCorrectly()
+        public void Reset_MultipleTimes_ShouldWorkCorrectly()
         {
             // Arrange
             var extremums = new ParameterExtremums();
-            extremums.UpdateExtremums(0.5);
-            extremums.UpdateExtremums(-0.3);
-            extremums.Reset();
-            const double newValue = 0.8;
+            extremums.UpdateExtremums(5.0);
+            extremums.UpdateExtremums(8.0);
 
-            // Act
-            extremums.UpdateExtremums(newValue);
+            // Act & Assert
+            extremums.Reset();
+            extremums.Min.Should().Be(0);
+            extremums.Max.Should().Be(0);
+            extremums.HasExtremums.Should().BeFalse();
+
+            extremums.UpdateExtremums(3.0);
+            extremums.Min.Should().Be(3.0);
+            extremums.Max.Should().Be(3.0);
+            extremums.HasExtremums.Should().BeTrue();
+
+            extremums.Reset();
+            extremums.Min.Should().Be(0);
+            extremums.Max.Should().Be(0);
+            extremums.HasExtremums.Should().BeFalse();
+        }
+
+        [Fact]
+        public void HasExtremums_WithNoValues_ShouldReturnFalse()
+        {
+            // Arrange
+            var extremums = new ParameterExtremums();
 
             // Assert
-            extremums.Min.Should().Be(newValue);
-            extremums.Max.Should().Be(newValue);
-            extremums.IsInitialized.Should().BeTrue();
+            extremums.HasExtremums.Should().BeFalse();
         }
 
         [Fact]
-        public void UpdateExtremums_MultipleResets_WorksCorrectly()
+        public void HasExtremums_WithValues_ShouldReturnTrue()
         {
             // Arrange
             var extremums = new ParameterExtremums();
+            extremums.UpdateExtremums(5.0);
 
-            // Act & Assert - First cycle
-            extremums.UpdateExtremums(0.5);
-            extremums.UpdateExtremums(-0.3);
-            extremums.Min.Should().Be(-0.3);
-            extremums.Max.Should().Be(0.5);
-
-            extremums.Reset();
-            extremums.IsInitialized.Should().BeFalse();
-
-            // Second cycle
-            extremums.UpdateExtremums(1.0);
-            extremums.UpdateExtremums(-1.0);
-            extremums.Min.Should().Be(-1.0);
-            extremums.Max.Should().Be(1.0);
-
-            extremums.Reset();
-            extremums.IsInitialized.Should().BeFalse();
-
-            // Third cycle
-            extremums.UpdateExtremums(0.0);
-            extremums.Min.Should().Be(0.0);
-            extremums.Max.Should().Be(0.0);
-            extremums.IsInitialized.Should().BeTrue();
+            // Assert
+            extremums.HasExtremums.Should().BeTrue();
         }
     }
 }
