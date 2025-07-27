@@ -912,12 +912,12 @@ namespace SharpBridge.Tests.Services
             result1.ParameterExtremums.Should().HaveCount(2); // Two rules
 
             var param1Extremums = result1.ParameterExtremums["Param1"];
-            param1Extremums.IsInitialized.Should().BeTrue();
+            param1Extremums.HasExtremums.Should().BeTrue();
             param1Extremums.Min.Should().Be(50.0); // First value becomes both min and max
             param1Extremums.Max.Should().Be(50.0);
 
             var param2Extremums = result1.ParameterExtremums["Param2"];
-            param2Extremums.IsInitialized.Should().BeTrue();
+            param2Extremums.HasExtremums.Should().BeTrue();
             param2Extremums.Min.Should().Be(35.0); // HeadPosX * 100 + HeadRotY * 50 = 0.1 * 100 + 0.5 * 50 = 10 + 25 = 35
             param2Extremums.Max.Should().Be(35.0);
         }
@@ -940,8 +940,8 @@ namespace SharpBridge.Tests.Services
             var result1 = engine.TransformData(trackingData);
 
             // Verify extremums are initialized
-            result1.ParameterExtremums["Param1"].IsInitialized.Should().BeTrue();
-            result1.ParameterExtremums["Param2"].IsInitialized.Should().BeTrue();
+            result1.ParameterExtremums["Param1"].HasExtremums.Should().BeTrue();
+            result1.ParameterExtremums["Param2"].HasExtremums.Should().BeTrue();
 
             // Act - Reload rules
             await engine.LoadRulesAsync();
@@ -951,12 +951,12 @@ namespace SharpBridge.Tests.Services
 
             // Assert - Extremums should be reset (showing current value as both min and max)
             var param1Extremums = result2.ParameterExtremums["Param1"];
-            param1Extremums.IsInitialized.Should().BeTrue();
+            param1Extremums.HasExtremums.Should().BeTrue();
             param1Extremums.Min.Should().Be(50.0); // Reset to current value
             param1Extremums.Max.Should().Be(50.0);
 
             var param2Extremums = result2.ParameterExtremums["Param2"];
-            param2Extremums.IsInitialized.Should().BeTrue();
+            param2Extremums.HasExtremums.Should().BeTrue();
             param2Extremums.Min.Should().Be(35.0); // Reset to current value
             param2Extremums.Max.Should().Be(35.0);
         }

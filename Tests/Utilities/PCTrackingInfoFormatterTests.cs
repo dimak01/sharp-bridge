@@ -232,7 +232,7 @@ namespace SharpBridge.Tests.Utilities
             capturedColumns[0].ValueFormatter(param1).Should().Be("Param1");
             capturedColumns[2].ValueFormatter(param1).Should().Be("0.5");
             capturedColumns[3].ValueFormatter(param1).Should().Be("[-1; 0; 1]");
-            capturedColumns[4].ValueFormatter(param1).Should().Be("[0.5; 0.5]"); // MinMax shows current value when not initialized
+            capturedColumns[4].ValueFormatter(param1).Should().Be("[no extremums]"); // MinMax shows no extremums when not initialized
             capturedColumns[5].ValueFormatter(param1).Should().Be("Param1 * 1.0");
         }
 
@@ -295,7 +295,7 @@ namespace SharpBridge.Tests.Utilities
             capturedColumns[0].ValueFormatter(param1).Should().Be("Param1");
             capturedColumns[2].ValueFormatter(param1).Should().Be("0.5");
             capturedColumns[3].ValueFormatter(param1).Should().Be("[-1; 0; 1]");
-            capturedColumns[4].ValueFormatter(param1).Should().Be("[0.5; 0.5]"); // MinMax shows current value when not initialized
+            capturedColumns[4].ValueFormatter(param1).Should().Be("[no extremums]"); // MinMax shows no extremums when not initialized
             capturedColumns[5].ValueFormatter(param1).Should().Be("x * 2.0");
         }
 

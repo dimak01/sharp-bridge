@@ -220,13 +220,13 @@ namespace SharpBridge.Utilities
         /// </summary>
         private static string FormatExtremumRange(TrackingParam param, PCTrackingInfo trackingInfo)
         {
-            if (trackingInfo?.ParameterExtremums?.TryGetValue(param.Id, out var extremums) == true && extremums.IsInitialized)
+            if (trackingInfo?.ParameterExtremums?.TryGetValue(param.Id, out var extremums) == true && extremums.HasExtremums)
             {
                 var min = extremums.Min.ToString("0.##");
                 var max = extremums.Max.ToString("0.##");
                 return $"[{min}; {max}]";
             }
-            return $"[{param.Value:0.##}; {param.Value:0.##}]"; // Fallback to current value if no extremums
+            return "[no extremums]"; // Clear indication when no extremums are available
         }
 
         /// <summary>

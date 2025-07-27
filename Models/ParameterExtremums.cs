@@ -20,14 +20,14 @@ namespace SharpBridge.Models
         /// <summary>
         /// Whether extremums have been initialized with actual values
         /// </summary>
-        public bool IsInitialized { get; set; }
+        private bool _hasBeenInitialized = false;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ParameterExtremums"/> class.
         /// </summary>
         public ParameterExtremums()
         {
-            IsInitialized = false;
+            // Min and Max will be set to the first value when UpdateExtremums is called
         }
 
         /// <summary>
@@ -36,11 +36,12 @@ namespace SharpBridge.Models
         /// <param name="value">The new value to check</param>
         public void UpdateExtremums(double value)
         {
-            if (!IsInitialized)
+            // If we haven't been initialized yet, this is the first value
+            if (!_hasBeenInitialized)
             {
                 Min = value;
                 Max = value;
-                IsInitialized = true;
+                _hasBeenInitialized = true;
                 return;
             }
 
@@ -60,7 +61,14 @@ namespace SharpBridge.Models
         /// </summary>
         public void Reset()
         {
-            IsInitialized = false;
+            Min = 0;
+            Max = 0;
+            _hasBeenInitialized = false;
         }
+
+        /// <summary>
+        /// Gets whether extremums have been initialized with actual values
+        /// </summary>
+        public bool HasExtremums => _hasBeenInitialized;
     }
 }
