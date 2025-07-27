@@ -39,12 +39,13 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             Assert.NotNull(columns);
-            Assert.Equal(5, columns.Length);
+            Assert.Equal(6, columns.Length);
             Assert.Equal(ParameterTableColumn.ParameterName, columns[0]);
             Assert.Equal(ParameterTableColumn.ProgressBar, columns[1]);
             Assert.Equal(ParameterTableColumn.Value, columns[2]);
             Assert.Equal(ParameterTableColumn.Range, columns[3]);
-            Assert.Equal(ParameterTableColumn.Expression, columns[4]);
+            Assert.Equal(ParameterTableColumn.MinMax, columns[4]);
+            Assert.Equal(ParameterTableColumn.Expression, columns[5]);
         }
 
         #endregion
@@ -59,12 +60,13 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             Assert.NotNull(defaultColumns);
-            Assert.Equal(5, defaultColumns.Length);
+            Assert.Equal(6, defaultColumns.Length);
             Assert.Equal(ParameterTableColumn.ParameterName, defaultColumns[0]);
             Assert.Equal(ParameterTableColumn.ProgressBar, defaultColumns[1]);
             Assert.Equal(ParameterTableColumn.Value, defaultColumns[2]);
             Assert.Equal(ParameterTableColumn.Range, defaultColumns[3]);
-            Assert.Equal(ParameterTableColumn.Expression, defaultColumns[4]);
+            Assert.Equal(ParameterTableColumn.MinMax, defaultColumns[4]);
+            Assert.Equal(ParameterTableColumn.Expression, defaultColumns[5]);
         }
 
         [Fact]

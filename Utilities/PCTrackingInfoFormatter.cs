@@ -135,8 +135,9 @@ namespace SharpBridge.Utilities
                 [ParameterTableColumn.ParameterName] = new TextColumnFormatter<TrackingParam>("Parameter", param => _colorService.GetColoredCalculatedParameterName(param.Id), minWidth: 8),
                 [ParameterTableColumn.ProgressBar] = new ProgressBarColumnFormatter<TrackingParam>("", param => CalculateNormalizedValue(param, trackingInfo), minWidth: 6, maxWidth: 20, _tableFormatter),
                 [ParameterTableColumn.Value] = new NumericColumnFormatter<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
-                [ParameterTableColumn.Range] = new TextColumnFormatter<TrackingParam>("Width x Range", param => FormatCompactRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
-                [ParameterTableColumn.Expression] = new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90)
+                [ParameterTableColumn.Range] = new TextColumnFormatter<TrackingParam>("Range", param => FormatDefinitionRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
+                [ParameterTableColumn.Expression] = new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90),
+                [ParameterTableColumn.MinMax] = new TextColumnFormatter<TrackingParam>("Min/Max", param => FormatExtremumRange(param, trackingInfo), minWidth: 12, maxWidth: 20)
             };
 
             // Filter columns based on configuration
@@ -174,20 +175,18 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Formats the compact range information for a parameter
         /// </summary>
-        private static string FormatCompactRange(TrackingParam param, PCTrackingInfo trackingInfo)
+        private static string FormatDefinitionRange(TrackingParam param, PCTrackingInfo trackingInfo)
         {
-            var weight = param.Weight?.ToString("0.##") ?? "1";
-
             if (trackingInfo.ParameterDefinitions?.TryGetValue(param.Id, out var definition) == true)
             {
                 var min = definition.Min.ToString("0.##");
                 var defaultVal = definition.DefaultValue.ToString("0.##");
                 var max = definition.Max.ToString("0.##");
-                return $"{weight} x [{min}; {defaultVal}; {max}]";
+                return $"[{min}; {defaultVal}; {max}]";
             }
 
             // Fallback for parameters without definitions
-            return $"{weight} x [no definition]";
+            return "[no definition]";
         }
 
         /// <summary>
@@ -214,6 +213,20 @@ namespace SharpBridge.Utilities
 
             // Fallback for parameters without expressions
             return "[no expression]";
+        }
+
+        /// <summary>
+        /// Formats the min/max range for a parameter
+        /// </summary>
+        private static string FormatExtremumRange(TrackingParam param, PCTrackingInfo trackingInfo)
+        {
+            if (trackingInfo?.ParameterExtremums?.TryGetValue(param.Id, out var extremums) == true && extremums.IsInitialized)
+            {
+                var min = extremums.Min.ToString("0.##");
+                var max = extremums.Max.ToString("0.##");
+                return $"[{min}; {max}]";
+            }
+            return $"[{param.Value:0.##}; {param.Value:0.##}]"; // Fallback to current value if no extremums
         }
 
         /// <summary>

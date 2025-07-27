@@ -40,6 +40,9 @@ namespace SharpBridge.Services
         // Configuration change tracking
         private bool _configChanged = false;
 
+        // Extremum tracking state
+        private readonly Dictionary<string, ParameterExtremums> _parameterExtremums = new();
+
         // Disposal tracking
         private bool _isDisposed;
 
@@ -155,6 +158,9 @@ namespace SharpBridge.Services
 
             _invalidRules.Clear();
             _invalidRules.AddRange(result.InvalidRules);
+
+            // Reset extremums when rules are reloaded
+            _parameterExtremums.Clear();
 
             // Update status tracking
             if (result.LoadedFromCache)
@@ -286,17 +292,27 @@ namespace SharpBridge.Services
             _lastSuccessfulTransformation = DateTime.UtcNow;
         }
 
-        private static PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<ParameterTransformation> successfulRules)
+        private PCTrackingInfo BuildTransformationResult(PhoneTrackingInfo trackingData, List<ParameterTransformation> successfulRules)
         {
             var paramValues = new List<TrackingParam>();
             var paramDefinitions = new List<VTSParameter>();
             var paramExpressions = new Dictionary<string, string>();
+            var paramExtremums = new Dictionary<string, ParameterExtremums>();
 
             foreach (var rule in successfulRules)
             {
-                paramValues.Add(new TrackingParam { Id = rule.Name, Value = GetRuleValue(rule) });
+                var value = GetRuleValue(rule);
+                paramValues.Add(new TrackingParam { Id = rule.Name, Value = value });
                 paramDefinitions.Add(new VTSParameter(rule.Name, rule.Min, rule.Max, rule.DefaultValue));
                 paramExpressions[rule.Name] = rule.ExpressionString;
+
+                // Track extremums for this parameter
+                if (!_parameterExtremums.ContainsKey(rule.Name))
+                {
+                    _parameterExtremums[rule.Name] = new ParameterExtremums();
+                }
+                _parameterExtremums[rule.Name].UpdateExtremums(value);
+                paramExtremums[rule.Name] = _parameterExtremums[rule.Name];
             }
 
             return new PCTrackingInfo
@@ -304,7 +320,8 @@ namespace SharpBridge.Services
                 FaceFound = trackingData.FaceFound,
                 Parameters = paramValues,
                 ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p),
-                ParameterCalculationExpressions = paramExpressions
+                ParameterCalculationExpressions = paramExpressions,
+                ParameterExtremums = paramExtremums
             };
         }
 
