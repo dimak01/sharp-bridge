@@ -45,6 +45,7 @@ namespace SharpBridge.Utilities
                 ParameterTableColumn.ProgressBar,
                 ParameterTableColumn.Value,
                 ParameterTableColumn.Range,
+                ParameterTableColumn.MinMax,
                 ParameterTableColumn.Expression
             };
         }

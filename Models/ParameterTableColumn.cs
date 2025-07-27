@@ -35,6 +35,12 @@ namespace SharpBridge.Models
         /// Transformation expression
         /// </summary>
         [Description("Expression")]
-        Expression
+        Expression,
+
+        /// <summary>
+        /// Both minimum and maximum values observed during runtime
+        /// </summary>
+        [Description("Min/Max")]
+        MinMax
     }
 }

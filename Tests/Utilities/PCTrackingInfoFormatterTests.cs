@@ -67,8 +67,8 @@ namespace SharpBridge.Tests.Utilities
             _userPreferences = new UserPreferences { PCClientVerbosity = VerbosityLevel.Normal };
 
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
-            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.Expression });
-            mockColumnConfigManager.Setup(x => x.GetDefaultParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.Expression });
+            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression });
+            mockColumnConfigManager.Setup(x => x.GetDefaultParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression });
 
             _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
@@ -217,21 +217,23 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             capturedColumns.Should().NotBeNull();
-            capturedColumns.Count.Should().Be(5);
+            capturedColumns.Count.Should().Be(6);
 
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Parameter");
             capturedColumns[1].Header.Should().Be(""); // Progress bar column
             capturedColumns[2].Header.Should().Be("Value");
-            capturedColumns[3].Header.Should().Be("Width x Range");
-            capturedColumns[4].Header.Should().Be("Expression");
+            capturedColumns[3].Header.Should().Be("Range");
+            capturedColumns[4].Header.Should().Be("Min/Max");
+            capturedColumns[5].Header.Should().Be("Expression");
 
             // Verify column formatter behavior
             var param1 = trackingInfo.Parameters.First();
             capturedColumns[0].ValueFormatter(param1).Should().Be("Param1");
             capturedColumns[2].ValueFormatter(param1).Should().Be("0.5");
-            capturedColumns[3].ValueFormatter(param1).Should().Be("1 x [-1; 0; 1]");
-            capturedColumns[4].ValueFormatter(param1).Should().Be("Param1 * 1.0");
+            capturedColumns[3].ValueFormatter(param1).Should().Be("[-1; 0; 1]");
+            capturedColumns[4].ValueFormatter(param1).Should().Be("[no extremums]"); // MinMax shows no extremums when not initialized
+            capturedColumns[5].ValueFormatter(param1).Should().Be("Param1 * 1.0");
         }
 
         [Fact]
@@ -278,21 +280,23 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             capturedColumns.Should().NotBeNull();
-            capturedColumns.Count.Should().Be(5);
+            capturedColumns.Count.Should().Be(6);
 
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Parameter");
             capturedColumns[1].Header.Should().Be(""); // Progress bar column
             capturedColumns[2].Header.Should().Be("Value");
-            capturedColumns[3].Header.Should().Be("Width x Range");
-            capturedColumns[4].Header.Should().Be("Expression");
+            capturedColumns[3].Header.Should().Be("Range");
+            capturedColumns[4].Header.Should().Be("Min/Max");
+            capturedColumns[5].Header.Should().Be("Expression");
 
             // Verify column formatter behavior
             var param1 = trackingInfo.Parameters.First();
             capturedColumns[0].ValueFormatter(param1).Should().Be("Param1");
             capturedColumns[2].ValueFormatter(param1).Should().Be("0.5");
-            capturedColumns[3].ValueFormatter(param1).Should().Be("1 x [-1; 0; 1]");
-            capturedColumns[4].ValueFormatter(param1).Should().Be("x * 2.0");
+            capturedColumns[3].ValueFormatter(param1).Should().Be("[-1; 0; 1]");
+            capturedColumns[4].ValueFormatter(param1).Should().Be("[no extremums]"); // MinMax shows no extremums when not initialized
+            capturedColumns[5].ValueFormatter(param1).Should().Be("x * 2.0");
         }
 
         [Fact]
@@ -509,12 +513,13 @@ namespace SharpBridge.Tests.Utilities
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.IsAny<IEnumerable<TrackingParam>>(),
                 It.Is<IList<ITableColumnFormatter<TrackingParam>>>(cols =>
-                    cols.Count == 5 &&
+                    cols.Count == 6 &&
                     cols[0].Header == "Parameter" &&
                     cols[1].Header == "" && // Progress bar column
                     cols[2].Header == "Value" &&
-                    cols[3].Header == "Width x Range" &&
-                    cols[4].Header == "Expression"),
+                    cols[3].Header == "Range" &&
+                    cols[4].Header == "Min/Max" &&
+                    cols[5].Header == "Expression"),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -605,10 +610,10 @@ namespace SharpBridge.Tests.Utilities
 
                 // Assert
                 capturedColumns.Should().NotBeNull();
-                capturedColumns.Count.Should().Be(5);
+                capturedColumns.Count.Should().Be(6);
 
                 // Verify expression column behavior
-                var expressionColumn = capturedColumns[4];
+                var expressionColumn = capturedColumns[5];
                 expressionColumn.ValueFormatter(trackingInfo.Parameters.First()).Should().Be(expected);
             }
         }
@@ -677,7 +682,7 @@ namespace SharpBridge.Tests.Utilities
 
                 // Assert
                 capturedColumns.Should().NotBeNull();
-                capturedColumns.Count.Should().Be(5);
+                capturedColumns.Count.Should().Be(6);
 
                 // Verify value column behavior
                 var valueColumn = capturedColumns[2];
@@ -762,7 +767,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             capturedColumns.Should().NotBeNull();
-            capturedColumns.Count.Should().Be(5);
+            capturedColumns.Count.Should().Be(6);
 
             // Verify progress bar column behavior
             var progressBarColumn = capturedColumns[1];

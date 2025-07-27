@@ -9,6 +9,7 @@
         "ProgressBar",
         "Value",
         "Range",
+        "MinMax",
         "Expression"
     ]
 }
