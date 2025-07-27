@@ -889,7 +889,77 @@ namespace SharpBridge.Tests.Services
             result.Parameters.Should().BeEmpty(); // No parameters should be added due to evaluation error
         }
 
+        [Fact]
+        public async Task TransformData_WithExtremumTracking_TracksParameterExtremums()
+        {
+            // Arrange
+            var engine = CreateEngine("test.json");
+            var trackingData = CreateValidTrackingData();
+            var rules = new[]
+            {
+                CreateTestTransformation("Param1", "eyeBlinkLeft * 100", 0, 100, 0),
+                CreateTestTransformation("Param2", "HeadPosX * 100 + HeadRotY * 50", -1000, 1000, 0)
+            };
+            SetupRepositoryWithRules(rules);
+            await engine.LoadRulesAsync();
 
+            // Act - First transformation
+            var result1 = engine.TransformData(trackingData);
+
+            // Assert - First transformation should initialize extremums
+            result1.Should().NotBeNull();
+            result1.ParameterExtremums.Should().NotBeNull();
+            result1.ParameterExtremums.Should().HaveCount(2); // Two rules
+
+            var param1Extremums = result1.ParameterExtremums["Param1"];
+            param1Extremums.HasExtremums.Should().BeTrue();
+            param1Extremums.Min.Should().Be(50.0); // First value becomes both min and max
+            param1Extremums.Max.Should().Be(50.0);
+
+            var param2Extremums = result1.ParameterExtremums["Param2"];
+            param2Extremums.HasExtremums.Should().BeTrue();
+            param2Extremums.Min.Should().Be(35.0); // HeadPosX * 100 + HeadRotY * 50 = 0.1 * 100 + 0.5 * 50 = 10 + 25 = 35
+            param2Extremums.Max.Should().Be(35.0);
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithExtremumTracking_ResetsExtremums()
+        {
+            // Arrange
+            var engine = CreateEngine("test.json");
+            var trackingData = CreateValidTrackingData();
+            var rules = new[]
+            {
+                CreateTestTransformation("Param1", "eyeBlinkLeft * 100", 0, 100, 0),
+                CreateTestTransformation("Param2", "HeadPosX * 100 + HeadRotY * 50", -1000, 1000, 0)
+            };
+            SetupRepositoryWithRules(rules);
+            await engine.LoadRulesAsync();
+
+            // Act - First transformation to establish extremums
+            var result1 = engine.TransformData(trackingData);
+
+            // Verify extremums are initialized
+            result1.ParameterExtremums["Param1"].HasExtremums.Should().BeTrue();
+            result1.ParameterExtremums["Param2"].HasExtremums.Should().BeTrue();
+
+            // Act - Reload rules
+            await engine.LoadRulesAsync();
+
+            // Act - Second transformation after rule reload
+            var result2 = engine.TransformData(trackingData);
+
+            // Assert - Extremums should be reset (showing current value as both min and max)
+            var param1Extremums = result2.ParameterExtremums["Param1"];
+            param1Extremums.HasExtremums.Should().BeTrue();
+            param1Extremums.Min.Should().Be(50.0); // Reset to current value
+            param1Extremums.Max.Should().Be(50.0);
+
+            var param2Extremums = result2.ParameterExtremums["Param2"];
+            param2Extremums.HasExtremums.Should().BeTrue();
+            param2Extremums.Min.Should().Be(35.0); // Reset to current value
+            param2Extremums.Max.Should().Be(35.0);
+        }
 
         #endregion
 
