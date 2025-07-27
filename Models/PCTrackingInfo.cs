@@ -12,17 +12,22 @@ namespace SharpBridge.Models
         /// Current parameter values for VTube Studio PC
         /// </summary>
         public IEnumerable<TrackingParam> Parameters { get; set; }
-        
+
         /// <summary>
         /// Parameter definitions by ID, containing creation metadata and bounds
         /// </summary>
         public IDictionary<string, VTSParameter> ParameterDefinitions { get; set; }
-        
+
         /// <summary>
         /// Parameter calculation expressions by ID, containing the original transformation expressions
         /// </summary>
         public IDictionary<string, string> ParameterCalculationExpressions { get; set; }
-        
+
+        /// <summary>
+        /// Parameter extremums by ID, tracking min/max values observed during runtime
+        /// </summary>
+        public IDictionary<string, ParameterExtremums> ParameterExtremums { get; set; }
+
         /// <summary>
         /// Whether a face is detected
         /// </summary>
@@ -36,6 +41,7 @@ namespace SharpBridge.Models
             Parameters = new List<TrackingParam>();
             ParameterDefinitions = new Dictionary<string, VTSParameter>();
             ParameterCalculationExpressions = new Dictionary<string, string>();
+            ParameterExtremums = new Dictionary<string, ParameterExtremums>();
         }
     }
-} 
+}
