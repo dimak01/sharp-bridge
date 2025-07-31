@@ -175,7 +175,25 @@ private static double GetRuleValue(ParameterTransformation rule)
 }
 ```
 
-### Bezier Interpolation (Ease-in-out)
+### Bezier Interpolation Format
+
+Bezier interpolation supports two formats for control points:
+
+**Compact Array Format (Recommended):**
+```json
+{
+  "Name": "SmoothParam",
+  "ExpressionString": "EyeLeftX",
+  "Min": -50.0,
+  "Max": 50.0,
+  "Interpolation": {
+    "Type": "BezierInterpolation",
+    "ControlPoints": [0.0, 0.0, 0.42, 0.0, 1.0, 1.0]
+  }
+}
+```
+
+**Object Format (Legacy):**
 ```json
 {
   "Name": "SmoothParam",
@@ -186,10 +204,25 @@ private static double GetRuleValue(ParameterTransformation rule)
     "Type": "BezierInterpolation",
     "ControlPoints": [
       {"X": 0.0, "Y": 0.0},
-      {"X": 0.3, "Y": 0.1},
-      {"X": 0.7, "Y": 0.9},
+      {"X": 0.42, "Y": 0.0},
       {"X": 1.0, "Y": 1.0}
     ]
+  }
+}
+```
+
+The compact array format is compatible with external tools like CSS cubic-bezier generators, animation software, and design tools that typically output flat arrays like `[0.17, 0.67, 0.83, 0.67]`.
+
+### Bezier Interpolation (Ease-in-out)
+```json
+{
+  "Name": "SmoothParam",
+  "ExpressionString": "EyeLeftX",
+  "Min": -50.0,
+  "Max": 50.0,
+  "Interpolation": {
+    "Type": "BezierInterpolation",
+    "ControlPoints": [0.0, 0.0, 0.3, 0.1, 0.7, 0.9, 1.0, 1.0]
   }
 }
 ```
@@ -203,12 +236,7 @@ private static double GetRuleValue(ParameterTransformation rule)
   "Max": 90.0,
   "Interpolation": {
     "Type": "BezierInterpolation",
-    "ControlPoints": [
-      {"X": 0.0, "Y": 0.0},
-      {"X": 0.7, "Y": 0.3},
-      {"X": 0.9, "Y": 0.7},
-      {"X": 1.0, "Y": 1.0}
-    ]
+    "ControlPoints": [0.0, 0.0, 0.7, 0.3, 0.9, 0.7, 1.0, 1.0]
   }
 }
 ```

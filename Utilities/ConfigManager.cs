@@ -30,7 +30,7 @@ namespace SharpBridge.Utilities
             {
                 WriteIndented = true,
                 PropertyNameCaseInsensitive = true,
-                Converters = { new JsonStringEnumConverter() }
+                Converters = { new JsonStringEnumConverter(), new InterpolationConverter(), new BezierInterpolationConverter() }
             };
 
             EnsureConfigDirectoryExists();

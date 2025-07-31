@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NCalc;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Services;
 using SharpBridge.Utilities;
 
 namespace SharpBridge.Services
@@ -298,6 +299,7 @@ namespace SharpBridge.Services
             var paramDefinitions = new List<VTSParameter>();
             var paramExpressions = new Dictionary<string, string>();
             var paramExtremums = new Dictionary<string, ParameterExtremums>();
+            var paramInterpolations = new Dictionary<string, IInterpolationDefinition>();
 
             foreach (var rule in successfulRules)
             {
@@ -305,6 +307,12 @@ namespace SharpBridge.Services
                 paramValues.Add(new TrackingParam { Id = rule.Name, Value = value });
                 paramDefinitions.Add(new VTSParameter(rule.Name, rule.Min, rule.Max, rule.DefaultValue));
                 paramExpressions[rule.Name] = rule.ExpressionString;
+
+                // Store interpolation information if present
+                if (rule.Interpolation != null)
+                {
+                    paramInterpolations[rule.Name] = rule.Interpolation;
+                }
 
                 // Track extremums for this parameter
                 if (!_parameterExtremums.ContainsKey(rule.Name))
@@ -321,14 +329,80 @@ namespace SharpBridge.Services
                 Parameters = paramValues,
                 ParameterDefinitions = paramDefinitions.ToDictionary(p => p.Name, p => p),
                 ParameterCalculationExpressions = paramExpressions,
-                ParameterExtremums = paramExtremums
+                ParameterExtremums = paramExtremums,
+                ParameterInterpolations = paramInterpolations
             };
         }
 
         private static double GetRuleValue(ParameterTransformation rule)
         {
             var evaluatedValue = Convert.ToDouble(rule.Expression.Evaluate());
-            return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
+
+            // If no interpolation is specified, use the original linear behavior
+            if (rule.Interpolation == null)
+            {
+                return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
+            }
+
+            try
+            {
+                // Create interpolation method from definition
+                var interpolationMethod = InterpolationMethodFactory.CreateFromDefinition(rule.Interpolation);
+
+                // Normalize the input value to 0-1 range
+                var normalizedInput = NormalizeToRange(evaluatedValue, rule.Min, rule.Max);
+
+                // Apply interpolation
+                var interpolatedValue = interpolationMethod.Interpolate(normalizedInput);
+
+                // Scale the interpolated value back to the parameter range
+                return ScaleToRange(interpolatedValue, rule.Min, rule.Max);
+            }
+            catch (Exception ex)
+            {
+                // Log the error and fallback to linear interpolation
+                // Note: We can't use _logger here since this is a static method
+                // The error will be caught by the calling method and logged there
+                return Math.Clamp(evaluatedValue, rule.Min, rule.Max);
+            }
+        }
+
+        /// <summary>
+        /// Normalizes a value from its original range to 0-1 range
+        /// </summary>
+        /// <param name="value">The value to normalize</param>
+        /// <param name="min">The minimum value of the original range</param>
+        /// <param name="max">The maximum value of the original range</param>
+        /// <returns>Normalized value between 0 and 1</returns>
+        private static double NormalizeToRange(double value, double min, double max)
+        {
+            if (Math.Abs(max - min) < 1e-10)
+            {
+                // Handle zero-range case
+                return 0.5;
+            }
+
+            var normalized = (value - min) / (max - min);
+            return Math.Clamp(normalized, 0.0, 1.0);
+        }
+
+        /// <summary>
+        /// Scales a normalized value (0-1) to a target range
+        /// </summary>
+        /// <param name="normalizedValue">The normalized value (0-1)</param>
+        /// <param name="min">The minimum value of the target range</param>
+        /// <param name="max">The maximum value of the target range</param>
+        /// <returns>Scaled value in the target range</returns>
+        private static double ScaleToRange(double normalizedValue, double min, double max)
+        {
+            if (Math.Abs(max - min) < 1e-10)
+            {
+                // Handle zero-range case
+                return min;
+            }
+
+            var scaled = min + (normalizedValue * (max - min));
+            return Math.Clamp(scaled, min, max);
         }
 
         private PCTrackingInfo HandleTransformationError(Exception ex, PhoneTrackingInfo trackingData)

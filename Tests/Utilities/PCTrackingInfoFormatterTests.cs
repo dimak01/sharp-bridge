@@ -925,6 +925,7 @@ namespace SharpBridge.Tests.Utilities
 
 
 
+
         private PCTrackingInfoFormatter CreateFormatterWithMocks(int windowWidth = 120, int tableRowsReturned = 10)
         {
             var mockConsole = new Mock<IConsole>();

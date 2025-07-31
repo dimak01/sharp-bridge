@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using NCalc;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Services;
 
 namespace SharpBridge.Repositories
 {
@@ -260,7 +261,17 @@ namespace SharpBridge.Repositories
                     return false;
                 }
 
-                transformationRule = new ParameterTransformation(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue);
+                // Validate interpolation configuration if present
+                if (rule.Interpolation != null)
+                {
+                    if (!InterpolationMethodFactory.ValidateDefinition(rule.Interpolation))
+                    {
+                        error = $"Rule '{rule.Name}' has invalid interpolation configuration";
+                        return false;
+                    }
+                }
+
+                transformationRule = new ParameterTransformation(rule.Name, expression, rule.Func, rule.Min, rule.Max, rule.DefaultValue, rule.Interpolation);
                 return true;
             }
             catch (Exception ex)

@@ -29,6 +29,11 @@ namespace SharpBridge.Models
         public IDictionary<string, ParameterExtremums> ParameterExtremums { get; set; }
 
         /// <summary>
+        /// Parameter interpolation information by ID, containing the interpolation method used
+        /// </summary>
+        public IDictionary<string, IInterpolationDefinition> ParameterInterpolations { get; set; }
+
+        /// <summary>
         /// Whether a face is detected
         /// </summary>
         public bool FaceFound { get; set; }
@@ -42,6 +47,7 @@ namespace SharpBridge.Models
             ParameterDefinitions = new Dictionary<string, VTSParameter>();
             ParameterCalculationExpressions = new Dictionary<string, string>();
             ParameterExtremums = new Dictionary<string, ParameterExtremums>();
+            ParameterInterpolations = new Dictionary<string, IInterpolationDefinition>();
         }
     }
 }
