@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -280,6 +281,299 @@ namespace SharpBridge.Tests.Models
                 JsonSerializer.Deserialize<ParameterRuleDefinition>(json, _jsonOptions));
 
             Assert.Contains("Missing 'type' property", exception.Message);
+        }
+
+        [Fact]
+        public void InterpolationConverter_EmptyType_ThrowsError()
+        {
+            // Arrange
+            var json = @"{
+                ""name"": ""TestParam"",
+                ""func"": ""HeadPosX"",
+                ""min"": -1.0,
+                ""max"": 1.0,
+                ""defaultValue"": 0.0,
+                ""interpolation"": {
+                    ""type"": """"
+                }
+            }";
+
+            // Act & Assert
+            var exception = Assert.Throws<JsonException>(() =>
+                JsonSerializer.Deserialize<ParameterRuleDefinition>(json, _jsonOptions));
+
+            Assert.Contains("Type property cannot be null or empty", exception.Message);
+        }
+
+        [Fact]
+        public void InterpolationConverter_InvalidTokenType_ThrowsError()
+        {
+            // Arrange
+            var json = @"{
+                ""name"": ""TestParam"",
+                ""func"": ""HeadPosX"",
+                ""min"": -1.0,
+                ""max"": 1.0,
+                ""defaultValue"": 0.0,
+                ""interpolation"": ""invalid""
+            }";
+
+            // Act & Assert
+            var exception = Assert.Throws<JsonException>(() =>
+                JsonSerializer.Deserialize<ParameterRuleDefinition>(json, _jsonOptions));
+
+            Assert.Contains("Expected start of object or array", exception.Message);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_SerializesCorrectly()
+        {
+            // Arrange
+            var linear = new LinearInterpolation();
+            var bezier = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 },
+                    new Point { X = 0.42, Y = 0 },
+                    new Point { X = 1, Y = 1 }
+                }
+            };
+
+            // Act
+            var linearJson = JsonSerializer.Serialize(linear, _jsonOptions);
+            var bezierJson = JsonSerializer.Serialize(bezier, _jsonOptions);
+
+            // Assert
+            // When serializing directly, the default serializer is used, not InterpolationConverter
+            // LinearInterpolation serializes as empty object {}
+            Assert.Equal("{}", linearJson);
+            // BezierInterpolation uses BezierInterpolationConverter which writes compact array
+            Assert.Contains("0.42", bezierJson);
+            Assert.Contains("0", bezierJson);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_HandlesNullValue()
+        {
+            // Arrange
+            IInterpolationDefinition? nullValue = null;
+
+            // Act
+            var json = JsonSerializer.Serialize(nullValue, _jsonOptions);
+
+            // Assert
+            Assert.Equal("null", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_DelegatesToSpecificConverter()
+        {
+            // Arrange
+            var bezier = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 },
+                    new Point { X = 0.42, Y = 0 },
+                    new Point { X = 1, Y = 1 }
+                }
+            };
+
+            // Act
+            var json = JsonSerializer.Serialize(bezier, _jsonOptions);
+
+            // Assert
+            // Should use BezierInterpolationConverter which writes compact format
+            Assert.Contains("0.42", json);
+            Assert.Contains("0", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_ThroughProperty_SerializesCorrectly()
+        {
+            // Arrange
+            var rule = new ParameterRuleDefinition
+            {
+                Name = "TestParam",
+                Func = "HeadPosX",
+                Min = -1.0,
+                Max = 1.0,
+                DefaultValue = 0.0,
+                Interpolation = new LinearInterpolation()
+            };
+
+            // Act
+            var json = JsonSerializer.Serialize(rule, _jsonOptions);
+
+            // Assert
+            // Should use InterpolationConverter which adds type property
+            Assert.Contains("type", json);
+            Assert.Contains("LinearInterpolation", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_NullValue_HandlesCorrectly()
+        {
+            // Arrange
+            IInterpolationDefinition? nullValue = null;
+
+            // Act
+            var json = JsonSerializer.Serialize(nullValue, _jsonOptions);
+
+            // Assert
+            Assert.Equal("null", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_WithTypedConverter_DelegatesCorrectly()
+        {
+            // Arrange
+            var bezier = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 },
+                    new Point { X = 0.42, Y = 0 },
+                    new Point { X = 1, Y = 1 }
+                }
+            };
+
+            // Create options with BezierInterpolationConverter registered
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNameCaseInsensitive = true,
+                Converters = { new InterpolationConverter(), new BezierInterpolationConverter() }
+            };
+
+            // Act
+            var json = JsonSerializer.Serialize(bezier, options);
+
+            // Assert
+            // Should use BezierInterpolationConverter which writes compact format
+            Assert.Contains("0.42", json);
+            Assert.Contains("0", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_WithProperties_CopiesAllProperties()
+        {
+            // Arrange
+            var linear = new LinearInterpolation();
+            var converter = new InterpolationConverter();
+
+            // Act
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+            converter.Write(writer, linear, _jsonOptions);
+            writer.Flush();
+            var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+            // Assert
+            // LinearInterpolation should serialize as an object with type property
+            Assert.Contains("type", json);
+            Assert.Contains("LinearInterpolation", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_ComplexObject_HandlesCorrectly()
+        {
+            // Arrange
+            var bezier = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 },
+                    new Point { X = 0.25, Y = 0.1 },
+                    new Point { X = 0.75, Y = 0.9 },
+                    new Point { X = 1, Y = 1 }
+                }
+            };
+            var converter = new InterpolationConverter();
+
+            // Create options without BezierInterpolationConverter to force object serialization
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNameCaseInsensitive = true,
+                Converters = { new InterpolationConverter() }
+            };
+
+            // Act
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+            converter.Write(writer, bezier, options);
+            writer.Flush();
+            var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+            // Assert
+            // Should serialize with type property and control points
+            Assert.Contains("type", json);
+            Assert.Contains("BezierInterpolation", json);
+            Assert.Contains("ControlPoints", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_NullValue_DirectTest()
+        {
+            // Arrange
+            IInterpolationDefinition? nullValue = null;
+            var converter = new InterpolationConverter();
+
+            // Act
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+            converter.Write(writer, nullValue!, _jsonOptions);
+            writer.Flush();
+            var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+            // Assert
+            Assert.Equal("null", json);
+        }
+
+        [Fact]
+        public void InterpolationConverter_WriteMethod_WithTypedConverter_ConcreteType()
+        {
+            // Arrange
+            var linear = new LinearInterpolation();
+            var converter = new InterpolationConverter();
+
+            // Create options with a custom converter for the concrete type LinearInterpolation
+            var customConverter = new LinearInterpolationTestConverter();
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNameCaseInsensitive = true,
+                Converters = { converter, customConverter }
+            };
+
+            // Act
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+            converter.Write(writer, linear, options);
+            writer.Flush();
+            var json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+
+            // Assert
+            // Should delegate to the typed converter
+            Assert.Contains("test", json);
+        }
+
+        // Custom converter for testing the typed converter branch - concrete type
+        private class LinearInterpolationTestConverter : JsonConverter<LinearInterpolation>
+        {
+            public override LinearInterpolation? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override void Write(Utf8JsonWriter writer, LinearInterpolation value, JsonSerializerOptions options)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("test", "value");
+                writer.WriteEndObject();
+            }
         }
     }
 }

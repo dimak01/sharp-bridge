@@ -95,14 +95,15 @@ namespace SharpBridge.Tests.Utilities
                 counters: counters);
         }
 
-        private static PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!)
+        private static PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!, Dictionary<string, IInterpolationDefinition> interpolations = null!)
         {
             var trackingInfo = new PCTrackingInfo
             {
                 FaceFound = faceFound,
                 Parameters = parameters ?? new List<TrackingParam>(),
                 ParameterDefinitions = new Dictionary<string, VTSParameter>(),
-                ParameterCalculationExpressions = new Dictionary<string, string>()
+                ParameterCalculationExpressions = new Dictionary<string, string>(),
+                ParameterInterpolations = interpolations ?? new Dictionary<string, IInterpolationDefinition>()
             };
 
             // Add some default parameter definitions if parameters are provided
@@ -922,7 +923,6 @@ namespace SharpBridge.Tests.Utilities
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("Alt+P"); // Should contain the shortcut
         }
-
 
 
 
