@@ -311,6 +311,83 @@ namespace SharpBridge.Tests.Services
             Assert.False(isValid);
         }
 
+        [Fact]
+        public void InterpolationMethodFactory_ValidateDefinition_BezierWithNullControlPoints()
+        {
+            // Arrange
+            var definition = new BezierInterpolation();
+            // Use reflection to set ControlPoints to null
+            var controlPointsProperty = typeof(BezierInterpolation).GetProperty("ControlPoints");
+            controlPointsProperty?.SetValue(definition, null);
+
+            // Act
+            var isValid = InterpolationMethodFactory.ValidateDefinition(definition);
+
+            // Assert
+            Assert.False(isValid);
+        }
+
+        [Fact]
+        public void InterpolationMethodFactory_ValidateDefinition_BezierWithOutOfRangeControlPoints()
+        {
+            // Arrange
+            var definition = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0.0, Y = 0.0 },
+                    new Point { X = 1.5, Y = 0.5 }, // X out of range
+                    new Point { X = 1.0, Y = 1.0 }
+                }
+            };
+
+            // Act
+            var isValid = InterpolationMethodFactory.ValidateDefinition(definition);
+
+            // Assert
+            Assert.False(isValid);
+        }
+
+        [Fact]
+        public void InterpolationMethodFactory_ValidateDefinition_BezierWithInvalidFirstPoint()
+        {
+            // Arrange
+            var definition = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0.1, Y = 0.0 }, // Not (0,0)
+                    new Point { X = 1.0, Y = 1.0 }
+                }
+            };
+
+            // Act
+            var isValid = InterpolationMethodFactory.ValidateDefinition(definition);
+
+            // Assert
+            Assert.False(isValid);
+        }
+
+        [Fact]
+        public void InterpolationMethodFactory_ValidateDefinition_BezierWithInvalidLastPoint()
+        {
+            // Arrange
+            var definition = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0.0, Y = 0.0 },
+                    new Point { X = 0.9, Y = 1.0 } // Not (1,1)
+                }
+            };
+
+            // Act
+            var isValid = InterpolationMethodFactory.ValidateDefinition(definition);
+
+            // Assert
+            Assert.False(isValid);
+        }
+
         // Test helper class for unsupported interpolation types
         private class TestInterpolationDefinition : IInterpolationDefinition
         {

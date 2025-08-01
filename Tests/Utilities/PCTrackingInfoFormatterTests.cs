@@ -67,8 +67,8 @@ namespace SharpBridge.Tests.Utilities
             _userPreferences = new UserPreferences { PCClientVerbosity = VerbosityLevel.Normal };
 
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
-            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression });
-            mockColumnConfigManager.Setup(x => x.GetDefaultParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression });
+            mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression, ParameterTableColumn.Interpolation });
+            mockColumnConfigManager.Setup(x => x.GetDefaultParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression, ParameterTableColumn.Interpolation });
 
             _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
@@ -218,7 +218,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             capturedColumns.Should().NotBeNull();
-            capturedColumns.Count.Should().Be(6);
+            capturedColumns.Count.Should().Be(7);
 
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Parameter");
@@ -281,7 +281,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             capturedColumns.Should().NotBeNull();
-            capturedColumns.Count.Should().Be(6);
+            capturedColumns.Count.Should().Be(7);
 
             // Verify column headers
             capturedColumns[0].Header.Should().Be("Parameter");
@@ -290,6 +290,7 @@ namespace SharpBridge.Tests.Utilities
             capturedColumns[3].Header.Should().Be("Range");
             capturedColumns[4].Header.Should().Be("Min/Max");
             capturedColumns[5].Header.Should().Be("Expression");
+            capturedColumns[6].Header.Should().Be("Interpolation");
 
             // Verify column formatter behavior
             var param1 = trackingInfo.Parameters.First();
@@ -514,13 +515,14 @@ namespace SharpBridge.Tests.Utilities
                 It.Is<string>(s => s == "=== Parameters ==="),
                 It.IsAny<IEnumerable<TrackingParam>>(),
                 It.Is<IList<ITableColumnFormatter<TrackingParam>>>(cols =>
-                    cols.Count == 6 &&
+                    cols.Count == 7 &&
                     cols[0].Header == "Parameter" &&
                     cols[1].Header == "" && // Progress bar column
                     cols[2].Header == "Value" &&
                     cols[3].Header == "Range" &&
                     cols[4].Header == "Min/Max" &&
-                    cols[5].Header == "Expression"),
+                    cols[5].Header == "Expression" &&
+                    cols[6].Header == "Interpolation"),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<int>(),
@@ -611,7 +613,7 @@ namespace SharpBridge.Tests.Utilities
 
                 // Assert
                 capturedColumns.Should().NotBeNull();
-                capturedColumns.Count.Should().Be(6);
+                capturedColumns.Count.Should().Be(7);
 
                 // Verify expression column behavior
                 var expressionColumn = capturedColumns[5];
@@ -683,7 +685,7 @@ namespace SharpBridge.Tests.Utilities
 
                 // Assert
                 capturedColumns.Should().NotBeNull();
-                capturedColumns.Count.Should().Be(6);
+                capturedColumns.Count.Should().Be(7);
 
                 // Verify value column behavior
                 var valueColumn = capturedColumns[2];
@@ -768,7 +770,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             capturedColumns.Should().NotBeNull();
-            capturedColumns.Count.Should().Be(6);
+            capturedColumns.Count.Should().Be(7);
 
             // Verify progress bar column behavior
             var progressBarColumn = capturedColumns[1];
@@ -962,5 +964,408 @@ namespace SharpBridge.Tests.Utilities
 
             return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, colorService, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
+
+        #region Interpolation Tests
+
+        [Fact]
+        public void Format_WithLinearInterpolation_ShowsCorrectInterpolationInfo()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var interpolations = new Dictionary<string, IInterpolationDefinition>
+            {
+                ["Param1"] = new LinearInterpolation()
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters, interpolations: interpolations);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
+            interpolationColumn.Should().NotBeNull();
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Linear");
+        }
+
+        [Fact]
+        public void Format_WithBezierInterpolation_ShowsCorrectInterpolationInfo()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var bezierInterpolation = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 },
+                    new Point { X = 0.42, Y = 0 },
+                    new Point { X = 1, Y = 1 }
+                }
+            };
+            var interpolations = new Dictionary<string, IInterpolationDefinition>
+            {
+                ["Param1"] = bezierInterpolation
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters, interpolations: interpolations);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
+            interpolationColumn.Should().NotBeNull();
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(0.42, 0)");
+        }
+
+        [Fact]
+        public void Format_WithBezierInterpolation_InvalidControlPoints_ShowsInvalidMessage()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var bezierInterpolation = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 }
+                    // Only one control point - invalid
+                }
+            };
+            var interpolations = new Dictionary<string, IInterpolationDefinition>
+            {
+                ["Param1"] = bezierInterpolation
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters, interpolations: interpolations);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
+            interpolationColumn.Should().NotBeNull();
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(invalid)");
+        }
+
+        [Fact]
+        public void Format_WithBezierInterpolation_LinearBezier_ShowsLinearMessage()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var bezierInterpolation = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0, Y = 0 },
+                    new Point { X = 1, Y = 1 }
+                    // Only start and end points - linear
+                }
+            };
+            var interpolations = new Dictionary<string, IInterpolationDefinition>
+            {
+                ["Param1"] = bezierInterpolation
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters, interpolations: interpolations);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
+            interpolationColumn.Should().NotBeNull();
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(linear)");
+        }
+
+        [Fact]
+        public void Format_WithUnknownInterpolationType_ShowsTypeName()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            // Create a concrete class that implements IInterpolationDefinition
+            var unknownInterpolation = new UnknownInterpolationType();
+            var interpolations = new Dictionary<string, IInterpolationDefinition>
+            {
+                ["Param1"] = unknownInterpolation
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters, interpolations: interpolations);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
+            interpolationColumn.Should().NotBeNull();
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("UnknownInterpolationType");
+        }
+
+        // Concrete class for testing unknown interpolation type
+        private class UnknownInterpolationType : IInterpolationDefinition
+        {
+        }
+
+        [Fact]
+        public void Format_WithNoInterpolation_ShowsLinearDefault()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters);
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
+            interpolationColumn.Should().NotBeNull();
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Linear");
+        }
+
+        #endregion
+
+        #region Extremum Range Tests
+
+        [Fact]
+        public void Format_WithParameterExtremums_ShowsCorrectRange()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var extremums = new Dictionary<string, ParameterExtremums>
+            {
+                ["Param1"] = new ParameterExtremums()
+            };
+            // Initialize the extremums properly
+            extremums["Param1"].UpdateExtremums(-0.5);
+            extremums["Param1"].UpdateExtremums(0.8);
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters);
+            trackingInfo.ParameterExtremums = extremums;
+
+            // Set up parameter definitions and expressions for extremum display
+            trackingInfo.ParameterDefinitions["Param1"] = new VTSParameter("Param1", -1, 1, 0);
+            trackingInfo.ParameterCalculationExpressions["Param1"] = "x * 1.0";
+
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var minMaxColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Min/Max");
+            minMaxColumn.Should().NotBeNull();
+            minMaxColumn!.ValueFormatter(parameters[0]).Should().Be("[-0.5; 0.8]");
+        }
+
+        [Fact]
+        public void Format_WithNoParameterExtremums_ShowsNoExtremumsMessage()
+        {
+            // Arrange
+            var parameters = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5 }
+            };
+            var trackingInfo = CreatePCTrackingInfo(parameters: parameters);
+            // No extremums set
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            IList<ITableColumnFormatter<TrackingParam>> capturedColumns = null!;
+            _mockTableFormatter
+                .Setup(x => x.AppendTable(
+                    It.IsAny<StringBuilder>(),
+                    It.IsAny<string>(),
+                    It.IsAny<IEnumerable<TrackingParam>>(),
+                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()))
+                .Callback<StringBuilder, string, IEnumerable<TrackingParam>, IList<ITableColumnFormatter<TrackingParam>>, int, int, int, int?>(
+                    (builder, title, rows, columns, targetCols, width, barWidth, maxItems) =>
+                    {
+                        capturedColumns = columns;
+                    });
+
+            // Act
+            _formatter.Format(serviceStats);
+
+            // Assert
+            capturedColumns.Should().NotBeNull();
+            var minMaxColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Min/Max");
+            minMaxColumn.Should().NotBeNull();
+            minMaxColumn!.ValueFormatter(parameters[0]).Should().Be("[no extremums]");
+        }
+
+        #endregion
+
+        #region Service Header Tests
+
+        [Fact]
+        public void Format_WithUnknownVerbosityLevel_ShowsDefaultInfo()
+        {
+            // Arrange
+            var trackingInfo = CreatePCTrackingInfo();
+            var serviceStats = CreateServiceStats(trackingInfo);
+
+            // Set verbosity to an unknown value using reflection
+            var verbosityField = typeof(PCTrackingInfoFormatter).GetField("_currentVerbosity", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            verbosityField?.SetValue(_formatter, (VerbosityLevel)999); // Unknown value
+
+            // Act
+            var result = _formatter.Format(serviceStats);
+
+            // Assert
+            result.Should().Contain("[INFO]");
+        }
+
+
+
+        #endregion
     }
 }
