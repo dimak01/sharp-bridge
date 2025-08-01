@@ -238,7 +238,7 @@ All core architectural components are implemented:
 
 - **VTubeStudioPhoneClient** - UDP-based tracking data reception with health monitoring
 - **VTubeStudioPCClient** - WebSocket-based VTube Studio communication with token management
-- **TransformationEngine** - Rule-based data transformation with multi-pass evaluation
+- **TransformationEngine** - Rule-based data transformation with multi-pass evaluation and custom interpolation curves
 - **ApplicationOrchestrator** - Component coordination with recovery and console management
 - **Recovery System** - Automatic service recovery with configurable policies
 - **Console UI System** - Real-time status display with dynamic shortcuts and user preferences
@@ -322,6 +322,7 @@ All core architectural components are implemented:
     - Loads and parses transformation rules
     - Applies expressions to track data
     - Manages parameter boundaries
+    - Supports custom interpolation curves for natural parameter responses
 
 14. **IVTubeStudioPCClient** - Interface for VTube Studio communication
     - Manages WebSocket connections with automatic recovery
@@ -392,6 +393,7 @@ The code follows clean architecture principles with resiliency built-in:
 14. **File Change Watching** - Comprehensive file monitoring for configuration changes
 15. **Parameter Synchronization** - Automatic VTube Studio parameter management
 16. **Customizable UI** - User-configurable parameter table columns for focused display
+17. **Custom Interpolation** - Support for Bezier curves and other interpolation methods for natural parameter responses
 
 ## Runtime Features
 

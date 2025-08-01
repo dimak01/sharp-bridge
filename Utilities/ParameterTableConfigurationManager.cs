@@ -46,7 +46,8 @@ namespace SharpBridge.Utilities
                 ParameterTableColumn.Value,
                 ParameterTableColumn.Range,
                 ParameterTableColumn.MinMax,
-                ParameterTableColumn.Expression
+                ParameterTableColumn.Expression,
+                ParameterTableColumn.Interpolation
             };
         }
 

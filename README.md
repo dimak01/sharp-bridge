@@ -144,6 +144,7 @@ User-specific display preferences and customization options:
   - `Value`: Raw numeric value
   - `Range`: Weight and min/default/max information
   - `Expression`: Transformation expression
+  - `Interpolation`: Interpolation method information (e.g., "Linear", "Bezier (3 pts)")
 
 ### Transformation Rules (`Configs/vts_transforms.json`)
 
@@ -181,6 +182,55 @@ Rules can reference other custom parameters with automatic dependency resolution
   "defaultValue": 0
 }
 ```
+
+**Custom Interpolation Curves**
+
+Transform rules support custom interpolation methods for more natural parameter responses:
+
+```json
+{
+  "name": "EyeOpenLeft",
+  "func": "EyeOpenLeft",
+  "min": 0.0,
+  "max": 1.0,
+  "defaultValue": 0.5,
+  "interpolation": {
+    "type": "BezierInterpolation",
+    "controlPoints": [0.42, 0, 1, 1]
+  }
+}
+```
+
+**Common Bezier Curve Examples:**
+
+**Ease-in (accelerating):**
+```json
+"controlPoints": [0.42, 0, 1, 1]
+```
+
+**Ease-out (decelerating):**
+```json
+"controlPoints": [0, 0, 0.58, 1]
+```
+
+**Ease-in-out (smooth):**
+```json
+"controlPoints": [0.42, 0, 0.58, 1]
+```
+
+**Using CSS Tools:**
+1. Go to [cubic-bezier.com](https://cubic-bezier.com/) or similar CSS animation tools
+2. Design your curve visually
+3. Copy the generated values (e.g., `cubic-bezier(0.25, 0.46, 0.45, 0.94)`)
+4. Convert to SharpBridge format: `[0.25, 0.46, 0.45, 0.94]`
+
+The control points use a compact array format that matches CSS `cubic-bezier()` function syntax. This makes it compatible with online tools like [cubic-bezier.com](https://cubic-bezier.com/) and other CSS animation generators.
+
+**CSS Compatibility:**
+- The compact format omits the implicit start point `(0, 0)` and end point `(1, 1)`
+- Only the middle control points are specified, just like CSS `cubic-bezier(x1, y1, x2, y2)`
+- You can copy values directly from CSS tools and use them in SharpBridge configuration
+- For higher-order curves (quartic, quintic, etc.), just add more control points: `[x1, y1, x2, y2, x3, y3, ...]`
 
 **Available Tracking Parameters:**
 

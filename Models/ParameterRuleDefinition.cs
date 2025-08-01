@@ -1,31 +1,37 @@
 using System;
 using System.Text.Json.Serialization;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Parameter transformation configuration
+    /// JSON DTO for transformation rules
     /// </summary>
     public class ParameterRuleDefinition
     {
-        /// <summary>Name of the parameter this rule targets</summary>
+        /// <summary>Name of the transformation rule</summary>
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
-        
-        /// <summary>Mathematical transformation function</summary>
+
+        /// <summary>Mathematical expression for the transformation</summary>
         [JsonPropertyName("func")]
         public string Func { get; set; } = string.Empty;
-        
-        /// <summary>Minimum parameter value</summary>
+
+        /// <summary>Minimum value for the parameter</summary>
         [JsonPropertyName("min")]
         public double Min { get; set; }
-        
-        /// <summary>Maximum parameter value</summary>
+
+        /// <summary>Maximum value for the parameter</summary>
         [JsonPropertyName("max")]
         public double Max { get; set; }
-        
-        /// <summary>Default parameter value</summary>
+
+        /// <summary>Default value for the parameter</summary>
         [JsonPropertyName("defaultValue")]
         public double DefaultValue { get; set; }
+
+        /// <summary>Interpolation method for parameter transformation</summary>
+        [JsonPropertyName("interpolation")]
+        [JsonConverter(typeof(InterpolationConverter))]
+        public IInterpolationDefinition? Interpolation { get; set; }
     }
-} 
+}
