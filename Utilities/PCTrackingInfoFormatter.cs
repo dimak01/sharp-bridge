@@ -240,11 +240,29 @@ namespace SharpBridge.Utilities
                 return interpolation switch
                 {
                     LinearInterpolation => "Linear",
-                    BezierInterpolation bezier => $"Bezier ({bezier.ControlPoints.Count} pts)",
+                    BezierInterpolation bezier => FormatBezierControlPoints(bezier),
                     _ => interpolation.GetType().Name
                 };
             }
             return "Linear"; // Default to linear when no interpolation is specified
+        }
+
+        /// <summary>
+        /// Formats Bezier control points for display (omitting implicit start/end points)
+        /// </summary>
+        private static string FormatBezierControlPoints(BezierInterpolation bezier)
+        {
+            if (bezier.ControlPoints.Count < 2)
+                return "Bezier(invalid)";
+
+            // Skip the first point (implicit start) and last point (implicit end)
+            var middlePoints = bezier.ControlPoints.Skip(1).Take(bezier.ControlPoints.Count - 2).ToList();
+
+            if (middlePoints.Count == 0)
+                return "Bezier(linear)";
+
+            var controlPointStrings = middlePoints.Select(p => $"{p.X:0.##}, {p.Y:0.##}");
+            return $"Bezier({string.Join(", ", controlPointStrings)})";
         }
 
         /// <summary>
