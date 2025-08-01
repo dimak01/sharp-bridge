@@ -5,6 +5,7 @@ REM Always navigate to project root from script location (regardless of current 
 cd /d "%~dp0..\.."
 
 REM Create TestResults directory if it doesn't exist
+cd ../..
 if not exist TestResults mkdir TestResults
 
 REM Run tests with coverage and collect results with explicit output directory
