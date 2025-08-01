@@ -137,7 +137,8 @@ namespace SharpBridge.Utilities
                 [ParameterTableColumn.Value] = new NumericColumnFormatter<TrackingParam>("Value", param => param.Value, "0.##", minWidth: 6, padLeft: true),
                 [ParameterTableColumn.Range] = new TextColumnFormatter<TrackingParam>("Range", param => FormatDefinitionRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
                 [ParameterTableColumn.Expression] = new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90),
-                [ParameterTableColumn.MinMax] = new TextColumnFormatter<TrackingParam>("Min/Max", param => FormatExtremumRange(param, trackingInfo), minWidth: 12, maxWidth: 20)
+                [ParameterTableColumn.MinMax] = new TextColumnFormatter<TrackingParam>("Min/Max", param => FormatExtremumRange(param, trackingInfo), minWidth: 12, maxWidth: 20),
+                [ParameterTableColumn.Interpolation] = new TextColumnFormatter<TrackingParam>("Interpolation", param => FormatInterpolationInfo(param, trackingInfo), minWidth: 12, maxWidth: 25)
             };
 
             // Filter columns based on configuration
@@ -227,6 +228,41 @@ namespace SharpBridge.Utilities
                 return $"[{min}; {max}]";
             }
             return "[no extremums]"; // Clear indication when no extremums are available
+        }
+
+        /// <summary>
+        /// Formats the interpolation information for a parameter
+        /// </summary>
+        private static string FormatInterpolationInfo(TrackingParam param, PCTrackingInfo trackingInfo)
+        {
+            if (trackingInfo?.ParameterInterpolations?.TryGetValue(param.Id, out var interpolation) == true)
+            {
+                return interpolation switch
+                {
+                    LinearInterpolation => "Linear",
+                    BezierInterpolation bezier => FormatBezierControlPoints(bezier),
+                    _ => interpolation.GetType().Name
+                };
+            }
+            return "Linear"; // Default to linear when no interpolation is specified
+        }
+
+        /// <summary>
+        /// Formats Bezier control points for display (omitting implicit start/end points)
+        /// </summary>
+        private static string FormatBezierControlPoints(BezierInterpolation bezier)
+        {
+            if (bezier.ControlPoints.Count < 2)
+                return "Bezier(invalid)";
+
+            // Skip the first point (implicit start) and last point (implicit end)
+            var middlePoints = bezier.ControlPoints.Skip(1).Take(bezier.ControlPoints.Count - 2).ToList();
+
+            if (middlePoints.Count == 0)
+                return "Bezier(linear)";
+
+            var controlPointStrings = middlePoints.Select(p => $"{p.X:0.##}, {p.Y:0.##}");
+            return $"Bezier({string.Join(", ", controlPointStrings)})";
         }
 
         /// <summary>

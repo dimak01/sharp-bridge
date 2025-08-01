@@ -41,6 +41,12 @@ namespace SharpBridge.Models
         /// Both minimum and maximum values observed during runtime
         /// </summary>
         [Description("Min/Max")]
-        MinMax
+        MinMax,
+
+        /// <summary>
+        /// Interpolation method information
+        /// </summary>
+        [Description("Interpolation")]
+        Interpolation
     }
 }
