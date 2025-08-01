@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
@@ -12,6 +13,16 @@ namespace SharpBridge
     /// </summary>
     public static class Program
     {
+        // Windows API functions for ANSI support
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GetStdHandle(int nStdHandle);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+
         /// <summary>
         /// Application entry point
         /// </summary>
@@ -19,6 +30,25 @@ namespace SharpBridge
         /// <returns>An asynchronous task representing the execution</returns>
         public static async Task<int> Main(string[] args)
         {
+            // Enable ANSI color support for console
+            try
+            {
+                // Enable virtual terminal processing for ANSI support
+                if (OperatingSystem.IsWindows())
+                {
+                    var handle = GetStdHandle(-11); // STD_OUTPUT_HANDLE
+                    if (GetConsoleMode(handle, out uint mode))
+                    {
+                        mode |= 0x0004; // ENABLE_VIRTUAL_TERMINAL_PROCESSING
+                        SetConsoleMode(handle, mode);
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors - ANSI colors will just not work
+            }
+
             Console.WriteLine("SharpBridge Application");
 
             // Setup DI container

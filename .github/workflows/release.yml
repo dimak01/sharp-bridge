@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     uses: ./.github/workflows/build.yml
@@ -34,6 +37,11 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
           
+          # Extract clean version for assembly (remove pre-release part)
+          CLEAN_VERSION=$(echo $VERSION | sed 's/-.*//')
+          echo "clean_version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          echo "Clean version: $CLEAN_VERSION"
+          
           # Determine if this is a pre-release
           if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-rc"* ]]; then
             echo "is-prerelease=true" >> $GITHUB_OUTPUT
@@ -55,14 +63,16 @@ jobs:
           for platform in win-x64; do
           # for platform in win-x64 linux-x64 osx-x64; do
             echo "Publishing for $platform..."
-            dotnet publish SharpBridge/SharpBridge.csproj \
+            dotnet publish SharpBridge.csproj \
               -c Release -r $platform \
               --self-contained true \
               -p:PublishSingleFile=true \
-              -p:PublishTrimmed=true \
+              -p:DebugType=none \
+              -p:DebugSymbols=false \
+              -p:GenerateDocumentationFile=false \
               -p:Version=$VERSION \
-              -p:AssemblyVersion=$VERSION.0 \
-              -p:FileVersion=$VERSION.0 \
+              -p:AssemblyVersion=${{ steps.release-info.outputs.clean_version }}.0 \
+              -p:FileVersion=${{ steps.release-info.outputs.clean_version }}.0 \
               -o ./publish/$platform
           done
 
@@ -77,7 +87,10 @@ jobs:
           
           # Create tools directory and copy deployment scripts
           mkdir -p tools
-          cp ../../scripts/deployment/win-x64/*.bat tools/
+          cp ../../Scripts/deployment/win-x64/*.bat tools/
+          
+          # Copy README.md to the package
+          cp ../../README.md .
           
           zip -r ../../artifacts/SharpBridge-v$VERSION-win-x64.zip .
           cd ../..
@@ -121,8 +134,6 @@ jobs:
         with:
           files: |
             artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-win-x64.zip
-            # artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-linux-x64.tar.gz
-            # artifacts/SharpBridge-v${{ steps.release-info.outputs.version }}-osx-x64.tar.gz
           body: ${{ steps.release-notes.outputs.release_notes }}
           draft: ${{ steps.release-info.outputs.is-prerelease == 'true' }}
           prerelease: ${{ steps.release-info.outputs.is-prerelease == 'true' }}
