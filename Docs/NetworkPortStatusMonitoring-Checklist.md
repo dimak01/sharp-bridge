@@ -247,4 +247,22 @@
 - **Testing**: Emphasize firewall analysis accuracy
 - **User Experience**: Ensure commands are easy to copy-paste
 - **Performance**: Monitor impact of continuous polling
-- **Security**: No automatic firewall rule manipulation 
+- **Security**: No automatic firewall rule manipulation
+
+## Implementation Guidelines
+
+### Firewall Analysis
+- **Scope**: Both inbound and outbound rules (especially important for UDP)
+- **Network Detection**: Map IPs/hosts to available networks (localhost vs remote)
+- **Error Handling**: Return "Unknown" status if Windows Firewall API calls fail
+- **Models**: Separate Windows API interop models from simplified consumption models
+
+### Port Status Monitoring
+- **No Connection Tests**: Don't send packets or establish connections
+- **Local Ports**: Check if open/closed, no binding checks
+- **Configuration**: Let orchestrator pass configuration values (don't inject IConfigManager)
+- **Network Location**: Detect if PC connections are localhost OR remote hosts
+
+### Data Models
+- **FirewallRule**: Separate Windows API structure from simplified consumption model
+- **NetworkStatus**: Include timestamps for when each check was performed 
