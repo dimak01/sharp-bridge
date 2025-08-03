@@ -20,7 +20,7 @@ When network issues occur, users currently only discover problems through failed
 
 Implement proactive network status monitoring that:
 1. **Continuously monitors** all critical network connections
-2. **Displays real-time status** in the main console interface
+2. **Analyzes firewall rules** to understand connectivity issues
 3. **Provides troubleshooting guidance** in the system help with platform-specific commands
 
 ## Feature Requirements
@@ -45,15 +45,10 @@ Implement proactive network status monitoring that:
 
 ### Display Requirements
 
-1. **Main Console Display**
-   - Compact network status section in main interface
-   - Color-coded status indicators (green/red/yellow)
-   - Real-time updates with polling frequency
-   - Integration with existing console layout system
-
-2. **System Help Integration**
+1. **System Help Integration**
    - Network troubleshooting section in F1 help
    - Current port status summary
+   - Firewall rule analysis
    - Platform-specific troubleshooting commands
    - Copy-paste ready commands for users
 
@@ -74,17 +69,22 @@ Implement proactive network status monitoring that:
 
 ### Core Interfaces
 
-1. **INetworkStatusFormatter** (extends IFormatter)
-   - Network status display with verbosity levels
-   - Integration with existing console formatter system
-   - Real-time status formatting for main display
+1. **INetworkStatusFormatter**
+   - Network troubleshooting display for system help
+   - Renders firewall analysis and troubleshooting commands
+   - No main console display integration
 
 2. **INetworkCommandProvider**
    - Platform-specific command generation
    - No display logic, pure command generation
    - Follows existing naming patterns (like IShortcutConfigurationManager)
 
-3. **IPortStatusMonitor**
+3. **IFirewallAnalyzer**
+   - Platform-specific firewall rule analysis
+   - Analyzes outbound connectivity permissions
+   - Returns simple allowed/blocked status with relevant rules
+
+4. **IPortStatusMonitor**
    - Background port status monitoring service
    - Continuous polling of network connections
    - Integration with existing health monitoring system
@@ -106,42 +106,36 @@ Implement proactive network status monitoring that:
 
 1. **Dependency Injection**
    - Register `IPortStatusMonitor` as singleton
+   - Register `IFirewallAnalyzer` as singleton
    - Register `INetworkCommandProvider` as singleton
-   - Register `INetworkStatusFormatter` with existing formatter system
+   - Register `INetworkStatusFormatter` for system help integration
 
 2. **Application Orchestrator Integration**
    - Include in health monitoring and recovery logic
    - Add to service statistics collection
    - Integrate with existing recovery system
+   - Collect network status for system help display
 
-3. **Console UI Integration**
-   - Register network status formatter with `ConsoleRenderer`
-   - Add network status section to main display
-   - Integrate with existing layout and color systems
-
-4. **System Help Integration**
+3. **System Help Integration**
    - Extend existing `SystemHelpRenderer`
    - Add network troubleshooting section
+   - Use `INetworkStatusFormatter` for display
    - Use `INetworkCommandProvider` for platform-specific commands
 
 ## Implementation Plan
 
 ### Phase 1: Core Infrastructure
 1. Create interfaces and data models
-2. Implement `IPortStatusMonitor` service
+2. Implement `IFirewallAnalyzer` (Windows)
 3. Implement `INetworkCommandProvider` (Windows)
+4. Implement `IPortStatusMonitor` service
 
-### Phase 2: Console Integration
+### Phase 2: Help System Integration
 1. Implement `INetworkStatusFormatter`
-2. Integrate with existing console renderer
-3. Add network status section to main display
+2. Extend `SystemHelpRenderer` with network troubleshooting
+3. Integrate `INetworkCommandProvider` for commands
 
-### Phase 3: Help System Integration
-1. Extend `SystemHelpRenderer` with network troubleshooting
-2. Integrate `INetworkCommandProvider` for commands
-3. Add network status section to F1 help
-
-### Phase 4: Testing & Validation
+### Phase 3: Testing & Validation
 1. Unit tests for all new components
 2. Integration testing with different network configurations
 3. Testing with discovery enabled/disabled scenarios
@@ -157,26 +151,23 @@ Implement proactive network status monitoring that:
 
 ## Display Examples
 
-### Main Console Display
-```
-Network Status:
-iPhone: [🟢] Host:192.168.1.178 [🟢] Local:28964
-PC VTS: [] Discovery:47779 [🟢] WebSocket:8001
-```
-
 ### System Help Section
 ```
 NETWORK TROUBLESHOOTING:
 Current Status:
-  iPhone Host: Reachable (192.168.1.178)
   iPhone Local Port: Open (UDP 28964)
-  PC Discovery Port: Closed (UDP 47779)
-  PC WebSocket Port: Open (8001)
+  iPhone Outbound: Allowed (UDP 21412 to 192.168.1.178)
+  iPhone Firewall: Blocked (Missing outbound rule)
+  PC Discovery: Allowed (UDP 47779 to localhost)
+  PC WebSocket: Allowed (8001 to localhost)
+
+Firewall Rules:
+  - SharpBridge UDP Outbound (Disabled)
+  - Default Outbound UDP (Block)
 
 Windows Commands:
-  Check iPhone connectivity: ping 192.168.1.178
-  Check local UDP port: netstat -an | findstr :28964
-  Open UDP port: netsh advfirewall firewall add rule name="SharpBridge UDP" dir=in action=allow protocol=UDP localport=28964
+  Add iPhone UDP rule: netsh advfirewall firewall add rule name="SharpBridge iPhone UDP" dir=out action=allow protocol=UDP remoteport=21412 remoteip=192.168.1.178
+  Remove rule: netsh advfirewall firewall delete rule name="SharpBridge iPhone UDP"
 ```
 
 ## Benefits
@@ -200,8 +191,8 @@ Windows Commands:
 
 1. **Real-time Monitoring**: Port status updates every 5 seconds
 2. **Configuration Awareness**: Monitoring adapts to `UsePortDiscovery` setting
-3. **Platform Commands**: Windows-specific troubleshooting commands
-4. **Console Integration**: Seamless integration with existing UI
+3. **Firewall Analysis**: Accurate detection of firewall rule issues
+4. **Platform Commands**: Windows-specific troubleshooting commands
 5. **Help Integration**: Network troubleshooting in F1 help system
 6. **Zero Configuration**: Feature works with existing configuration
 7. **Non-Elevated Operation**: No automatic port manipulation 
