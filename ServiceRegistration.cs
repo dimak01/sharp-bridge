@@ -187,6 +187,12 @@ namespace SharpBridge
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
+            // Register network monitoring services
+            services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
+            services.AddSingleton<INetworkCommandProvider, WindowsNetworkCommandProvider>();
+            services.AddSingleton<INetworkStatusFormatter, NetworkStatusFormatter>();
+            services.AddSingleton<IPortStatusMonitor, PortStatusMonitor>();
+
             // Register shortcut services
             services.AddSingleton<IShortcutParser, ShortcutParser>();
             services.AddSingleton<IShortcutConfigurationManager>(provider =>
@@ -200,7 +206,8 @@ namespace SharpBridge
                 new SystemHelpRenderer(
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
-                    provider.GetRequiredService<ITableFormatter>()
+                    provider.GetRequiredService<ITableFormatter>(),
+                    provider.GetRequiredService<INetworkStatusFormatter>()
                 ));
 
             // Register parameter table configuration manager

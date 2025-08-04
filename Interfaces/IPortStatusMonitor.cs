@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using SharpBridge.Models;
 
 namespace SharpBridge.Interfaces
