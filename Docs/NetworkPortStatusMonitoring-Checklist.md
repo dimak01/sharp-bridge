@@ -4,126 +4,126 @@
 
 ### 1.1 Create Interfaces and Data Models
 
-- [ ] **Create `IFirewallAnalyzer` interface**
-  - [ ] Define `AnalyzeFirewallRules` method signature
-  - [ ] Create `FirewallAnalysisResult` model with `IsAllowed` and `RelevantRules`
-  - [ ] Create `FirewallRule` model with Windows API alignment
+- [x] **Create `IFirewallAnalyzer` interface**
+  - [x] Define `AnalyzeFirewallRules` method signature
+  - [x] Create `FirewallAnalysisResult` model with `IsAllowed` and `RelevantRules`
+  - [x] Create `FirewallRule` model with Windows API alignment
 
-- [ ] **Create `INetworkCommandProvider` interface**
-  - [ ] Define platform-specific command generation methods
-  - [ ] Create command generation methods for add/remove firewall rules
-  - [ ] Create command generation methods for port status checking
+- [x] **Create `INetworkCommandProvider` interface**
+  - [x] Define platform-specific command generation methods
+  - [x] Create command generation methods for add/remove firewall rules
+  - [x] Create command generation methods for port status checking
 
-- [ ] **Create `IPortStatusMonitor` interface**
-  - [ ] Define `GetNetworkStatusAsync` method
-  - [ ] Create `NetworkStatus` model with iPhone and PC connection statuses
-  - [ ] Create `PortStatus` model for individual port information
+- [x] **Create `IPortStatusMonitor` interface**
+  - [x] Define `GetNetworkStatusAsync` method
+  - [x] Create `NetworkStatus` model with iPhone and PC connection statuses
+  - [x] Create `PortStatus` model for individual port information
 
-- [ ] **Create `INetworkStatusFormatter` interface**
-  - [ ] Define `RenderNetworkTroubleshooting` method
-  - [ ] Ensure no dependency on `IFormatter` (no main console display)
+- [x] **Create `INetworkStatusFormatter` interface**
+  - [x] Define `RenderNetworkTroubleshooting` method
+  - [x] Ensure no dependency on `IFormatter` (no main console display)
 
 ### 1.2 Implement Windows Firewall Analyzer
 
-- [ ] **Implement `WindowsFirewallAnalyzer` class**
-  - [ ] Use `INetFwPolicy2` COM interface for Windows Firewall access
-  - [ ] Implement rule enumeration for UDP/TCP protocols
-  - [ ] Implement rule precedence logic
-  - [ ] Handle network location detection (local vs remote)
-  - [ ] Return simple `IsAllowed` status with relevant rules
+- [x] **Implement `WindowsFirewallAnalyzer` class**
+  - [x] Use `INetFwPolicy2` COM interface for Windows Firewall access
+  - [x] Implement rule enumeration for UDP/TCP protocols
+  - [x] Implement rule precedence logic
+  - [x] Handle network location detection (local vs remote)
+  - [x] Return simple `IsAllowed` status with relevant rules
 
-- [ ] **Add Windows Firewall dependencies**
-  - [ ] Add COM interop for `INetFwPolicy2`
-  - [ ] Add Windows Firewall rule enumeration logic
-  - [ ] Add rule state checking (enabled/disabled)
+- [x] **Add Windows Firewall dependencies**
+  - [x] Add COM interop for `INetFwPolicy2`
+  - [x] Add Windows Firewall rule enumeration logic
+  - [x] Add rule state checking (enabled/disabled)
 
 ### 1.3 Implement Windows Network Command Provider
 
-- [ ] **Implement `WindowsNetworkCommandProvider` class**
-  - [ ] Create `GetAddFirewallRuleCommand` method
-  - [ ] Create `GetRemoveFirewallRuleCommand` method
-  - [ ] Create `GetCheckPortStatusCommand` method
-  - [ ] Create `GetTestConnectivityCommand` method
-  - [ ] Ensure commands are copy-paste ready for users
+- [x] **Implement `WindowsNetworkCommandProvider` class**
+  - [x] Create `GetAddFirewallRuleCommand` method
+  - [x] Create `GetRemoveFirewallRuleCommand` method
+  - [x] Create `GetCheckPortStatusCommand` method
+  - [x] Create `GetTestConnectivityCommand` method
+  - [x] Ensure commands are copy-paste ready for users
 
-- [ ] **Add command templates**
-  - [ ] UDP outbound rule commands
-  - [ ] TCP/WebSocket rule commands
-  - [ ] Port status checking commands
-  - [ ] Rule removal commands
+- [x] **Add command templates**
+  - [x] UDP outbound rule commands
+  - [x] TCP/WebSocket rule commands
+  - [x] Port status checking commands
+  - [x] Rule removal commands
 
 ### 1.4 Implement Port Status Monitor
 
-- [ ] **Implement `PortStatusMonitor` class**
-  - [ ] Inject `IFirewallAnalyzer` dependency
-  - [ ] Implement local port binding checks
-  - [ ] Implement outbound connectivity tests (no UDP packet sending)
-  - [ ] Use existing configuration values (`PhoneClient`, `PCClient`)
-  - [ ] Handle `UsePortDiscovery` setting for monitoring scope
-  - [ ] Implement continuous polling (5-second intervals)
+- [x] **Implement `PortStatusMonitor` class**
+  - [x] Inject `IFirewallAnalyzer` dependency
+  - [x] Implement local port binding checks
+  - [x] Implement outbound connectivity tests (no UDP packet sending)
+  - [x] Use existing configuration values (`PhoneClient`, `PCClient`)
+  - [x] Handle `UsePortDiscovery` setting for monitoring scope
+  - [x] Implement continuous polling (5-second intervals)
 
-- [ ] **Add network testing logic**
-  - [ ] Local UDP port 28964 binding test
-  - [ ] Outbound UDP 21412 connectivity test
-  - [ ] WebSocket port connectivity test
-  - [ ] Discovery port connectivity test (when enabled)
+- [x] **Add network testing logic**
+  - [x] Local UDP port 28964 binding test
+  - [x] Outbound UDP 21412 connectivity test
+  - [x] WebSocket port connectivity test
+  - [x] Discovery port connectivity test (when enabled)
 
 ## Phase 2: Help System Integration
 
 ### 2.1 Implement Network Status Formatter
 
-- [ ] **Implement `NetworkStatusFormatter` class**
-  - [ ] Inject `INetworkCommandProvider` dependency
-  - [ ] Implement `RenderNetworkTroubleshooting` method
-  - [ ] Format current status display
-  - [ ] Format firewall rules display
-  - [ ] Format platform-specific commands
-  - [ ] Use existing console color system
+- [x] **Implement `NetworkStatusFormatter` class**
+  - [x] Inject `INetworkCommandProvider` dependency
+  - [x] Implement `RenderNetworkTroubleshooting` method
+  - [x] Format current status display
+  - [x] Format firewall rules display
+  - [x] Format platform-specific commands
+  - [x] Use existing console color system
 
-- [ ] **Add formatting logic**
-  - [ ] Status indicators (🟢/🔴/🟡)
-  - [ ] Firewall rule listing
-  - [ ] Command formatting with proper spacing
-  - [ ] Integration with existing help formatting
+- [x] **Add formatting logic**
+  - [x] Status indicators (🟢/🔴/🟡)
+  - [x] Firewall rule listing
+  - [x] Command formatting with proper spacing
+  - [x] Integration with existing help formatting
 
 ### 2.2 Extend System Help Renderer
 
-- [ ] **Update `SystemHelpRenderer` class**
-  - [ ] Inject `INetworkStatusFormatter` dependency
-  - [ ] Add `NetworkStatus` parameter to `RenderSystemHelp` method
-  - [ ] Add network troubleshooting section to help display
-  - [ ] Integrate with existing help formatting patterns
+- [x] **Update `SystemHelpRenderer` class**
+  - [x] Inject `INetworkStatusFormatter` dependency
+  - [x] Add `NetworkStatus` parameter to `RenderSystemHelp` method
+  - [x] Add network troubleshooting section to help display
+  - [x] Integrate with existing help formatting patterns
 
-- [ ] **Add help integration**
-  - [ ] Call `RenderNetworkTroubleshooting` when network status provided
-  - [ ] Maintain existing help layout and formatting
-  - [ ] Ensure proper section separation
+- [x] **Add help integration**
+  - [x] Call `RenderNetworkTroubleshooting` when network status provided
+  - [x] Maintain existing help layout and formatting
+  - [x] Ensure proper section separation
 
 ### 2.3 Integrate Command Provider
 
-- [ ] **Connect command generation**
-  - [ ] Use `INetworkCommandProvider` in `NetworkStatusFormatter`
-  - [ ] Generate platform-specific commands for each connection
-  - [ ] Ensure commands use actual configuration values
-  - [ ] Test command generation with different scenarios
+- [x] **Connect command generation**
+  - [x] Use `INetworkCommandProvider` in `NetworkStatusFormatter`
+  - [x] Generate platform-specific commands for each connection
+  - [x] Ensure commands use actual configuration values
+  - [x] Test command generation with different scenarios
 
 ## Phase 3: Service Integration
 
 ### 3.1 Update Service Registration
 
-- [ ] **Register new services in `ServiceRegistration.cs`**
-  - [ ] Register `IPortStatusMonitor` as singleton
-  - [ ] Register `IFirewallAnalyzer` as singleton
-  - [ ] Register `INetworkCommandProvider` as singleton
-  - [ ] Register `INetworkStatusFormatter` as singleton
+- [x] **Register new services in `ServiceRegistration.cs`**
+  - [x] Register `IPortStatusMonitor` as singleton
+  - [x] Register `IFirewallAnalyzer` as singleton
+  - [x] Register `INetworkCommandProvider` as singleton
+  - [x] Register `INetworkStatusFormatter` as singleton
 
 ### 3.2 Update Application Orchestrator
 
-- [ ] **Integrate with `ApplicationOrchestrator`**
-  - [ ] Inject `IPortStatusMonitor` dependency
-  - [ ] Collect network status during initialization
-  - [ ] Pass network status to help renderer when needed
-  - [ ] Integrate with existing health monitoring system
+- [x] **Integrate with `ApplicationOrchestrator`**
+  - [x] Inject `IPortStatusMonitor` dependency
+  - [x] Collect network status during initialization
+  - [x] Pass network status to help renderer when needed
+  - [x] Integrate with existing health monitoring system
 
 ### 3.3 Update System Help Integration
 

@@ -2878,7 +2878,7 @@ namespace SharpBridge.Tests.Services
             var orchestrator = CreateOrchestrator();
             await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _systemHelpRendererMock.Setup(x => x.RenderSystemHelp(It.IsAny<ApplicationConfig>(), It.IsAny<int>()))
+            _systemHelpRendererMock.Setup(x => x.RenderSystemHelp(It.IsAny<ApplicationConfig>(), It.IsAny<int>(), It.IsAny<NetworkStatus?>()))
                 .Returns("Test help content");
 
             // Get the help action from registered shortcuts
@@ -2901,7 +2901,8 @@ namespace SharpBridge.Tests.Services
             // Assert
             _systemHelpRendererMock.Verify(x => x.RenderSystemHelp(
                 _applicationConfig,
-                It.IsAny<int>()), Times.Once);
+                It.IsAny<int>(),
+                It.IsAny<NetworkStatus?>()), Times.Once);
             _consoleMock.Verify(x => x.Clear(), Times.Once);
             _consoleMock.Verify(x => x.Write("Test help content"), Times.Once);
         }
