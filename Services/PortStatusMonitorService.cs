@@ -66,18 +66,24 @@ namespace SharpBridge.Services
             var phoneConfig = await _configManager.LoadPhoneConfigAsync();
             var localPort = phoneConfig.LocalPort.ToString();
 
-            // Check local port
-            status.LocalPortOpen = await CheckLocalPortAsync(localPort);
-
-            // Check outbound connectivity (no actual connection test)
-            status.OutboundAllowed = true; // Assume allowed for dummy implementation
-
-            // Analyze firewall rules
-            status.FirewallAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
+            // Check if firewall allows inbound traffic to our local port (for receiving)
+            var inboundAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
                 localPort: localPort,
+                remoteHost: "0.0.0.0", // Any remote host (wildcard)
+                remotePort: "0",        // Any remote port
+                protocol: "UDP");
+            status.LocalPortOpen = inboundAnalysis.IsAllowed;
+
+            // Check if firewall allows outbound traffic to iPhone (for sending)
+            var outboundAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
+                localPort: null,
                 remoteHost: host,
                 remotePort: port,
                 protocol: "UDP");
+            status.OutboundAllowed = outboundAnalysis.IsAllowed;
+
+            // Use outbound analysis as the main firewall analysis (since that's what we display)
+            status.FirewallAnalysis = outboundAnalysis;
 
             return status;
         }
@@ -89,42 +95,28 @@ namespace SharpBridge.Services
                 LastChecked = DateTime.UtcNow
             };
 
-            // Check WebSocket port
-            status.WebSocketAllowed = true; // Assume allowed for dummy implementation
-            status.WebSocketFirewallAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
+            // Check WebSocket port connectivity
+            var webSocketAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
                 localPort: null,
                 remoteHost: host,
                 remotePort: port,
                 protocol: "TCP");
+            status.WebSocketAllowed = webSocketAnalysis.IsAllowed;
+            status.WebSocketFirewallAnalysis = webSocketAnalysis;
 
             // Check discovery port if enabled
             if (usePortDiscovery)
             {
-                status.DiscoveryAllowed = true; // Assume allowed for dummy implementation
-                status.DiscoveryFirewallAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
+                var discoveryAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
                     localPort: null,
                     remoteHost: host,
                     remotePort: discoveryPort,
                     protocol: "UDP");
+                status.DiscoveryAllowed = discoveryAnalysis.IsAllowed;
+                status.DiscoveryFirewallAnalysis = discoveryAnalysis;
             }
 
             return status;
-        }
-
-        private static async Task<bool> CheckLocalPortAsync(string port)
-        {
-            try
-            {
-                // Try to check if port is available (no binding, just checking if it's in use)
-                using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                socket.Bind(new IPEndPoint(IPAddress.Any, int.Parse(port)));
-                socket.Close();
-                return true; // Port is available
-            }
-            catch
-            {
-                return false; // Port is in use or blocked
-            }
         }
     }
 }
