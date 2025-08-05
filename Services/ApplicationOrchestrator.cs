@@ -35,6 +35,7 @@ namespace SharpBridge.Services
         private readonly UserPreferences _userPreferences;
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
+        private readonly IPortStatusMonitorService _portStatusMonitor;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -69,6 +70,7 @@ namespace SharpBridge.Services
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
+        /// <param name="portStatusMonitor">Port status monitor for network connectivity analysis</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -88,7 +90,8 @@ namespace SharpBridge.Services
             ISystemHelpRenderer systemHelpRenderer,
             UserPreferences userPreferences,
             IConfigManager configManager,
-            IFileChangeWatcher appConfigWatcher)
+            IFileChangeWatcher appConfigWatcher,
+            IPortStatusMonitorService portStatusMonitor)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -109,6 +112,7 @@ namespace SharpBridge.Services
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
+            _portStatusMonitor = portStatusMonitor ?? throw new ArgumentNullException(nameof(portStatusMonitor));
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -759,16 +763,29 @@ namespace SharpBridge.Services
         /// <summary>
         /// Updates the console display with system help content
         /// </summary>
-        private void UpdateConsoleWithSystemHelp()
+        private async void UpdateConsoleWithSystemHelp()
         {
             try
             {
-
                 _isShowingSystemHelp = true;
                 _logger.Debug("Displaying system help (F1)");
 
                 var consoleSize = _consoleWindowManager.GetCurrentSize();
-                var helpContent = _systemHelpRenderer.RenderSystemHelp(_applicationConfig, consoleSize.width);
+
+                // Get current network status
+                NetworkStatus? networkStatus = null;
+                try
+                {
+                    networkStatus = await _portStatusMonitor.GetNetworkStatusAsync();
+                    _logger.Debug("Retrieved network status for system help display");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warning("Failed to retrieve network status for system help: {0}", ex.Message);
+                    // Continue without network status - system help will still display
+                }
+
+                var helpContent = _systemHelpRenderer.RenderSystemHelp(_applicationConfig, consoleSize.width, networkStatus);
 
                 _console.Clear();
                 _console.Write(helpContent);

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Dummy implementation of Windows Firewall Analyzer for end-to-end testing
