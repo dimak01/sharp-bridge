@@ -6,7 +6,7 @@ namespace SharpBridge.Interfaces
     /// <summary>
     /// Interface for background port status monitoring service
     /// </summary>
-    public interface IPortStatusMonitor
+    public interface IPortStatusMonitorService
     {
         /// <summary>
         /// Gets the current network status for all monitored connections

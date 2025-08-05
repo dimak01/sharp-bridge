@@ -10,7 +10,7 @@ namespace SharpBridge.Services
     /// <summary>
     /// Background port status monitoring service
     /// </summary>
-    public class PortStatusMonitor : IPortStatusMonitor
+    public class PortStatusMonitorService : IPortStatusMonitorService
     {
         private readonly IFirewallAnalyzer _firewallAnalyzer;
         private readonly IConfigManager _configManager;
@@ -20,7 +20,7 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="firewallAnalyzer">Firewall analyzer for connectivity analysis</param>
         /// <param name="configManager">Configuration manager for getting connection settings</param>
-        public PortStatusMonitor(IFirewallAnalyzer firewallAnalyzer, IConfigManager configManager)
+        public PortStatusMonitorService(IFirewallAnalyzer firewallAnalyzer, IConfigManager configManager)
         {
             _firewallAnalyzer = firewallAnalyzer ?? throw new ArgumentNullException(nameof(firewallAnalyzer));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));

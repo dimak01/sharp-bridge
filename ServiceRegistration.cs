@@ -191,7 +191,7 @@ namespace SharpBridge
             services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
             services.AddSingleton<INetworkCommandProvider, WindowsNetworkCommandProvider>();
             services.AddSingleton<INetworkStatusFormatter, NetworkStatusFormatter>();
-            services.AddSingleton<IPortStatusMonitor, PortStatusMonitor>();
+            services.AddSingleton<IPortStatusMonitorService, PortStatusMonitorService>();
 
             // Register shortcut services
             services.AddSingleton<IShortcutParser, ShortcutParser>();
@@ -257,7 +257,8 @@ namespace SharpBridge
                     provider.GetRequiredService<ISystemHelpRenderer>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetRequiredService<IPortStatusMonitorService>()
                 ));
 
             return services;

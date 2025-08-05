@@ -1,6 +1,6 @@
 using SharpBridge.Interfaces;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Windows-specific network command generation

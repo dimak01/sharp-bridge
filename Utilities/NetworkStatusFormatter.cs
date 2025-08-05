@@ -3,7 +3,7 @@ using System.Text;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
-namespace SharpBridge.Services
+namespace SharpBridge.Utilities
 {
     /// <summary>
     /// Formats network troubleshooting information for system help display
