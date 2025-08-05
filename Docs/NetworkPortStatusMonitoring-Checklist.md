@@ -1,268 +1,125 @@
 # Network Port Status Monitoring - Implementation Checklist
 
-## Phase 1: Core Infrastructure
+## Phase 1: Core Interfaces and Models ✅
 
-### 1.1 Create Interfaces and Data Models
+### 1.1 Interface Definitions ✅
+- [x] `IFirewallAnalyzer` - Platform-agnostic firewall analysis
+- [x] `INetworkCommandProvider` - Platform-specific command generation
+- [x] `INetworkStatusFormatter` - Network troubleshooting display
+- [x] `IPortStatusMonitorService` - Background monitoring service
 
-- [x] **Create `IFirewallAnalyzer` interface**
-  - [x] Define `AnalyzeFirewallRules` method signature
-  - [x] Create `FirewallAnalysisResult` model with `IsAllowed` and `RelevantRules`
-  - [x] Create `FirewallRule` model with Windows API alignment
+### 1.2 Data Models ✅
+- [x] `NetworkStatus` - Aggregated network status
+- [x] `IPhoneConnectionStatus` - iPhone connection details
+- [x] `PCConnectionStatus` - PC connection details
+- [x] `FirewallAnalysisResult` - Firewall analysis results
+- [x] `FirewallRule` - Individual firewall rule information
 
-- [x] **Create `INetworkCommandProvider` interface**
-  - [x] Define platform-specific command generation methods
-  - [x] Create command generation methods for add/remove firewall rules
-  - [x] Create command generation methods for port status checking
+### 1.3 Service Integration ✅
+- [x] Update `ServiceRegistration.cs` with new services
+- [x] Update `ApplicationOrchestrator` to inject `IPortStatusMonitorService`
+- [x] Update `SystemHelpRenderer` to inject `INetworkStatusFormatter`
 
-- [x] **Create `IPortStatusMonitor` interface**
-  - [x] Define `GetNetworkStatusAsync` method
-  - [x] Create `NetworkStatus` model with iPhone and PC connection statuses
-  - [x] Create `PortStatus` model for individual port information
+## Phase 2: Basic Implementation ✅
 
-- [x] **Create `INetworkStatusFormatter` interface**
-  - [x] Define `RenderNetworkTroubleshooting` method
-  - [x] Ensure no dependency on `IFormatter` (no main console display)
+### 2.1 Dummy Implementations ✅
+- [x] `WindowsFirewallAnalyzer` - Dummy implementation for testing
+- [x] `WindowsNetworkCommandProvider` - Windows-specific commands
+- [x] `NetworkStatusFormatter` - Display formatting
+- [x] `PortStatusMonitorService` - Basic monitoring logic
 
-### 1.2 Implement Windows Firewall Analyzer
+### 2.2 Display Integration ✅
+- [x] Update `SystemHelpRenderer` to show network troubleshooting
+- [x] Pass `ApplicationConfig` to formatter for real configuration values
+- [x] Remove Unicode characters, use ASCII and `ConsoleColors`
+- [x] Show top 5 firewall rules with "more available" message
 
-- [x] **Implement `WindowsFirewallAnalyzer` class**
-  - [x] Use `INetFwPolicy2` COM interface for Windows Firewall access
-  - [x] Implement rule enumeration for UDP/TCP protocols
-  - [x] Implement rule precedence logic
-  - [x] Handle network location detection (local vs remote)
-  - [x] Return simple `IsAllowed` status with relevant rules
+### 2.3 Test Updates ✅
+- [x] Update `SystemHelpRendererTests` with new constructor parameter
+- [x] Update `ApplicationOrchestratorTests` with new constructor parameter
+- [x] Fix expression tree issues with optional parameters
 
-- [x] **Add Windows Firewall dependencies**
-  - [x] Add COM interop for `INetFwPolicy2`
-  - [x] Add Windows Firewall rule enumeration logic
-  - [x] Add rule state checking (enabled/disabled)
+## Phase 3: Firewall Analysis Implementation 🔄
 
-### 1.3 Implement Windows Network Command Provider
+### 3.1 Basic Rule Analysis (Current Focus)
+- [ ] Implement `INetFwPolicy2` integration in `WindowsFirewallAnalyzer`
+- [ ] Enumerate firewall rules by direction, protocol, and port
+- [ ] Check for both wildcard and host-specific rules
+- [ ] Handle rule priority and order correctly
+- [ ] Return `FirewallAnalysisResult` with relevant rules
 
-- [x] **Implement `WindowsNetworkCommandProvider` class**
-  - [x] Create `GetAddFirewallRuleCommand` method
-  - [x] Create `GetRemoveFirewallRuleCommand` method
-  - [x] Create `GetCheckPortStatusCommand` method
-  - [x] Create `GetTestConnectivityCommand` method
-  - [x] Ensure commands are copy-paste ready for users
+### 3.2 Enhanced Analysis
+- [ ] Detect current network profile (Domain/Private/Public)
+- [ ] Check Windows Firewall service state
+- [ ] Handle application-specific rules for SharpBridge.exe
+- [ ] Consider network interface-specific rules
+- [ ] Distinguish user-controlled vs domain-controlled rules
 
-- [x] **Add command templates**
-  - [x] UDP outbound rule commands
-  - [x] TCP/WebSocket rule commands
-  - [x] Port status checking commands
-  - [x] Rule removal commands
+### 3.3 Advanced Features
+- [ ] Handle time-based rules
+- [ ] Detect rule conflicts and provide troubleshooting
+- [ ] Show which specific rules are affecting connections
+- [ ] Indicate if user can modify blocking rules
+- [ ] Handle edge cases (disabled firewall, "Block All" mode)
 
-### 1.4 Implement Port Status Monitor
-
-- [x] **Implement `PortStatusMonitor` class**
-  - [x] Inject `IFirewallAnalyzer` dependency
-  - [x] Implement local port binding checks
-  - [x] Implement outbound connectivity tests (no UDP packet sending)
-  - [x] Use existing configuration values (`PhoneClient`, `PCClient`)
-  - [x] Handle `UsePortDiscovery` setting for monitoring scope
-  - [x] Implement continuous polling (5-second intervals)
-
-- [x] **Add network testing logic**
-  - [x] Local UDP port 28964 binding test
-  - [x] Outbound UDP 21412 connectivity test
-  - [x] WebSocket port connectivity test
-  - [x] Discovery port connectivity test (when enabled)
-
-## Phase 2: Help System Integration
-
-### 2.1 Implement Network Status Formatter
-
-- [x] **Implement `NetworkStatusFormatter` class**
-  - [x] Inject `INetworkCommandProvider` dependency
-  - [x] Implement `RenderNetworkTroubleshooting` method
-  - [x] Format current status display
-  - [x] Format firewall rules display
-  - [x] Format platform-specific commands
-  - [x] Use existing console color system
-
-- [x] **Add formatting logic**
-  - [x] Status indicators (🟢/🔴/🟡)
-  - [x] Firewall rule listing
-  - [x] Command formatting with proper spacing
-  - [x] Integration with existing help formatting
-
-### 2.2 Extend System Help Renderer
-
-- [x] **Update `SystemHelpRenderer` class**
-  - [x] Inject `INetworkStatusFormatter` dependency
-  - [x] Add `NetworkStatus` parameter to `RenderSystemHelp` method
-  - [x] Add network troubleshooting section to help display
-  - [x] Integrate with existing help formatting patterns
-
-- [x] **Add help integration**
-  - [x] Call `RenderNetworkTroubleshooting` when network status provided
-  - [x] Maintain existing help layout and formatting
-  - [x] Ensure proper section separation
-
-### 2.3 Integrate Command Provider
-
-- [x] **Connect command generation**
-  - [x] Use `INetworkCommandProvider` in `NetworkStatusFormatter`
-  - [x] Generate platform-specific commands for each connection
-  - [x] Ensure commands use actual configuration values
-  - [x] Test command generation with different scenarios
-
-## Phase 3: Service Integration
-
-### 3.1 Update Service Registration
-
-- [x] **Register new services in `ServiceRegistration.cs`**
-  - [x] Register `IPortStatusMonitor` as singleton
-  - [x] Register `IFirewallAnalyzer` as singleton
-  - [x] Register `INetworkCommandProvider` as singleton
-  - [x] Register `INetworkStatusFormatter` as singleton
-
-### 3.2 Update Application Orchestrator
-
-- [x] **Integrate with `ApplicationOrchestrator`**
-  - [x] Inject `IPortStatusMonitor` dependency
-  - [x] Collect network status during initialization
-  - [x] Pass network status to help renderer when needed
-  - [x] Integrate with existing health monitoring system
-
-### 3.3 Update System Help Integration
-
-- [ ] **Connect help system**
-  - [ ] Pass `NetworkStatus` to `SystemHelpRenderer`
-  - [ ] Ensure network troubleshooting appears in F1 help
-  - [ ] Test help display with different network scenarios
-
-## Phase 4: Testing & Validation
+## Phase 4: Testing and Validation
 
 ### 4.1 Unit Tests
-
-- [ ] **Create `WindowsFirewallAnalyzerTests`**
-  - [ ] Test firewall rule analysis logic
-  - [ ] Test rule precedence handling
-  - [ ] Test network location detection
-  - [ ] Mock Windows Firewall API calls
-
-- [ ] **Create `WindowsNetworkCommandProviderTests`**
-  - [ ] Test command generation for different scenarios
-  - [ ] Test command formatting and parameters
-  - [ ] Verify copy-paste ready commands
-
-- [ ] **Create `PortStatusMonitorTests`**
-  - [ ] Test local port binding checks
-  - [ ] Test outbound connectivity tests
-  - [ ] Test configuration-aware monitoring
-  - [ ] Mock network operations
-
-- [ ] **Create `NetworkStatusFormatterTests`**
-  - [ ] Test troubleshooting display formatting
-  - [ ] Test integration with command provider
-  - [ ] Test different network status scenarios
+- [ ] Test all scenarios from `FirewallAnalysisLogic.md`
+- [ ] Mock `INetFwPolicy2` for different rule configurations
+- [ ] Test network profile detection
+- [ ] Test firewall service state detection
+- [ ] Test rule priority and conflict resolution
 
 ### 4.2 Integration Tests
+- [ ] Test on real Windows systems with different configurations
+- [ ] Test with domain-joined vs standalone machines
+- [ ] Test with different network profiles
+- [ ] Test with various firewall rule configurations
 
-- [ ] **Test with different network configurations**
-  - [ ] Discovery enabled vs disabled
-  - [ ] Different iPhone IP addresses
-  - [ ] Different PC host configurations
-  - [ ] Various firewall rule scenarios
-
-- [ ] **Test help system integration**
-  - [ ] Verify network troubleshooting appears in F1 help
-  - [ ] Test with different network status scenarios
-  - [ ] Verify command generation works correctly
-
-### 4.3 Manual Testing
-
-- [ ] **Test firewall analysis**
-  - [ ] Test with existing firewall rules
-  - [ ] Test with missing firewall rules
-  - [ ] Test with conflicting firewall rules
-  - [ ] Test with disabled firewall rules
-
-- [ ] **Test command generation**
-  - [ ] Verify commands work when executed
-  - [ ] Test add/remove firewall rule commands
-  - [ ] Test port status checking commands
-
-## Configuration & Documentation
-
-### 5.1 Configuration Integration
-
-- [ ] **Verify no new configuration required**
-  - [ ] Test with existing `PhoneClient` settings
-  - [ ] Test with existing `PCClient` settings
-  - [ ] Test with `UsePortDiscovery` setting
-  - [ ] Ensure feature works with default configuration
-
-### 5.2 Documentation Updates
-
-- [ ] **Update README.md**
-  - [ ] Add network troubleshooting section
-  - [ ] Document F1 help system features
-  - [ ] Add troubleshooting examples
-
-- [ ] **Update ProjectOverview.md**
-  - [ ] Add network monitoring to architecture diagram
-  - [ ] Document new interfaces and services
-  - [ ] Update implementation status
-
-## Success Criteria Validation
-
-- [ ] **Real-time monitoring works**
-  - [ ] Port status updates every 5 seconds
-  - [ ] No performance impact on main application
-
-- [ ] **Configuration awareness works**
-  - [ ] Monitoring adapts to `UsePortDiscovery` setting
-  - [ ] Correct ports monitored based on configuration
-
-- [ ] **Firewall analysis works**
-  - [ ] Accurate detection of firewall rule issues
-  - [ ] Relevant rules displayed correctly
-  - [ ] `IsAllowed` status reflects actual connectivity
-
-- [ ] **Platform commands work**
-  - [ ] Windows-specific commands generated correctly
-  - [ ] Commands are copy-paste ready
-  - [ ] Commands work when executed by users
-
-- [ ] **Help integration works**
-  - [ ] Network troubleshooting appears in F1 help
-  - [ ] Status and commands display correctly
-  - [ ] Integration with existing help system
-
-- [ ] **Zero configuration works**
-  - [ ] Feature works with existing configuration
-  - [ ] No new configuration files required
-  - [ ] Sensible defaults work correctly
-
-- [ ] **Non-elevated operation works**
-  - [ ] App runs with normal user privileges
-  - [ ] No automatic port manipulation
-  - [ ] Users execute commands manually
-
-## Notes
-
-- **Priority**: Focus on Windows implementation first
-- **Testing**: Emphasize firewall analysis accuracy
-- **User Experience**: Ensure commands are easy to copy-paste
-- **Performance**: Monitor impact of continuous polling
-- **Security**: No automatic firewall rule manipulation
+### 4.3 User Experience Tests
+- [ ] Verify clear status indicators
+- [ ] Test copy-paste commands work correctly
+- [ ] Verify troubleshooting guidance is actionable
+- [ ] Test error handling for firewall service unavailable
 
 ## Implementation Guidelines
 
-### Firewall Analysis
-- **Scope**: Both inbound and outbound rules (especially important for UDP)
-- **Network Detection**: Map IPs/hosts to available networks (localhost vs remote)
-- **Error Handling**: Return "Unknown" status if Windows Firewall API calls fail
-- **Models**: Separate Windows API interop models from simplified consumption models
+### Firewall Analysis Scope
+- **Focus**: Local system firewall settings (not remote service availability)
+- **No active connections**: Don't use `Socket.Connect()` or send UDP packets
+- **Use Windows APIs**: Leverage `INetFwPolicy2` for rule analysis
+- **Consider all rule types**: Application, port, and custom rules
 
-### Port Status Monitoring
-- **No Connection Tests**: Don't send packets or establish connections
-- **Local Ports**: Check if open/closed, no binding checks
-- **Configuration**: Let orchestrator pass configuration values (don't inject IConfigManager)
-- **Network Location**: Detect if PC connections are localhost OR remote hosts
+### Architecture Principles
+- **Separation of concerns**: `PortStatusMonitorService` orchestrates, `IFirewallAnalyzer` analyzes
+- **Configuration-driven**: Use real config values from `IConfigManager`
+- **Platform-agnostic**: Interfaces allow for future Linux/macOS support
+- **Non-elevated**: Application remains non-elevated, only provides commands
 
-### Data Models
-- **FirewallRule**: Separate Windows API structure from simplified consumption model
-- **NetworkStatus**: Include timestamps for when each check was performed 
+### Display Guidelines
+- **System Help only**: No main console display for network status
+- **ASCII characters**: Use `ConsoleColors` instead of Unicode emojis
+- **Actionable commands**: Provide copy-paste ready commands
+- **Clear status**: Show ✓/✗ indicators with color coding
+
+### Testing Strategy
+- **Comprehensive scenarios**: Cover all cases from `FirewallAnalysisLogic.md`
+- **Mock dependencies**: Use Moq for `INetFwPolicy2` and other Windows APIs
+- **Real-world testing**: Test on actual Windows systems
+- **Edge case coverage**: Handle disabled firewall, group policy, etc.
+
+## Current Status
+
+**✅ Phase 1 Complete**: All interfaces, models, and service integration implemented
+**✅ Phase 2 Complete**: Basic implementation with dummy firewall analyzer working
+**🔄 Phase 3 In Progress**: Implementing real Windows Firewall analysis logic
+**⏳ Phase 4 Pending**: Comprehensive testing and validation
+
+## Next Steps
+
+1. **Implement Phase 3.1**: Basic rule analysis using `INetFwPolicy2`
+2. **Add comprehensive unit tests** for all firewall analysis scenarios
+3. **Test on real Windows systems** with different firewall configurations
+4. **Implement Phase 3.2**: Enhanced analysis with network profiles
+5. **Add user-friendly error messages** and troubleshooting guidance 
