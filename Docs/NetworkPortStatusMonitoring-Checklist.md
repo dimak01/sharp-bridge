@@ -39,57 +39,34 @@
 - [x] Update `ApplicationOrchestratorTests` with new constructor parameter
 - [x] Fix expression tree issues with optional parameters
 
-## Phase 3: Firewall Analysis Implementation 🔄
+## Phase 3: Windows Firewall Analysis Implementation 🔄
 
-### 3.1 Basic Rule Analysis (Current Focus)
-- [ ] Implement `INetFwPolicy2` integration in `WindowsFirewallAnalyzer`
-- [ ] Enumerate firewall rules by direction, protocol, and port
-- [ ] Check for both wildcard and host-specific rules
-- [ ] Handle rule priority and order correctly
-- [ ] Return `FirewallAnalysisResult` with relevant rules
+### 3.1 Core Implementation
+- [ ] Follow [FirewallAnalysisImplementation-Checklist.md](FirewallAnalysisImplementation-Checklist.md) for detailed implementation
+- [ ] Replace dummy `WindowsFirewallAnalyzer` with real Windows Firewall analysis
+- [ ] Implement all phases from the detailed checklist
 
-### 3.2 Enhanced Analysis
-- [ ] Detect current network profile (Domain/Private/Public)
-- [ ] Check Windows Firewall service state
-- [ ] Handle application-specific rules for SharpBridge.exe
-- [ ] Consider network interface-specific rules
-- [ ] Distinguish user-controlled vs domain-controlled rules
-
-### 3.3 Advanced Features
-- [ ] Handle time-based rules
-- [ ] Detect rule conflicts and provide troubleshooting
-- [ ] Show which specific rules are affecting connections
-- [ ] Indicate if user can modify blocking rules
-- [ ] Handle edge cases (disabled firewall, "Block All" mode)
-
-## Phase 4: Testing and Validation
-
-### 4.1 Unit Tests
-- [ ] Test all scenarios from `FirewallAnalysisLogic.md`
-- [ ] Mock `INetFwPolicy2` for different rule configurations
-- [ ] Test network profile detection
-- [ ] Test firewall service state detection
-- [ ] Test rule priority and conflict resolution
-
-### 4.2 Integration Tests
+### 3.2 Testing and Validation
+- [ ] Add comprehensive unit tests for firewall analysis scenarios
 - [ ] Test on real Windows systems with different configurations
-- [ ] Test with domain-joined vs standalone machines
-- [ ] Test with different network profiles
-- [ ] Test with various firewall rule configurations
+- [ ] Validate multi-interface analysis accuracy
+- [ ] Test edge cases (disabled firewall, group policy, etc.)
 
-### 4.3 User Experience Tests
-- [ ] Verify clear status indicators
-- [ ] Test copy-paste commands work correctly
-- [ ] Verify troubleshooting guidance is actionable
-- [ ] Test error handling for firewall service unavailable
+## Phase 4: Enhanced Features
+
+### 4.1 Advanced Analysis
+- [ ] Handle time-based firewall rules
+- [ ] Add group policy awareness
+- [ ] Implement rule conflict detection
+- [ ] Support custom rule types
+
+### 4.2 User Experience
+- [ ] Add detailed troubleshooting guidance
+- [ ] Improve error messages for firewall service issues
+- [ ] Optimize performance with large rule sets
+- [ ] Enhance multi-interface display accuracy
 
 ## Implementation Guidelines
-
-### Firewall Analysis Scope
-- **Focus**: Local system firewall settings (not remote service availability)
-- **No active connections**: Don't use `Socket.Connect()` or send UDP packets
-- **Use Windows APIs**: Leverage `INetFwPolicy2` for rule analysis
-- **Consider all rule types**: Application, port, and custom rules
 
 ### Architecture Principles
 - **Separation of concerns**: `PortStatusMonitorService` orchestrates, `IFirewallAnalyzer` analyzes
@@ -102,24 +79,24 @@
 - **ASCII characters**: Use `ConsoleColors` instead of Unicode emojis
 - **Actionable commands**: Provide copy-paste ready commands
 - **Clear status**: Show ✓/✗ indicators with color coding
+- **Multi-interface**: Display relevant rules per interface when applicable
 
 ### Testing Strategy
-- **Comprehensive scenarios**: Cover all cases from `FirewallAnalysisLogic.md`
-- **Mock dependencies**: Use Moq for `INetFwPolicy2` and other Windows APIs
-- **Real-world testing**: Test on actual Windows systems
-- **Edge case coverage**: Handle disabled firewall, group policy, etc.
+- **Comprehensive scenarios**: Cover all cases from `FirewallAnalysisLogic-v2.md`
+- **Mock dependencies**: Use Moq for Windows APIs and COM interfaces
+- **Real-world testing**: Test on actual Windows systems with various configurations
+- **Edge case coverage**: Handle disabled firewall, group policy, complex routing
 
 ## Current Status
 
 **✅ Phase 1 Complete**: All interfaces, models, and service integration implemented
 **✅ Phase 2 Complete**: Basic implementation with dummy firewall analyzer working
 **🔄 Phase 3 In Progress**: Implementing real Windows Firewall analysis logic
-**⏳ Phase 4 Pending**: Comprehensive testing and validation
+**⏳ Phase 4 Pending**: Enhanced features and user experience improvements
 
 ## Next Steps
 
-1. **Implement Phase 3.1**: Basic rule analysis using `INetFwPolicy2`
+1. **Follow `FirewallAnalysisImplementation-Checklist.md`** for detailed firewall analysis implementation
 2. **Add comprehensive unit tests** for all firewall analysis scenarios
 3. **Test on real Windows systems** with different firewall configurations
-4. **Implement Phase 3.2**: Enhanced analysis with network profiles
-5. **Add user-friendly error messages** and troubleshooting guidance 
+4. **Implement Phase 4**: Enhanced features and user experience improvements 
