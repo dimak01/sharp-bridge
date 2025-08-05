@@ -11,7 +11,8 @@ namespace SharpBridge.Interfaces
         /// Renders network troubleshooting section for system help
         /// </summary>
         /// <param name="networkStatus">Current network status to display</param>
+        /// <param name="applicationConfig">Application configuration containing connection settings</param>
         /// <returns>Formatted network troubleshooting content</returns>
-        string RenderNetworkTroubleshooting(NetworkStatus networkStatus);
+        string RenderNetworkTroubleshooting(NetworkStatus networkStatus, ApplicationConfig applicationConfig);
     }
 }

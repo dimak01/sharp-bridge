@@ -69,7 +69,7 @@ namespace SharpBridge.Utilities
             if (networkStatus != null)
             {
                 builder.AppendLine();
-                builder.AppendLine(_networkStatusFormatter.RenderNetworkTroubleshooting(networkStatus));
+                builder.AppendLine(_networkStatusFormatter.RenderNetworkTroubleshooting(networkStatus, applicationConfig));
             }
 
             // Footer
