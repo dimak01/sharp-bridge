@@ -73,6 +73,7 @@ namespace SharpBridge.Services
                 remotePort: "0",        // Any remote port
                 protocol: "UDP");
             status.LocalPortOpen = inboundAnalysis.IsAllowed;
+            status.InboundFirewallAnalysis = inboundAnalysis;
 
             // Check if firewall allows outbound traffic to iPhone (for sending)
             var outboundAnalysis = _firewallAnalyzer.AnalyzeFirewallRules(
@@ -81,9 +82,7 @@ namespace SharpBridge.Services
                 remotePort: port,
                 protocol: "UDP");
             status.OutboundAllowed = outboundAnalysis.IsAllowed;
-
-            // Use outbound analysis as the main firewall analysis (since that's what we display)
-            status.FirewallAnalysis = outboundAnalysis;
+            status.OutboundFirewallAnalysis = outboundAnalysis;
 
             return status;
         }

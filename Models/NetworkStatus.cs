@@ -40,9 +40,14 @@ namespace SharpBridge.Models
         public bool OutboundAllowed { get; set; }
 
         /// <summary>
-        /// Firewall analysis result for iPhone connection
+        /// Firewall analysis result for inbound traffic (local port)
         /// </summary>
-        public FirewallAnalysisResult? FirewallAnalysis { get; set; }
+        public FirewallAnalysisResult? InboundFirewallAnalysis { get; set; }
+
+        /// <summary>
+        /// Firewall analysis result for outbound traffic (remote connection)
+        /// </summary>
+        public FirewallAnalysisResult? OutboundFirewallAnalysis { get; set; }
 
         /// <summary>
         /// Timestamp when iPhone status was last checked

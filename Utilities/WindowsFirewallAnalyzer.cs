@@ -71,7 +71,15 @@ namespace SharpBridge.Utilities
                 return new FirewallAnalysisResult
                 {
                     IsAllowed = isAllowed,
-                    RelevantRules = relevantRules.Take(5).ToList()
+                    RelevantRules = relevantRules,
+                    DefaultActionAllowed = (direction == 1 ? defaultInboundAction : defaultOutboundAction),
+                    ProfileName = interfaceProfile switch
+                    {
+                        1 => "Domain",
+                        2 => "Private",
+                        4 => "Public",
+                        _ => "Unknown"
+                    }
                 };
             }
             catch (Exception ex)
