@@ -44,5 +44,15 @@ namespace SharpBridge.Models
         /// Remote address (if specified)
         /// </summary>
         public string? RemoteAddress { get; set; }
+
+        /// <summary>
+        /// Application name (if specified)
+        /// </summary>
+        public string? ApplicationName { get; set; }
+
+        /// <summary>
+        /// Network profiles this rule applies to
+        /// </summary>
+        public int Profiles { get; set; }
     }
 }
