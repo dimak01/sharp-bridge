@@ -31,38 +31,6 @@ namespace SharpBridge.Services
             try
             {
                 _firewallPolicy = (INetFwPolicy2)new NetFwPolicy2ComObject();
-                // Create policy instance using the correct CLSID and IID
-                // CLSID: E2B3C97F-6AE1-41AC-817A-F6F92166D7DD (NetFwPolicy2)
-                // IID: 98325047-C671-4174-8D81-DEFCD3F03186 (INetFwPolicy2)
-
-                //var clsid = new Guid("E2B3C97F-6AE1-41AC-817A-F6F92166D7DD");
-                //var iid = new Guid("98325047-C671-4174-8D81-DEFCD3F03186");
-
-                //int hr = NativeMethods.CoCreateInstance(
-                //    ref clsid,
-                //    IntPtr.Zero,
-                //    CLSCTX_INPROC_SERVER,
-                //    ref iid,
-                //    out IntPtr pUnk);
-
-                //if (result == 0 && ppv != null)
-                //{
-                //    _firewallPolicy = ppv as INetFwPolicy2;
-
-                //    if (_firewallPolicy != null)
-                //    {
-                //        _logger.Info("Windows Firewall COM objects initialized successfully using CoCreateInstance");
-                //    }
-                //    else
-                //    {
-                //        _logger.Warning("Failed to cast COM object to INetFwPolicy2");
-                //    }
-            //}
-            //    else
-            //    {
-            //        _logger.Warning($"CoCreateInstance failed with HRESULT: 0x{result:X8}");
-            //        _firewallPolicy = null;
-            //    }
             }
             catch (Exception ex)
             {

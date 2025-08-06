@@ -16,5 +16,15 @@ namespace SharpBridge.Models
         /// List of relevant firewall rules that affect this connection
         /// </summary>
         public List<FirewallRule> RelevantRules { get; set; } = new List<FirewallRule>();
+
+        /// <summary>
+        /// Default action for this direction according to active profile (true = Allow, false = Block)
+        /// </summary>
+        public bool DefaultActionAllowed { get; set; }
+
+        /// <summary>
+        /// Name of the active firewall profile (Domain / Private / Public)
+        /// </summary>
+        public string ProfileName { get; set; } = string.Empty;
     }
 }
