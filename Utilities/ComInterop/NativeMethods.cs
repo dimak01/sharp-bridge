@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace SharpBridge.Utilities.ComInterop
@@ -43,6 +44,23 @@ namespace SharpBridge.Utilities.ComInterop
         /// <returns>0 on success, error code on failure</returns>
         [DllImport("iphlpapi.dll", SetLastError = true)]
         public static extern int GetAdapterName(uint ifIndex, System.Text.StringBuilder adapterName, ref uint size);
+
+        /// <summary>
+        /// Creates an instance of a COM object
+        /// </summary>
+        /// <param name="clsid">Class identifier of the COM object</param>
+        /// <param name="pUnkOuter">Pointer to controlling IUnknown</param>
+        /// <param name="dwClsContext">Execution context</param>
+        /// <param name="riid">Reference to interface identifier</param>
+        /// <param name="ppv">Output parameter for the created object</param>
+        /// <returns>HRESULT indicating success or failure</returns>
+        [DllImport("ole32.dll", SetLastError = true)]
+        public static extern int CoCreateInstance(
+            ref System.Guid clsid,
+            System.IntPtr pUnkOuter,
+            uint dwClsContext,
+            ref System.Guid riid,
+            out object ppv);
 
         /// <summary>
         /// Windows error codes

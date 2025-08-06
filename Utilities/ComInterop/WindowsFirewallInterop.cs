@@ -1,96 +1,68 @@
+using System;
+using System.Collections;
 using System.Runtime.InteropServices;
 
 namespace SharpBridge.Utilities.ComInterop
 {
-    /// <summary>
-    /// Windows Firewall Policy COM interface for accessing firewall rules and state
-    /// </summary>
+
+
+
+
     [ComImport]
-    [Guid("E2B3C97F-6AE1-41AC-817A-F6F92166D7DD")]
+    [Guid("E2B3C97F-6AE1-41AC-817A-F6F92166D7DD")] // CLSID for NetFwPolicy2
+    [ClassInterface(ClassInterfaceType.None)]
+    public class NetFwPolicy2ComObject { }
+
+
+    [ComImport]
+    [Guid("98325047-C671-4174-8D81-DEFCD3F03186")]
     [InterfaceType(ComInterfaceType.InterfaceIsDual)]
     public interface INetFwPolicy2
     {
-        // Firewall state and profile methods
-        bool get_FirewallEnabled(int profile);
-        bool get_BlockAllInboundTraffic(int profile);
-        int get_CurrentProfileTypes();
+        int CurrentProfileTypes { get; }
+        bool get_FirewallEnabled(int profileType);
+        bool get_BlockAllInboundTraffic(int profileType);
+        int get_DefaultInboundAction(int profileType);
+        int get_DefaultOutboundAction(int profileType);
 
-        // Rules collection
-        INetFwRules get_Rules();
+        INetFwRules Rules { get; }
     }
 
-    /// <summary>
-    /// Windows Firewall Rules collection COM interface
-    /// </summary>
     [ComImport]
-    [Guid("9C4C6277-5027-441E-AFA0-E31DBB6F9F06")]
+    [Guid("9C4C6277-5027-441E-ABB1-58F24D10A9E3")] // IID for INetFwRules
     [InterfaceType(ComInterfaceType.InterfaceIsDual)]
-    public interface INetFwRules
+    public interface INetFwRules : IEnumerable
     {
-        // Rule enumeration
-        int get_Count();
-        INetFwRule Item(int index);
-        object get__NewEnum();
+        int Count { get; }
+        void Add([In] INetFwRule rule);
+        void Remove([In] string name);
+        INetFwRule Item(string name);
+        new IEnumerator GetEnumerator();
     }
 
-    /// <summary>
-    /// Windows Firewall Rule COM interface for individual rule properties
-    /// </summary>
     [ComImport]
-    [Guid("F7898AF5-DAC5-4C35-A934-86F1F5CC9C4F")]
+    [Guid("AF230D27-BABA-4E42-ACED-F524F22CFCE2")] // IID for INetFwRule
     [InterfaceType(ComInterfaceType.InterfaceIsDual)]
     public interface INetFwRule
     {
-        // Rule properties
-        string get_Name();
-        bool get_Enabled();
-        int get_Direction();
-        int get_Protocol();
-        string get_LocalPorts();
-        string get_RemotePorts();
-        string get_LocalAddresses();
-        string get_RemoteAddresses();
-        string get_ApplicationName();
-        int get_Profiles();
-        int get_Action();
+        string Name { get; set; }
+        string Description { get; set; }
+        string ApplicationName { get; set; }
+        string ServiceName { get; set; }
+        int Protocol { get; set; }
+        string LocalPorts { get; set; }
+        string RemotePorts { get; set; }
+        string LocalAddresses { get; set; }
+        string RemoteAddresses { get; set; }
+        int Direction { get; set; }
+        bool Enabled { get; set; }
+        string Grouping { get; set; }
+        string IcmpTypesAndCodes { get; set; }
+        string Interfaces { get; set; }
+        int InterfaceTypes { get; set; }
+        int Profiles { get; set; }
+        int Action { get; set; }
+        bool EdgeTraversal { get; set; }
     }
 
-    /// <summary>
-    /// Windows Firewall profile constants
-    /// </summary>
-    public static class NetFwProfile2
-    {
-        public const int Domain = 1;
-        public const int Private = 2;
-        public const int Public = 4;
-        public const int All = 7; // NET_FW_PROFILE2_ALL
-    }
-
-    /// <summary>
-    /// Windows Firewall direction constants
-    /// </summary>
-    public static class NetFwRuleDirection
-    {
-        public const int Inbound = 1;
-        public const int Outbound = 2;
-    }
-
-    /// <summary>
-    /// Windows Firewall action constants
-    /// </summary>
-    public static class NetFwAction
-    {
-        public const int Block = 0;
-        public const int Allow = 1;
-    }
-
-    /// <summary>
-    /// Windows Firewall protocol constants
-    /// </summary>
-    public static class NetFwProtocol
-    {
-        public const int Any = -1;
-        public const int TCP = 6;
-        public const int UDP = 17;
-    }
 }
