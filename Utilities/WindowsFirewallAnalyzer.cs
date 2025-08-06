@@ -43,14 +43,18 @@ namespace SharpBridge.Utilities
                 var targetInterface = GetBestInterface(remoteHost);
                 var interfaceProfile = GetInterfaceProfile(targetInterface);
 
-                // 2. Connection Direction Analysis
+                // 2. Get Default Actions for both directions
+                var defaultInboundAction = _ruleEngine.GetDefaultAction(1, interfaceProfile); // Inbound
+                var defaultOutboundAction = _ruleEngine.GetDefaultAction(2, interfaceProfile); // Outbound
+
+                // 3. Connection Direction Analysis
                 var direction = localPort != null ? 1 : 2; // 1 = Inbound, 2 = Outbound
                 var protocolValue = GetProtocolValue(protocol);
 
                 _logger.Debug($"Analyzing {protocol} connection: direction={(direction == 1 ? "inbound" : "outbound")}, " +
                              $"target={remoteHost}:{remotePort}, interface={targetInterface}, profile={interfaceProfile}, firewall={firewallState}");
 
-                // 3. Get Relevant Rules
+                // 4. Get Relevant Rules
                 var relevantRules = _ruleEngine.GetRelevantRules(
                     direction: direction,
                     protocol: protocolValue,
@@ -59,8 +63,8 @@ namespace SharpBridge.Utilities
                     targetPort: remotePort,
                     localPort: localPort);
 
-                // 4. Apply Windows Firewall Precedence Logic
-                var isAllowed = EvaluatePrecedence(relevantRules, firewallState, direction);
+                // 5. Apply Windows Firewall Precedence Logic
+                var isAllowed = EvaluatePrecedence(relevantRules, firewallState, direction, defaultInboundAction, defaultOutboundAction);
 
                 _logger.Debug($"Found {relevantRules.Count} relevant rules, connection allowed: {isAllowed}");
 
@@ -162,7 +166,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Evaluates firewall rules using Windows Firewall precedence logic
         /// </summary>
-        private bool EvaluatePrecedence(List<FirewallRule> rules, bool firewallEnabled, int direction)
+        private bool EvaluatePrecedence(List<FirewallRule> rules, bool firewallEnabled, int direction, bool defaultInboundAction, bool defaultOutboundAction)
         {
             if (!firewallEnabled)
             {
@@ -172,8 +176,12 @@ namespace SharpBridge.Utilities
 
             if (!rules.Any())
             {
-                _logger.Debug("No relevant rules found - default deny");
-                return false;
+                // No explicit rules found - use the appropriate default action
+                var defaultAction = direction == 1 ? defaultInboundAction : defaultOutboundAction;
+                var directionName = direction == 1 ? "inbound" : "outbound";
+                var actionName = defaultAction ? "allow" : "deny";
+                _logger.Debug($"No relevant rules found - using default {actionName} for {directionName} connections");
+                return defaultAction;
             }
 
             // Windows Firewall precedence: Block > Allow by specificity
@@ -191,8 +199,12 @@ namespace SharpBridge.Utilities
                 return true;
             }
 
-            _logger.Debug("No relevant allow/block rules found - default deny");
-            return false; // Default deny
+            // No explicit allow/block rules found - use the appropriate default action
+            var defaultActionForNoAllowBlock = direction == 1 ? defaultInboundAction : defaultOutboundAction;
+            var directionName2 = direction == 1 ? "inbound" : "outbound";
+            var actionName2 = defaultActionForNoAllowBlock ? "allow" : "deny";
+            _logger.Debug($"No relevant allow/block rules found - using default {actionName2} for {directionName2} connections");
+            return defaultActionForNoAllowBlock;
         }
     }
 }

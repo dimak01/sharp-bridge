@@ -5,8 +5,25 @@ using System.Runtime.InteropServices;
 namespace SharpBridge.Utilities.ComInterop
 {
 
+    /// <summary>
+    /// Windows Firewall profile constants
+    /// </summary>
+    public static class NetFwProfile2
+    {
+        public const int Domain = 1;
+        public const int Private = 2;
+        public const int Public = 4;
+        public const int All = 7; // NET_FW_PROFILE2_ALL
+    }
 
-
+    /// <summary>
+    /// Windows Firewall action constants
+    /// </summary>
+    public static class NetFwAction
+    {
+        public const int Block = 0;
+        public const int Allow = 1;
+    }
 
     [ComImport]
     [Guid("E2B3C97F-6AE1-41AC-817A-F6F92166D7DD")] // CLSID for NetFwPolicy2
@@ -20,12 +37,12 @@ namespace SharpBridge.Utilities.ComInterop
     public interface INetFwPolicy2
     {
         int CurrentProfileTypes { get; }
-        bool get_FirewallEnabled(int profileType);
-        bool get_BlockAllInboundTraffic(int profileType);
-        int get_DefaultInboundAction(int profileType);
-        int get_DefaultOutboundAction(int profileType);
-
         INetFwRules Rules { get; }
+
+        int DefaultInboundAction(int profileType);
+        int DefaultOutboundAction(int profileType);
+        bool FirewallEnabled(int profileType);
+        bool BlockAllInboundTraffic(int profileType);
     }
 
     [ComImport]
