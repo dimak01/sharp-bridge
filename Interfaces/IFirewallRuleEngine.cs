@@ -88,5 +88,13 @@ namespace SharpBridge.Interfaces
         /// <param name="address">Address to normalize</param>
         /// <returns>Normalized address</returns>
         string NormalizeAddress(string address);
+
+        /// <summary>
+        /// Gets the default firewall action for a specific direction and profile.
+        /// </summary>
+        /// <param name="direction">1 for Inbound, 2 for Outbound</param>
+        /// <param name="profile">Profile type (Domain/Private/Public)</param>
+        /// <returns>True if default action is Allow, false if Block</returns>
+        bool GetDefaultAction(int direction, int profile);
     }
 }

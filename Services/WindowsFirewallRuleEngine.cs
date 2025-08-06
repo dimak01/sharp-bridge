@@ -30,23 +30,39 @@ namespace SharpBridge.Services
         {
             try
             {
-                // Create policy instance
-                var type = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
-#pragma warning disable CS8604 // Possible null reference argument.
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-                _firewallPolicy = (INetFwPolicy2)Activator.CreateInstance(type);
-#pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
-#pragma warning restore CS8604 // Possible null reference argument.
+                _firewallPolicy = (INetFwPolicy2)new NetFwPolicy2ComObject();
+                // Create policy instance using the correct CLSID and IID
+                // CLSID: E2B3C97F-6AE1-41AC-817A-F6F92166D7DD (NetFwPolicy2)
+                // IID: 98325047-C671-4174-8D81-DEFCD3F03186 (INetFwPolicy2)
 
+                //var clsid = new Guid("E2B3C97F-6AE1-41AC-817A-F6F92166D7DD");
+                //var iid = new Guid("98325047-C671-4174-8D81-DEFCD3F03186");
 
-                if (_firewallPolicy != null)
-                {
-                    _logger.Info("Windows Firewall COM objects initialized successfully");
-                }
-                else
-                {
-                    _logger.Warning("Failed to create Windows Firewall COM object - all methods failed");
-                }
+                //int hr = NativeMethods.CoCreateInstance(
+                //    ref clsid,
+                //    IntPtr.Zero,
+                //    CLSCTX_INPROC_SERVER,
+                //    ref iid,
+                //    out IntPtr pUnk);
+
+                //if (result == 0 && ppv != null)
+                //{
+                //    _firewallPolicy = ppv as INetFwPolicy2;
+
+                //    if (_firewallPolicy != null)
+                //    {
+                //        _logger.Info("Windows Firewall COM objects initialized successfully using CoCreateInstance");
+                //    }
+                //    else
+                //    {
+                //        _logger.Warning("Failed to cast COM object to INetFwPolicy2");
+                //    }
+            //}
+            //    else
+            //    {
+            //        _logger.Warning($"CoCreateInstance failed with HRESULT: 0x{result:X8}");
+            //        _firewallPolicy = null;
+            //    }
             }
             catch (Exception ex)
             {
@@ -82,6 +98,52 @@ namespace SharpBridge.Services
             {
                 _logger.Error($"Error getting relevant rules: {ex.Message}");
                 return new List<FirewallRule>();
+            }
+        }
+
+        /// <summary>
+        /// Gets the default firewall action for a specific direction and profile
+        /// </summary>
+        /// <param name="direction">1 for Inbound, 2 for Outbound</param>
+        /// <param name="profile">Profile type (Domain/Private/Public)</param>
+        /// <returns>True if default action is Allow, false if Block</returns>
+        public bool GetDefaultAction(int direction, int profile)
+        {
+            if (_firewallPolicy == null)
+            {
+                _logger.Warning("Firewall policy not available, defaulting to block");
+                return false; // Default to block for safety
+            }
+
+            try
+            {
+                // Debug: Let's see what methods are available on the dynamic object
+                _logger.Debug($"Firewall policy type: {_firewallPolicy?.GetType().Name ?? "null"}");
+
+                int defaultAction = 0; // Initialize with safe default
+                if (direction == 1) // Inbound
+                {
+                    defaultAction = _firewallPolicy?.DefaultInboundAction(profile) ?? 0;
+                    _logger.Debug($"Successfully called get_DefaultInboundAction for profile {profile}");
+                }
+                else // Outbound
+                {
+                    defaultAction = _firewallPolicy?.DefaultOutboundAction(profile) ?? 0;
+                    _logger.Debug($"Successfully called get_DefaultOutboundAction for profile {profile}");
+                }
+
+                // NetFwAction.Allow = 1, NetFwAction.Block = 0
+                var isAllowed = defaultAction == Utilities.ComInterop.NetFwAction.Allow;
+
+                var directionName = direction == 1 ? "inbound" : "outbound";
+                var actionName = isAllowed ? "Allow" : "Block";
+                _logger.Debug($"Default {directionName} action for profile {profile}: {actionName}");
+                return isAllowed;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error getting default firewall action: {ex.Message}");
+                return false; // Default to block for safety
             }
         }
 
@@ -344,17 +406,20 @@ namespace SharpBridge.Services
         }
 
         private List<FirewallRule> FilterRules(
-            List<FirewallRule> rules,
-            int direction,
-            int protocol,
-            int profile,
-            string? targetHost,
-            string? targetPort,
-            string? localPort)
+    List<FirewallRule> rules,
+    int direction,
+    int protocol,
+    int profile,
+    string? targetHost,
+    string? targetPort,
+    string? localPort)
         {
             // Convert magic integers to human-readable strings
             var desiredDirection = direction == 1 ? "Inbound" : "Outbound";
             var desiredProtocol = GetProtocolName(protocol);
+
+            // Get current application path for comparison
+            var currentExePath = Process.GetCurrentProcess().MainModule?.FileName;
 
             return rules.Where(rule =>
             {
@@ -369,6 +434,20 @@ namespace SharpBridge.Services
                 // Filter by profile (using the existing helper that handles bitmasks)
                 if (!IsProfileRule(rule, profile))
                     return false;
+
+                // CRITICAL: Filter by application scope
+                // Only include rules that apply to our app OR are global (no app specified)
+                if (!string.IsNullOrEmpty(rule.ApplicationName))
+                {
+                    // Rule has an application specified - check if it's our app
+                    var ruleAppPath = CleanApplicationPath(rule.ApplicationName);
+                    if (!string.Equals(ruleAppPath, currentExePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Rule applies to a different application - exclude it
+                        return false;
+                    }
+                }
+                // If rule.ApplicationName is null/empty, it's a global rule - include it
 
                 // Filter by target if specified
                 if (!string.IsNullOrEmpty(targetHost) && !string.IsNullOrEmpty(targetPort))
@@ -427,6 +506,9 @@ namespace SharpBridge.Services
             };
         }
 
+        /// <summary>
+        /// Cleans application path by stripping quotes and normalizing for comparison
+        /// </summary>
         private static string CleanApplicationPath(string input)
         {
             return input.Trim().Trim('"').Trim('\'');
