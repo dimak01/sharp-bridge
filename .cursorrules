@@ -74,3 +74,6 @@ When making significant changes, consider updating:
 - ProjectOverview.md for architectural changes
 - Release notes for new features or breaking changes
 - Relevant feature-specific documentation 
+
+## Other very important notes for AI
+- NEVER RUN OUR APPLICATION OR EXECUTE ANY OTHER TEMPORARY SCRIPTS WHEN DEBUGGING/TROUBLESHOOTING/VALIDATING/EXECUTING ANY TERMINAL COMMANDS!
