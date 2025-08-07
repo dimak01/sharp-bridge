@@ -13,16 +13,16 @@ using SharpBridge.Utilities.ComInterop;
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Windows implementation of firewall rule engine using COM interfaces.
-    /// Handles rule enumeration, filtering, and matching for Windows Firewall analysis.
+    /// Windows implementation of firewall engine using COM interfaces and Windows APIs.
+    /// Handles firewall rules, network interface detection, and Windows-specific firewall operations.
     /// </summary>
-    public class WindowsFirewallRuleEngine : IFirewallRuleEngine, IDisposable
+    public class WindowsFirewallEngine : IFirewallEngine, IDisposable
     {
         private readonly IAppLogger _logger;
         private dynamic? _firewallPolicy;
         private bool _disposed;
 
-        public WindowsFirewallRuleEngine(IAppLogger logger)
+        public WindowsFirewallEngine(IAppLogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             InitializeComObjects();
@@ -774,6 +774,53 @@ namespace SharpBridge.Services
                 NLM_NETWORK_CATEGORY.Public => NetFwProfile2.Public,   // Public (0) -> Public (4)
                 _ => NetFwProfile2.Private // Default to Private for unknown categories
             };
+        }
+
+        /// <summary>
+        /// Gets the best network interface for reaching a target host using Windows GetBestInterface API.
+        /// Encapsulates the P/Invoke call to keep it isolated from business logic.
+        /// </summary>
+        /// <param name="targetHost">Target IP address or hostname</param>
+        /// <returns>Windows interface index, or 0 if unable to determine</returns>
+        public int GetBestInterface(string targetHost)
+        {
+            try
+            {
+                // Handle special cases
+                if (string.IsNullOrEmpty(targetHost) || targetHost == "localhost" || targetHost == "127.0.0.1")
+                {
+                    _logger.Debug("Localhost target detected - using loopback interface (index 1)");
+                    return 1; // Loopback interface
+                }
+
+                // Parse target IP address
+                if (!IPAddress.TryParse(targetHost, out var targetAddr))
+                {
+                    _logger.Debug($"Unable to parse target host '{targetHost}' - defaulting to interface 0");
+                    return 0; // Default interface
+                }
+
+                // Call Windows GetBestInterface API
+                var targetBytes = targetAddr.GetAddressBytes();
+                var targetInt = BitConverter.ToUInt32(targetBytes, 0);
+
+                var result = NativeMethods.GetBestInterface(targetInt, out uint bestInterface);
+                if (result == 0) // NO_ERROR
+                {
+                    _logger.Debug($"GetBestInterface for {targetHost} returned interface {bestInterface}");
+                    return (int)bestInterface;
+                }
+                else
+                {
+                    _logger.Warning($"GetBestInterface failed for {targetHost} with error code {result} - defaulting to interface 0");
+                    return 0; // Default interface
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Error in GetBestInterface for {targetHost}: {ex.Message} - defaulting to interface 0");
+                return 0; // Default interface
+            }
         }
     }
 }

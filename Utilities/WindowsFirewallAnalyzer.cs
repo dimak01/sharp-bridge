@@ -13,10 +13,10 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class WindowsFirewallAnalyzer : IFirewallAnalyzer
     {
-        private readonly IFirewallRuleEngine _ruleEngine;
+        private readonly IFirewallEngine _ruleEngine;
         private readonly IAppLogger _logger;
 
-        public WindowsFirewallAnalyzer(IFirewallRuleEngine ruleEngine, IAppLogger logger)
+        public WindowsFirewallAnalyzer(IFirewallEngine ruleEngine, IAppLogger logger)
         {
             _ruleEngine = ruleEngine ?? throw new ArgumentNullException(nameof(ruleEngine));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
