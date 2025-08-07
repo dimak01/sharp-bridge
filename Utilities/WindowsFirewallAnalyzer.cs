@@ -39,7 +39,7 @@ namespace SharpBridge.Utilities
             try
             {
                 // 1. Environment Detection
-                var firewallState = GetFirewallState();
+                var firewallState = _ruleEngine.GetFirewallState();
                 var targetInterface = GetBestInterface(remoteHost);
                 var interfaceProfile = GetInterfaceProfile(targetInterface);
 
@@ -101,24 +101,6 @@ namespace SharpBridge.Utilities
                 "UDP" => 17,
                 _ => 256 // Any
             };
-        }
-
-        /// <summary>
-        /// Gets the current firewall state for the private profile
-        /// </summary>
-        private bool GetFirewallState()
-        {
-            try
-            {
-                // For now, assume firewall is enabled
-                // TODO: Implement actual firewall state detection via COM
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug($"Error getting firewall state: {ex.Message}");
-                return true; // Default to enabled for safety
-            }
         }
 
         /// <summary>
