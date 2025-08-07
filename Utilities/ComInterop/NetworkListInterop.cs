@@ -15,13 +15,61 @@ namespace SharpBridge.Utilities.ComInterop
         object GetNetworks(int Flags);
         object GetNetworkConnections();
 
-        // Note: We don't need the specific network/connection methods for our use case
-        // We can use .NET NetworkInterface.GetAllNetworkInterfaces() instead
+        // Additional methods we need
+        object GetNetwork(Guid networkId);
+        object GetNetworkConnection(Guid networkConnectionId);
+        bool IsConnectedToInternet { get; }
+        bool IsConnected { get; }
+        int GetConnectivity(int Flags);
     }
 
-    // Note: INetwork and INetworkConnection interfaces are not needed for our use case
-    // We can use .NET NetworkInterface.GetAllNetworkInterfaces() for interface enumeration
-    // and INetworkListManager for network profile detection
+    /// <summary>
+    /// Network List Manager COM class
+    /// </summary>
+    [ComImport]
+    [Guid("DCB00000-570F-4A9B-8D69-199FDBA5723B")] // CLSID for NetworkListManager
+    [ClassInterface(ClassInterfaceType.None)]
+    public class NetworkListManagerComObject { }
+
+    /// <summary>
+    /// Network connection COM interface
+    /// </summary>
+    [ComImport]
+    [Guid("DCB00005-570F-4A9B-8D69-199FDBA5723B")]
+    [InterfaceType(ComInterfaceType.InterfaceIsDual)]
+    public interface INetworkConnection
+    {
+        object GetNetwork();
+        bool IsConnectedToInternet { get; }
+        bool IsConnected { get; }
+        int GetConnectivity();
+        Guid GetConnectionId();
+        Guid GetAdapterId();
+        Guid GetDomainType();
+    }
+
+    /// <summary>
+    /// Network COM interface  
+    /// </summary>
+    [ComImport]
+    [Guid("DCB00002-570F-4A9B-8D69-199FDBA5723B")]
+    [InterfaceType(ComInterfaceType.InterfaceIsDual)]
+    public interface INetwork
+    {
+        string GetName();
+        void SetName(string szNetworkNewName);
+        string GetDescription();
+        void SetDescription(string szDescription);
+        Guid GetNetworkId();
+        Guid GetDomainType();
+        object GetNetworkConnections();
+        void GetTimeCreatedAndConnected(out uint pdwLowDateTimeCreated, out uint pdwHighDateTimeCreated, out uint pdwLowDateTimeConnected, out uint pdwHighDateTimeConnected);
+        bool IsConnectedToInternet { get; }
+        bool IsConnected { get; }
+        int GetConnectivity();
+        int GetCategory();
+        void SetCategory(int NewCategory);
+    }
 
     /// <summary>
     /// Network category constants

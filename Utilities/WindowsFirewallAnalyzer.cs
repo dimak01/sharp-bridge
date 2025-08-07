@@ -41,7 +41,7 @@ namespace SharpBridge.Utilities
                 // 1. Environment Detection
                 var firewallState = _ruleEngine.GetFirewallState();
                 var targetInterface = GetBestInterface(remoteHost);
-                var interfaceProfile = GetInterfaceProfile(targetInterface);
+                var interfaceProfile = _ruleEngine.GetInterfaceProfile(targetInterface);
 
                 // 2. Get Default Actions for both directions
                 var defaultInboundAction = _ruleEngine.GetDefaultAction(1, interfaceProfile); // Inbound
@@ -132,24 +132,6 @@ namespace SharpBridge.Utilities
             {
                 _logger.Debug($"Error getting best interface for {targetHost}: {ex.Message}");
                 return 0; // Default to loopback
-            }
-        }
-
-        /// <summary>
-        /// Gets the network profile for the specified interface
-        /// </summary>
-        private int GetInterfaceProfile(int interfaceIndex)
-        {
-            try
-            {
-                // For now, use Private profile (2) as default
-                // TODO: Implement actual interface profile detection via Network List Manager COM
-                return 2; // NET_FW_PROFILE2_PRIVATE
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug($"Error getting interface profile: {ex.Message}");
-                return 2; // Default to Private profile
             }
         }
 
