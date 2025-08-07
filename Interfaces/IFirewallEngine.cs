@@ -6,7 +6,7 @@ namespace SharpBridge.Interfaces
     /// Interface for Windows Firewall rule enumeration and filtering.
     /// Handles the core rule analysis engine functionality for firewall analysis.
     /// </summary>
-    public interface IFirewallRuleEngine
+    public interface IFirewallEngine
     {
         /// <summary>
         /// Gets all relevant firewall rules for a specific connection scenario.

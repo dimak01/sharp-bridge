@@ -188,7 +188,7 @@ namespace SharpBridge
                 ));
 
             // Register network monitoring services
-            services.AddSingleton<IFirewallRuleEngine, WindowsFirewallRuleEngine>();
+            services.AddSingleton<IFirewallEngine, WindowsFirewallEngine>();
             services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
             services.AddSingleton<INetworkCommandProvider, WindowsNetworkCommandProvider>();
             services.AddSingleton<INetworkStatusFormatter, NetworkStatusFormatter>();
