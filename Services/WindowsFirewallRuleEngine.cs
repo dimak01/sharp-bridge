@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
 using SharpBridge.Interfaces;
@@ -614,6 +615,165 @@ namespace SharpBridge.Services
                 _logger.Warning($"Error getting current profiles: {ex.Message} - defaulting to Private");
                 return NetFwProfile2.Private; // Fail-safe: assume Private
             }
+        }
+
+        /// <summary>
+        /// Gets the network profile for a specific network interface.
+        /// Maps Windows interface index to firewall profile using Network List Manager.
+        /// </summary>
+        /// <param name="interfaceIndex">Windows interface index from GetBestInterface()</param>
+        /// <returns>Network profile (Domain=1, Private=2, Public=4)</returns>
+        public int GetInterfaceProfile(int interfaceIndex)
+        {
+            try
+            {
+                // Handle loopback special case
+                if (interfaceIndex == 0 || interfaceIndex == 1)
+                {
+                    _logger.Debug("Loopback interface detected - using Private profile");
+                    return NetFwProfile2.Private; // Loopback is always Private
+                }
+
+                // Step 1: Find the NetworkInterface that matches our interface index
+                var targetInterface = FindNetworkInterfaceByIndex(interfaceIndex);
+                if (targetInterface == null)
+                {
+                    _logger.Debug($"Interface {interfaceIndex} not found - defaulting to Private profile");
+                    return NetFwProfile2.Private;
+                }
+
+                _logger.Debug($"Found interface {interfaceIndex}: {targetInterface.Name} ({targetInterface.Description})");
+
+                // Step 2: Use Network List Manager to get the network category
+                var networkCategory = GetNetworkCategoryForInterface(targetInterface);
+
+                // Step 3: Map NLM category to firewall profile
+                var firewallProfile = MapNetworkCategoryToFirewallProfile(networkCategory);
+
+                _logger.Debug($"Interface {interfaceIndex} mapped to category {networkCategory}, firewall profile {firewallProfile}");
+                return firewallProfile;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Error detecting interface profile for index {interfaceIndex}: {ex.Message} - defaulting to Private");
+                return NetFwProfile2.Private; // Fail-safe: assume Private
+            }
+        }
+
+        /// <summary>
+        /// Finds a NetworkInterface by its Windows interface index
+        /// </summary>
+        private NetworkInterface? FindNetworkInterfaceByIndex(int interfaceIndex)
+        {
+            try
+            {
+                var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+
+                foreach (var ni in networkInterfaces)
+                {
+                    // Skip non-operational interfaces
+                    if (ni.OperationalStatus != OperationalStatus.Up)
+                        continue;
+
+                    var props = ni.GetIPProperties();
+
+                    // Try to match by IPv4 interface index
+                    try
+                    {
+                        var ipv4Props = props.GetIPv4Properties();
+                        if (ipv4Props?.Index == interfaceIndex)
+                        {
+                            _logger.Debug($"Matched interface index {interfaceIndex} to {ni.Name} via IPv4 properties");
+                            return ni;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug($"Error getting IPv4 properties for {ni.Name}: {ex.Message}");
+                    }
+                }
+
+                _logger.Debug($"No matching NetworkInterface found for index {interfaceIndex}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"Error finding NetworkInterface by index: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the network category for a NetworkInterface using Network List Manager
+        /// </summary>
+        private int GetNetworkCategoryForInterface(NetworkInterface networkInterface)
+        {
+            try
+            {
+                // Create Network List Manager COM object
+                var networkListManager = new NetworkListManagerComObject() as INetworkListManager;
+                if (networkListManager == null)
+                {
+                    _logger.Debug("Failed to create NetworkListManager COM object - defaulting to Private category");
+                    return NLM_NETWORK_CATEGORY.Private;
+                }
+
+                // Get all network connections
+                dynamic connections = networkListManager.GetNetworkConnections();
+
+                // Enumerate connections to find one matching our interface
+                foreach (dynamic connection in connections)
+                {
+                    try
+                    {
+                        var connectionInterface = connection as INetworkConnection;
+                        if (connectionInterface == null) continue;
+
+                        // Get the network for this connection
+                        dynamic networkObj = connectionInterface.GetNetwork();
+                        var network = networkObj as INetwork;
+                        if (network == null) continue;
+
+                        // Get network category
+                        var category = network.GetCategory();
+
+                        _logger.Debug($"Found network connection with category {category} for interface");
+
+                        // For simplicity, return the first connected network's category
+                        // In practice, we might need more sophisticated matching
+                        if (connectionInterface.IsConnected)
+                        {
+                            return category;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Debug($"Error processing network connection: {ex.Message}");
+                    }
+                }
+
+                _logger.Debug("No matching network connection found - defaulting to Private category");
+                return NLM_NETWORK_CATEGORY.Private;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"Error getting network category via NLM: {ex.Message} - defaulting to Private");
+                return NLM_NETWORK_CATEGORY.Private;
+            }
+        }
+
+        /// <summary>
+        /// Maps Network List Manager category to Windows Firewall profile
+        /// </summary>
+        private static int MapNetworkCategoryToFirewallProfile(int nlmCategory)
+        {
+            return nlmCategory switch
+            {
+                NLM_NETWORK_CATEGORY.Domain => NetFwProfile2.Domain,   // Domain (2) -> Domain (1)
+                NLM_NETWORK_CATEGORY.Private => NetFwProfile2.Private, // Private (1) -> Private (2) 
+                NLM_NETWORK_CATEGORY.Public => NetFwProfile2.Public,   // Public (0) -> Public (4)
+                _ => NetFwProfile2.Private // Default to Private for unknown categories
+            };
         }
     }
 }

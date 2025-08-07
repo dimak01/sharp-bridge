@@ -109,5 +109,13 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <returns>Bitwise combination of active profiles (Domain=1, Private=2, Public=4)</returns>
         int GetCurrentProfiles();
+
+        /// <summary>
+        /// Gets the network profile for a specific network interface.
+        /// Maps Windows interface index to firewall profile using Network List Manager.
+        /// </summary>
+        /// <param name="interfaceIndex">Windows interface index from GetBestInterface()</param>
+        /// <returns>Network profile (Domain=1, Private=2, Public=4)</returns>
+        int GetInterfaceProfile(int interfaceIndex);
     }
 }
