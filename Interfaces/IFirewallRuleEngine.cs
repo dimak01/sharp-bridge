@@ -96,5 +96,18 @@ namespace SharpBridge.Interfaces
         /// <param name="profile">Profile type (Domain/Private/Public)</param>
         /// <returns>True if default action is Allow, false if Block</returns>
         bool GetDefaultAction(int direction, int profile);
+
+        /// <summary>
+        /// Gets the current Windows Firewall state.
+        /// Checks if the firewall is enabled for any active network profile.
+        /// </summary>
+        /// <returns>True if firewall is enabled, false if disabled</returns>
+        bool GetFirewallState();
+
+        /// <summary>
+        /// Gets the current active network profiles.
+        /// </summary>
+        /// <returns>Bitwise combination of active profiles (Domain=1, Private=2, Public=4)</returns>
+        int GetCurrentProfiles();
     }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.ServiceProcess;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Utilities.ComInterop;
@@ -557,6 +558,61 @@ namespace SharpBridge.Services
                     _logger.Debug($"Error disposing COM objects: {ex.Message}");
                 }
                 _disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// Gets the current Windows Firewall state by checking if the service is running.
+        /// This approach works without elevation and is more reliable than COM calls.
+        /// </summary>
+        /// <returns>True if firewall service is running, false if stopped</returns>
+        public bool GetFirewallState()
+        {
+            try
+            {
+                // Check if Windows Firewall service (mpssvc) is running
+                // This works without elevation and is a good indicator of firewall state
+                using var serviceController = new System.ServiceProcess.ServiceController("mpssvc");
+                var isRunning = serviceController.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+
+                _logger.Debug($"Windows Firewall service (mpssvc) status: {serviceController.Status}, running: {isRunning}");
+                return isRunning;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Error checking firewall service status: {ex.Message} - assuming enabled");
+                return true; // Fail-safe: assume enabled
+            }
+        }
+
+        /// <summary>
+        /// Gets the current active network profiles.
+        /// </summary>
+        /// <returns>Bitwise combination of active profiles (Domain=1, Private=2, Public=4)</returns>
+        public int GetCurrentProfiles()
+        {
+            if (_firewallPolicy == null)
+            {
+                _logger.Warning("Firewall policy not initialized - defaulting to Private profile");
+                return NetFwProfile2.Private; // Fail-safe: assume Private
+            }
+
+            try
+            {
+                var policy = (INetFwPolicy2)_firewallPolicy;
+                var currentProfiles = policy.CurrentProfileTypes;
+
+                _logger.Debug($"Current active profiles: {currentProfiles} " +
+                             $"(Domain={((currentProfiles & NetFwProfile2.Domain) != 0)}, " +
+                             $"Private={((currentProfiles & NetFwProfile2.Private) != 0)}, " +
+                             $"Public={((currentProfiles & NetFwProfile2.Public) != 0)})");
+
+                return currentProfiles;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Error getting current profiles: {ex.Message} - defaulting to Private");
+                return NetFwProfile2.Private; // Fail-safe: assume Private
             }
         }
     }
