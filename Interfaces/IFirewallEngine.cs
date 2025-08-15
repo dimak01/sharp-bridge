@@ -117,5 +117,13 @@ namespace SharpBridge.Interfaces
         /// <param name="interfaceIndex">Windows interface index from GetBestInterface()</param>
         /// <returns>Network profile (Domain=1, Private=2, Public=4)</returns>
         int GetInterfaceProfile(int interfaceIndex);
+
+        /// <summary>
+        /// Gets the best network interface for routing to a specific target host.
+        /// Uses Windows GetBestInterface() API to determine the optimal routing interface.
+        /// </summary>
+        /// <param name="targetHost">Target host IP address</param>
+        /// <returns>Windows interface index (0 for loopback)</returns>
+        int GetBestInterface(string targetHost);
     }
 }

@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
-using SharpBridge.Utilities.ComInterop;
 
 namespace SharpBridge.Utilities
 {
@@ -40,7 +38,7 @@ namespace SharpBridge.Utilities
             {
                 // 1. Environment Detection
                 var firewallState = _ruleEngine.GetFirewallState();
-                var targetInterface = GetBestInterface(remoteHost);
+                var targetInterface = _ruleEngine.GetBestInterface(remoteHost);
                 var interfaceProfile = _ruleEngine.GetInterfaceProfile(targetInterface);
 
                 // 2. Get Default Actions for both directions
@@ -103,37 +101,7 @@ namespace SharpBridge.Utilities
             };
         }
 
-        /// <summary>
-        /// Gets the best interface for routing to the target host
-        /// </summary>
-        private int GetBestInterface(string targetHost)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(targetHost) || targetHost == "0.0.0.0" || targetHost == "localhost")
-                {
-                    return 0; // Loopback interface
-                }
 
-                // Use Windows API to get best interface
-                var targetIP = IPAddress.Parse(targetHost);
-                var targetAddr = BitConverter.ToUInt32(targetIP.GetAddressBytes(), 0);
-
-                var result = NativeMethods.GetBestInterface(targetAddr, out uint bestInterface);
-                if (result == NativeMethods.ErrorCodes.NO_ERROR)
-                {
-                    return (int)bestInterface;
-                }
-
-                _logger.Debug($"GetBestInterface failed with error code {result}");
-                return 0; // Default to loopback
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug($"Error getting best interface for {targetHost}: {ex.Message}");
-                return 0; // Default to loopback
-            }
-        }
 
         /// <summary>
         /// Evaluates firewall rules using Windows Firewall precedence logic
