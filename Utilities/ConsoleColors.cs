@@ -39,7 +39,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Red color for error status indicators
         /// </summary>
-        public const string Error = "\u001b[31m";        // Red
+        public const string Error = "\u001b[91m";        // Red
 
         /// <summary>
         /// Cyan color for informational status indicators
@@ -50,6 +50,11 @@ namespace SharpBridge.Utilities
         /// Bright green color for success status indicators
         /// </summary>
         public const string Success = "\u001b[92m";      // Bright green
+
+        /// <summary>
+        /// Gray color for disabled status indicators
+        /// </summary>
+        public const string Disabled = "\u001b[90m";     // Dark gray
 
         // Service status colors
         /// <summary>
