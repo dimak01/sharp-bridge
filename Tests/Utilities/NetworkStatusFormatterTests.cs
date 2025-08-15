@@ -1,0 +1,536 @@
+using System;
+using System.Collections.Generic;
+using Moq;
+using SharpBridge.Interfaces;
+using SharpBridge.Models;
+using SharpBridge.Utilities;
+using Xunit;
+
+namespace SharpBridge.Tests.Utilities
+{
+    /// <summary>
+    /// Unit tests for NetworkStatusFormatter.
+    /// Tests the formatting of network troubleshooting information and command generation.
+    /// </summary>
+    public class NetworkStatusFormatterTests
+    {
+        private readonly Mock<INetworkCommandProvider> _mockCommandProvider;
+        private readonly NetworkStatusFormatter _formatter;
+
+
+
+        public NetworkStatusFormatterTests()
+        {
+            _mockCommandProvider = new Mock<INetworkCommandProvider>();
+            _formatter = new NetworkStatusFormatter(_mockCommandProvider.Object);
+
+            // Setup default command provider responses
+            _mockCommandProvider.Setup(x => x.GetPlatformName()).Returns("Windows");
+            _mockCommandProvider.Setup(x => x.GetCheckPortStatusCommand(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((port, protocol) => $"netstat -an | findstr :{port}");
+            _mockCommandProvider.Setup(x => x.GetAddFirewallRuleCommand(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string, string, string, string, string, string>((name, dir, action, protocol, localPort, remotePort, remoteAddress) =>
+                    $"netsh advfirewall firewall add rule name=\"{name}\" dir={dir} action={action} protocol={protocol}");
+            _mockCommandProvider.Setup(x => x.GetRemoveFirewallRuleCommand(It.IsAny<string>()))
+                .Returns<string>(name => $"netsh advfirewall firewall delete rule name=\"{name}\"");
+            _mockCommandProvider.Setup(x => x.GetTestConnectivityCommand(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((host, port) => $"Test-NetConnection -ComputerName {host} -Port {port} -InformationLevel Detailed");
+        }
+
+        [Fact]
+        public void Constructor_WithNullCommandProvider_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new NetworkStatusFormatter(null!));
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithBasicNetworkStatus_ReturnsFormattedOutput()
+        {
+            // Arrange
+            var networkStatus = CreateBasicNetworkStatus();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("NETWORK TROUBLESHOOTING:", result);
+            Assert.Contains("Platform: Windows", result);
+            Assert.Contains("IPHONE CONNECTION", result);
+            Assert.Contains("PC VTube Studio CONNECTION", result);
+            Assert.Contains("TROUBLESHOOTING COMMANDS:", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithTimestamp_IncludesFormattedTime()
+        {
+            // Arrange
+            var timestamp = new DateTime(2023, 12, 25, 14, 30, 45);
+            var networkStatus = CreateBasicNetworkStatus();
+            networkStatus.LastUpdated = timestamp;
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("Last Updated: 14:30:45", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithAllowedConnections_ShowsAllowedStatus()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithAllowedConnections();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - check for key parts with ANSI codes
+            Assert.Contains("\u001b[93mLocal UDP Port 28964\u001b[0m: \u001b[96mAllowed\u001b[0m \u001b[92m✓\u001b[0m", result);
+            Assert.Contains("\u001b[93mOutbound UDP to 192.168.1.100\u001b[0m: \u001b[96mAllowed\u001b[0m \u001b[92m✓\u001b[0m", result);
+            Assert.Contains("\u001b[93mWebSocket TCP to localhost:8001\u001b[0m: \u001b[96mAllowed\u001b[0m \u001b[92m✓\u001b[0m", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithBlockedConnections_ShowsBlockedStatus()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithBlockedConnections();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - check for key parts with ANSI codes
+            Assert.Contains("\u001b[93mLocal UDP Port 28964\u001b[0m: \u001b[96mBlocked\u001b[0m \u001b[91mX\u001b[0m", result);
+            Assert.Contains("\u001b[93mOutbound UDP to 192.168.1.100\u001b[0m: \u001b[96mBlocked\u001b[0m \u001b[91mX\u001b[0m", result);
+            Assert.Contains("\u001b[93mWebSocket TCP to localhost:8001\u001b[0m: \u001b[96mBlocked\u001b[0m \u001b[91mX\u001b[0m", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRules_ShowsRuleDetails()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithFirewallRules();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("\u001b[92m[Enabled]\u001b[0m \u001b[92mAllow\u001b[0m UDP 28964", result);
+            Assert.Contains("\u001b[90m[Disabled]\u001b[0m \u001b[91mBlock\u001b[0m TCP 8001", result);
+            Assert.Contains("App: SharpBridge.exe", result);
+            Assert.Contains("Global", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithNoRules_ShowsDefaultActionMessage()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithNoRules();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("No explicit rules found – default action applied", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithManyRules_ShowsTopFiveAndCount()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithManyRules();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("Matching rules (top 5 of 8)", result);
+            Assert.Contains("… and 3 more rules", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_GeneratesCorrectCommands()
+        {
+            // Arrange
+            var networkStatus = CreateBasicNetworkStatus();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("iPhone UDP Commands", result);
+            Assert.Contains("PC VTube Studio Commands", result);
+            Assert.Contains("Check local port", result);
+            Assert.Contains("Add inbound rule", result);
+            Assert.Contains("Add outbound rule", result);
+            Assert.Contains("Remove inbound rule", result);
+            Assert.Contains("Remove outbound rule", result);
+            Assert.Contains("Check WebSocket port", result);
+            Assert.Contains("Test connectivity", result);
+            Assert.Contains("Add WebSocket rule", result);
+            Assert.Contains("Add discovery rule", result);
+            Assert.Contains("Remove WebSocket rule", result);
+            Assert.Contains("Remove discovery rule", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithBlockedConnections_HighlightsRelevantAddCommands()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithBlockedConnections();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            // Basic validation that the formatter produces output
+            Assert.False(string.IsNullOrEmpty(result));
+            Assert.Contains("NETWORK TROUBLESHOOTING:", result);
+            Assert.Contains("netsh advfirewall firewall add rule", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithAllowedConnections_UsesNormalCommandColors()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithAllowedConnections();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            // Should contain the add commands
+            Assert.Contains("\u001b[93mAdd inbound rule\u001b[0m:", result);
+            Assert.Contains("\u001b[93mAdd WebSocket rule\u001b[0m:", result);
+            // Should contain the basic command structure
+            Assert.Contains("netsh advfirewall firewall add rule", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithDiscoveryAnalysis_ShowsDiscoverySection()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithDiscovery();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("Discovery UDP to localhost:47779", result);
+            Assert.Contains("Add discovery rule", result);
+            Assert.Contains("Remove discovery rule", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithNullAnalysis_HandlesGracefully()
+        {
+            // Arrange
+            var networkStatus = CreateNetworkStatusWithNullAnalysis();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("NETWORK TROUBLESHOOTING:", result);
+            Assert.Contains("TROUBLESHOOTING COMMANDS:", result);
+            // Should not crash and should still show command sections
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_UsesConfigurationValues()
+        {
+            // Arrange
+            var networkStatus = CreateBasicNetworkStatus();
+            var appConfig = CreateCustomApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            Assert.Contains("Local UDP Port 12345", result);
+            Assert.Contains("Outbound UDP to 10.0.0.50", result);
+            Assert.Contains("WebSocket TCP to myhost:9001", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_CallsCommandProviderWithCorrectParameters()
+        {
+            // Arrange
+            var networkStatus = CreateBasicNetworkStatus();
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert
+            _mockCommandProvider.Verify(x => x.GetPlatformName(), Times.Once);
+            _mockCommandProvider.Verify(x => x.GetCheckPortStatusCommand("28964", "UDP"), Times.Once);
+            _mockCommandProvider.Verify(x => x.GetCheckPortStatusCommand("8001", "TCP"), Times.Once);
+            _mockCommandProvider.Verify(x => x.GetTestConnectivityCommand("localhost", "8001"), Times.Once);
+            _mockCommandProvider.Verify(x => x.GetAddFirewallRuleCommand(
+                "SharpBridge iPhone UDP Inbound", "in", "allow", "UDP", "28964", null, null), Times.Once);
+            _mockCommandProvider.Verify(x => x.GetAddFirewallRuleCommand(
+                "SharpBridge PC WebSocket", "out", "allow", "TCP", null, "8001", "localhost"), Times.Once);
+        }
+
+        // Helper methods for creating test data
+
+        private static NetworkStatus CreateBasicNetworkStatus()
+        {
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    OutboundFirewallAnalysis = CreateBasicFirewallAnalysis(true)
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    DiscoveryAllowed = true
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithAllowedConnections()
+        {
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    OutboundFirewallAnalysis = CreateBasicFirewallAnalysis(true)
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    DiscoveryFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    DiscoveryAllowed = true
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithBlockedConnections()
+        {
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateBasicFirewallAnalysis(false),
+                    OutboundFirewallAnalysis = CreateBasicFirewallAnalysis(false)
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateBasicFirewallAnalysis(false),
+                    DiscoveryFirewallAnalysis = CreateBasicFirewallAnalysis(false),
+                    DiscoveryAllowed = false
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithFirewallRules()
+        {
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Allow UDP Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "28964",
+                    IsEnabled = true,
+                    ApplicationName = @"C:\Path\To\SharpBridge.exe"
+                },
+                new FirewallRule
+                {
+                    Name = "Block TCP Rule",
+                    Direction = "Outbound",
+                    Action = "Block",
+                    Protocol = "TCP",
+                    LocalPort = "8001",
+                    IsEnabled = false,
+                    ApplicationName = null // Global rule
+                }
+            };
+
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules)
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    DiscoveryAllowed = true
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithNoRules()
+        {
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithManyRules()
+        {
+            var manyRules = new List<FirewallRule>();
+            for (int i = 1; i <= 8; i++)
+            {
+                manyRules.Add(new FirewallRule
+                {
+                    Name = $"Rule {i}",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "28964",
+                    IsEnabled = true,
+                    ApplicationName = null
+                });
+            }
+
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, manyRules),
+                    OutboundFirewallAnalysis = CreateBasicFirewallAnalysis(true)
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    DiscoveryAllowed = true
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithDiscovery()
+        {
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    OutboundFirewallAnalysis = CreateBasicFirewallAnalysis(true)
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    DiscoveryFirewallAnalysis = CreateBasicFirewallAnalysis(true),
+                    DiscoveryAllowed = true
+                }
+            };
+        }
+
+        private static NetworkStatus CreateNetworkStatusWithNullAnalysis()
+        {
+            return new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = null,
+                    OutboundFirewallAnalysis = null
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = null,
+                    DiscoveryFirewallAnalysis = null,
+                    DiscoveryAllowed = false
+                }
+            };
+        }
+
+        private static ApplicationConfig CreateBasicApplicationConfig()
+        {
+            return new ApplicationConfig
+            {
+                PhoneClient = new VTubeStudioPhoneClientConfig
+                {
+                    LocalPort = 28964,
+                    IphonePort = 21412,
+                    IphoneIpAddress = "192.168.1.100"
+                },
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 8001
+                }
+            };
+        }
+
+        private static ApplicationConfig CreateCustomApplicationConfig()
+        {
+            return new ApplicationConfig
+            {
+                PhoneClient = new VTubeStudioPhoneClientConfig
+                {
+                    LocalPort = 12345,
+                    IphonePort = 54321,
+                    IphoneIpAddress = "10.0.0.50"
+                },
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "myhost",
+                    Port = 9001
+                }
+            };
+        }
+
+        private static FirewallAnalysisResult CreateBasicFirewallAnalysis(bool isAllowed)
+        {
+            return new FirewallAnalysisResult
+            {
+                IsAllowed = isAllowed,
+                DefaultActionAllowed = isAllowed,
+                ProfileName = "Private",
+                RelevantRules = new List<FirewallRule>()
+            };
+        }
+
+        private static FirewallAnalysisResult CreateFirewallAnalysisWithRules(bool isAllowed, List<FirewallRule> rules)
+        {
+            return new FirewallAnalysisResult
+            {
+                IsAllowed = isAllowed,
+                DefaultActionAllowed = isAllowed,
+                ProfileName = "Private",
+                RelevantRules = rules
+            };
+        }
+    }
+}

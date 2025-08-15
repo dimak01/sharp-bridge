@@ -33,92 +33,171 @@ namespace SharpBridge.Utilities
         {
             var sb = new StringBuilder();
 
-            // Header
+            AppendHeader(sb, networkStatus);
+            AppendIPhoneConnectionStatus(sb, networkStatus, applicationConfig);
+            AppendPCConnectionStatus(sb, networkStatus, applicationConfig);
+            AppendTroubleshootingCommands(sb, networkStatus, applicationConfig);
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Appends the header section with platform info and timestamp
+        /// </summary>
+        private void AppendHeader(StringBuilder sb, NetworkStatus networkStatus)
+        {
             sb.AppendLine("NETWORK TROUBLESHOOTING:");
             sb.AppendLine("─────────────────────────");
             sb.AppendLine($"  Platform: {_commandProvider.GetPlatformName()}");
             sb.AppendLine($"  Last Updated: {networkStatus.LastUpdated:HH:mm:ss}");
             sb.AppendLine();
+        }
 
-            // iPhone Connection Status
+        /// <summary>
+        /// Appends iPhone connection status section
+        /// </summary>
+        private static void AppendIPhoneConnectionStatus(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        {
             sb.AppendLine("IPHONE CONNECTION");
             sb.AppendLine("───────────────────────────────────");
 
-            // Get configuration values for display
             var phoneConfig = applicationConfig.PhoneClient;
 
-            // Inbound section (consolidated)
+            // Inbound section
             if (networkStatus.IPhone.InboundFirewallAnalysis != null)
             {
-                sb.AppendLine($"  {ConsoleColors.Colorize($"Local UDP Port {phoneConfig.LocalPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(networkStatus.IPhone.InboundFirewallAnalysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(networkStatus.IPhone.InboundFirewallAnalysis.IsAllowed)}");
-                sb.AppendLine($"    ▸ Default inbound action ({networkStatus.IPhone.InboundFirewallAnalysis.ProfileName}): {(networkStatus.IPhone.InboundFirewallAnalysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(networkStatus.IPhone.InboundFirewallAnalysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, networkStatus.IPhone.InboundFirewallAnalysis, "    ");
+                var analysis = networkStatus.IPhone.InboundFirewallAnalysis;
+                sb.AppendLine($"  {ConsoleColors.Colorize($"Local UDP Port {phoneConfig.LocalPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default inbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                AppendFirewallRules(sb, analysis, "    ");
             }
 
-            // Outbound section (consolidated)
+            // Outbound section
             if (networkStatus.IPhone.OutboundFirewallAnalysis != null)
             {
-                sb.AppendLine($"  {ConsoleColors.Colorize($"Outbound UDP to {phoneConfig.IphoneIpAddress}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(networkStatus.IPhone.OutboundFirewallAnalysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(networkStatus.IPhone.OutboundFirewallAnalysis.IsAllowed)}");
-                sb.AppendLine($"    ▸ Default outbound action ({networkStatus.IPhone.OutboundFirewallAnalysis.ProfileName}): {(networkStatus.IPhone.OutboundFirewallAnalysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(networkStatus.IPhone.OutboundFirewallAnalysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, networkStatus.IPhone.OutboundFirewallAnalysis, "    ");
+                var analysis = networkStatus.IPhone.OutboundFirewallAnalysis;
+                sb.AppendLine($"  {ConsoleColors.Colorize($"Outbound UDP to {phoneConfig.IphoneIpAddress}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                AppendFirewallRules(sb, analysis, "    ");
             }
-            sb.AppendLine();
 
-            // PC Connection Status
+            sb.AppendLine();
+        }
+
+        /// <summary>
+        /// Appends PC connection status section
+        /// </summary>
+        private static void AppendPCConnectionStatus(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        {
             sb.AppendLine("PC VTube Studio CONNECTION");
             sb.AppendLine("───────────────────────────────────");
 
-            // Get configuration values for display
             var pcConfig = applicationConfig.PCClient;
 
-            // WebSocket section (consolidated)
+            // WebSocket section
             if (networkStatus.PC.WebSocketFirewallAnalysis != null)
             {
-                sb.AppendLine($"  {ConsoleColors.Colorize($"WebSocket TCP to {pcConfig.Host}:{pcConfig.Port}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(networkStatus.PC.WebSocketFirewallAnalysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(networkStatus.PC.WebSocketFirewallAnalysis.IsAllowed)}");
-                sb.AppendLine($"    ▸ Default outbound action ({networkStatus.PC.WebSocketFirewallAnalysis.ProfileName}): {(networkStatus.PC.WebSocketFirewallAnalysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(networkStatus.PC.WebSocketFirewallAnalysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, networkStatus.PC.WebSocketFirewallAnalysis, "    ");
+                var analysis = networkStatus.PC.WebSocketFirewallAnalysis;
+                sb.AppendLine($"  {ConsoleColors.Colorize($"WebSocket TCP to {pcConfig.Host}:{pcConfig.Port}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                AppendFirewallRules(sb, analysis, "    ");
             }
 
-            // Discovery section (consolidated, only if enabled)
+            // Discovery section
             if (networkStatus.PC.DiscoveryFirewallAnalysis != null)
             {
+                var analysis = networkStatus.PC.DiscoveryFirewallAnalysis;
                 var discoveryPort = "47779"; // VTube Studio discovery port
-                sb.AppendLine($"  {ConsoleColors.Colorize($"Discovery UDP to {pcConfig.Host}:{discoveryPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(networkStatus.PC.DiscoveryFirewallAnalysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(networkStatus.PC.DiscoveryFirewallAnalysis.IsAllowed)}");
-                sb.AppendLine($"    ▸ Default outbound action ({networkStatus.PC.DiscoveryFirewallAnalysis.ProfileName}): {(networkStatus.PC.DiscoveryFirewallAnalysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(networkStatus.PC.DiscoveryFirewallAnalysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, networkStatus.PC.DiscoveryFirewallAnalysis, "    ");
+                sb.AppendLine($"  {ConsoleColors.Colorize($"Discovery UDP to {pcConfig.Host}:{discoveryPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                AppendFirewallRules(sb, analysis, "    ");
             }
-            sb.AppendLine();
 
-            // Commands Section
+            sb.AppendLine();
+        }
+
+        /// <summary>
+        /// Appends troubleshooting commands section
+        /// </summary>
+        private void AppendTroubleshootingCommands(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        {
             sb.AppendLine("TROUBLESHOOTING COMMANDS:");
             sb.AppendLine("─────────────────────────");
             sb.AppendLine($"  {ConsoleColors.Colorize("Copy and paste these commands in an elevated Command Prompt", ConsoleColors.ConfigPropertyName)}:");
             sb.AppendLine();
 
-            // Get real configuration values for commands section
-            var phoneConfigForCommands = applicationConfig.PhoneClient;
-            var pcConfigForCommands = applicationConfig.PCClient;
-            var discoveryPortForCommands = "47779"; // VTube Studio discovery port (hardcoded for now, enhancement later)
+            AppendIPhoneCommands(sb, networkStatus, applicationConfig);
+            AppendPCCommands(sb, networkStatus, applicationConfig);
+        }
 
-            // iPhone Commands
+        /// <summary>
+        /// Appends iPhone-specific troubleshooting commands
+        /// </summary>
+        private void AppendIPhoneCommands(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        {
             sb.AppendLine($"  {ConsoleColors.Colorize("iPhone UDP Commands", ConsoleColors.ConfigPropertyName)}:");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Check local port", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetCheckPortStatusCommand(phoneConfigForCommands.LocalPort.ToString(), "UDP"))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Add inbound rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP Inbound", "in", "allow", "UDP", phoneConfigForCommands.LocalPort.ToString(), null, null))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Add outbound rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP", "out", "allow", "UDP", null, phoneConfigForCommands.IphonePort.ToString(), phoneConfigForCommands.IphoneIpAddress))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Remove inbound rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetRemoveFirewallRuleCommand("SharpBridge iPhone UDP Inbound"))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Remove outbound rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetRemoveFirewallRuleCommand("SharpBridge iPhone UDP"))}");
+
+            var phoneConfig = applicationConfig.PhoneClient;
+            var inboundBlocked = !(networkStatus.IPhone.InboundFirewallAnalysis?.IsAllowed ?? true);
+            var outboundBlocked = !(networkStatus.IPhone.OutboundFirewallAnalysis?.IsAllowed ?? true);
+
+            // Check command
+            var checkCmd = _commandProvider.GetCheckPortStatusCommand(phoneConfig.LocalPort.ToString(), "UDP");
+            sb.AppendLine($"    {ConsoleColors.Colorize("Check local port", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(checkCmd)}");
+
+            // Add commands (with conditional coloring)
+            AppendAddFirewallCommand(sb, "Add inbound rule", inboundBlocked,
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP Inbound", "in", "allow", "UDP", phoneConfig.LocalPort.ToString(), null, null));
+
+            AppendAddFirewallCommand(sb, "Add outbound rule", outboundBlocked,
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP", "out", "allow", "UDP", null, phoneConfig.IphonePort.ToString(), phoneConfig.IphoneIpAddress));
+
+            // Remove commands
+            var removeInboundCmd = _commandProvider.GetRemoveFirewallRuleCommand("SharpBridge iPhone UDP Inbound");
+            var removeOutboundCmd = _commandProvider.GetRemoveFirewallRuleCommand("SharpBridge iPhone UDP");
+            sb.AppendLine($"    {ConsoleColors.Colorize("Remove inbound rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(removeInboundCmd)}");
+            sb.AppendLine($"    {ConsoleColors.Colorize("Remove outbound rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(removeOutboundCmd)}");
             sb.AppendLine();
+        }
 
-            // PC Commands
+        /// <summary>
+        /// Appends PC-specific troubleshooting commands
+        /// </summary>
+        private void AppendPCCommands(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        {
             sb.AppendLine($"  {ConsoleColors.Colorize("PC VTube Studio Commands", ConsoleColors.ConfigPropertyName)}:");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Check WebSocket port", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetCheckPortStatusCommand(pcConfigForCommands.Port.ToString(), "TCP"))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Test connectivity", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetTestConnectivityCommand(pcConfigForCommands.Host, pcConfigForCommands.Port.ToString()))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Add WebSocket rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetAddFirewallRuleCommand("SharpBridge PC WebSocket", "out", "allow", "TCP", null, pcConfigForCommands.Port.ToString(), pcConfigForCommands.Host))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Add discovery rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetAddFirewallRuleCommand("SharpBridge PC Discovery", "out", "allow", "UDP", null, discoveryPortForCommands, pcConfigForCommands.Host))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Remove WebSocket rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetRemoveFirewallRuleCommand("SharpBridge PC WebSocket"))}");
-            sb.AppendLine($"    {ConsoleColors.Colorize("Remove discovery rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(_commandProvider.GetRemoveFirewallRuleCommand("SharpBridge PC Discovery"))}");
 
-            return sb.ToString();
+            var pcConfig = applicationConfig.PCClient;
+            var webSocketBlocked = !(networkStatus.PC.WebSocketFirewallAnalysis?.IsAllowed ?? true);
+            var discoveryBlocked = !(networkStatus.PC.DiscoveryFirewallAnalysis?.IsAllowed ?? true);
+            var discoveryPort = "47779";
+
+            // Check/Test commands
+            var checkCmd = _commandProvider.GetCheckPortStatusCommand(pcConfig.Port.ToString(), "TCP");
+            var testCmd = _commandProvider.GetTestConnectivityCommand(pcConfig.Host, pcConfig.Port.ToString());
+            sb.AppendLine($"    {ConsoleColors.Colorize("Check WebSocket port", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(checkCmd)}");
+            sb.AppendLine($"    {ConsoleColors.Colorize("Test connectivity", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(testCmd)}");
+
+            // Add commands (with conditional coloring)
+            AppendAddFirewallCommand(sb, "Add WebSocket rule", webSocketBlocked,
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge PC WebSocket", "out", "allow", "TCP", null, pcConfig.Port.ToString(), pcConfig.Host));
+
+            AppendAddFirewallCommand(sb, "Add discovery rule", discoveryBlocked,
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge PC Discovery", "out", "allow", "UDP", null, discoveryPort, pcConfig.Host));
+
+            // Remove commands
+            var removeWebSocketCmd = _commandProvider.GetRemoveFirewallRuleCommand("SharpBridge PC WebSocket");
+            var removeDiscoveryCmd = _commandProvider.GetRemoveFirewallRuleCommand("SharpBridge PC Discovery");
+            sb.AppendLine($"    {ConsoleColors.Colorize("Remove WebSocket rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(removeWebSocketCmd)}");
+            sb.AppendLine($"    {ConsoleColors.Colorize("Remove discovery rule", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(removeDiscoveryCmd)}");
+        }
+
+        /// <summary>
+        /// Appends an "Add firewall rule" command with conditional coloring based on blocked status
+        /// </summary>
+        private static void AppendAddFirewallCommand(StringBuilder sb, string description, bool isBlocked, string command)
+        {
+            sb.AppendLine($"    {ConsoleColors.Colorize(description, ConsoleColors.ConfigPropertyName)}: {(isBlocked ? ConsoleColors.Colorize(command, ConsoleColors.Error) : ConsoleColors.ColorizeBasicType(command))}");
         }
 
         /// <summary>
@@ -131,7 +210,7 @@ namespace SharpBridge.Utilities
         {
             if (firewallAnalysis.RelevantRules.Count == 0)
             {
-                sb.AppendLine($"{indent}▸ No explicit rules found – default action applied");
+                sb.AppendLine($"{indent}- No explicit rules found – default action applied");
                 return;
             }
 
@@ -142,17 +221,17 @@ namespace SharpBridge.Utilities
 
             if (hasMoreRules)
             {
-                sb.AppendLine($"{indent}▸ Matching rules (top 5 of {ruleCount}):");
+                sb.AppendLine($"{indent}- Matching rules (top 5 of {ruleCount}):");
             }
             else
             {
                 var ruleText = ruleCount == 1 ? "rule" : "rules";
-                sb.AppendLine($"{indent}▸ Matching {ruleText} ({ruleCount} found):");
+                sb.AppendLine($"{indent}- Matching {ruleText} ({ruleCount} found):");
             }
 
             foreach (var rule in rulesToShow)
             {
-                var statusIndicator = rule.IsEnabled ? ConsoleColors.Colorize("✓", ConsoleColors.Success) : ConsoleColors.Colorize("✗", ConsoleColors.Error);
+                var statusIndicator = rule.IsEnabled ? ConsoleColors.Colorize("[Enabled]", ConsoleColors.Success) : ConsoleColors.Colorize("[Disabled]", ConsoleColors.Disabled);
                 var actionColor = rule.Action.ToLowerInvariant() == "allow" ? ConsoleColors.Success : ConsoleColors.Error;
                 var actionText = ConsoleColors.Colorize(rule.Action, actionColor);
 
@@ -216,7 +295,7 @@ namespace SharpBridge.Utilities
         {
             return isGood
                 ? ConsoleColors.Colorize("✓", ConsoleColors.Success)
-                : ConsoleColors.Colorize("✗", ConsoleColors.Error);
+                : ConsoleColors.Colorize("X", ConsoleColors.Error);
         }
     }
 }
