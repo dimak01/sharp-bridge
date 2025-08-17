@@ -187,6 +187,11 @@ namespace SharpBridge
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
+            // Register Windows-specific dependencies for firewall engine
+            services.AddSingleton<IWindowsComInterop, Utilities.ComInterop.WindowsComInterop>();
+            services.AddSingleton<IWindowsSystemApi, Utilities.ComInterop.WindowsSystemApi>();
+            services.AddSingleton<IProcessInfo, ProcessInfo>();
+
             // Register network monitoring services
             services.AddSingleton<IFirewallEngine, WindowsFirewallEngine>();
             services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
