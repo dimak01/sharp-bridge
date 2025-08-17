@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Runtime.InteropServices;
-using System.ServiceProcess;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Utilities.ComInterop;
@@ -19,24 +16,35 @@ namespace SharpBridge.Services
     public class WindowsFirewallEngine : IFirewallEngine, IDisposable
     {
         private readonly IAppLogger _logger;
+        private readonly IWindowsComInterop _comInterop;
+        private readonly IWindowsSystemApi _systemApi;
+        private readonly IProcessInfo _processInfo;
         private dynamic? _firewallPolicy;
         private bool _disposed;
 
-        public WindowsFirewallEngine(IAppLogger logger)
+        public WindowsFirewallEngine(
+            IAppLogger logger,
+            IWindowsComInterop comInterop,
+            IWindowsSystemApi systemApi,
+            IProcessInfo processInfo)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _comInterop = comInterop ?? throw new ArgumentNullException(nameof(comInterop));
+            _systemApi = systemApi ?? throw new ArgumentNullException(nameof(systemApi));
+            _processInfo = processInfo ?? throw new ArgumentNullException(nameof(processInfo));
+
             InitializeComObjects();
         }
 
         private void InitializeComObjects()
         {
-            try
+            if (_comInterop.TryCreateFirewallPolicy(out _firewallPolicy))
             {
-                _firewallPolicy = (INetFwPolicy2)new NetFwPolicy2ComObject();
+                _logger.Debug("Successfully initialized Windows Firewall COM objects");
             }
-            catch (Exception ex)
+            else
             {
-                _logger.Warning($"Failed to initialize Windows Firewall COM objects: {ex.Message}");
+                _logger.Warning("Failed to initialize Windows Firewall COM objects");
                 _firewallPolicy = null;
             }
         }
@@ -87,20 +95,7 @@ namespace SharpBridge.Services
 
             try
             {
-                // Debug: Let's see what methods are available on the dynamic object
-                _logger.Debug($"Firewall policy type: {_firewallPolicy?.GetType().Name ?? "null"}");
-
-                int defaultAction = 0; // Initialize with safe default
-                if (direction == 1) // Inbound
-                {
-                    defaultAction = _firewallPolicy?.DefaultInboundAction(profile) ?? 0;
-                    _logger.Debug($"Successfully called get_DefaultInboundAction for profile {profile}");
-                }
-                else // Outbound
-                {
-                    defaultAction = _firewallPolicy?.DefaultOutboundAction(profile) ?? 0;
-                    _logger.Debug($"Successfully called get_DefaultOutboundAction for profile {profile}");
-                }
+                var defaultAction = _comInterop.GetDefaultAction(_firewallPolicy, direction, profile);
 
                 // NetFwAction.Allow = 1, NetFwAction.Block = 0
                 var isAllowed = defaultAction == Utilities.ComInterop.NetFwAction.Allow;
@@ -128,7 +123,7 @@ namespace SharpBridge.Services
                 if (string.IsNullOrEmpty(applicationName))
                     return false;
 
-                var currentExePath = Process.GetCurrentProcess().MainModule?.FileName;
+                var currentExePath = _processInfo.GetCurrentExecutablePath();
                 if (string.IsNullOrEmpty(currentExePath))
                     return false;
 
@@ -322,54 +317,30 @@ namespace SharpBridge.Services
 
             try
             {
-                dynamic comRules = _firewallPolicy.Rules;
+                var comRules = _comInterop.EnumerateFirewallRules(_firewallPolicy);
 
-                // For native COM objects, try direct enumeration
-                _logger.Debug("Attempting direct COM enumeration");
-                try
+                foreach (var comRule in comRules)
                 {
-                    // Try to enumerate directly using foreach on the COM object
-                    foreach (dynamic comRule in comRules)
+                    if (comRule != null)
                     {
-                        if (comRule != null)
+                        try
                         {
-                            try
+                            var rule = ConvertComRuleToFirewallRule(comRule);
+                            if (rule != null)
                             {
-                                var rule = ConvertComRuleToFirewallRule(comRule);
-                                if (rule != null)
-                                {
-                                    rules.Add(rule);
-                                }
+                                rules.Add(rule);
                             }
-                            catch (Exception ex)
-                            {
-                                _logger.Debug($"Error converting COM rule: {ex.Message}");
-                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Debug($"Error converting COM rule: {ex.Message}");
                         }
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.Debug($"Direct COM enumeration failed: {ex.Message}");
-                }
-            }
-            catch (System.Runtime.InteropServices.COMException comEx)
-            {
-                _logger.Error($"COM error enumerating firewall rules: {comEx.Message} (HRESULT: 0x{comEx.HResult:X8})");
-                if (comEx.HResult == unchecked((int)0x80070057)) // E_INVALIDARG
-                {
-                    _logger.Error("This may indicate an issue with firewall service or permissions");
-                }
-            }
-            catch (System.ArgumentException argEx)
-            {
-                _logger.Error($"Argument error enumerating firewall rules: {argEx.Message}");
-                _logger.Error("This typically indicates 'Value does not fall within the expected range'");
             }
             catch (Exception ex)
             {
-                _logger.Error($"Unexpected error enumerating firewall rules: {ex.Message}");
-                _logger.Debug($"Exception type: {ex.GetType().Name}");
+                _logger.Error($"Error enumerating firewall rules: {ex.Message}");
             }
 
             return rules;
@@ -389,7 +360,7 @@ namespace SharpBridge.Services
             var desiredProtocol = GetProtocolName(protocol);
 
             // Get current application path for comparison
-            var currentExePath = Process.GetCurrentProcess().MainModule?.FileName;
+            var currentExePath = _processInfo.GetCurrentExecutablePath();
 
             return rules.Where(rule =>
             {
@@ -550,7 +521,7 @@ namespace SharpBridge.Services
                 {
                     if (_firewallPolicy != null)
                     {
-                        System.Runtime.InteropServices.Marshal.ReleaseComObject(_firewallPolicy);
+                        _comInterop.ReleaseComObject(_firewallPolicy);
                         _firewallPolicy = null;
                     }
                 }
@@ -569,21 +540,7 @@ namespace SharpBridge.Services
         /// <returns>True if firewall service is running, false if stopped</returns>
         public bool GetFirewallState()
         {
-            try
-            {
-                // Check if Windows Firewall service (mpssvc) is running
-                // This works without elevation and is a good indicator of firewall state
-                using var serviceController = new System.ServiceProcess.ServiceController("mpssvc");
-                var isRunning = serviceController.Status == System.ServiceProcess.ServiceControllerStatus.Running;
-
-                _logger.Debug($"Windows Firewall service (mpssvc) status: {serviceController.Status}, running: {isRunning}");
-                return isRunning;
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning($"Error checking firewall service status: {ex.Message} - assuming enabled");
-                return true; // Fail-safe: assume enabled
-            }
+            return _systemApi.IsFirewallServiceRunning();
         }
 
         /// <summary>
@@ -598,23 +555,7 @@ namespace SharpBridge.Services
                 return NetFwProfile2.Private; // Fail-safe: assume Private
             }
 
-            try
-            {
-                var policy = (INetFwPolicy2)_firewallPolicy;
-                var currentProfiles = policy.CurrentProfileTypes;
-
-                _logger.Debug($"Current active profiles: {currentProfiles} " +
-                             $"(Domain={((currentProfiles & NetFwProfile2.Domain) != 0)}, " +
-                             $"Private={((currentProfiles & NetFwProfile2.Private) != 0)}, " +
-                             $"Public={((currentProfiles & NetFwProfile2.Public) != 0)})");
-
-                return currentProfiles;
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning($"Error getting current profiles: {ex.Message} - defaulting to Private");
-                return NetFwProfile2.Private; // Fail-safe: assume Private
-            }
+            return _comInterop.GetCurrentProfiles(_firewallPolicy);
         }
 
         /// <summary>
@@ -645,7 +586,7 @@ namespace SharpBridge.Services
                 _logger.Debug($"Found interface {interfaceIndex}: {targetInterface.Name} ({targetInterface.Description})");
 
                 // Step 2: Use Network List Manager to get the network category
-                var networkCategory = GetNetworkCategoryForInterface(targetInterface);
+                var networkCategory = _comInterop.GetNetworkCategoryForInterface(targetInterface.Id);
 
                 // Step 3: Map NLM category to firewall profile
                 var firewallProfile = MapNetworkCategoryToFirewallProfile(networkCategory);
@@ -667,7 +608,7 @@ namespace SharpBridge.Services
         {
             try
             {
-                var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+                var networkInterfaces = _systemApi.GetAllNetworkInterfaces();
 
                 foreach (var ni in networkInterfaces)
                 {
@@ -703,64 +644,7 @@ namespace SharpBridge.Services
             }
         }
 
-        /// <summary>
-        /// Gets the network category for a NetworkInterface using Network List Manager
-        /// </summary>
-        private int GetNetworkCategoryForInterface(NetworkInterface networkInterface)
-        {
-            try
-            {
-                // Create Network List Manager COM object
-                var networkListManager = new NetworkListManagerComObject() as INetworkListManager;
-                if (networkListManager == null)
-                {
-                    _logger.Debug("Failed to create NetworkListManager COM object - defaulting to Private category");
-                    return NLM_NETWORK_CATEGORY.Private;
-                }
 
-                // Get all network connections
-                dynamic connections = networkListManager.GetNetworkConnections();
-
-                // Enumerate connections to find one matching our interface
-                foreach (dynamic connection in connections)
-                {
-                    try
-                    {
-                        var connectionInterface = connection as INetworkConnection;
-                        if (connectionInterface == null) continue;
-
-                        // Get the network for this connection
-                        dynamic networkObj = connectionInterface.GetNetwork();
-                        var network = networkObj as INetwork;
-                        if (network == null) continue;
-
-                        // Get network category
-                        var category = network.GetCategory();
-
-                        _logger.Debug($"Found network connection with category {category} for interface");
-
-                        // For simplicity, return the first connected network's category
-                        // In practice, we might need more sophisticated matching
-                        if (connectionInterface.IsConnected)
-                        {
-                            return category;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Debug($"Error processing network connection: {ex.Message}");
-                    }
-                }
-
-                _logger.Debug("No matching network connection found - defaulting to Private category");
-                return NLM_NETWORK_CATEGORY.Private;
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug($"Error getting network category via NLM: {ex.Message} - defaulting to Private");
-                return NLM_NETWORK_CATEGORY.Private;
-            }
-        }
 
         /// <summary>
         /// Maps Network List Manager category to Windows Firewall profile
@@ -784,43 +668,7 @@ namespace SharpBridge.Services
         /// <returns>Windows interface index, or 0 if unable to determine</returns>
         public int GetBestInterface(string targetHost)
         {
-            try
-            {
-                // Handle special cases
-                if (string.IsNullOrEmpty(targetHost) || targetHost == "localhost" || targetHost == "127.0.0.1")
-                {
-                    _logger.Debug("Localhost target detected - using loopback interface (index 1)");
-                    return 1; // Loopback interface
-                }
-
-                // Parse target IP address
-                if (!IPAddress.TryParse(targetHost, out var targetAddr))
-                {
-                    _logger.Debug($"Unable to parse target host '{targetHost}' - defaulting to interface 0");
-                    return 0; // Default interface
-                }
-
-                // Call Windows GetBestInterface API
-                var targetBytes = targetAddr.GetAddressBytes();
-                var targetInt = BitConverter.ToUInt32(targetBytes, 0);
-
-                var result = NativeMethods.GetBestInterface(targetInt, out uint bestInterface);
-                if (result == 0) // NO_ERROR
-                {
-                    _logger.Debug($"GetBestInterface for {targetHost} returned interface {bestInterface}");
-                    return (int)bestInterface;
-                }
-                else
-                {
-                    _logger.Warning($"GetBestInterface failed for {targetHost} with error code {result} - defaulting to interface 0");
-                    return 0; // Default interface
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning($"Error in GetBestInterface for {targetHost}: {ex.Message} - defaulting to interface 0");
-                return 0; // Default interface
-            }
+            return _systemApi.GetBestInterface(targetHost);
         }
     }
 }
