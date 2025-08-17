@@ -19,8 +19,7 @@ namespace SharpBridge.Tests.Services
     public class WindowsFirewallEngineTests : IDisposable
     {
         private readonly Mock<IAppLogger> _mockLogger;
-        private readonly Mock<IWindowsComInterop> _mockComInterop;
-        private readonly Mock<IWindowsSystemApi> _mockSystemApi;
+        private readonly Mock<IWindowsInterop> _mockInterop;
         private readonly Mock<IProcessInfo> _mockProcessInfo;
         private readonly WindowsFirewallEngine _engine;
         private readonly object _mockFirewallPolicy;
@@ -28,13 +27,12 @@ namespace SharpBridge.Tests.Services
         public WindowsFirewallEngineTests()
         {
             _mockLogger = new Mock<IAppLogger>();
-            _mockComInterop = new Mock<IWindowsComInterop>();
-            _mockSystemApi = new Mock<IWindowsSystemApi>();
+            _mockInterop = new Mock<IWindowsInterop>();
             _mockProcessInfo = new Mock<IProcessInfo>();
             _mockFirewallPolicy = new object(); // Mock firewall policy object
 
             // Setup default successful COM initialization
-            _mockComInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
+            _mockInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
                 .Returns((out dynamic? policy) =>
                 {
                     policy = _mockFirewallPolicy;
@@ -43,8 +41,7 @@ namespace SharpBridge.Tests.Services
 
             _engine = new WindowsFirewallEngine(
                 _mockLogger.Object,
-                _mockComInterop.Object,
-                _mockSystemApi.Object,
+                _mockInterop.Object,
                 _mockProcessInfo.Object);
         }
 
@@ -52,36 +49,31 @@ namespace SharpBridge.Tests.Services
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new WindowsFirewallEngine(null!, _mockComInterop.Object, _mockSystemApi.Object, _mockProcessInfo.Object));
+                new WindowsFirewallEngine(null!, _mockInterop.Object, _mockProcessInfo.Object));
         }
 
         [Fact]
         public void Constructor_WithNullComInterop_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new WindowsFirewallEngine(_mockLogger.Object, null!, _mockSystemApi.Object, _mockProcessInfo.Object));
+                new WindowsFirewallEngine(_mockLogger.Object, null!, _mockProcessInfo.Object));
         }
 
-        [Fact]
-        public void Constructor_WithNullSystemApi_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new WindowsFirewallEngine(_mockLogger.Object, _mockComInterop.Object, null!, _mockProcessInfo.Object));
-        }
+
 
         [Fact]
         public void Constructor_WithNullProcessInfo_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new WindowsFirewallEngine(_mockLogger.Object, _mockComInterop.Object, _mockSystemApi.Object, null!));
+                new WindowsFirewallEngine(_mockLogger.Object, _mockInterop.Object, null!));
         }
 
         [Fact]
         public void Constructor_WithFailedComInitialization_LogsWarning()
         {
             // Arrange
-            var mockComInterop = new Mock<IWindowsComInterop>();
-            mockComInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
+            var mockInterop = new Mock<IWindowsInterop>();
+            mockInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
                 .Returns((out dynamic? policy) =>
                 {
                     policy = null;
@@ -91,8 +83,7 @@ namespace SharpBridge.Tests.Services
             // Act
             using (new WindowsFirewallEngine(
                 _mockLogger.Object,
-                mockComInterop.Object,
-                _mockSystemApi.Object,
+                mockInterop.Object,
                 _mockProcessInfo.Object))
             {
                 // Engine created and disposed to test initialization warning
@@ -106,8 +97,8 @@ namespace SharpBridge.Tests.Services
         public void GetRelevantRules_WithNullFirewallPolicy_ReturnsEmptyList()
         {
             // Arrange
-            var mockComInterop = new Mock<IWindowsComInterop>();
-            mockComInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
+            var mockInterop = new Mock<IWindowsInterop>();
+            mockInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
                 .Returns((out dynamic? policy) =>
                 {
                     policy = null;
@@ -116,8 +107,7 @@ namespace SharpBridge.Tests.Services
 
             var engine = new WindowsFirewallEngine(
                 _mockLogger.Object,
-                mockComInterop.Object,
-                _mockSystemApi.Object,
+                mockInterop.Object,
                 _mockProcessInfo.Object);
 
             // Act
@@ -133,7 +123,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var mockRules = CreateMockFirewallRules();
-            _mockComInterop.Setup(x => x.EnumerateFirewallRules(_mockFirewallPolicy))
+            _mockInterop.Setup(x => x.EnumerateFirewallRules(_mockFirewallPolicy))
                 .Returns(mockRules.Cast<dynamic>());
 
             _mockProcessInfo.Setup(x => x.GetCurrentExecutablePath())
@@ -144,15 +134,15 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.NotEmpty(result);
-            _mockComInterop.Verify(x => x.EnumerateFirewallRules(_mockFirewallPolicy), Times.Once);
+            _mockInterop.Verify(x => x.EnumerateFirewallRules(_mockFirewallPolicy), Times.Once);
         }
 
         [Fact]
         public void GetDefaultAction_WithNullFirewallPolicy_ReturnsFalse()
         {
             // Arrange
-            var mockComInterop = new Mock<IWindowsComInterop>();
-            mockComInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
+            var mockInterop = new Mock<IWindowsInterop>();
+            mockInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
                 .Returns((out dynamic? policy) =>
                 {
                     policy = null;
@@ -161,8 +151,7 @@ namespace SharpBridge.Tests.Services
 
             var engine = new WindowsFirewallEngine(
                 _mockLogger.Object,
-                mockComInterop.Object,
-                _mockSystemApi.Object,
+                mockInterop.Object,
                 _mockProcessInfo.Object);
 
             // Act
@@ -177,7 +166,7 @@ namespace SharpBridge.Tests.Services
         public void GetDefaultAction_WithAllowAction_ReturnsTrue()
         {
             // Arrange
-            _mockComInterop.Setup(x => x.GetDefaultAction(_mockFirewallPolicy, 1, 2))
+            _mockInterop.Setup(x => x.GetDefaultAction(_mockFirewallPolicy, 1, 2))
                 .Returns(NetFwAction.Allow);
 
             // Act
@@ -185,14 +174,14 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.True(result);
-            _mockComInterop.Verify(x => x.GetDefaultAction(_mockFirewallPolicy, 1, 2), Times.Once);
+            _mockInterop.Verify(x => x.GetDefaultAction(_mockFirewallPolicy, 1, 2), Times.Once);
         }
 
         [Fact]
         public void GetDefaultAction_WithBlockAction_ReturnsFalse()
         {
             // Arrange
-            _mockComInterop.Setup(x => x.GetDefaultAction(_mockFirewallPolicy, 1, 2))
+            _mockInterop.Setup(x => x.GetDefaultAction(_mockFirewallPolicy, 1, 2))
                 .Returns(NetFwAction.Block);
 
             // Act
@@ -441,22 +430,22 @@ namespace SharpBridge.Tests.Services
         public void GetFirewallState_CallsSystemApi()
         {
             // Arrange
-            _mockSystemApi.Setup(x => x.IsFirewallServiceRunning()).Returns(true);
+            _mockInterop.Setup(x => x.IsFirewallServiceRunning()).Returns(true);
 
             // Act
             var result = _engine.GetFirewallState();
 
             // Assert
             Assert.True(result);
-            _mockSystemApi.Verify(x => x.IsFirewallServiceRunning(), Times.Once);
+            _mockInterop.Verify(x => x.IsFirewallServiceRunning(), Times.Once);
         }
 
         [Fact]
         public void GetCurrentProfiles_WithNullFirewallPolicy_ReturnsPrivateProfile()
         {
             // Arrange
-            var mockComInterop = new Mock<IWindowsComInterop>();
-            mockComInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
+            var mockInterop = new Mock<IWindowsInterop>();
+            mockInterop.Setup(x => x.TryCreateFirewallPolicy(out It.Ref<dynamic?>.IsAny))
                 .Returns((out dynamic? policy) =>
                 {
                     policy = null;
@@ -465,8 +454,7 @@ namespace SharpBridge.Tests.Services
 
             var engine = new WindowsFirewallEngine(
                 _mockLogger.Object,
-                mockComInterop.Object,
-                _mockSystemApi.Object,
+                mockInterop.Object,
                 _mockProcessInfo.Object);
 
             // Act
@@ -481,7 +469,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             var expectedProfiles = NetFwProfile2.Domain | NetFwProfile2.Private;
-            _mockComInterop.Setup(x => x.GetCurrentProfiles(_mockFirewallPolicy))
+            _mockInterop.Setup(x => x.GetCurrentProfiles(_mockFirewallPolicy))
                 .Returns(expectedProfiles);
 
             // Act
@@ -489,7 +477,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.Equal(expectedProfiles, result);
-            _mockComInterop.Verify(x => x.GetCurrentProfiles(_mockFirewallPolicy), Times.Once);
+            _mockInterop.Verify(x => x.GetCurrentProfiles(_mockFirewallPolicy), Times.Once);
         }
 
         [Fact]
@@ -498,14 +486,14 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var targetHost = "192.168.1.100";
             var expectedInterface = 5;
-            _mockSystemApi.Setup(x => x.GetBestInterface(targetHost)).Returns(expectedInterface);
+            _mockInterop.Setup(x => x.GetBestInterface(targetHost)).Returns(expectedInterface);
 
             // Act
             var result = _engine.GetBestInterface(targetHost);
 
             // Assert
             Assert.Equal(expectedInterface, result);
-            _mockSystemApi.Verify(x => x.GetBestInterface(targetHost), Times.Once);
+            _mockInterop.Verify(x => x.GetBestInterface(targetHost), Times.Once);
         }
 
         [Fact]
@@ -536,10 +524,10 @@ namespace SharpBridge.Tests.Services
             mockNetworkInterface.Setup(x => x.GetIPProperties()).Returns(mockIPProperties.Object);
 
             var networkInterfaces = new[] { mockNetworkInterface.Object };
-            _mockSystemApi.Setup(x => x.GetAllNetworkInterfaces()).Returns(networkInterfaces);
+            _mockInterop.Setup(x => x.GetAllNetworkInterfaces()).Returns(networkInterfaces);
 
             var expectedCategory = NLM_NETWORK_CATEGORY.Private;
-            _mockComInterop.Setup(x => x.GetNetworkCategoryForInterface("interface-5"))
+            _mockInterop.Setup(x => x.GetNetworkCategoryForInterface("interface-5"))
                 .Returns(expectedCategory);
 
             // Act
@@ -547,7 +535,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             Assert.Equal(NetFwProfile2.Private, result);
-            _mockComInterop.Verify(x => x.GetNetworkCategoryForInterface("interface-5"), Times.Once);
+            _mockInterop.Verify(x => x.GetNetworkCategoryForInterface("interface-5"), Times.Once);
         }
 
         [Fact]
@@ -557,7 +545,7 @@ namespace SharpBridge.Tests.Services
             _engine.Dispose();
 
             // Assert
-            _mockComInterop.Verify(x => x.ReleaseComObject(_mockFirewallPolicy), Times.Once);
+            _mockInterop.Verify(x => x.ReleaseComObject(_mockFirewallPolicy), Times.Once);
         }
 
 

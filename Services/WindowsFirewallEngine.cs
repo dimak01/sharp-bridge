@@ -16,21 +16,18 @@ namespace SharpBridge.Services
     public class WindowsFirewallEngine : IFirewallEngine, IDisposable
     {
         private readonly IAppLogger _logger;
-        private readonly IWindowsComInterop _comInterop;
-        private readonly IWindowsSystemApi _systemApi;
+        private readonly IWindowsInterop _interop;
         private readonly IProcessInfo _processInfo;
         private dynamic? _firewallPolicy;
         private bool _disposed;
 
         public WindowsFirewallEngine(
             IAppLogger logger,
-            IWindowsComInterop comInterop,
-            IWindowsSystemApi systemApi,
+            IWindowsInterop interop,
             IProcessInfo processInfo)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _comInterop = comInterop ?? throw new ArgumentNullException(nameof(comInterop));
-            _systemApi = systemApi ?? throw new ArgumentNullException(nameof(systemApi));
+            _interop = interop ?? throw new ArgumentNullException(nameof(interop));
             _processInfo = processInfo ?? throw new ArgumentNullException(nameof(processInfo));
 
             InitializeComObjects();
@@ -38,7 +35,7 @@ namespace SharpBridge.Services
 
         private void InitializeComObjects()
         {
-            if (_comInterop.TryCreateFirewallPolicy(out _firewallPolicy))
+            if (_interop.TryCreateFirewallPolicy(out _firewallPolicy))
             {
                 _logger.Debug("Successfully initialized Windows Firewall COM objects");
             }
@@ -95,7 +92,7 @@ namespace SharpBridge.Services
 
             try
             {
-                var defaultAction = _comInterop.GetDefaultAction(_firewallPolicy, direction, profile);
+                var defaultAction = _interop.GetDefaultAction(_firewallPolicy, direction, profile);
 
                 // NetFwAction.Allow = 1, NetFwAction.Block = 0
                 var isAllowed = defaultAction == Utilities.ComInterop.NetFwAction.Allow;
@@ -317,7 +314,7 @@ namespace SharpBridge.Services
 
             try
             {
-                var comRules = _comInterop.EnumerateFirewallRules(_firewallPolicy);
+                var comRules = _interop.EnumerateFirewallRules(_firewallPolicy);
 
                 foreach (var comRule in comRules)
                 {
@@ -521,7 +518,7 @@ namespace SharpBridge.Services
                 {
                     if (_firewallPolicy != null)
                     {
-                        _comInterop.ReleaseComObject(_firewallPolicy);
+                        _interop.ReleaseComObject(_firewallPolicy);
                         _firewallPolicy = null;
                     }
                 }
@@ -540,7 +537,7 @@ namespace SharpBridge.Services
         /// <returns>True if firewall service is running, false if stopped</returns>
         public bool GetFirewallState()
         {
-            return _systemApi.IsFirewallServiceRunning();
+            return _interop.IsFirewallServiceRunning();
         }
 
         /// <summary>
@@ -555,7 +552,7 @@ namespace SharpBridge.Services
                 return NetFwProfile2.Private; // Fail-safe: assume Private
             }
 
-            return _comInterop.GetCurrentProfiles(_firewallPolicy);
+            return _interop.GetCurrentProfiles(_firewallPolicy);
         }
 
         /// <summary>
@@ -586,7 +583,7 @@ namespace SharpBridge.Services
                 _logger.Debug($"Found interface {interfaceIndex}: {targetInterface.Name} ({targetInterface.Description})");
 
                 // Step 2: Use Network List Manager to get the network category
-                var networkCategory = _comInterop.GetNetworkCategoryForInterface(targetInterface.Id);
+                var networkCategory = _interop.GetNetworkCategoryForInterface(targetInterface.Id);
 
                 // Step 3: Map NLM category to firewall profile
                 var firewallProfile = MapNetworkCategoryToFirewallProfile(networkCategory);
@@ -608,7 +605,7 @@ namespace SharpBridge.Services
         {
             try
             {
-                var networkInterfaces = _systemApi.GetAllNetworkInterfaces();
+                var networkInterfaces = _interop.GetAllNetworkInterfaces();
 
                 foreach (var ni in networkInterfaces)
                 {
@@ -668,7 +665,7 @@ namespace SharpBridge.Services
         /// <returns>Windows interface index, or 0 if unable to determine</returns>
         public int GetBestInterface(string targetHost)
         {
-            return _systemApi.GetBestInterface(targetHost);
+            return _interop.GetBestInterface(targetHost);
         }
     }
 }

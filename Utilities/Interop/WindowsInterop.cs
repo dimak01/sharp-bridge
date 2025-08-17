@@ -1,0 +1,173 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Runtime.Versioning;
+using SharpBridge.Interfaces;
+
+// Keep namespace to avoid broad refactors while introducing a single facade
+namespace SharpBridge.Utilities.ComInterop
+{
+    /// <summary>
+    /// Unified Windows interop facade that consolidates Firewall COM, Network List Manager and Win32 operations.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    public class WindowsInterop : IWindowsInterop
+    {
+        private readonly IAppLogger _logger;
+
+        public WindowsInterop(IAppLogger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        // Firewall COM
+        public bool TryCreateFirewallPolicy(out dynamic? policy)
+        {
+            policy = null;
+            try
+            {
+                policy = (INetFwPolicy2)new NetFwPolicy2ComObject();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Failed to initialize Windows Firewall COM objects: {ex.Message}");
+                return false;
+            }
+        }
+
+        public IEnumerable<dynamic> EnumerateFirewallRules(dynamic policy)
+        {
+            if (policy == null) return Enumerable.Empty<dynamic>();
+            var rules = new List<dynamic>();
+            try
+            {
+                dynamic comRules = policy.Rules;
+                foreach (dynamic comRule in comRules)
+                {
+                    if (comRule != null) rules.Add(comRule);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Unexpected error enumerating firewall rules: {ex.Message}");
+            }
+            return rules;
+        }
+
+        public int GetDefaultAction(dynamic policy, int direction, int profile)
+        {
+            if (policy == null)
+            {
+                _logger.Warning("Firewall policy not available, defaulting to block");
+                return NetFwAction.Block;
+            }
+            try
+            {
+                int defaultAction = direction == 1
+                    ? policy?.DefaultInboundAction(profile) ?? NetFwAction.Block
+                    : policy?.DefaultOutboundAction(profile) ?? NetFwAction.Block;
+                return defaultAction;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error getting default firewall action: {ex.Message}");
+                return NetFwAction.Block;
+            }
+        }
+
+        public int GetCurrentProfiles(dynamic policy)
+        {
+            if (policy == null)
+            {
+                _logger.Warning("Firewall policy not initialized - defaulting to Private profile");
+                return NetFwProfile2.Private;
+            }
+            try
+            {
+                var firewallPolicy = (INetFwPolicy2)policy;
+                return firewallPolicy.CurrentProfileTypes;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Error getting current profiles: {ex.Message} - defaulting to Private");
+                return NetFwProfile2.Private;
+            }
+        }
+
+        public int GetNetworkCategoryForInterface(string interfaceId)
+        {
+            try
+            {
+                var networkListManager = new NetworkListManagerComObject() as INetworkListManager;
+                if (networkListManager == null) return NLM_NETWORK_CATEGORY.Private;
+                dynamic connections = networkListManager.GetNetworkConnections();
+                foreach (dynamic connection in connections)
+                {
+                    var connectionInterface = connection as INetworkConnection;
+                    if (connectionInterface == null) continue;
+                    var networkObj = connectionInterface.GetNetwork();
+                    var network = networkObj as INetwork;
+                    if (network == null) continue;
+                    if (connectionInterface.IsConnected) return network.GetCategory();
+                }
+                return NLM_NETWORK_CATEGORY.Private;
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug($"Error getting network category via NLM: {ex.Message} - defaulting to Private");
+                return NLM_NETWORK_CATEGORY.Private;
+            }
+        }
+
+        public void ReleaseComObject(object comObject)
+        {
+            if (comObject == null) return;
+            try { System.Runtime.InteropServices.Marshal.ReleaseComObject(comObject); }
+            catch (Exception ex) { _logger.Debug($"Error releasing COM object: {ex.Message}"); }
+        }
+
+        // System / Win32
+        public bool IsFirewallServiceRunning()
+        {
+            try
+            {
+                using var serviceController = new System.ServiceProcess.ServiceController("mpssvc");
+                return serviceController.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Error checking firewall service status: {ex.Message} - assuming enabled");
+                return true;
+            }
+        }
+
+        public int GetBestInterface(string targetHost)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(targetHost) || targetHost == "localhost" || targetHost == "127.0.0.1")
+                    return 1; // loopback
+                if (!IPAddress.TryParse(targetHost, out var targetAddr)) return 0;
+                var targetBytes = targetAddr.GetAddressBytes();
+                var targetInt = BitConverter.ToUInt32(targetBytes, 0);
+                var result = NativeMethods.GetBestInterface(targetInt, out uint bestInterface);
+                return result == 0 ? (int)bestInterface : 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public NetworkInterface[] GetAllNetworkInterfaces()
+        {
+            try { return NetworkInterface.GetAllNetworkInterfaces(); }
+            catch { return Array.Empty<NetworkInterface>(); }
+        }
+    }
+}
+
+
