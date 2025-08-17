@@ -123,7 +123,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             Assert.Contains("\u001b[92m[Enabled]\u001b[0m \u001b[92mAllow\u001b[0m UDP 28964", result);
             Assert.Contains("\u001b[90m[Disabled]\u001b[0m \u001b[91mBlock\u001b[0m TCP 8001", result);
-            Assert.Contains("App: SharpBridge.exe", result);
+            Assert.Contains("App: C:\\Path\\To\\SharpBridge.exe", result);
             Assert.Contains("Global", result);
         }
 
