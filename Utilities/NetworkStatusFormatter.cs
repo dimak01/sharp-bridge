@@ -277,11 +277,10 @@ namespace SharpBridge.Utilities
                 parts.Add(direction);
             }
 
-            // Add app info if available and not global
+            // Add app info if available; show as-is for transparency (do not truncate path)
             if (!string.IsNullOrEmpty(rule.ApplicationName))
             {
-                var appName = System.IO.Path.GetFileName(rule.ApplicationName);
-                parts.Add($"App: {appName}");
+                parts.Add($"App: {rule.ApplicationName}");
             }
             else
             {
