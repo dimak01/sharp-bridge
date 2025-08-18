@@ -8,7 +8,7 @@
           <ExcludeByAttribute>Obsolete</ExcludeByAttribute>
           <ExcludeByAttribute>GeneratedCode</ExcludeByAttribute>
           <ExcludeByAttribute>CompilerGenerated</ExcludeByAttribute>
-          <ExcludeByFile>**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs</ExcludeByFile>
+          <ExcludeByFile>**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Utilities/Interop/WindowsInterop.cs,**/Utilities/Interop/ComInterfaces.cs,**/Utilities/Interop/NativeMethods.cs</ExcludeByFile>
           <IncludeTestAssembly>false</IncludeTestAssembly>
         </Configuration>
       </DataCollector>

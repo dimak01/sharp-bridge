@@ -224,33 +224,25 @@ namespace SharpBridge.Services
             if (string.IsNullOrEmpty(rulePort) || string.IsNullOrEmpty(port))
                 return true; // No port restriction means match
 
-            try
+            // Handle port ranges (e.g., "28960-28970")
+            if (rulePort.Contains("-"))
             {
-                // Handle port ranges (e.g., "28960-28970")
-                if (rulePort.Contains("-"))
+                var range = rulePort.Split('-');
+                if (range.Length == 2 && int.TryParse(range[0], out var min) && int.TryParse(range[1], out var max))
                 {
-                    var range = rulePort.Split('-');
-                    if (range.Length == 2 && int.TryParse(range[0], out var min) && int.TryParse(range[1], out var max))
+                    if (int.TryParse(port, out var portNum))
                     {
-                        if (int.TryParse(port, out var portNum))
-                        {
-                            return portNum >= min && portNum <= max;
-                        }
+                        return portNum >= min && portNum <= max;
                     }
                 }
-
-                // Handle wildcard ports
-                if (rulePort == "*" || rulePort.ToLower() == "any")
-                    return true;
-
-                // Exact port match
-                return port == rulePort;
             }
-            catch (Exception ex)
-            {
-                _logger.Debug($"Error checking port range: {ex.Message}");
-                return false;
-            }
+
+            // Handle wildcard ports
+            if (rulePort == "*" || rulePort.Equals("any", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Exact port match
+            return port == rulePort;
         }
 
         public bool IsHostInSubnet(string host, string subnet)
@@ -258,30 +250,22 @@ namespace SharpBridge.Services
             if (string.IsNullOrEmpty(subnet) || string.IsNullOrEmpty(host))
                 return true; // No subnet restriction means match
 
-            try
-            {
-                // Handle wildcard addresses
-                if (subnet == "*" || subnet.ToLower() == "any" || subnet == "0.0.0.0")
-                    return true;
+            // Handle wildcard addresses
+            if (subnet == "*" || subnet.Equals("any", StringComparison.OrdinalIgnoreCase) || subnet == "0.0.0.0")
+                return true;
 
-                // Handle CIDR notation (e.g., "192.168.1.0/24")
-                if (subnet.Contains("/"))
+            // Handle CIDR notation (e.g., "192.168.1.0/24")
+            if (subnet.Contains("/"))
+            {
+                var parts = subnet.Split('/', 2);
+                if (parts.Length == 2 && int.TryParse(parts[1], out var maskBits))
                 {
-                    var parts = subnet.Split('/');
-                    if (parts.Length == 2 && int.TryParse(parts[1], out var maskBits))
-                    {
-                        return IsHostInNetwork(host, parts[0], maskBits);
-                    }
+                    return IsHostInNetwork(host, parts[0], maskBits);
                 }
+            }
 
-                // Exact host match
-                return host == subnet;
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug($"Error checking host in subnet: {ex.Message}");
-                return false;
-            }
+            // Exact host match
+            return host == subnet;
         }
 
         public string NormalizeAddress(string address)
@@ -289,48 +273,40 @@ namespace SharpBridge.Services
             if (string.IsNullOrEmpty(address))
                 return address;
 
-            var normalized = address.Trim().ToLower();
+            var trimmed = address.Trim();
 
-            switch (normalized)
+            if (trimmed.Equals("*", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals("any", StringComparison.OrdinalIgnoreCase))
             {
-                case "*":
-                case "any":
-                    return "0.0.0.0";
-                case "<localsubnet>":
-                    return GetLocalSubnet();
-                case "<local>":
-                    return "127.0.0.1";
-                default:
-                    return address.Trim();
+                return "0.0.0.0";
             }
+            if (trimmed.Equals("<localsubnet>", StringComparison.OrdinalIgnoreCase))
+            {
+                return GetLocalSubnet();
+            }
+            if (trimmed.Equals("<local>", StringComparison.OrdinalIgnoreCase))
+            {
+                return "127.0.0.1";
+            }
+
+            return trimmed;
         }
 
         private List<FirewallRule> EnumerateAllRules()
         {
             var rules = new List<FirewallRule>();
 
-            if (_firewallPolicy == null)
-                return rules;
-
             try
             {
                 var comRules = _interop.EnumerateFirewallRules(_firewallPolicy);
-
-                foreach (var comRule in comRules)
+                if (comRules != null)
                 {
-                    if (comRule != null)
+                    foreach (var comRule in comRules)
                     {
-                        try
+                        var rule = ConvertComRuleToFirewallRule(comRule);
+                        if (rule != null)
                         {
-                            var rule = ConvertComRuleToFirewallRule(comRule);
-                            if (rule != null)
-                            {
-                                rules.Add(rule);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.Debug($"Error converting COM rule: {ex.Message}");
+                            rules.Add(rule);
                         }
                     }
                 }
@@ -409,18 +385,30 @@ namespace SharpBridge.Services
         {
             try
             {
+                // Read COM properties first to keep object construction simple
+                var name = (string?)comRule.Name ?? string.Empty;
+                bool isEnabled = comRule.Enabled;
+                var direction = comRule.Direction == 1 ? "Inbound" : "Outbound";
+                var action = comRule.Action == 1 ? "Allow" : "Block";
+                var protocol = GetProtocolName(comRule.Protocol);
+                string? localPort = comRule.LocalPorts;
+                string? remotePort = comRule.RemotePorts;
+                string? remoteAddress = comRule.RemoteAddresses;
+                string? applicationName = comRule.ApplicationName;
+                int profiles = comRule.Profiles;
+
                 return new FirewallRule
                 {
-                    Name = comRule.Name ?? string.Empty,
-                    IsEnabled = comRule.Enabled,
-                    Direction = comRule.Direction == 1 ? "Inbound" : "Outbound",
-                    Action = comRule.Action == 1 ? "Allow" : "Block",
-                    Protocol = GetProtocolName(comRule.Protocol),
-                    LocalPort = comRule.LocalPorts,
-                    RemotePort = comRule.RemotePorts,
-                    RemoteAddress = comRule.RemoteAddresses,
-                    ApplicationName = comRule.ApplicationName,
-                    Profiles = comRule.Profiles
+                    Name = name,
+                    IsEnabled = isEnabled,
+                    Direction = direction,
+                    Action = action,
+                    Protocol = protocol,
+                    LocalPort = localPort,
+                    RemotePort = remotePort,
+                    RemoteAddress = remoteAddress,
+                    ApplicationName = applicationName,
+                    Profiles = profiles
                 };
             }
             catch (Exception ex)
