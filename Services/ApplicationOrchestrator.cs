@@ -763,7 +763,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Updates the console display with system help content
         /// </summary>
-        private async void UpdateConsoleWithSystemHelp()
+        private async Task UpdateConsoleWithSystemHelp()
         {
             try
             {

@@ -21,6 +21,12 @@ namespace SharpBridge.Services
         private dynamic? _firewallPolicy;
         private bool _disposed;
 
+        /// <summary>
+        /// Creates a new instance of the Windows firewall analysis engine.
+        /// </summary>
+        /// <param name="logger">Application logger used for diagnostics and troubleshooting output.</param>
+        /// <param name="interop">Windows interop facade that abstracts COM/NLM/Win32 calls.</param>
+        /// <param name="processInfo">Provides current process information (executable path).</param>
         public WindowsFirewallEngine(
             IAppLogger logger,
             IWindowsInterop interop,
@@ -47,6 +53,7 @@ namespace SharpBridge.Services
         }
 
 
+        /// <inheritdoc />
         public List<FirewallRule> GetRelevantRules(
             int direction,
             int protocol,
@@ -82,6 +89,7 @@ namespace SharpBridge.Services
         /// <param name="direction">1 for Inbound, 2 for Outbound</param>
         /// <param name="profile">Profile type (Domain/Private/Public)</param>
         /// <returns>True if default action is Allow, false if Block</returns>
+        /// <inheritdoc />
         public bool GetDefaultAction(int direction, int profile)
         {
             if (_firewallPolicy == null)
@@ -109,6 +117,7 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <inheritdoc />
         public bool IsApplicationRule(object rule)
         {
             if (rule is not INetFwRule comRule)
@@ -134,6 +143,7 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <inheritdoc />
         public bool IsRuleEnabled(object rule)
         {
             if (rule is not INetFwRule comRule)
@@ -150,6 +160,7 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <inheritdoc />
         public bool IsProfileRule(FirewallRule rule, int profile)
         {
             try
@@ -169,6 +180,7 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <inheritdoc />
         public bool IsProtocolRule(FirewallRule rule, int protocol)
         {
             try
@@ -188,6 +200,7 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <inheritdoc />
         public bool IsTargetMatch(FirewallRule rule, string targetHost, string targetPort)
         {
             try
@@ -196,18 +209,17 @@ namespace SharpBridge.Services
                 var ruleRemotePort = rule.RemotePort ?? string.Empty;
 
                 // Check if target host matches rule's remote address
-                if (!string.IsNullOrEmpty(ruleRemoteAddress) && !string.IsNullOrEmpty(targetHost))
+                if (!string.IsNullOrEmpty(ruleRemoteAddress) && !string.IsNullOrEmpty(targetHost)
+                    && !IsHostInSubnet(targetHost, NormalizeAddress(ruleRemoteAddress)))
                 {
-                    var normalizedRuleAddress = NormalizeAddress(ruleRemoteAddress);
-                    if (!IsHostInSubnet(targetHost, normalizedRuleAddress))
-                        return false;
+                    return false;
                 }
 
                 // Check if target port matches rule's remote port
-                if (!string.IsNullOrEmpty(ruleRemotePort) && !string.IsNullOrEmpty(targetPort))
+                if (!string.IsNullOrEmpty(ruleRemotePort) && !string.IsNullOrEmpty(targetPort)
+                    && !IsPortInRange(targetPort, ruleRemotePort))
                 {
-                    if (!IsPortInRange(targetPort, ruleRemotePort))
-                        return false;
+                    return false;
                 }
 
                 return true;
@@ -219,6 +231,7 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <inheritdoc />
         public bool IsPortInRange(string port, string rulePort)
         {
             if (string.IsNullOrEmpty(rulePort) || string.IsNullOrEmpty(port))
@@ -245,6 +258,7 @@ namespace SharpBridge.Services
             return port == rulePort;
         }
 
+        /// <inheritdoc />
         public bool IsHostInSubnet(string host, string subnet)
         {
             if (string.IsNullOrEmpty(subnet) || string.IsNullOrEmpty(host))
@@ -268,6 +282,7 @@ namespace SharpBridge.Services
             return host == subnet;
         }
 
+        /// <inheritdoc />
         public string NormalizeAddress(string address)
         {
             if (string.IsNullOrEmpty(address))
@@ -364,17 +379,17 @@ namespace SharpBridge.Services
                 // If rule.ApplicationName is null/empty, it's a global rule - include it
 
                 // Filter by target if specified
-                if (!string.IsNullOrEmpty(targetHost) && !string.IsNullOrEmpty(targetPort))
+                if (!string.IsNullOrEmpty(targetHost) && !string.IsNullOrEmpty(targetPort)
+                    && !IsTargetMatch(rule, targetHost, targetPort))
                 {
-                    if (!IsTargetMatch(rule, targetHost, targetPort))
-                        return false;
+                    return false;
                 }
 
                 // Filter by local port for inbound connections
-                if (!string.IsNullOrEmpty(localPort) && !string.IsNullOrEmpty(rule.LocalPort))
+                if (!string.IsNullOrEmpty(localPort) && !string.IsNullOrEmpty(rule.LocalPort)
+                    && !IsPortInRange(localPort, rule.LocalPort))
                 {
-                    if (!IsPortInRange(localPort, rule.LocalPort))
-                        return false;
+                    return false;
                 }
 
                 return true;
@@ -492,12 +507,17 @@ namespace SharpBridge.Services
             return "192.168.1.0/24"; // Placeholder
         }
 
+        /// <inheritdoc />
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Releases unmanaged resources and, optionally, managed resources used by this instance.
+        /// </summary>
+        /// <param name="disposing">True to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
