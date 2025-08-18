@@ -17,12 +17,17 @@ namespace SharpBridge.Utilities.ComInterop
     {
         private readonly IAppLogger _logger;
 
+        /// <summary>
+        /// Creates a new instance of <see cref="WindowsInterop"/>.
+        /// </summary>
+        /// <param name="logger">Application logger used for diagnostics and error reporting.</param>
         public WindowsInterop(IAppLogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         // Firewall COM
+        /// <inheritdoc />
         public bool TryCreateFirewallPolicy(out dynamic? policy)
         {
             policy = null;
@@ -38,6 +43,7 @@ namespace SharpBridge.Utilities.ComInterop
             }
         }
 
+        /// <inheritdoc />
         public IEnumerable<dynamic> EnumerateFirewallRules(dynamic policy)
         {
             if (policy == null) return Enumerable.Empty<dynamic>();
@@ -57,6 +63,7 @@ namespace SharpBridge.Utilities.ComInterop
             return rules;
         }
 
+        /// <inheritdoc />
         public int GetDefaultAction(dynamic policy, int direction, int profile)
         {
             if (policy == null)
@@ -78,6 +85,7 @@ namespace SharpBridge.Utilities.ComInterop
             }
         }
 
+        /// <inheritdoc />
         public int GetCurrentProfiles(dynamic policy)
         {
             if (policy == null)
@@ -97,6 +105,7 @@ namespace SharpBridge.Utilities.ComInterop
             }
         }
 
+        /// <inheritdoc />
         public int GetNetworkCategoryForInterface(string interfaceId)
         {
             try
@@ -122,6 +131,7 @@ namespace SharpBridge.Utilities.ComInterop
             }
         }
 
+        /// <inheritdoc />
         public void ReleaseComObject(object comObject)
         {
             if (comObject == null) return;
@@ -130,6 +140,7 @@ namespace SharpBridge.Utilities.ComInterop
         }
 
         // System / Win32
+        /// <inheritdoc />
         public bool IsFirewallServiceRunning()
         {
             try
@@ -144,6 +155,7 @@ namespace SharpBridge.Utilities.ComInterop
             }
         }
 
+        /// <inheritdoc />
         public int GetBestInterface(string targetHost)
         {
             try
@@ -162,6 +174,7 @@ namespace SharpBridge.Utilities.ComInterop
             }
         }
 
+        /// <inheritdoc />
         public NetworkInterface[] GetAllNetworkInterfaces()
         {
             try { return NetworkInterface.GetAllNetworkInterfaces(); }

@@ -14,6 +14,11 @@ namespace SharpBridge.Utilities
         private readonly IFirewallEngine _ruleEngine;
         private readonly IAppLogger _logger;
 
+        /// <summary>
+        /// Creates a new instance of the Windows firewall analyzer.
+        /// </summary>
+        /// <param name="ruleEngine">The firewall engine to use for analysis.</param>
+        /// <param name="logger">The logger to use for logging.</param>
         public WindowsFirewallAnalyzer(IFirewallEngine ruleEngine, IAppLogger logger)
         {
             _ruleEngine = ruleEngine ?? throw new ArgumentNullException(nameof(ruleEngine));
