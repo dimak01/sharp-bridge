@@ -151,10 +151,10 @@ namespace SharpBridge.Utilities
 
             // Add commands (with conditional coloring)
             AppendAddFirewallCommand(sb, "Add inbound rule", inboundBlocked,
-                _commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP Inbound", "in", "allow", "UDP", phoneConfig.LocalPort.ToString(), null, null));
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP Inbound", "in", AllowLowerText, "UDP", phoneConfig.LocalPort.ToString(), null, null));
 
             AppendAddFirewallCommand(sb, "Add outbound rule", outboundBlocked,
-                _commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP", "out", "allow", "UDP", null, phoneConfig.IphonePort.ToString(), phoneConfig.IphoneIpAddress));
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge iPhone UDP", "out", AllowLowerText, "UDP", null, phoneConfig.IphonePort.ToString(), phoneConfig.IphoneIpAddress));
 
             // Remove commands
             var removeInboundCmd = _commandProvider.GetRemoveFirewallRuleCommand("SharpBridge iPhone UDP Inbound");
@@ -184,10 +184,10 @@ namespace SharpBridge.Utilities
 
             // Add commands (with conditional coloring)
             AppendAddFirewallCommand(sb, "Add WebSocket rule", webSocketBlocked,
-                _commandProvider.GetAddFirewallRuleCommand("SharpBridge PC WebSocket", "out", "allow", "TCP", null, pcConfig.Port.ToString(), pcConfig.Host));
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge PC WebSocket", "out", AllowLowerText, "TCP", null, pcConfig.Port.ToString(), pcConfig.Host));
 
             AppendAddFirewallCommand(sb, "Add discovery rule", discoveryBlocked,
-                _commandProvider.GetAddFirewallRuleCommand("SharpBridge PC Discovery", "out", "allow", "UDP", null, discoveryPort, pcConfig.Host));
+                _commandProvider.GetAddFirewallRuleCommand("SharpBridge PC Discovery", "out", AllowLowerText, "UDP", null, discoveryPort, pcConfig.Host));
 
             // Remove commands
             var removeWebSocketCmd = _commandProvider.GetRemoveFirewallRuleCommand("SharpBridge PC WebSocket");
