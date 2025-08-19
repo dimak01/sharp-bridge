@@ -347,50 +347,61 @@ namespace SharpBridge.Services
             // Get current application path for comparison
             var currentExePath = _processInfo.GetCurrentExecutablePath();
 
-            return rules.Where(rule =>
+            var hasTarget = !string.IsNullOrEmpty(targetHost) && !string.IsNullOrEmpty(targetPort);
+            var hasLocal = !string.IsNullOrEmpty(localPort);
+
+            IEnumerable<FirewallRule> query = rules
+                .Where(r => MatchesDirection(r, desiredDirection))
+                .Where(r => MatchesProtocol(r, desiredProtocol))
+                .Where(r => IsProfileRule(r, profile))
+                .Where(r => MatchesApplicationScope(r, currentExePath));
+
+            if (hasTarget)
             {
-                // Filter by direction
-                if (!string.Equals(rule.Direction, desiredDirection, StringComparison.OrdinalIgnoreCase))
-                    return false;
+                query = query.Where(r => MatchesTarget(r, targetHost!, targetPort!));
+            }
 
-                // Filter by protocol
-                if (!string.Equals(rule.Protocol, desiredProtocol, StringComparison.OrdinalIgnoreCase))
-                    return false;
+            if (hasLocal)
+            {
+                query = query.Where(r => MatchesLocalPort(r, localPort!));
+            }
 
-                // Filter by profile (using the existing helper that handles bitmasks)
-                if (!IsProfileRule(rule, profile))
-                    return false;
+            return query.ToList();
+        }
 
-                // CRITICAL: Filter by application scope
-                // Only include rules that apply to our app OR are global (no app specified)
-                if (!string.IsNullOrEmpty(rule.ApplicationName))
-                {
-                    // Rule has an application specified - check if it's our app
-                    var ruleAppPath = CleanApplicationPath(rule.ApplicationName);
-                    if (!string.Equals(ruleAppPath, currentExePath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Rule applies to a different application - exclude it
-                        return false;
-                    }
-                }
-                // If rule.ApplicationName is null/empty, it's a global rule - include it
+        private static bool MatchesDirection(FirewallRule rule, string desiredDirection)
+        {
+            return string.Equals(rule.Direction, desiredDirection, StringComparison.OrdinalIgnoreCase);
+        }
 
-                // Filter by target if specified
-                if (!string.IsNullOrEmpty(targetHost) && !string.IsNullOrEmpty(targetPort)
-                    && !IsTargetMatch(rule, targetHost, targetPort))
-                {
-                    return false;
-                }
+        private static bool MatchesProtocol(FirewallRule rule, string desiredProtocol)
+        {
+            return string.Equals(rule.Protocol, desiredProtocol, StringComparison.OrdinalIgnoreCase);
+        }
 
-                // Filter by local port for inbound connections
-                if (!string.IsNullOrEmpty(localPort) && !string.IsNullOrEmpty(rule.LocalPort)
-                    && !IsPortInRange(localPort, rule.LocalPort))
-                {
-                    return false;
-                }
-
+        private static bool MatchesApplicationScope(FirewallRule rule, string? currentExePath)
+        {
+            // If rule.ApplicationName is null/empty, it's a global rule - include it
+            if (string.IsNullOrEmpty(rule.ApplicationName))
                 return true;
-            }).ToList();
+
+            // Rule has an application specified - check if it's our app
+            var ruleAppPath = CleanApplicationPath(rule.ApplicationName);
+            return string.Equals(ruleAppPath, currentExePath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool MatchesTarget(FirewallRule rule, string targetHost, string targetPort)
+        {
+            return IsTargetMatch(rule, targetHost, targetPort);
+        }
+
+        private bool MatchesLocalPort(FirewallRule rule, string localPort)
+        {
+            // If the rule does not constrain local port, include it
+            if (string.IsNullOrEmpty(rule.LocalPort))
+                return true;
+
+            return IsPortInRange(localPort, rule.LocalPort);
         }
 
         private FirewallRule? ConvertComRuleToFirewallRule(dynamic comRule)
