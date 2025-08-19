@@ -245,6 +245,7 @@ namespace SharpBridge.Utilities.ComInterop
     /// <summary>
     /// Network category constants
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Keeps parity with Windows COM definitions.")]
     public static class NLM_NETWORK_CATEGORY
     {
         /// <summary>Public network category (0).</summary>
@@ -258,6 +259,7 @@ namespace SharpBridge.Utilities.ComInterop
     /// <summary>
     /// Network connectivity constants
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Keeps parity with Windows COM definitions.")]
     public static class NLM_CONNECTIVITY
     {
         /// <summary>No connectivity.</summary>

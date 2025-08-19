@@ -12,6 +12,10 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class NetworkStatusFormatter : INetworkStatusFormatter
     {
+        private const string AllowedText = "Allowed";
+        private const string BlockedText = "Blocked";
+        private const string AllowText = "Allow";
+        private const string AllowLowerText = "allow";
         private readonly INetworkCommandProvider _commandProvider;
 
         /// <summary>
@@ -67,8 +71,8 @@ namespace SharpBridge.Utilities
             if (networkStatus.IPhone.InboundFirewallAnalysis != null)
             {
                 var analysis = networkStatus.IPhone.InboundFirewallAnalysis;
-                sb.AppendLine($"  {ConsoleColors.Colorize($"Local UDP Port {phoneConfig.LocalPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
-                sb.AppendLine($"    - Default inbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                sb.AppendLine($"  {ConsoleColors.Colorize($"Local UDP Port {phoneConfig.LocalPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default inbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
                 AppendFirewallRules(sb, analysis, "    ");
             }
 
@@ -76,8 +80,8 @@ namespace SharpBridge.Utilities
             if (networkStatus.IPhone.OutboundFirewallAnalysis != null)
             {
                 var analysis = networkStatus.IPhone.OutboundFirewallAnalysis;
-                sb.AppendLine($"  {ConsoleColors.Colorize($"Outbound UDP to {phoneConfig.IphoneIpAddress}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
-                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                sb.AppendLine($"  {ConsoleColors.Colorize($"Outbound UDP to {phoneConfig.IphoneIpAddress}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
                 AppendFirewallRules(sb, analysis, "    ");
             }
 
@@ -98,8 +102,8 @@ namespace SharpBridge.Utilities
             if (networkStatus.PC.WebSocketFirewallAnalysis != null)
             {
                 var analysis = networkStatus.PC.WebSocketFirewallAnalysis;
-                sb.AppendLine($"  {ConsoleColors.Colorize($"WebSocket TCP to {pcConfig.Host}:{pcConfig.Port}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
-                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                sb.AppendLine($"  {ConsoleColors.Colorize($"WebSocket TCP to {pcConfig.Host}:{pcConfig.Port}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
                 AppendFirewallRules(sb, analysis, "    ");
             }
 
@@ -108,8 +112,8 @@ namespace SharpBridge.Utilities
             {
                 var analysis = networkStatus.PC.DiscoveryFirewallAnalysis;
                 var discoveryPort = "47779"; // VTube Studio discovery port
-                sb.AppendLine($"  {ConsoleColors.Colorize($"Discovery UDP to {pcConfig.Host}:{discoveryPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? "Allowed" : "Blocked")} {GetStatusIndicator(analysis.IsAllowed)}");
-                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? "Allow" : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
+                sb.AppendLine($"  {ConsoleColors.Colorize($"Discovery UDP to {pcConfig.Host}:{discoveryPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
+                sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
                 AppendFirewallRules(sb, analysis, "    ");
             }
 
@@ -232,7 +236,7 @@ namespace SharpBridge.Utilities
             foreach (var rule in rulesToShow)
             {
                 var statusIndicator = rule.IsEnabled ? ConsoleColors.Colorize("[Enabled]", ConsoleColors.Success) : ConsoleColors.Colorize("[Disabled]", ConsoleColors.Disabled);
-                var actionColor = rule.Action.ToLowerInvariant() == "allow" ? ConsoleColors.Success : ConsoleColors.Error;
+                var actionColor = rule.Action.Equals(AllowLowerText, StringComparison.OrdinalIgnoreCase) ? ConsoleColors.Success : ConsoleColors.Error;
                 var actionText = ConsoleColors.Colorize(rule.Action, actionColor);
 
                 // Build readable rule description
@@ -255,21 +259,21 @@ namespace SharpBridge.Utilities
             var parts = new List<string>();
 
             // Add port info if available
-            if (!string.IsNullOrEmpty(rule.LocalPort) && rule.LocalPort != "*" && rule.LocalPort.ToLower() != "any")
+            if (!string.IsNullOrEmpty(rule.LocalPort) && rule.LocalPort != "*" && !string.Equals(rule.LocalPort, "any", StringComparison.OrdinalIgnoreCase))
             {
                 parts.Add(rule.LocalPort);
             }
 
             // Add direction info with arrow
             var direction = "";
-            if (!string.IsNullOrEmpty(rule.RemoteAddress) && rule.RemoteAddress != "*" && rule.RemoteAddress.ToLower() != "any")
+            if (!string.IsNullOrEmpty(rule.RemoteAddress) && rule.RemoteAddress != "*" && !string.Equals(rule.RemoteAddress, "any", StringComparison.OrdinalIgnoreCase))
             {
                 var source = rule.RemoteAddress == "0.0.0.0" ? "Any" : rule.RemoteAddress;
-                direction = rule.Direction.ToLower() == "inbound" ? $"({source} → ThisDevice)" : $"(ThisDevice → {source})";
+                direction = string.Equals(rule.Direction, "inbound", StringComparison.OrdinalIgnoreCase) ? $"({source} → ThisDevice)" : $"(ThisDevice → {source})";
             }
             else
             {
-                direction = rule.Direction.ToLower() == "inbound" ? "(Any → ThisDevice)" : "(ThisDevice → Any)";
+                direction = string.Equals(rule.Direction, "inbound", StringComparison.OrdinalIgnoreCase) ? "(Any → ThisDevice)" : "(ThisDevice → Any)";
             }
 
             if (!string.IsNullOrEmpty(direction))

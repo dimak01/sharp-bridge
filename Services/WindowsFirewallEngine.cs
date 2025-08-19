@@ -238,16 +238,13 @@ namespace SharpBridge.Services
                 return true; // No port restriction means match
 
             // Handle port ranges (e.g., "28960-28970")
-            if (rulePort.Contains("-"))
+            var range = rulePort.Split('-');
+            if (range.Length == 2
+                && int.TryParse(range[0], out var min)
+                && int.TryParse(range[1], out var max)
+                && int.TryParse(port, out var portNum))
             {
-                var range = rulePort.Split('-');
-                if (range.Length == 2 && int.TryParse(range[0], out var min) && int.TryParse(range[1], out var max))
-                {
-                    if (int.TryParse(port, out var portNum))
-                    {
-                        return portNum >= min && portNum <= max;
-                    }
-                }
+                return portNum >= min && portNum <= max;
             }
 
             // Handle wildcard ports
@@ -269,7 +266,7 @@ namespace SharpBridge.Services
                 return true;
 
             // Handle CIDR notation (e.g., "192.168.1.0/24")
-            if (subnet.Contains("/"))
+            if (subnet.Contains('/'))
             {
                 var parts = subnet.Split('/', 2);
                 if (parts.Length == 2 && int.TryParse(parts[1], out var maskBits))
@@ -500,11 +497,13 @@ namespace SharpBridge.Services
             return mask;
         }
 
+        private const string LocalSubnetPlaceholder = "192.168.1.0/24";
+
         private static string GetLocalSubnet()
         {
             // Simplified implementation - in practice, this would need to determine the actual local subnet
             // For now, return a placeholder that will be handled by the calling code
-            return "192.168.1.0/24"; // Placeholder
+            return LocalSubnetPlaceholder;
         }
 
         /// <inheritdoc />

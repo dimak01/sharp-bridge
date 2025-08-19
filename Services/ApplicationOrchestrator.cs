@@ -744,7 +744,7 @@ namespace SharpBridge.Services
             }
             else
             {
-                UpdateConsoleWithSystemHelp();
+                _ = UpdateConsoleWithSystemHelp();
             }
         }
 
