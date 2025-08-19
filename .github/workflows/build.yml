@@ -92,7 +92,7 @@ jobs:
             /d:sonar.qualitygate.wait=true \
             /d:sonar.inclusions="**/*.cs" \
             /d:sonar.exclusions="**/bin/**,**/obj/**,**/Tests/**" \
-            /d:sonar.coverage.exclusions="**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Tests/**"
+            /d:sonar.coverage.exclusions="**/ServiceRegistration.cs,**/Program.cs,**/ConfigManager.cs,**/SystemConsole.cs,**/SerilogAppLogger.cs,**/UdpClientWrapper.cs,**/UdpClientWrapperFactory.cs,**/WebSocketWrapper.cs,**/Utilities/Interop/WindowsInterop.cs,**/Utilities/Interop/ComInterfaces.cs,**/Utilities/Interop/NativeMethods.cs,**/Tests/**"
 
       - name: Build
         run: |

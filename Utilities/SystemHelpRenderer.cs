@@ -17,6 +17,7 @@ namespace SharpBridge.Utilities
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
+        private readonly INetworkStatusFormatter _networkStatusFormatter;
 
         /// <summary>
         /// Initializes a new instance of the SystemHelpRenderer
@@ -24,11 +25,13 @@ namespace SharpBridge.Utilities
         /// <param name="shortcutConfigurationManager">Configuration manager for shortcut information</param>
         /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
-        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter)
+        /// <param name="networkStatusFormatter">Network status formatter for troubleshooting section</param>
+        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
+            _networkStatusFormatter = networkStatusFormatter ?? throw new ArgumentNullException(nameof(networkStatusFormatter));
         }
 
         /// <summary>
@@ -36,8 +39,9 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="applicationConfig">Complete application configuration to display</param>
         /// <param name="consoleWidth">Available console width for formatting</param>
+        /// <param name="networkStatus">Optional network status to include in troubleshooting section</param>
         /// <returns>Formatted help content as a string</returns>
-        public string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth)
+        public string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth, NetworkStatus? networkStatus = null)
         {
             var builder = new StringBuilder();
 
@@ -60,6 +64,13 @@ namespace SharpBridge.Utilities
             builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
 
             builder.AppendLine(RenderParameterTableColumns(consoleWidth));
+
+            // Network Troubleshooting section (if network status provided)
+            if (networkStatus != null)
+            {
+                builder.AppendLine();
+                builder.AppendLine(_networkStatusFormatter.RenderNetworkTroubleshooting(networkStatus, applicationConfig));
+            }
 
             // Footer
             builder.AppendLine();

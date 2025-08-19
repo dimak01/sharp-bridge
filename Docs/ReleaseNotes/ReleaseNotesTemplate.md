@@ -45,8 +45,6 @@ The application will create default configuration files in the `Configs` directo
 
 ## Pre-release Notes
 
-**For pre-release versions (alpha, beta, rc), consider adding:**
-
 ⚠️ **This is a pre-release version for testing purposes**
 
 ### Beta Features

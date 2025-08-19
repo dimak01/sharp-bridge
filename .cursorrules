@@ -1,0 +1,79 @@
+# Sharp Bridge - Custom Instructions for Cursor
+
+## Project Overview
+Sharp Bridge is a .NET/C# application that bridges iPhone's VTube Studio to VTube Studio on PC. It receives tracking data from the iPhone, processes it according to user-defined configurations, and sends the transformed data to VTube Studio running on PC.
+
+## Key Documentation References
+
+### Core Documentation
+- **README.md** - Main project documentation, installation, configuration, and usage guide
+- **Docs/ProjectOverview.md** - Detailed architecture overview, component descriptions, and system design
+- **Docs/ReleaseProcess.md** - Release management and versioning procedures
+
+### Feature-Specific Documentation
+- **Docs/FirewallAnalysisLogic-v2.md** - Firewall analysis implementation details
+- **Docs/FirewallAnalysisImplementation-Checklist.md** - Firewall analysis checklist
+- **Docs/NetworkPortStatusMonitoring.md** - Network port monitoring implementation
+- **Docs/NetworkPortStatusMonitoring-Checklist.md** - Network monitoring checklist
+
+### Release Information
+- **Docs/ReleaseNotes/v*.md** - Release note files
+- **Docs/ReleaseNotes/ReleaseNotesTemplate.md** - Release notes template to be used when creating a new release
+
+### Future Planning
+- **Docs/FutureImprovements/GitHubActionsLocal.md** - CI/CD improvements
+
+## Development Guidelines
+
+### Architecture Principles
+1. **Resilient, orchestrated data flow** with automatic recovery capabilities
+2. **Console-based user interface** with real-time monitoring
+3. **Consolidated configuration system** with hot-reload capabilities
+4. **Parameter synchronization** with automatic VTube Studio management
+
+### Key Components
+- **VTubeStudioPhoneClient** - Receives tracking data from iPhone via UDP
+- **TransformationEngine** - Processes tracking data according to configuration rules
+- **VTubeStudioPCClient** - Sends transformed data to PC VTube Studio via WebSocket
+- **ApplicationOrchestrator** - Coordinates flow between components with recovery logic
+- **Console UI System** - Real-time status display and interactive controls
+
+### Code Organization
+- **Interfaces/** - All interface definitions
+- **Models/** - Data models and DTOs
+- **Services/** - Core business logic implementations
+- **Utilities/** - Helper classes and utilities
+- **Tests/** - Unit tests organized by component
+- **Configs/** - Configuration files and templates
+
+### Configuration System
+- Single but modular `ApplicationConfig.json` file for all settings
+- Hot-reload capabilities for configuration changes
+
+### Testing Strategy
+- Comprehensive unit tests for all components
+- Test data in `Tests/TestData/`
+- Mock implementations for external dependencies
+- Coverage reporting with coverlet
+
+## Development Workflow
+1. Always refer to existing documentation when implementing new features
+2. Follow the established architecture patterns
+3. Update relevant documentation when making significant changes
+4. Ensure proper test coverage for new functionality
+
+## When Helping with Code
+- Consider the resilient architecture and recovery patterns
+- Maintain the console UI system's design principles
+- Follow the existing configuration management approach
+- Consider the real-time nature of the application
+
+## Documentation Updates
+When making significant changes, consider updating:
+- README.md for user-facing changes
+- ProjectOverview.md for architectural changes
+- Release notes for new features or breaking changes
+- Relevant feature-specific documentation 
+
+## Other very important notes for AI
+- NEVER RUN OUR APPLICATION OR EXECUTE ANY OTHER TEMPORARY SCRIPTS WHEN DEBUGGING/TROUBLESHOOTING/VALIDATING/EXECUTING ANY TERMINAL COMMANDS!
