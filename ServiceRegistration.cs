@@ -187,6 +187,17 @@ namespace SharpBridge
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
+            // Register Windows-specific dependencies for firewall engine (unified facade only)
+            services.AddSingleton<IWindowsInterop, Utilities.ComInterop.WindowsInterop>();
+            services.AddSingleton<IProcessInfo, ProcessInfo>();
+
+            // Register network monitoring services
+            services.AddSingleton<IFirewallEngine, WindowsFirewallEngine>();
+            services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
+            services.AddSingleton<INetworkCommandProvider, WindowsNetworkCommandProvider>();
+            services.AddSingleton<INetworkStatusFormatter, NetworkStatusFormatter>();
+            services.AddSingleton<IPortStatusMonitorService, PortStatusMonitorService>();
+
             // Register shortcut services
             services.AddSingleton<IShortcutParser, ShortcutParser>();
             services.AddSingleton<IShortcutConfigurationManager>(provider =>
@@ -200,7 +211,8 @@ namespace SharpBridge
                 new SystemHelpRenderer(
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
-                    provider.GetRequiredService<ITableFormatter>()
+                    provider.GetRequiredService<ITableFormatter>(),
+                    provider.GetRequiredService<INetworkStatusFormatter>()
                 ));
 
             // Register parameter table configuration manager
@@ -250,7 +262,8 @@ namespace SharpBridge
                     provider.GetRequiredService<ISystemHelpRenderer>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetRequiredService<IPortStatusMonitorService>()
                 ));
 
             return services;

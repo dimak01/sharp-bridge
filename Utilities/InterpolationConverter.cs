@@ -14,6 +14,9 @@ namespace SharpBridge.Utilities
     {
         private static readonly Type[] _availableTypes;
 
+        /// <summary>
+        /// Initializes the list of available interpolation types in the models assembly.
+        /// </summary>
         static InterpolationConverter()
         {
             // Get all types in SharpBridge.Models namespace that implement IInterpolationDefinition
@@ -26,6 +29,7 @@ namespace SharpBridge.Utilities
                 .ToArray();
         }
 
+        /// <inheritdoc />
         public override IInterpolationDefinition? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             // Special handling for BezierInterpolation - check if it's a flat array first
@@ -79,6 +83,7 @@ namespace SharpBridge.Utilities
             return JsonSerializer.Deserialize(jsonString, targetType, options) as IInterpolationDefinition;
         }
 
+        /// <inheritdoc />
         public override void Write(Utf8JsonWriter writer, IInterpolationDefinition value, JsonSerializerOptions options)
         {
             if (value == null)

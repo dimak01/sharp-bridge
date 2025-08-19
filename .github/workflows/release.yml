@@ -85,9 +85,9 @@ jobs:
           # Windows (ZIP)
           cd ./publish/win-x64
           
-          # Create tools directory and copy deployment scripts
-          mkdir -p tools
-          cp ../../Scripts/deployment/win-x64/*.bat tools/
+          # Create tools directory and copy deployment scripts -- currently not used (it makes Windows flag the archive as a virus)
+          # mkdir -p tools
+          # cp ../../Scripts/deployment/win-x64/*.bat tools/
           
           # Copy README.md to the package
           cp ../../README.md .
