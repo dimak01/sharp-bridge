@@ -12,11 +12,19 @@ namespace SharpBridge.Services
     {
         private readonly IAppLogger _logger;
 
+        /// <summary>
+        /// Creates a new <see cref="ProcessInfo"/>.
+        /// </summary>
+        /// <param name="logger">Application logger for diagnostics.</param>
         public ProcessInfo(IAppLogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        /// <summary>
+        /// Gets the full path of the current process executable.
+        /// </summary>
+        /// <returns>Absolute path to the executable, or null if unavailable.</returns>
         public string? GetCurrentExecutablePath()
         {
             try

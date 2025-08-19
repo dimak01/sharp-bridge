@@ -119,7 +119,7 @@ namespace SharpBridge.Utilities
                 return true;
             }
 
-            if (!rules.Any())
+            if (rules.Count == 0)
             {
                 // No explicit rules found - use the appropriate default action
                 var defaultAction = direction == 1 ? defaultInboundAction : defaultOutboundAction;
@@ -131,14 +131,14 @@ namespace SharpBridge.Utilities
 
             // Windows Firewall precedence: Block > Allow by specificity
             var blockRules = rules.Where(r => r.Action == "Block" && r.IsEnabled).ToList();
-            if (blockRules.Any())
+            if (blockRules.Count > 0)
             {
                 _logger.Debug($"Found {blockRules.Count} blocking rules - connection denied");
                 return false; // Block takes precedence
             }
 
             var allowRules = rules.Where(r => r.Action == "Allow" && r.IsEnabled).ToList();
-            if (allowRules.Any())
+            if (allowRules.Count > 0)
             {
                 _logger.Debug($"Found {allowRules.Count} allowing rules - connection allowed");
                 return true;

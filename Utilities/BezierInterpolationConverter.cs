@@ -12,6 +12,7 @@ namespace SharpBridge.Utilities
     /// </summary>
     public class BezierInterpolationConverter : JsonConverter<BezierInterpolation>
     {
+        /// <inheritdoc />
         public override BezierInterpolation Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TokenType == JsonTokenType.StartArray)
@@ -30,6 +31,7 @@ namespace SharpBridge.Utilities
             }
         }
 
+        /// <inheritdoc />
         public override void Write(Utf8JsonWriter writer, BezierInterpolation value, JsonSerializerOptions options)
         {
             // Write in flat array format for compactness (only middle control points)
@@ -46,6 +48,9 @@ namespace SharpBridge.Utilities
             writer.WriteEndArray();
         }
 
+        /// <summary>
+        /// Reads Bezier control points from a flat numeric array format.
+        /// </summary>
         private BezierInterpolation ReadFromFlatArray(ref Utf8JsonReader reader)
         {
             var controlPoints = new List<Point>();
@@ -89,6 +94,9 @@ namespace SharpBridge.Utilities
             return new BezierInterpolation { ControlPoints = controlPoints };
         }
 
+        /// <summary>
+        /// Reads Bezier control points from an object format containing a 'controlPoints' array.
+        /// </summary>
         private BezierInterpolation ReadFromObjectFormat(ref Utf8JsonReader reader, JsonSerializerOptions options)
         {
             // Use the default object deserialization
