@@ -21,7 +21,7 @@ namespace SharpBridge.Services
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly IAppLogger _logger;
-        private readonly IConsoleRenderer _consoleRenderer;
+        private readonly IMainStatusRenderer _consoleRenderer;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IRecoveryPolicy _recoveryPolicy;
@@ -77,7 +77,7 @@ namespace SharpBridge.Services
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
             IAppLogger logger,
-            IConsoleRenderer consoleRenderer,
+            IMainStatusRenderer consoleRenderer,
             IKeyboardInputHandler keyboardInputHandler,
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,

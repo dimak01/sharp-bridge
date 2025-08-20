@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using SharpBridge.Models;
 
 namespace SharpBridge.Interfaces
@@ -25,9 +26,10 @@ namespace SharpBridge.Interfaces
         ShortcutAction ToggleAction { get; }
 
         /// <summary>
-        /// The external editor target associated with this mode.
+        /// Attempts to open the context-appropriate configuration file in the external editor.
+        /// Implementations decide what to open (e.g., transformation vs application config).
         /// </summary>
-        ExternalEditorTarget EditorTarget { get; }
+        Task<bool> TryOpenInExternalEditorAsync();
 
         /// <summary>
         /// Called when the mode becomes active.

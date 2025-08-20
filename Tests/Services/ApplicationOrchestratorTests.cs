@@ -21,7 +21,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IVTubeStudioPhoneClient> _vtubeStudioPhoneClientMock;
         private readonly Mock<ITransformationEngine> _transformationEngineMock;
         private readonly Mock<IAppLogger> _loggerMock;
-        private readonly Mock<IConsoleRenderer> _consoleRendererMock;
+        private readonly Mock<IMainStatusRenderer> _consoleRendererMock;
         private readonly Mock<IKeyboardInputHandler> _keyboardInputHandlerMock;
         private readonly Mock<IVTubeStudioPCParameterManager> _parameterManagerMock;
         private readonly Mock<IRecoveryPolicy> _recoveryPolicyMock;
@@ -51,7 +51,7 @@ namespace SharpBridge.Tests.Services
             _vtubeStudioPhoneClientMock = new Mock<IVTubeStudioPhoneClient>();
             _transformationEngineMock = new Mock<ITransformationEngine>();
             _loggerMock = new Mock<IAppLogger>();
-            _consoleRendererMock = new Mock<IConsoleRenderer>();
+            _consoleRendererMock = new Mock<IMainStatusRenderer>();
             _keyboardInputHandlerMock = new Mock<IKeyboardInputHandler>();
             _parameterManagerMock = new Mock<IVTubeStudioPCParameterManager>();
             _recoveryPolicyMock = new Mock<IRecoveryPolicy>();
