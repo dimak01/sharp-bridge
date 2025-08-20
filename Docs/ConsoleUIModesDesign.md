@@ -36,7 +36,7 @@ The goal is to improve cohesion, readability, testability, and extensibility of 
 - Console modes are first-class citizens. Each mode:
   - Owns its rendering pipeline
   - Knows which shortcut toggles it
-  - Specifies which external editor target is appropriate while active
+  - Each renderer owns its external-editor behavior; the manager simply forwards the request
 - A lightweight mode manager coordinates active mode, switching, and per-tick rendering.
 
 ### New/Updated Abstractions
@@ -63,9 +63,6 @@ public interface IConsoleModeRenderer
     // Shortcut the manager can use to wire up toggling (actual key mapping remains in config)
     ShortcutAction ToggleAction { get; }
 
-    // Which config the "Open in editor" action should target while this mode is active
-    ExternalEditorTarget EditorTarget { get; }
-
     // Lifecycle hooks when the mode becomes active/inactive
     void Enter(IConsole console);
     void Exit(IConsole console);
@@ -73,8 +70,8 @@ public interface IConsoleModeRenderer
     // Single tick render; implementers should write to console via IConsole
     void Render(ConsoleRenderContext context);
 
-    // Preferred cadence for this renderer; the manager may clamp this
-    TimeSpan PreferredUpdateInterval { get; }
+    // Renderer-owned external editor behavior
+    Task<bool> TryOpenInExternalEditorAsync();
 }
 ```
 
@@ -102,7 +99,7 @@ public interface IConsoleModeManager
     void SetMode(ConsoleMode mode);  // force mode
 
     void Update(IEnumerable<IServiceStats> stats); // delegate to active renderer
-    ExternalEditorTarget CurrentEditorTarget { get; }
+    Task<bool> TryOpenActiveModeInEditorAsync();   // forward to active renderer
     void Clear();
 }
 ```
@@ -111,7 +108,6 @@ public interface IConsoleModeManager
 
 - Rationale: the existing interface/class are the main dashboard renderer; naming should reflect that this is one of multiple renderers.
 - The class `Utilities/ConsoleRenderer.cs` will be renamed to `Utilities/MainStatusRenderer.cs` and updated to implement `IConsoleModeRenderer`.
-- For transitional compatibility (tests), `IMainStatusRenderer` can be temporarily aliased where necessary.
 
 ### Modes (Renderers)
 
@@ -119,31 +115,25 @@ public interface IConsoleModeManager
   - Implementation: rename `ConsoleRenderer` → `MainStatusRenderer`
   - Interface: implements both `IMainStatusRenderer` and `IConsoleModeRenderer`
   - Behavior: builds lines from service stats and writes via `IConsole`, as today
-  - ToggleAction: none (default mode)
-  - EditorTarget: `TransformationConfig`
-  - PreferredUpdateInterval: ~100 ms
+  - ToggleAction: implementation-defined (manager may return to Main when toggling an active mode)
 
 - System Help Mode
   - Implementation: extend existing `SystemHelpRenderer` to implement `IConsoleModeRenderer`
   - Behavior: renders configuration and shortcuts; writes directly to console (string build + single write is fine)
   - Remove embedded Network Troubleshooting from help (moved to Network Status Mode)
   - ToggleAction: `ShowSystemHelp`
-  - EditorTarget: `ApplicationConfig`
-  - PreferredUpdateInterval: larger (e.g., 1–2 s) or on-demand since content is static
 
 - Network Status Mode (New)
   - Implementation: new `NetworkStatusRenderer`
   - Behavior: periodically fetches network status via `IPortStatusMonitorService`; formats via `INetworkStatusFormatter`; outputs to console
   - Caches last snapshot; non-blocking updates
   - ToggleAction: `ShowNetworkStatus`
-  - EditorTarget: `ApplicationConfig`
-  - PreferredUpdateInterval: ~1–2 s
 
 ### Open in Editor Behavior
 
-- While in Main: open Transformation config
-- While in System Help or Network Status: open Application config
-- The mode manager exposes `CurrentEditorTarget` so `ApplicationOrchestrator` can delegate without knowing active mode details
+- While in Main: renderer opens Transformation config
+- While in System Help or Network Status: renderer opens Application config
+- The mode manager forwards the request; it does not decide which file to open
 
 ## Flow & Lifecycle
 
@@ -161,7 +151,7 @@ public interface IConsoleModeManager
 - If toggling to the same active mode, switch back to Main
 
 4) Rendering Cadence
-- The manager respects each renderer’s `PreferredUpdateInterval` to throttle calls to `Render`
+- The manager/orchestrator drives a uniform loop; renderers produce a single frame on demand
 - For async data (Network Status), the renderer should not block; it may kick off background refreshes and render the last-known snapshot
 
 ## DI and Wiring Changes
@@ -195,7 +185,7 @@ public interface IConsoleModeManager
   - Status updates: `_modeManager.Update(allStats)` instead of `_consoleRenderer.Update(allStats)`
   - Help toggle handling: `_modeManager.Toggle(ConsoleMode.SystemHelp)`
   - New shortcut handling: `_modeManager.Toggle(ConsoleMode.NetworkStatus)`
-  - Editor opening logic uses `_modeManager.CurrentEditorTarget`
+  - Editor opening logic calls `_modeManager.TryOpenActiveModeInEditorAsync()`
 - Remove `_isShowingSystemHelp` and the direct help string write logic
 
 ## Error Handling & Resiliency
@@ -206,24 +196,24 @@ public interface IConsoleModeManager
 
 ## Performance Considerations
 
-- Main mode maintains current 100 ms cadence
-- Network Status runs at slower cadence to reduce overhead
+- Main mode renders on demand; loop cadence is owned by the orchestrator/manager
+- Network Status can refresh internally but should not block rendering
 - Avoids expensive full-screen redraws more often than necessary
 
 ## Testing Strategy
 
 - Unit tests:
-  - Mode manager: switching, toggling back to Main, cadence handling, editor target resolution
+  - Mode manager: switching, toggling back to Main, forwarding editor open
   - MainStatusRenderer: still renders service stats as before
   - SystemHelpRenderer: implements unified interface and renders without network section
-  - NetworkStatusRenderer: fetch cadence, caching, formatting integration
+  - NetworkStatusRenderer: caching/formatting integration
 - Integration tests:
   - Shortcut-driven mode switching paths register and trigger appropriate actions
-  - Editor target changes with mode
+  - Editor open forwards to active renderer
 
 ## Migration Plan
 
-1) Introduce new abstractions (`ConsoleMode`, `IConsoleModeRenderer`, `IConsoleModeManager`, `ConsoleRenderContext`, `ExternalEditorTarget`)
+1) Introduce new abstractions (`ConsoleMode`, `IConsoleModeRenderer`, `IConsoleModeManager`, `ConsoleRenderContext`)
 2) Rename `IConsoleRenderer` → `IMainStatusRenderer`; implement `IConsoleModeRenderer` in the renamed `MainStatusRenderer`
 3) Update `SystemHelpRenderer` to implement `IConsoleModeRenderer` and remove network section
 4) Add `NetworkStatusRenderer` and wire to `IPortStatusMonitorService` + `INetworkStatusFormatter`
@@ -243,10 +233,9 @@ public interface IConsoleModeManager
 
 - F1 toggles System Help; toggling again returns to Main
 - F2 (or configured key) toggles Network Status; toggling again returns to Main
-- Main mode renders service stats as today, at ~100 ms cadence
+- Main mode renders service stats as today
 - System Help renders config and shortcuts (no network section)
 - Network Status renders firewall/port analysis via the formatter; refreshes approximately every 1–2 seconds
-- "Open config in editor" opens Transformation config in Main; opens Application config in Help/Network modes
 - All changes are covered by unit tests
 
 ## Appendix: Example DI Sketch
