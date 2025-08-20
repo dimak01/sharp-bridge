@@ -10,7 +10,7 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Centralized console rendering utility
     /// </summary>
-    public class ConsoleRenderer : IConsoleRenderer
+    public class MainStatusRenderer : IMainStatusRenderer
     {
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private DateTime _lastUpdate = DateTime.MinValue;
@@ -28,7 +28,7 @@ namespace SharpBridge.Utilities
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public ConsoleRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
+        public MainStatusRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

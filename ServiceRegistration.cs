@@ -232,7 +232,7 @@ namespace SharpBridge
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
             // Register console renderer - dependencies will be resolved automatically
-            services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
+            services.AddSingleton<IMainStatusRenderer, MainStatusRenderer>();
 
             // Register recovery policy
             services.AddSingleton<IRecoveryPolicy>(provider =>
@@ -249,7 +249,7 @@ namespace SharpBridge
                     provider.GetRequiredService<ITransformationEngine>(),
                     provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
                     provider.GetRequiredService<IAppLogger>(),
-                    provider.GetRequiredService<IConsoleRenderer>(),
+                    provider.GetRequiredService<IMainStatusRenderer>(),
                     provider.GetRequiredService<IKeyboardInputHandler>(),
                     provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
                     provider.GetRequiredService<IRecoveryPolicy>(),
