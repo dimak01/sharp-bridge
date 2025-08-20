@@ -2,15 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Centralized console rendering utility
+    /// Main status dashboard renderer
     /// </summary>
-    public class MainStatusRenderer : IMainStatusRenderer
+    public class MainStatusRenderer : IMainStatusRenderer, IConsoleModeRenderer
     {
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private DateTime _lastUpdate = DateTime.MinValue;
@@ -18,9 +19,10 @@ namespace SharpBridge.Utilities
         private readonly IConsole _console;
         private readonly IAppLogger _logger;
         private readonly IShortcutConfigurationManager _shortcutManager;
+        private readonly IExternalEditorService? _externalEditorService;
 
         /// <summary>
-        /// Initializes a new instance of the ConsoleRenderer class
+        /// Initializes a new instance of the MainStatusRenderer class
         /// </summary>
         /// <param name="console">The console implementation to use for output</param>
         /// <param name="logger">The logger to use for error reporting</param>
@@ -38,6 +40,15 @@ namespace SharpBridge.Utilities
             RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
             RegisterFormatter<PhoneTrackingInfo>(phoneFormatter ?? throw new ArgumentNullException(nameof(phoneFormatter)));
             RegisterFormatter<PCTrackingInfo>(pcFormatter ?? throw new ArgumentNullException(nameof(pcFormatter)));
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the MainStatusRenderer class with external editor support
+        /// </summary>
+        public MainStatusRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
+            : this(console, logger, transformationFormatter, phoneFormatter, pcFormatter, shortcutManager)
+        {
+            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
 
         /// <summary>
@@ -76,6 +87,51 @@ namespace SharpBridge.Utilities
                 ConsoleDisplayAction(lines.ToArray());
             }
         }
+
+        // IConsoleModeRenderer implementation
+
+        public ConsoleMode Mode => ConsoleMode.Main;
+
+        public string DisplayName => "Main Status";
+
+        // Main mode doesn't need a dedicated toggle action; manager can return to Main when toggling the same mode
+        public ShortcutAction ToggleAction => ShortcutAction.ShowSystemHelp; // placeholder, not used for Main mode
+
+        public async Task<bool> TryOpenInExternalEditorAsync()
+        {
+            try
+            {
+                if (_externalEditorService == null)
+                {
+                    return false;
+                }
+                return await _externalEditorService.TryOpenTransformationConfigAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error opening transformation config in external editor", ex);
+                return false;
+            }
+        }
+
+        public void Enter(IConsole console)
+        {
+            _console.Clear();
+        }
+
+        public void Exit(IConsole console)
+        {
+            // No-op for now; keep console as-is or clear if needed
+        }
+
+        public void Render(ConsoleRenderContext context)
+        {
+            var stats = context?.ServiceStats ?? Array.Empty<IServiceStats>();
+            var lines = BuildDisplayLines(stats);
+            ConsoleDisplayAction(lines.ToArray());
+        }
+
+        public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
 
         /// <summary>
         /// Determines if the console should be updated based on timing
