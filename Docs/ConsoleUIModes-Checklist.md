@@ -17,9 +17,9 @@
   - [x] `Task<bool> TryOpenInExternalEditorAsync()`
 
 ## Rename main renderer
-- [ ] Rename interface `IConsoleRenderer` → `IMainStatusRenderer`
-- [ ] Rename file/class `Utilities/ConsoleRenderer.cs` → `Utilities/MainStatusRenderer.cs`
-- [ ] Make `MainStatusRenderer` implement `IMainStatusRenderer` and `IConsoleModeRenderer`
+- [x] Rename interface `IConsoleRenderer` → `IMainStatusRenderer`
+- [x] Rename file/class `Utilities/ConsoleRenderer.cs` → `Utilities/MainStatusRenderer.cs`
+- [x] Make `MainStatusRenderer` implement `IMainStatusRenderer` and `IConsoleModeRenderer`
 
 ## System Help renderer
 - [ ] Update `Utilities/SystemHelpRenderer.cs` to implement `IConsoleModeRenderer`
