@@ -48,5 +48,12 @@ namespace SharpBridge.Interfaces
         /// <param name="height">Height in characters</param>
         /// <returns>True if the operation was successful</returns>
         bool TrySetWindowSize(int width, int height);
+
+        /// <summary>
+        /// Writes multiple lines to the console using flicker-free in-place updating.
+        /// Overwrites existing content line-by-line and clears any remaining lines.
+        /// </summary>
+        /// <param name="outputLines">Array of lines to write</param>
+        void WriteLines(string[] outputLines);
     }
 }

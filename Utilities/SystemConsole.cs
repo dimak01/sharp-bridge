@@ -82,5 +82,71 @@ namespace SharpBridge.Utilities
                 return false;
             }
         }
+
+        /// <summary>
+        /// Writes multiple lines to the console using flicker-free in-place updating.
+        /// Overwrites existing content line-by-line and clears any remaining lines.
+        /// </summary>
+        /// <param name="outputLines">Array of lines to write</param>
+        public void WriteLines(string[] outputLines)
+        {
+            // Skip flicker-free rendering if output is redirected
+            if (Console.IsOutputRedirected)
+            {
+                foreach (var line in outputLines)
+                {
+                    Console.WriteLine(line);
+                }
+                return;
+            }
+
+            try
+            {
+                SetCursorPosition(0, 0);
+
+                int currentLine = 0;
+                int windowWidth = WindowWidth - 1;
+
+                // Write each line and clear the remainder of each line
+                foreach (var line in outputLines)
+                {
+                    SetCursorPosition(0, currentLine);
+                    Write(line);
+
+                    // Clear the rest of this line (in case previous content was longer)
+                    int remainingSpace = windowWidth - line.Length;
+                    if (remainingSpace > 0)
+                    {
+                        Write(new string(' ', remainingSpace));
+                    }
+
+                    currentLine++;
+
+                    // Ensure we don't exceed console boundaries
+                    if (currentLine >= WindowHeight - 1)
+                        break;
+                }
+
+                // Clear any remaining lines that might have had content before
+                int windowHeight = WindowHeight;
+                for (int i = currentLine; i < windowHeight - 1; i++)
+                {
+                    SetCursorPosition(0, i);
+                    Write(new string(' ', windowWidth));
+                }
+
+                // Reset cursor position to the end of our content
+                SetCursorPosition(0, currentLine);
+            }
+            catch (Exception)
+            {
+                // If flicker-free rendering fails, fall back to simple line-by-line output
+                foreach (var line in outputLines)
+                {
+                    Console.WriteLine(line);
+                }
+                throw; // Re-throw to let caller know something went wrong
+            }
+        }
     }
 }
