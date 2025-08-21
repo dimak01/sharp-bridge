@@ -8,7 +8,7 @@ namespace SharpBridge.Interfaces
     /// Unified interface for all console UI mode renderers.
     /// Implementations are responsible for fully rendering their view.
     /// </summary>
-    public interface IConsoleModeRenderer
+    public interface IConsoleModeContentProvider
     {
         /// <summary>
         /// Mode identifier implemented by this renderer.
@@ -47,7 +47,7 @@ namespace SharpBridge.Interfaces
         /// Renders the current view for this mode. Implementations should write directly via <see cref="IConsole"/>.
         /// </summary>
         /// <param name="context">Rendering context containing live data and environment details.</param>
-        void Render(ConsoleRenderContext context);
+        string[] GetContent(ConsoleRenderContext context);
 
         /// <summary>
         /// Preferred update cadence for this mode. The mode manager may clamp or align this interval.

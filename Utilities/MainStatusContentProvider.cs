@@ -11,12 +11,11 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Main status dashboard renderer
     /// </summary>
-    public class MainStatusRenderer : IMainStatusRenderer, IConsoleModeRenderer
+    public class MainStatusContentProvider : IMainStatusRenderer, IConsoleModeContentProvider
     {
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private DateTime _lastUpdate = DateTime.MinValue;
         private readonly object _lock = new object();
-        private readonly IConsole _console;
         private readonly IAppLogger _logger;
         private readonly IShortcutConfigurationManager _shortcutManager;
         private readonly IExternalEditorService? _externalEditorService;
@@ -30,9 +29,8 @@ namespace SharpBridge.Utilities
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public MainStatusRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
+        public MainStatusContentProvider(IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
         {
-            _console = console ?? throw new ArgumentNullException(nameof(console));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
 
@@ -45,8 +43,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Initializes a new instance of the MainStatusRenderer class with external editor support
         /// </summary>
-        public MainStatusRenderer(IConsole console, IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
-            : this(console, logger, transformationFormatter, phoneFormatter, pcFormatter, shortcutManager)
+        public MainStatusContentProvider(IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
+            : this(logger, transformationFormatter, phoneFormatter, pcFormatter, shortcutManager)
         {
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
@@ -69,23 +67,6 @@ namespace SharpBridge.Utilities
                 return formatter;
             }
             return null;
-        }
-
-        /// <summary>
-        /// Updates the console display with service statistics
-        /// </summary>
-        public void Update(IEnumerable<IServiceStats> stats)
-        {
-            lock (_lock)
-            {
-                if (!ShouldUpdate())
-                    return;
-
-                _lastUpdate = DateTime.UtcNow;
-
-                var lines = BuildDisplayLines(stats);
-                _console.WriteLines(lines.ToArray());
-            }
         }
 
         // IConsoleModeRenderer implementation
@@ -116,7 +97,7 @@ namespace SharpBridge.Utilities
 
         public void Enter(IConsole console)
         {
-            _console.Clear();
+            // No-op for now; keep console as-is or clear if needed
         }
 
         public void Exit(IConsole console)
@@ -124,11 +105,15 @@ namespace SharpBridge.Utilities
             // No-op for now; keep console as-is or clear if needed
         }
 
-        public void Render(ConsoleRenderContext context)
+        /// <summary>
+        /// Gets the content for the main status display
+        /// </summary>
+        /// <param name="context">The context containing the service statistics</param>
+        /// <returns>An array of strings representing the main status display</returns>
+        public string[] GetContent(ConsoleRenderContext context)
         {
             var stats = context?.ServiceStats ?? Array.Empty<IServiceStats>();
-            var lines = BuildDisplayLines(stats);
-            _console.WriteLines(lines.ToArray());
+            return BuildDisplayLines(stats);
         }
 
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
@@ -145,7 +130,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Builds the complete list of display lines from service statistics
         /// </summary>
-        private List<string> BuildDisplayLines(IEnumerable<IServiceStats> stats)
+        private string[] BuildDisplayLines(IEnumerable<IServiceStats> stats)
         {
             var lines = new List<string>();
 
@@ -153,7 +138,7 @@ namespace SharpBridge.Utilities
             AddServiceLines(lines, stats);
             AddFooterLines(lines);
 
-            return lines;
+            return lines.ToArray();
         }
 
         /// <summary>
@@ -304,7 +289,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         public void ClearConsole()
         {
-            _console.Clear();
+            // No-op for now; keep console as-is or clear if needed
         }
 
 

@@ -13,14 +13,13 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Implementation of ISystemHelpRenderer for rendering the F2 help system display
     /// </summary>
-    public class SystemHelpRenderer : ISystemHelpRenderer, IConsoleModeRenderer
+    public class SystemHelpContentProvider : ISystemHelpRenderer, IConsoleModeContentProvider
     {
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
         private readonly INetworkStatusFormatter _networkStatusFormatter;
         private readonly IExternalEditorService _externalEditorService;
-        private IConsole? _console;
 
         /// <summary>
         /// Initializes a new instance of the SystemHelpRenderer
@@ -29,7 +28,7 @@ namespace SharpBridge.Utilities
         /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
         /// <param name="networkStatusFormatter">Network status formatter for troubleshooting section</param>
-        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
+        public SystemHelpContentProvider(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
@@ -345,8 +344,7 @@ namespace SharpBridge.Utilities
 
         public void Enter(IConsole console)
         {
-            _console = console;
-            _console.Clear();
+            // No specific cleanup needed for now
         }
 
         public void Exit(IConsole console)
@@ -354,17 +352,11 @@ namespace SharpBridge.Utilities
             // No specific cleanup needed for now
         }
 
-        public void Render(ConsoleRenderContext context)
+        public string[] GetContent(ConsoleRenderContext context)
         {
-            if (_console == null)
-            {
-                return;
-            }
-
             var width = context.ConsoleSize.Width;
             var content = RenderSystemHelp(context.ApplicationConfig, width, null);
-            var lines = content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            _console.WriteLines(lines);
+            return content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
         }
 
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);

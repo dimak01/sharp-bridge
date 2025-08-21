@@ -15,11 +15,11 @@ namespace SharpBridge.Services
         private readonly IConsole _console;
         private readonly IConfigManager _configManager;
         private readonly IAppLogger _logger;
-        private readonly Dictionary<ConsoleMode, IConsoleModeRenderer> _renderers;
+        private readonly Dictionary<ConsoleMode, IConsoleModeContentProvider> _renderers;
 
         private ConsoleMode _currentMode = ConsoleMode.Main;
         private DateTime _lastUpdate = DateTime.MinValue;
-        private IConsoleModeRenderer? _activeRenderer;
+        private IConsoleModeContentProvider? _activeRenderer;
 
         /// <summary>
         /// Gets the currently active console mode
@@ -38,7 +38,7 @@ namespace SharpBridge.Services
         /// <param name="configManager">Configuration manager for loading configs</param>
         /// <param name="logger">Application logger</param>
         /// <param name="renderers">Collection of all available mode renderers</param>
-        public ConsoleModeManager(IConsole console, IConfigManager configManager, IAppLogger logger, IEnumerable<IConsoleModeRenderer> renderers)
+        public ConsoleModeManager(IConsole console, IConfigManager configManager, IAppLogger logger, IEnumerable<IConsoleModeContentProvider> renderers)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
@@ -155,8 +155,9 @@ namespace SharpBridge.Services
                     CancellationToken = default // TODO: Consider adding cancellation support
                 };
 
-                // Delegate to active renderer
-                _activeRenderer.Render(context);
+                // Get content from active provider and display it
+                var content = _activeRenderer.GetContent(context);
+                _console.WriteLines(content);
                 _lastUpdate = now;
             }
             catch (Exception ex)

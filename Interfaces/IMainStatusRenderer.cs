@@ -18,10 +18,6 @@ namespace SharpBridge.Interfaces
         /// </summary>
         IFormatter? GetFormatter<T>() where T : IFormattableObject;
 
-        /// <summary>
-        /// Updates the display with service statistics
-        /// </summary>
-        void Update(IEnumerable<IServiceStats> stats);
 
         /// <summary>
         /// Clears the console
