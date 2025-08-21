@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
@@ -12,12 +13,14 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Implementation of ISystemHelpRenderer for rendering the F2 help system display
     /// </summary>
-    public class SystemHelpRenderer : ISystemHelpRenderer
+    public class SystemHelpRenderer : ISystemHelpRenderer, IConsoleModeRenderer
     {
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
         private readonly INetworkStatusFormatter _networkStatusFormatter;
+        private readonly IExternalEditorService _externalEditorService;
+        private IConsole? _console;
 
         /// <summary>
         /// Initializes a new instance of the SystemHelpRenderer
@@ -26,12 +29,13 @@ namespace SharpBridge.Utilities
         /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
         /// <param name="networkStatusFormatter">Network status formatter for troubleshooting section</param>
-        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter)
+        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _networkStatusFormatter = networkStatusFormatter ?? throw new ArgumentNullException(nameof(networkStatusFormatter));
+            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
 
         /// <summary>
@@ -65,12 +69,7 @@ namespace SharpBridge.Utilities
 
             builder.AppendLine(RenderParameterTableColumns(consoleWidth));
 
-            // Network Troubleshooting section (if network status provided)
-            if (networkStatus != null)
-            {
-                builder.AppendLine();
-                builder.AppendLine(_networkStatusFormatter.RenderNetworkTroubleshooting(networkStatus, applicationConfig));
-            }
+            // Network troubleshooting moved to dedicated Network Status mode
 
             // Footer
             builder.AppendLine();
@@ -322,5 +321,52 @@ namespace SharpBridge.Utilities
             public string ColumnName { get; set; } = string.Empty;
             public int Order { get; set; }
         }
+
+        // IConsoleModeRenderer implementation
+
+        public ConsoleMode Mode => ConsoleMode.SystemHelp;
+
+        public string DisplayName => "System Help";
+
+        public ShortcutAction ToggleAction => ShortcutAction.ShowSystemHelp;
+
+        public async Task<bool> TryOpenInExternalEditorAsync()
+        {
+            try
+            {
+                return await _externalEditorService.TryOpenApplicationConfigAsync();
+            }
+            catch (Exception ex)
+            {
+                // No logger here; rely on the external editor service to log failures
+                return false;
+            }
+        }
+
+        public void Enter(IConsole console)
+        {
+            _console = console;
+            _console.Clear();
+        }
+
+        public void Exit(IConsole console)
+        {
+            // No specific cleanup needed for now
+        }
+
+        public void Render(ConsoleRenderContext context)
+        {
+            if (_console == null)
+            {
+                return;
+            }
+
+            var width = context.ConsoleSize.Width;
+            var content = RenderSystemHelp(context.ApplicationConfig, width, null);
+            _console.Clear();
+            _console.Write(content);
+        }
+
+        public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
     }
 }
