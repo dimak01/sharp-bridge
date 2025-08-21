@@ -18,6 +18,7 @@ namespace SharpBridge.Tests.Utilities
         private readonly Mock<IShortcutConfigurationManager> _shortcutManagerMock;
         private readonly Mock<IParameterTableConfigurationManager> _parameterTableConfigManagerMock;
         private readonly Mock<ITableFormatter> _tableFormatterMock;
+        private readonly Mock<IExternalEditorService> _externalEditorServiceMock;
         private readonly SystemHelpRenderer _renderer;
 
         public SystemHelpRendererTests()
@@ -25,8 +26,9 @@ namespace SharpBridge.Tests.Utilities
             _shortcutManagerMock = new Mock<IShortcutConfigurationManager>();
             _parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             _tableFormatterMock = new Mock<ITableFormatter>();
+            _externalEditorServiceMock = new Mock<IExternalEditorService>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            _renderer = new SystemHelpRenderer(_shortcutManagerMock.Object, _parameterTableConfigManagerMock.Object, _tableFormatterMock.Object, networkStatusFormatterMock.Object);
+            _renderer = new SystemHelpRenderer(_shortcutManagerMock.Object, _parameterTableConfigManagerMock.Object, _tableFormatterMock.Object, networkStatusFormatterMock.Object, _externalEditorServiceMock.Object);
         }
 
         #region Constructor Tests
@@ -38,7 +40,8 @@ namespace SharpBridge.Tests.Utilities
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            Action act = () => new SystemHelpRenderer(null!, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object);
+            var externalEditorServiceMock = new Mock<IExternalEditorService>();
+            Action act = () => new SystemHelpRenderer(null!, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutConfigurationManager");
         }
 
@@ -49,7 +52,8 @@ namespace SharpBridge.Tests.Utilities
             var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, null!, tableFormatterMock.Object, networkStatusFormatterMock.Object);
+            var externalEditorServiceMock = new Mock<IExternalEditorService>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, null!, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("parameterTableConfigurationManager");
         }
 
@@ -60,7 +64,8 @@ namespace SharpBridge.Tests.Utilities
             var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, null!, networkStatusFormatterMock.Object);
+            var externalEditorServiceMock = new Mock<IExternalEditorService>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, null!, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
         }
 
@@ -71,8 +76,21 @@ namespace SharpBridge.Tests.Utilities
             var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
-            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, null!);
+            var externalEditorServiceMock = new Mock<IExternalEditorService>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, null!, externalEditorServiceMock.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("networkStatusFormatter");
+        }
+
+        [Fact]
+        public void Constructor_WithNullExternalEditorService_ThrowsArgumentNullException()
+        {
+            // Arrange & Act & Assert
+            var shortcutConfigurationManagerMock = new Mock<IShortcutConfigurationManager>();
+            var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
+            var tableFormatterMock = new Mock<ITableFormatter>();
+            var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
+            Action act = () => new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, null!);
+            act.Should().Throw<ArgumentNullException>().WithParameterName("externalEditorService");
         }
 
         [Fact]
@@ -83,7 +101,8 @@ namespace SharpBridge.Tests.Utilities
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            var renderer = new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object);
+            var externalEditorServiceMock = new Mock<IExternalEditorService>();
+            var renderer = new SystemHelpRenderer(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
             renderer.Should().NotBeNull();
         }
 
@@ -1107,7 +1126,7 @@ namespace SharpBridge.Tests.Utilities
             var realTableFormatter = new TableFormatter();
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            var rendererWithRealFormatter = new SystemHelpRenderer(_shortcutManagerMock.Object, parameterTableConfigManagerMock.Object, realTableFormatter, networkStatusFormatterMock.Object);
+            var rendererWithRealFormatter = new SystemHelpRenderer(_shortcutManagerMock.Object, parameterTableConfigManagerMock.Object, realTableFormatter, networkStatusFormatterMock.Object, _externalEditorServiceMock.Object);
 
             // Act - This will execute the column creation code on lines 192-194 since we're using a real TableFormatter
             var result = rendererWithRealFormatter.RenderKeyboardShortcuts(120);

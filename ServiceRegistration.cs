@@ -212,7 +212,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
                     provider.GetRequiredService<ITableFormatter>(),
-                    provider.GetRequiredService<INetworkStatusFormatter>()
+                    provider.GetRequiredService<INetworkStatusFormatter>(),
+                    provider.GetRequiredService<IExternalEditorService>()
                 ));
 
             // Register parameter table configuration manager
