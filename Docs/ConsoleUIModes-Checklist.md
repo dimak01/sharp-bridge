@@ -22,45 +22,45 @@
 - [x] Make `MainStatusRenderer` implement `IMainStatusRenderer` and `IConsoleModeRenderer`
 
 ## System Help renderer
-- [ ] Update `Utilities/SystemHelpRenderer.cs` to implement `IConsoleModeRenderer`
+- [x] Update `Utilities/SystemHelpRenderer.cs` to implement `IConsoleModeRenderer`
 - [ ] Remove network troubleshooting section from help (moved to Network Status mode)
-- [ ] Implement `Enter/Exit/Render`; write the built string to `IConsole`
-- [ ] Implement `TryOpenInExternalEditorAsync` to open Application config
+- [x] Implement `Enter/Exit/Render`; write the built string to `IConsole`
+- [x] Implement `TryOpenInExternalEditorAsync` to open Application config
 
 ## Network Status renderer (new)
-- [ ] Add `Utilities/NetworkStatusRenderer.cs` implementing `IConsoleModeRenderer`
-- [ ] Wire dependencies: `IPortStatusMonitorService`, `INetworkStatusFormatter`
-- [ ] Implement behavior: async refresh, cache last snapshot, non-blocking
-- [ ] Set `PreferredUpdateInterval` ~ 1–2s
-- [ ] Implement `TryOpenInExternalEditorAsync` to open Application config
+- [x] Add `Utilities/NetworkStatusRenderer.cs` implementing `IConsoleModeRenderer`
+- [x] Wire dependencies: `IPortStatusMonitorService`, `INetworkStatusFormatter`
+- [x] Implement behavior: async refresh, cache last snapshot, non-blocking
+- [x] Set `PreferredUpdateInterval` ~ 1–2s
+- [x] Implement `TryOpenInExternalEditorAsync` to open Application config
 
 ## Mode manager
-- [ ] Add `IConsoleModeManager` and `ConsoleModeManager`:
-  - [ ] Track `CurrentMode`
-  - [ ] Implement `Toggle(ConsoleMode mode)` (same mode toggles back to `Main`)
-  - [ ] Implement `SetMode(ConsoleMode mode)`, `Update(IEnumerable<IServiceStats> stats)`, `Clear()`
-  - [ ] Respect each renderer’s `PreferredUpdateInterval`
-  - [ ] Expose a method to forward "Open in editor" to the active renderer (`TryOpenActiveModeInEditorAsync`)
+- [x] Add `IConsoleModeManager` and `ConsoleModeManager`:
+  - [x] Track `CurrentMode`
+  - [x] Implement `Toggle(ConsoleMode mode)` (same mode toggles back to `Main`)
+  - [x] Implement `SetMode(ConsoleMode mode)`, `Update(IEnumerable<IServiceStats> stats)`, `Clear()`
+  - [x] Respect each renderer's `PreferredUpdateInterval`
+  - [x] Expose a method to forward "Open in editor" to the active renderer (`TryOpenActiveModeInEditorAsync`)
 
 ## Orchestrator edits (`Services/ApplicationOrchestrator.cs`)
-- [ ] Inject `IConsoleModeManager`
-- [ ] Remove `_isShowingSystemHelp` and direct help rendering
-- [ ] Replace status updates with `_modeManager.Update(allStats)`
-- [ ] Map shortcuts:
-  - [ ] `ShowSystemHelp` → `_modeManager.Toggle(ConsoleMode.SystemHelp)`
-  - [ ] `ShowNetworkStatus` → `_modeManager.Toggle(ConsoleMode.NetworkStatus)`
-- [ ] Make `OpenConfigInEditor` call the manager to forward to the active renderer
+- [x] Inject `IConsoleModeManager`
+- [x] Remove `_isShowingSystemHelp` and direct help rendering
+- [x] Replace status updates with `_modeManager.Update(allStats)`
+- [x] Map shortcuts:
+  - [x] `ShowSystemHelp` → `_modeManager.Toggle(ConsoleMode.SystemHelp)`
+  - [x] `ShowNetworkStatus` → `_modeManager.Toggle(ConsoleMode.NetworkStatus)`
+- [x] Make `OpenConfigInEditor` call the manager to forward to the active renderer
 
 ## Shortcuts and config
-- [ ] Add `ShowNetworkStatus` to `ShortcutAction` enum
-- [ ] In `Configs/ApplicationConfig.json`, add mapping for `ShowNetworkStatus` (e.g., `"F2"`)
+- [x] Add `ShowNetworkStatus` to `ShortcutAction` enum
+- [x] In `Configs/ApplicationConfig.json`, add mapping for `ShowNetworkStatus` (e.g., `"F2"`)
 - [ ] Ensure `ShortcutConfigurationManager` recognizes the new action (enum-driven)
 
 ## DI wiring (`ServiceRegistration.cs`)
-- [ ] Register `IMainStatusRenderer` → `MainStatusRenderer`
-- [ ] Register all `IConsoleModeRenderer` implementations (Main, System Help, Network Status)
-- [ ] Register `IConsoleModeManager`
-- [ ] Remove usages/registrations of old `IConsoleRenderer`
+- [x] Register `IMainStatusRenderer` → `MainStatusRenderer`
+- [x] Register all `IConsoleModeRenderer` implementations (Main, System Help, Network Status)
+- [x] Register `IConsoleModeManager`
+- [x] Remove usages/registrations of old `IConsoleRenderer`
 
 ## Tests
 - [ ] Update/rename tests that referenced `IConsoleRenderer` → `IMainStatusRenderer`
