@@ -207,7 +207,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")
                 ));
-            services.AddSingleton<ISystemHelpRenderer>(provider =>
+            // Register SystemHelpRenderer both as interface and concrete class
+            services.AddSingleton<SystemHelpRenderer>(provider =>
                 new SystemHelpRenderer(
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
@@ -215,6 +216,7 @@ namespace SharpBridge
                     provider.GetRequiredService<INetworkStatusFormatter>(),
                     provider.GetRequiredService<IExternalEditorService>()
                 ));
+            services.AddSingleton<ISystemHelpRenderer>(provider => provider.GetRequiredService<SystemHelpRenderer>());
 
             // Register parameter table configuration manager
             services.AddSingleton<IParameterTableConfigurationManager, ParameterTableConfigurationManager>();
@@ -232,8 +234,33 @@ namespace SharpBridge
                 ));
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
-            // Register console renderer - dependencies will be resolved automatically
-            services.AddSingleton<IMainStatusRenderer, MainStatusRenderer>();
+            // Register MainStatusRenderer both as interface and concrete class
+            services.AddSingleton<MainStatusRenderer>();
+            services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusRenderer>());
+
+            // Register network status renderer
+            services.AddSingleton<NetworkStatusRenderer>(provider =>
+                new NetworkStatusRenderer(
+                    provider.GetRequiredService<IPortStatusMonitorService>(),
+                    provider.GetRequiredService<INetworkStatusFormatter>(),
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IConsole>()
+                ));
+
+            // Register console mode manager
+            services.AddSingleton<IConsoleModeManager>(provider =>
+                new ConsoleModeManager(
+                    provider.GetRequiredService<IConsole>(),
+                    provider.GetRequiredService<IConfigManager>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    new IConsoleModeRenderer[]
+                    {
+                        provider.GetRequiredService<MainStatusRenderer>(),
+                        provider.GetRequiredService<SystemHelpRenderer>(),
+                        provider.GetRequiredService<NetworkStatusRenderer>()
+                    }
+                ));
 
             // Register recovery policy
             services.AddSingleton<IRecoveryPolicy>(provider =>
@@ -250,7 +277,7 @@ namespace SharpBridge
                     provider.GetRequiredService<ITransformationEngine>(),
                     provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
                     provider.GetRequiredService<IAppLogger>(),
-                    provider.GetRequiredService<IMainStatusRenderer>(),
+                    provider.GetRequiredService<IConsoleModeManager>(),
                     provider.GetRequiredService<IKeyboardInputHandler>(),
                     provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
                     provider.GetRequiredService<IRecoveryPolicy>(),
@@ -260,11 +287,9 @@ namespace SharpBridge
                     provider.GetRequiredService<IExternalEditorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<ApplicationConfig>(),
-                    provider.GetRequiredService<ISystemHelpRenderer>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
-                    provider.GetRequiredService<IPortStatusMonitorService>()
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
             return services;
