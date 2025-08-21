@@ -9,13 +9,12 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Console renderer for network status and troubleshooting information
     /// </summary>
-    public class NetworkStatusRenderer : IConsoleModeRenderer
+    public class NetworkStatusContentProvider : IConsoleModeContentProvider
     {
         private readonly IPortStatusMonitorService _portStatusMonitor;
         private readonly INetworkStatusFormatter _networkStatusFormatter;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IAppLogger _logger;
-        private readonly IConsole _console;
 
         private NetworkStatus? _lastSnapshot;
         private DateTime _lastRefresh = DateTime.MinValue;
@@ -34,14 +33,12 @@ namespace SharpBridge.Utilities
         /// <param name="networkStatusFormatter">Formatter for network troubleshooting display</param>
         /// <param name="externalEditorService">Service for opening configuration in external editor</param>
         /// <param name="logger">Application logger</param>
-        /// <param name="console">Console interface for output</param>
-        public NetworkStatusRenderer(IPortStatusMonitorService portStatusMonitor, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService, IAppLogger logger, IConsole console)
+        public NetworkStatusContentProvider(IPortStatusMonitorService portStatusMonitor, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService, IAppLogger logger)
         {
             _portStatusMonitor = portStatusMonitor ?? throw new ArgumentNullException(nameof(portStatusMonitor));
             _networkStatusFormatter = networkStatusFormatter ?? throw new ArgumentNullException(nameof(networkStatusFormatter));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _console = console ?? throw new ArgumentNullException(nameof(console));
         }
 
         /// <summary>
@@ -71,7 +68,7 @@ namespace SharpBridge.Utilities
         /// Renders the current network status to the console
         /// </summary>
         /// <param name="context">Rendering context with console and configuration</param>
-        public void Render(ConsoleRenderContext context)
+        public string[] GetContent(ConsoleRenderContext context)
         {
             NetworkStatus? snapshot;
             lock (_snapshotLock)
@@ -83,21 +80,19 @@ namespace SharpBridge.Utilities
             {
                 // Show loading message if no snapshot available yet
                 var loadingLines = new[] { "Loading network status...", "", "Press any key to return to main status." };
-                _console.WriteLines(loadingLines);
-                return;
+                return loadingLines;
             }
 
             if (context.ApplicationConfig == null)
             {
                 var errorLines = new[] { "Error: Application configuration not available.", "", "Press any key to return to main status." };
-                _console.WriteLines(errorLines);
-                return;
+                return errorLines;
             }
 
             // Render the network troubleshooting content
             var content = _networkStatusFormatter.RenderNetworkTroubleshooting(snapshot, context.ApplicationConfig);
             var lines = content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
-            _console.WriteLines(lines);
+            return lines;
         }
 
         /// <summary>
@@ -125,7 +120,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         private async Task BackgroundRefreshLoop()
         {
-            const int refreshIntervalMs = 1500; // 1.5 seconds
+            const int refreshIntervalMs = 10000; // 10 seconds
 
             while (true)
             {

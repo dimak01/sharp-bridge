@@ -208,15 +208,15 @@ namespace SharpBridge
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")
                 ));
             // Register SystemHelpRenderer both as interface and concrete class
-            services.AddSingleton<SystemHelpRenderer>(provider =>
-                new SystemHelpRenderer(
+            services.AddSingleton<SystemHelpContentProvider>(provider =>
+                new SystemHelpContentProvider(
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
                     provider.GetRequiredService<ITableFormatter>(),
                     provider.GetRequiredService<INetworkStatusFormatter>(),
                     provider.GetRequiredService<IExternalEditorService>()
                 ));
-            services.AddSingleton<ISystemHelpRenderer>(provider => provider.GetRequiredService<SystemHelpRenderer>());
+            services.AddSingleton<ISystemHelpRenderer>(provider => provider.GetRequiredService<SystemHelpContentProvider>());
 
             // Register parameter table configuration manager
             services.AddSingleton<IParameterTableConfigurationManager, ParameterTableConfigurationManager>();
@@ -235,17 +235,16 @@ namespace SharpBridge
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
             // Register MainStatusRenderer both as interface and concrete class
-            services.AddSingleton<MainStatusRenderer>();
-            services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusRenderer>());
+            services.AddSingleton<MainStatusContentProvider>();
+            services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
 
             // Register network status renderer
-            services.AddSingleton<NetworkStatusRenderer>(provider =>
-                new NetworkStatusRenderer(
+            services.AddSingleton<NetworkStatusContentProvider>(provider =>
+                new NetworkStatusContentProvider(
                     provider.GetRequiredService<IPortStatusMonitorService>(),
                     provider.GetRequiredService<INetworkStatusFormatter>(),
                     provider.GetRequiredService<IExternalEditorService>(),
-                    provider.GetRequiredService<IAppLogger>(),
-                    provider.GetRequiredService<IConsole>()
+                    provider.GetRequiredService<IAppLogger>()
                 ));
 
             // Register console mode manager
@@ -254,11 +253,11 @@ namespace SharpBridge
                     provider.GetRequiredService<IConsole>(),
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IAppLogger>(),
-                    new IConsoleModeRenderer[]
+                    new IConsoleModeContentProvider[]
                     {
-                        provider.GetRequiredService<MainStatusRenderer>(),
-                        provider.GetRequiredService<SystemHelpRenderer>(),
-                        provider.GetRequiredService<NetworkStatusRenderer>()
+                        provider.GetRequiredService<MainStatusContentProvider>(),
+                        provider.GetRequiredService<SystemHelpContentProvider>(),
+                        provider.GetRequiredService<NetworkStatusContentProvider>()
                     }
                 ));
 
