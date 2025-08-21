@@ -11,8 +11,7 @@ namespace SharpBridge.Tests.Utilities
     public class TestConsole : IConsole
     {
         private readonly StringBuilder _outputBuilder = new StringBuilder();
-        private int _cursorLeft = 0;
-        private int _cursorTop = 0;
+        private bool _cursorVisible = true;
 
         /// <summary>
         /// Gets the captured console output as a string
@@ -38,29 +37,17 @@ namespace SharpBridge.Tests.Utilities
         public int WindowHeight { get; set; } = 25;
 
         /// <summary>
-        /// Sets the cursor position (simulated)
+        /// Gets or sets whether the cursor is visible (simulated)
         /// </summary>
-        public void SetCursorPosition(int left, int top)
+        public bool CursorVisible
         {
-            _cursorLeft = left;
-            _cursorTop = top;
+            get => _cursorVisible;
+            set => _cursorVisible = value;
         }
 
-        /// <summary>
-        /// Writes text to the captured output
-        /// </summary>
-        public void Write(string text)
-        {
-            _outputBuilder.Append(text);
-        }
 
-        /// <summary>
-        /// Writes text followed by a newline to the captured output
-        /// </summary>
-        public void WriteLine(string text)
-        {
-            _outputBuilder.AppendLine(text);
-        }
+
+
 
         /// <summary>
         /// Clears the console (no-op in test environment)
