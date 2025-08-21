@@ -86,5 +86,20 @@ namespace SharpBridge.Tests.Utilities
             WindowHeight = height;
             return true;
         }
+
+        /// <summary>
+        /// Writes multiple lines to the captured output (simulated flicker-free rendering)
+        /// </summary>
+        /// <param name="outputLines">Array of lines to write</param>
+        public void WriteLines(string[] outputLines)
+        {
+            // For testing, we'll simulate the behavior by clearing and writing all lines
+            _outputBuilder.Clear();
+
+            foreach (var line in outputLines)
+            {
+                _outputBuilder.AppendLine(line);
+            }
+        }
     }
 }

@@ -84,7 +84,7 @@ namespace SharpBridge.Utilities
                 _lastUpdate = DateTime.UtcNow;
 
                 var lines = BuildDisplayLines(stats);
-                ConsoleDisplayAction(lines.ToArray());
+                _console.WriteLines(lines.ToArray());
             }
         }
 
@@ -128,7 +128,7 @@ namespace SharpBridge.Utilities
         {
             var stats = context?.ServiceStats ?? Array.Empty<IServiceStats>();
             var lines = BuildDisplayLines(stats);
-            ConsoleDisplayAction(lines.ToArray());
+            _console.WriteLines(lines.ToArray());
         }
 
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
@@ -297,54 +297,7 @@ namespace SharpBridge.Utilities
             lines.Add($"Press Ctrl+C to exit | {transformationShortcut} for Transformation Engine verbosity | {pcShortcut} for PC client verbosity | {phoneShortcut} for Phone client verbosity");
         }
 
-        // Reusing PerformanceMonitor's console display technique
-        private void ConsoleDisplayAction(string[] outputLines)
-        {
-            try
-            {
-                _console.SetCursorPosition(0, 0);
 
-                int currentLine = 0;
-                int windowWidth = _console.WindowWidth - 1;
-
-                // Write each line and clear the remainder of each line
-                foreach (var line in outputLines)
-                {
-                    _console.SetCursorPosition(0, currentLine);
-                    _console.Write(line);
-
-                    // Clear the rest of this line (in case previous content was longer)
-                    int remainingSpace = windowWidth - line.Length;
-                    if (remainingSpace > 0)
-                    {
-                        _console.Write(new string(' ', remainingSpace));
-                    }
-
-                    currentLine++;
-
-                    // Ensure we don't exceed console boundaries
-                    if (currentLine >= _console.WindowHeight - 1)
-                        break;
-                }
-
-                // Clear any remaining lines that might have had content before
-                int windowHeight = _console.WindowHeight;
-                for (int i = currentLine; i < windowHeight - 1; i++)
-                {
-                    _console.SetCursorPosition(0, i);
-                    _console.Write(new string(' ', windowWidth));
-                }
-
-                // Reset cursor position to the end of our content
-                _console.SetCursorPosition(0, currentLine);
-            }
-            catch (Exception ex)
-            {
-                // Log the error and rethrow - let the application crash rather than attempting to recover
-                _logger.ErrorWithException("Console rendering failed", ex);
-                throw; // Rethrow the original exception
-            }
-        }
 
         /// <summary>
         /// Clears the console

@@ -363,8 +363,8 @@ namespace SharpBridge.Utilities
 
             var width = context.ConsoleSize.Width;
             var content = RenderSystemHelp(context.ApplicationConfig, width, null);
-            _console.Clear();
-            _console.Write(content);
+            var lines = content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            _console.WriteLines(lines);
         }
 
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);

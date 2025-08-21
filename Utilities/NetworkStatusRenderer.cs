@@ -82,19 +82,22 @@ namespace SharpBridge.Utilities
             if (snapshot == null)
             {
                 // Show loading message if no snapshot available yet
-                _console.Write("Loading network status...\n\nPress any key to return to main status.");
+                var loadingLines = new[] { "Loading network status...", "", "Press any key to return to main status." };
+                _console.WriteLines(loadingLines);
                 return;
             }
 
             if (context.ApplicationConfig == null)
             {
-                _console.Write("Error: Application configuration not available.\n\nPress any key to return to main status.");
+                var errorLines = new[] { "Error: Application configuration not available.", "", "Press any key to return to main status." };
+                _console.WriteLines(errorLines);
                 return;
             }
 
             // Render the network troubleshooting content
             var content = _networkStatusFormatter.RenderNetworkTroubleshooting(snapshot, context.ApplicationConfig);
-            _console.Write(content);
+            var lines = content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            _console.WriteLines(lines);
         }
 
         /// <summary>
