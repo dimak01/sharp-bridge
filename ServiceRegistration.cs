@@ -253,6 +253,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IConsole>(),
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IShortcutConfigurationManager>(),
                     new IConsoleModeContentProvider[]
                     {
                         provider.GetRequiredService<MainStatusContentProvider>(),

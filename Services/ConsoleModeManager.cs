@@ -15,6 +15,7 @@ namespace SharpBridge.Services
         private readonly IConsole _console;
         private readonly IConfigManager _configManager;
         private readonly IAppLogger _logger;
+        private readonly IShortcutConfigurationManager _shortcutManager;
         private readonly Dictionary<ConsoleMode, IConsoleModeContentProvider> _renderers;
 
         private ConsoleMode _currentMode = ConsoleMode.Main;
@@ -37,12 +38,14 @@ namespace SharpBridge.Services
         /// <param name="console">Console for display operations</param>
         /// <param name="configManager">Configuration manager for loading configs</param>
         /// <param name="logger">Application logger</param>
+        /// <param name="shortcutManager">Shortcut configuration manager for footer generation</param>
         /// <param name="renderers">Collection of all available mode renderers</param>
-        public ConsoleModeManager(IConsole console, IConfigManager configManager, IAppLogger logger, IEnumerable<IConsoleModeContentProvider> renderers)
+        public ConsoleModeManager(IConsole console, IConfigManager configManager, IAppLogger logger, IShortcutConfigurationManager shortcutManager, IEnumerable<IConsoleModeContentProvider> renderers)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
 
             if (renderers == null)
                 throw new ArgumentNullException(nameof(renderers));
@@ -155,9 +158,14 @@ namespace SharpBridge.Services
                     CancellationToken = default // TODO: Consider adding cancellation support
                 };
 
-                // Get content from active provider and display it
+                // Get content from active provider
                 var content = _activeRenderer.GetContent(context);
-                _console.WriteLines(content);
+
+                // Wrap content with header and footer
+                var wrappedContent = WrapContentWithHeaderAndFooter(content);
+
+                // Display final content
+                _console.WriteLines(wrappedContent);
                 _lastUpdate = now;
             }
             catch (Exception ex)
@@ -232,6 +240,87 @@ namespace SharpBridge.Services
             }
 
             _logger.Debug("All required console mode renderers are available: {0}", string.Join(", ", requiredModes));
+        }
+
+        /// <summary>
+        /// Wraps content with header and footer for consistent mode navigation
+        /// </summary>
+        /// <param name="content">Original content from the active provider</param>
+        /// <returns>Content wrapped with header and footer</returns>
+        private string[] WrapContentWithHeaderAndFooter(string[] content)
+        {
+            var result = new List<string>();
+
+            // Add header
+            var header = GenerateHeader();
+            if (!string.IsNullOrEmpty(header))
+            {
+                result.Add(header);
+                result.Add(""); // Empty line separator
+            }
+
+            // Add original content
+            result.AddRange(content);
+
+            // Add footer
+            var footer = GenerateFooter();
+            if (!string.IsNullOrEmpty(footer))
+            {
+                result.Add(""); // Empty line separator
+                result.Add(footer);
+            }
+
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// Generates the header showing current mode
+        /// </summary>
+        /// <returns>Header string or empty if no header needed</returns>
+        private string GenerateHeader()
+        {
+            var activeRenderer = _renderers[_currentMode];
+            return $"=== {activeRenderer.DisplayName.ToUpper()} ===";
+        }
+
+        /// <summary>
+        /// Generates the footer showing available mode navigation shortcuts
+        /// </summary>
+        /// <returns>Footer string or empty if no footer needed</returns>
+        private string GenerateFooter()
+        {
+            var footerParts = new List<string>();
+
+            // Get shortcut display strings
+            var helpShortcut = _shortcutManager.GetDisplayString(ShortcutAction.ShowSystemHelp);
+            var networkShortcut = _shortcutManager.GetDisplayString(ShortcutAction.ShowNetworkStatus);
+
+            // Generate footer based on current mode
+            switch (_currentMode)
+            {
+                case ConsoleMode.Main:
+                    // Main: F1: System Help | F2: Network Status
+                    footerParts.Add($"{helpShortcut}: {_renderers[ConsoleMode.SystemHelp].DisplayName}");
+                    footerParts.Add($"{networkShortcut}: {_renderers[ConsoleMode.NetworkStatus].DisplayName}");
+                    break;
+
+                case ConsoleMode.SystemHelp:
+                    // System Help: F1: Return to Main | F2: Network Status  
+                    footerParts.Add($"{helpShortcut}: Return to Main");
+                    footerParts.Add($"{networkShortcut}: {_renderers[ConsoleMode.NetworkStatus].DisplayName}");
+                    break;
+
+                case ConsoleMode.NetworkStatus:
+                    // Network Status: F1: System Help | F2: Return to Main
+                    footerParts.Add($"{helpShortcut}: {_renderers[ConsoleMode.SystemHelp].DisplayName}");
+                    footerParts.Add($"{networkShortcut}: Return to Main");
+                    break;
+            }
+
+            // Always add the exit option at the end
+            footerParts.Add("Ctrl+C: Exit");
+
+            return string.Join(" | ", footerParts);
         }
     }
 }
