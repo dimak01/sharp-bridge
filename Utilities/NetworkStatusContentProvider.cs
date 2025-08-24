@@ -79,13 +79,13 @@ namespace SharpBridge.Utilities
             if (snapshot == null)
             {
                 // Show loading message if no snapshot available yet
-                var loadingLines = new[] { "Loading network status...", "", "Press any key to return to main status." };
+                var loadingLines = new[] { "Loading network status..." };
                 return loadingLines;
             }
 
             if (context.ApplicationConfig == null)
             {
-                var errorLines = new[] { "Error: Application configuration not available.", "", "Press any key to return to main status." };
+                var errorLines = new[] { "Error: Application configuration not available." };
                 return errorLines;
             }
 

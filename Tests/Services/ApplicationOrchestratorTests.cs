@@ -1222,12 +1222,12 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
-        public void Constructor_WithNullConsoleRenderer_ThrowsArgumentNullException()
+        public void Constructor_WithNullModeManager_ThrowsArgumentNullException()
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                CreateOrchestratorWithNullParameter("consoleRenderer"));
-            exception.ParamName.Should().Be("consoleRenderer");
+                CreateOrchestratorWithNullParameter("modeManager"));
+            exception.ParamName.Should().Be("modeManager");
         }
 
         [Fact]
@@ -2215,14 +2215,7 @@ namespace SharpBridge.Tests.Services
             exception.ParamName.Should().Be("applicationConfig");
         }
 
-        [Fact]
-        public void Constructor_WithNullSystemHelpRenderer_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                CreateOrchestratorWithNullParameter("systemHelpRenderer"));
-            exception.ParamName.Should().Be("systemHelpRenderer");
-        }
+
 
         [Fact]
         public async Task OnTrackingDataReceived_WithValidBlendShapes_InitializesColorServiceOnce()
@@ -2574,44 +2567,26 @@ namespace SharpBridge.Tests.Services
         #region External Editor Tests
 
         [Fact]
-        public async Task OpenTransformationConfigInEditor_CallsExternalEditorService()
+        public async Task OpenConfigInEditor_CallsExternalEditorService()
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
             await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
+            _modeManagerMock.Setup(x => x.TryOpenActiveModeInEditorAsync())
                 .ReturnsAsync(true);
 
             // Act - Use reflection to call the private method
-            var method = typeof(ApplicationOrchestrator).GetMethod("OpenTransformationConfigInEditor",
+            var method = typeof(ApplicationOrchestrator).GetMethod("OpenConfigInEditor",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var task = (Task)method!.Invoke(orchestrator, null)!;
             await task;
 
             // Assert
-            _externalEditorServiceMock.Verify(x => x.TryOpenTransformationConfigAsync(), Times.Once);
+            _modeManagerMock.Verify(x => x.TryOpenActiveModeInEditorAsync(), Times.Once);
         }
 
-        [Fact]
-        public async Task OpenTransformationConfigInEditor_WhenServiceFails_LogsError()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
-                .ReturnsAsync(false);
-
-            // Act - Use reflection to call the private method
-            var method = typeof(ApplicationOrchestrator).GetMethod("OpenTransformationConfigInEditor",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var task = (Task)method!.Invoke(orchestrator, null)!;
-            await task;
-
-            // Assert
-            _loggerMock.Verify(x => x.Warning("Failed to open transformation configuration in external editor"), Times.Once);
-        }
 
         #endregion
 
@@ -2702,7 +2677,7 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _externalEditorServiceMock.Verify(x => x.TryOpenTransformationConfigAsync(), Times.Once);
+            _modeManagerMock.Verify(x => x.TryOpenActiveModeInEditorAsync(), Times.Once);
         }
 
         /// <summary>
@@ -2912,17 +2887,11 @@ namespace SharpBridge.Tests.Services
             await newOrchestrator.InitializeAsync(CancellationToken.None);
             helpAction!(); // Enter help mode
 
-            // Now simulate that we're in help mode and F1 is pressed again to exit
-            // We need to use reflection to set the private field _isShowingSystemHelp to true
-            var isShowingSystemHelpField = typeof(ApplicationOrchestrator)
-                .GetField("_isShowingSystemHelp", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            isShowingSystemHelpField!.SetValue(newOrchestrator, true);
-
-            // Act - call the help action again to exit help mode
+            // Act - call the help action again to toggle back to main mode
             helpAction!();
 
-            // Assert
-            _consoleMock.Verify(x => x.Clear(), Times.AtLeast(1)); // Called when exiting help
+            // Assert - Mode manager should toggle between SystemHelp and Main mode
+            _modeManagerMock.Verify(x => x.Toggle(ConsoleMode.SystemHelp), Times.Exactly(2));
         }
 
         #endregion
@@ -2930,14 +2899,14 @@ namespace SharpBridge.Tests.Services
         #region External Editor Tests
 
         [Fact]
-        public async Task OpenConfigInEditor_CallsExternalEditorService()
+        public async Task OpenConfigInEditor_ViaShortcut_CallsModeManager()
         {
             // Arrange
             SetupBasicMocks();
             var orchestrator = CreateOrchestrator();
             await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
+            _modeManagerMock.Setup(x => x.TryOpenActiveModeInEditorAsync())
                 .ReturnsAsync(true);
 
             // Get the editor action from registered shortcuts
@@ -2960,39 +2929,10 @@ namespace SharpBridge.Tests.Services
             await Task.Delay(100);
 
             // Assert
-            _externalEditorServiceMock.Verify(x => x.TryOpenTransformationConfigAsync(), Times.Once);
+            _modeManagerMock.Verify(x => x.TryOpenActiveModeInEditorAsync(), Times.Once);
         }
 
-        [Fact]
-        public async Task OpenConfigInEditor_WhenServiceFails_LogsWarning()
-        {
-            // Arrange
-            SetupBasicMocks();
-            var orchestrator = CreateOrchestrator();
-            await orchestrator.InitializeAsync(CancellationToken.None);
 
-            _externalEditorServiceMock.Setup(x => x.TryOpenTransformationConfigAsync())
-                .ReturnsAsync(false);
-
-            // Get the editor action
-            Action? editorAction = null;
-            _keyboardInputHandlerMock.Setup(x => x.RegisterShortcut(
-                ConsoleKey.E,
-                ConsoleModifiers.Control | ConsoleModifiers.Alt,
-                It.IsAny<Action>(),
-                It.IsAny<string>()))
-                .Callback<ConsoleKey, ConsoleModifiers, Action, string>((_, __, action, ___) => editorAction = action);
-
-            var newOrchestrator = CreateOrchestrator();
-            await newOrchestrator.InitializeAsync(CancellationToken.None);
-
-            // Act
-            editorAction!();
-            await Task.Delay(100);
-
-            // Assert
-            _loggerMock.Verify(x => x.Warning("Failed to open transformation configuration in external editor"), Times.Once);
-        }
 
         #endregion
 

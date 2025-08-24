@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.Versioning;
+using System.Security.Principal;
 using SharpBridge.Interfaces;
 
 // Keep namespace to avoid broad refactors while introducing a single facade
@@ -108,6 +109,13 @@ namespace SharpBridge.Utilities.ComInterop
         /// <inheritdoc />
         public int GetNetworkCategoryForInterface(string interfaceId)
         {
+            // Check if running with elevated permissions
+            if (!IsRunningAsAdministrator())
+            {
+                _logger.Debug("Application not running as administrator - defaulting to Private network category");
+                return NLM_NETWORK_CATEGORY.Private;
+            }
+
             try
             {
                 var networkListManager = new NetworkListManagerComObject() as INetworkListManager;
@@ -122,12 +130,32 @@ namespace SharpBridge.Utilities.ComInterop
                     if (network == null) continue;
                     if (connectionInterface.IsConnected) return network.GetCategory();
                 }
+
                 return NLM_NETWORK_CATEGORY.Private;
             }
             catch (Exception ex)
             {
                 _logger.Debug($"Error getting network category via NLM: {ex.Message} - defaulting to Private");
                 return NLM_NETWORK_CATEGORY.Private;
+            }
+        }
+
+        /// <summary>
+        /// Checks if the current application is running with administrator privileges
+        /// </summary>
+        /// <returns>True if running as administrator, false otherwise</returns>
+        private static bool IsRunningAsAdministrator()
+        {
+            try
+            {
+                var identity = WindowsIdentity.GetCurrent();
+                var principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                // If we can't determine elevation status, assume not elevated
+                return false;
             }
         }
 

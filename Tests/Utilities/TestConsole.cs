@@ -80,13 +80,61 @@ namespace SharpBridge.Tests.Utilities
         /// <param name="outputLines">Array of lines to write</param>
         public void WriteLines(string[] outputLines)
         {
-            // For testing, we'll simulate the behavior by clearing and writing all lines
+            // For testing, we'll simulate the rectangular buffer behavior
             _outputBuilder.Clear();
 
-            foreach (var line in outputLines)
+            var normalizedLines = NormalizeToRectangularBuffer(outputLines);
+            foreach (var line in normalizedLines)
             {
                 _outputBuilder.AppendLine(line);
             }
+        }
+
+        /// <summary>
+        /// Normalizes input lines to a rectangular buffer for testing consistency
+        /// Uses visual length calculation to properly handle ANSI color codes
+        /// </summary>
+        /// <param name="inputLines">Input lines to normalize</param>
+        /// <returns>Rectangular buffer with all lines exactly WindowWidth visual characters</returns>
+        private string[] NormalizeToRectangularBuffer(string[] inputLines)
+        {
+            int width = WindowWidth;
+            int height = WindowHeight - 1; // Reserve last line for cursor positioning
+
+            var buffer = new string[height];
+
+            for (int row = 0; row < height; row++)
+            {
+                if (row < inputLines.Length && !string.IsNullOrEmpty(inputLines[row]))
+                {
+                    string line = inputLines[row];
+                    int visualLength = SharpBridge.Utilities.ConsoleColors.GetVisualLength(line);
+
+                    // Handle visual length vs target width
+                    if (visualLength > width)
+                    {
+                        // For testing, simple truncation (could implement TruncateVisually if needed)
+                        buffer[row] = line.Substring(0, Math.Min(line.Length, width));
+                    }
+                    else if (visualLength < width)
+                    {
+                        // Pad to exact visual width (ANSI codes don't count toward padding)
+                        buffer[row] = line + new string(' ', width - visualLength);
+                    }
+                    else
+                    {
+                        // Perfect visual fit
+                        buffer[row] = line;
+                    }
+                }
+                else
+                {
+                    // Empty line - fill with spaces
+                    buffer[row] = new string(' ', width);
+                }
+            }
+
+            return buffer;
         }
     }
 }

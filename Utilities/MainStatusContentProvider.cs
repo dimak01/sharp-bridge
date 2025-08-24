@@ -14,10 +14,7 @@ namespace SharpBridge.Utilities
     public class MainStatusContentProvider : IMainStatusRenderer, IConsoleModeContentProvider
     {
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
-        private DateTime _lastUpdate = DateTime.MinValue;
-        private readonly object _lock = new object();
         private readonly IAppLogger _logger;
-        private readonly IShortcutConfigurationManager _shortcutManager;
         private readonly IExternalEditorService? _externalEditorService;
 
         /// <summary>
@@ -28,11 +25,10 @@ namespace SharpBridge.Utilities
         /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
-        /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
-        public MainStatusContentProvider(IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
+        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
+            _ = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
 
             // Register formatters for known types - order determines display order
             RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
@@ -43,7 +39,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Initializes a new instance of the MainStatusRenderer class with external editor support
         /// </summary>
-        public MainStatusContentProvider(IAppLogger logger, TransformationEngineInfoFormatter transformationFormatter, PhoneTrackingInfoFormatter phoneFormatter, PCTrackingInfoFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
+        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
             : this(logger, transformationFormatter, phoneFormatter, pcFormatter, shortcutManager)
         {
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
@@ -118,14 +114,7 @@ namespace SharpBridge.Utilities
 
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
 
-        /// <summary>
-        /// Determines if the console should be updated based on timing
-        /// </summary>
-        private bool ShouldUpdate()
-        {
-            var now = DateTime.UtcNow;
-            return now - _lastUpdate >= TimeSpan.FromMilliseconds(100);
-        }
+
 
         /// <summary>
         /// Builds the complete list of display lines from service statistics
@@ -134,21 +123,12 @@ namespace SharpBridge.Utilities
         {
             var lines = new List<string>();
 
-            AddHeaderLines(lines);
             AddServiceLines(lines, stats);
-            AddFooterLines(lines);
 
             return lines.ToArray();
         }
 
-        /// <summary>
-        /// Adds header lines to the display
-        /// </summary>
-        private static void AddHeaderLines(List<string> lines)
-        {
-            lines.Add($"=== SharpBridge Status at {DateTime.Now:HH:mm:ss} ===");
-            lines.Add(string.Empty);
-        }
+
 
         /// <summary>
         /// Adds service status lines to the display
@@ -195,7 +175,15 @@ namespace SharpBridge.Utilities
 
             if (_formatters.TryGetValue(entityType, out var formatter))
             {
-                return formatter.Format(stat);
+                try
+                {
+                    return formatter.Format(stat);
+                }
+                catch (Exception ex)
+                {
+                    _logger.ErrorWithException($"Error formatting {entityType.Name} for service {stat.ServiceName}", ex);
+                    return CreateNoFormatterOutput(stat, entityType);
+                }
             }
             else
             {
@@ -212,7 +200,15 @@ namespace SharpBridge.Utilities
 
             if (formatter != null)
             {
-                return formatter.Format(stat);
+                try
+                {
+                    return formatter.Format(stat);
+                }
+                catch (Exception ex)
+                {
+                    _logger.ErrorWithException($"Error formatting service {stat.ServiceName} without entity", ex);
+                    return CreateNoDataOutput(stat);
+                }
             }
             else
             {
@@ -226,8 +222,7 @@ namespace SharpBridge.Utilities
         private IFormatter? FindFormatterForServiceWithoutEntity(IServiceStats stat)
         {
             if (stat.ServiceName.Contains("Phone") &&
-                _formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter) &&
-                phoneFormatter is PhoneTrackingInfoFormatter)
+                _formatters.TryGetValue(typeof(PhoneTrackingInfo), out var phoneFormatter))
             {
                 return phoneFormatter;
             }
@@ -270,17 +265,7 @@ namespace SharpBridge.Utilities
             }
         }
 
-        /// <summary>
-        /// Adds footer lines to the display
-        /// </summary>
-        private void AddFooterLines(List<string> lines)
-        {
-            var transformationShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CycleTransformationEngineVerbosity);
-            var pcShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CyclePCClientVerbosity);
-            var phoneShortcut = _shortcutManager.GetDisplayString(ShortcutAction.CyclePhoneClientVerbosity);
 
-            lines.Add($"Press Ctrl+C to exit | {transformationShortcut} for Transformation Engine verbosity | {pcShortcut} for PC client verbosity | {phoneShortcut} for Phone client verbosity");
-        }
 
 
 
