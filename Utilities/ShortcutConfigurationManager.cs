@@ -264,7 +264,8 @@ namespace SharpBridge.Utilities
                 [ShortcutAction.CyclePhoneClientVerbosity] = new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt),
                 [ShortcutAction.ReloadTransformationConfig] = new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt),
                 [ShortcutAction.OpenConfigInEditor] = new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt),
-                [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, 0)
+                [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, 0),
+                [ShortcutAction.ShowNetworkStatus] = new Shortcut(ConsoleKey.F2, 0)
             };
         }
 

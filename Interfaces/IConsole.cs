@@ -18,9 +18,6 @@ namespace SharpBridge.Interfaces
         int WindowHeight { get; }
 
 
-
-
-
         /// <summary>
         /// Clears the console screen
         /// </summary>

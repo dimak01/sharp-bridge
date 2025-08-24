@@ -149,7 +149,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             var mappings = _manager.GetMappedShortcuts();
-            mappings.Should().HaveCount(6);
+            mappings.Should().HaveCount(7); // Updated for ShowNetworkStatus action
             mappings.Values.Should().NotContain(x => x == null);
         }
 

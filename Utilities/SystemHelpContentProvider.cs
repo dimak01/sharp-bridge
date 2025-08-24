@@ -18,7 +18,6 @@ namespace SharpBridge.Utilities
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
-        private readonly INetworkStatusFormatter _networkStatusFormatter;
         private readonly IExternalEditorService _externalEditorService;
 
         /// <summary>
@@ -27,13 +26,11 @@ namespace SharpBridge.Utilities
         /// <param name="shortcutConfigurationManager">Configuration manager for shortcut information</param>
         /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
-        /// <param name="networkStatusFormatter">Network status formatter for troubleshooting section</param>
         public SystemHelpContentProvider(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
-            _networkStatusFormatter = networkStatusFormatter ?? throw new ArgumentNullException(nameof(networkStatusFormatter));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
 
@@ -48,33 +45,12 @@ namespace SharpBridge.Utilities
         {
             var builder = new StringBuilder();
 
-            var systemHelpScreenWidth = Math.Min(consoleWidth, 80);
-            // Create separator line based on console width
-            var separatorLine = new string('═', systemHelpScreenWidth);
-
-            // Get the help shortcut dynamically
-            var helpShortcut = _shortcutConfigurationManager.GetDisplayString(ShortcutAction.ShowSystemHelp);
-
-            // Header
-            builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText($"SHARP BRIDGE - SYSTEM HELP ({helpShortcut})", systemHelpScreenWidth));
-            builder.AppendLine(separatorLine);
-            builder.AppendLine();
-
             // Application Configuration sections
             builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
 
             builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
 
             builder.AppendLine(RenderParameterTableColumns(consoleWidth));
-
-            // Network troubleshooting moved to dedicated Network Status mode
-
-            // Footer
-            builder.AppendLine();
-            builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText($"Press {helpShortcut} again to return to main display", systemHelpScreenWidth));
-            builder.AppendLine(separatorLine);
 
             return builder.ToString();
         }
@@ -96,22 +72,34 @@ namespace SharpBridge.Utilities
 
             // General Settings Section
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("GENERAL SETTINGS"));
+            foreach (var line in CreateSectionHeader("GENERAL SETTINGS"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.GeneralSettings, skipProperties: new[] { nameof(GeneralSettingsConfig.Shortcuts) });
 
             // Phone Client Section  
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("PHONE CLIENT"));
+            foreach (var line in CreateSectionHeader("PHONE CLIENT"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.PhoneClient);
 
             // PC Client Section
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("PC CLIENT"));
+            foreach (var line in CreateSectionHeader("PC CLIENT"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.PCClient);
 
             // Transformation Engine Section
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("TRANSFORMATION ENGINE"));
+            foreach (var line in CreateSectionHeader("TRANSFORMATION ENGINE"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.TransformationEngine);
 
             return builder.ToString();
@@ -190,7 +178,10 @@ namespace SharpBridge.Utilities
             };
 
             // Add the header with underline manually to match other sections
-            builder.AppendLine(CreateSectionHeader("KEYBOARD SHORTCUTS"));
+            foreach (var line in CreateSectionHeader("KEYBOARD SHORTCUTS"))
+            {
+                builder.AppendLine(line);
+            }
 
             // Use TableFormatter to create the shortcuts table (without title since we added it manually)
             _tableFormatter.AppendTable(
@@ -240,7 +231,10 @@ namespace SharpBridge.Utilities
                     };
 
             // Add the header with underline manually to match other sections
-            builder.AppendLine(CreateSectionHeader("PC PARAMETER TABLE COLUMNS"));
+            foreach (var line in CreateSectionHeader("PC PARAMETER TABLE COLUMNS"))
+            {
+                builder.AppendLine(line);
+            }
 
             // Use TableFormatter to create the columns table (without title since we added it manually)
             _tableFormatter.AppendTable(
@@ -258,20 +252,7 @@ namespace SharpBridge.Utilities
 
 
 
-        /// <summary>
-        /// Centers text within the specified width
-        /// </summary>
-        /// <param name="text">Text to center</param>
-        /// <param name="width">Total width to center within</param>
-        /// <returns>Centered text with appropriate padding</returns>
-        private static string CenterText(string text, int width)
-        {
-            if (string.IsNullOrEmpty(text) || width <= text.Length)
-                return text;
 
-            var padding = (width - text.Length) / 2;
-            return new string(' ', padding) + text;
-        }
 
         /// <summary>
         /// Creates a section header with consistent formatting
@@ -279,11 +260,11 @@ namespace SharpBridge.Utilities
         /// <param name="title">Section title</param>
         /// <param name="maxWidth">Maximum width for the header (default 60)</param>
         /// <returns>Formatted section header</returns>
-        private static string CreateSectionHeader(string title, int maxWidth = 60)
+        private static string[] CreateSectionHeader(string title, int maxWidth = 60)
         {
             var headerWidth = Math.Min(title.Length + 2, maxWidth);
             var underline = new string('─', headerWidth);
-            return $"{title}:\n{underline}";
+            return [$"{title}:", $"{underline}"];
         }
 
         /// <summary>
