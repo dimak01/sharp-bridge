@@ -223,12 +223,19 @@ namespace SharpBridge.Utilities
         /// Protected dispose method for cleanup of managed resources
         /// </summary>
         /// <param name="disposing">True if disposing managed resources</param>
-        protected virtual async void Dispose(bool disposing)
+        protected virtual void Dispose(bool disposing)
         {
             if (!_disposed && disposing)
             {
                 _disposed = true;
-                await StopBackgroundRefresh();
+                try
+                {
+                    StopBackgroundRefresh().Wait();
+                }
+                catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
+                {
+                    // Expected when cancelling, ignore
+                }
                 _cancellationTokenSource.Dispose();
             }
         }

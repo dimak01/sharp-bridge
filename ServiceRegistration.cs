@@ -235,7 +235,13 @@ namespace SharpBridge
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
             // Register MainStatusRenderer both as interface and concrete class
-            services.AddSingleton<MainStatusContentProvider>();
+            services.AddSingleton<MainStatusContentProvider>(provider =>
+                new MainStatusContentProvider(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<TransformationEngineInfoFormatter>(),
+                    provider.GetRequiredService<PhoneTrackingInfoFormatter>(),
+                    provider.GetRequiredService<PCTrackingInfoFormatter>()
+                ));
             services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
 
             // Register network status renderer
