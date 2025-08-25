@@ -79,32 +79,32 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullPortStatusMonitor_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new NetworkStatusContentProvider(null!, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("portStatusMonitor");
+            var exception = Assert.Throws<ArgumentNullException>(() => new NetworkStatusContentProvider(null!, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object));
+            exception.ParamName.Should().Be("portStatusMonitor");
         }
 
         [Fact]
         public void Constructor_WithNullNetworkStatusFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, null!, _externalEditorServiceMock.Object, _loggerMock.Object);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("networkStatusFormatter");
+            var exception = Assert.Throws<ArgumentNullException>(() => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, null!, _externalEditorServiceMock.Object, _loggerMock.Object));
+            exception.ParamName.Should().Be("networkStatusFormatter");
         }
 
         [Fact]
         public void Constructor_WithNullExternalEditorService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, null!, _loggerMock.Object);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("externalEditorService");
+            var exception = Assert.Throws<ArgumentNullException>(() => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, null!, _loggerMock.Object));
+            exception.ParamName.Should().Be("externalEditorService");
         }
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, null!);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
+            var exception = Assert.Throws<ArgumentNullException>(() => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, null!));
+            exception.ParamName.Should().Be("logger");
         }
 
         #endregion
@@ -178,11 +178,11 @@ namespace SharpBridge.Tests.Utilities
             // Act
             provider.Enter(_consoleMock.Object);
 
-            // Assert - Use reflection to check that refresh task was started
-            var refreshTaskField = typeof(NetworkStatusContentProvider).GetField("_refreshTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var refreshTask = refreshTaskField?.GetValue(provider) as Task;
-            refreshTask.Should().NotBeNull();
-            refreshTask!.IsCompleted.Should().BeFalse();
+            // Assert - Use reflection to check that background task was started
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var backgroundTask = backgroundTaskField?.GetValue(provider) as Task;
+            backgroundTask.Should().NotBeNull();
+            backgroundTask!.IsCompleted.Should().BeFalse();
         }
 
         [Fact]
@@ -193,11 +193,11 @@ namespace SharpBridge.Tests.Utilities
 
             // Act
             provider.Enter(_consoleMock.Object);
-            var refreshTaskField = typeof(NetworkStatusContentProvider).GetField("_refreshTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var firstTask = refreshTaskField?.GetValue(provider) as Task;
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var firstTask = backgroundTaskField?.GetValue(provider) as Task;
 
             provider.Enter(_consoleMock.Object);
-            var secondTask = refreshTaskField?.GetValue(provider) as Task;
+            var secondTask = backgroundTaskField?.GetValue(provider) as Task;
 
             // Assert - Should be the same task
             secondTask.Should().BeSameAs(firstTask);
@@ -227,14 +227,14 @@ namespace SharpBridge.Tests.Utilities
             var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
             provider.Enter(_consoleMock.Object);
 
-            var refreshTaskField = typeof(NetworkStatusContentProvider).GetField("_refreshTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var taskBeforeExit = refreshTaskField?.GetValue(provider) as Task;
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var taskBeforeExit = backgroundTaskField?.GetValue(provider) as Task;
 
             // Act
             provider.Exit(_consoleMock.Object);
 
             // Assert - Task should still be running
-            var taskAfterExit = refreshTaskField?.GetValue(provider) as Task;
+            var taskAfterExit = backgroundTaskField?.GetValue(provider) as Task;
             taskAfterExit.Should().BeSameAs(taskBeforeExit);
             taskAfterExit!.IsCompleted.Should().BeFalse();
         }
@@ -551,14 +551,14 @@ namespace SharpBridge.Tests.Utilities
             var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
 
             // Use reflection to set a completed task
-            var refreshTaskField = typeof(NetworkStatusContentProvider).GetField("_refreshTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            refreshTaskField?.SetValue(provider, Task.CompletedTask);
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            backgroundTaskField?.SetValue(provider, Task.CompletedTask);
 
             // Act
             provider.Enter(_consoleMock.Object);
 
             // Assert - Should create a new task since the old one was completed
-            var newTask = refreshTaskField?.GetValue(provider) as Task;
+            var newTask = backgroundTaskField?.GetValue(provider) as Task;
             newTask.Should().NotBeNull();
             newTask!.Should().NotBe(Task.CompletedTask);
         }
@@ -570,17 +570,17 @@ namespace SharpBridge.Tests.Utilities
             var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
             provider.Enter(_consoleMock.Object); // Start first task
 
-            var refreshTaskField = typeof(NetworkStatusContentProvider).GetField("_refreshTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var firstTask = refreshTaskField?.GetValue(provider) as Task;
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var firstTask = backgroundTaskField?.GetValue(provider) as Task;
 
             // Simulate task completion
-            refreshTaskField?.SetValue(provider, Task.CompletedTask);
+            backgroundTaskField?.SetValue(provider, Task.CompletedTask);
 
             // Act
             provider.Enter(_consoleMock.Object); // Should start new task
 
             // Assert
-            var secondTask = refreshTaskField?.GetValue(provider) as Task;
+            var secondTask = backgroundTaskField?.GetValue(provider) as Task;
             secondTask.Should().NotBeSameAs(firstTask);
             secondTask!.IsCompleted.Should().BeFalse();
         }

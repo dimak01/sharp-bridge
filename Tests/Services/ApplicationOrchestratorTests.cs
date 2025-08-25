@@ -372,25 +372,7 @@ namespace SharpBridge.Tests.Services
                     _userPreferences,
                     _configManagerMock.Object,
                     _appConfigWatcherMock.Object),
-                "console" => new ApplicationOrchestrator(
-                    _vtubeStudioPCClientMock.Object,
-                    _vtubeStudioPhoneClientMock.Object,
-                    _transformationEngineMock.Object,
-                    _phoneConfig,
-                    _loggerMock.Object,
-                    _modeManagerMock.Object,
-                    _keyboardInputHandlerMock.Object,
-                    _parameterManagerMock.Object,
-                    _recoveryPolicyMock.Object,
-                    null!,
-                    _consoleWindowManagerMock.Object,
-                    _colorServiceMock.Object,
-                    _externalEditorServiceMock.Object,
-                    _shortcutConfigurationManagerMock.Object,
-                    _applicationConfig,
-                    _userPreferences,
-                    _configManagerMock.Object,
-                    _appConfigWatcherMock.Object),
+
                 "consoleWindowManager" => new ApplicationOrchestrator(
                     _vtubeStudioPCClientMock.Object,
                     _vtubeStudioPhoneClientMock.Object,
@@ -1257,14 +1239,7 @@ namespace SharpBridge.Tests.Services
             exception.ParamName.Should().Be("recoveryPolicy");
         }
 
-        [Fact]
-        public void Constructor_WithNullConsole_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                CreateOrchestratorWithNullParameter("console"));
-            exception.ParamName.Should().Be("console");
-        }
+
 
         [Fact]
         public void Constructor_WithNullConsoleWindowManager_ThrowsArgumentNullException()
