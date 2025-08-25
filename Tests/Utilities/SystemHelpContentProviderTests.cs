@@ -42,8 +42,8 @@ namespace SharpBridge.Tests.Utilities
             var tableFormatterMock = new Mock<ITableFormatter>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
             var externalEditorServiceMock = new Mock<IExternalEditorService>();
-            Action act = () => new SystemHelpContentProvider(null!, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutConfigurationManager");
+            var exception = Assert.Throws<ArgumentNullException>(() => new SystemHelpContentProvider(null!, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object));
+            exception.ParamName.Should().Be("shortcutConfigurationManager");
         }
 
         [Fact]
@@ -54,8 +54,8 @@ namespace SharpBridge.Tests.Utilities
             var tableFormatterMock = new Mock<ITableFormatter>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
             var externalEditorServiceMock = new Mock<IExternalEditorService>();
-            Action act = () => new SystemHelpContentProvider(shortcutConfigurationManagerMock.Object, null!, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("parameterTableConfigurationManager");
+            var exception = Assert.Throws<ArgumentNullException>(() => new SystemHelpContentProvider(shortcutConfigurationManagerMock.Object, null!, tableFormatterMock.Object, networkStatusFormatterMock.Object, externalEditorServiceMock.Object));
+            exception.ParamName.Should().Be("parameterTableConfigurationManager");
         }
 
         [Fact]
@@ -66,8 +66,8 @@ namespace SharpBridge.Tests.Utilities
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
             var externalEditorServiceMock = new Mock<IExternalEditorService>();
-            Action act = () => new SystemHelpContentProvider(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, null!, networkStatusFormatterMock.Object, externalEditorServiceMock.Object);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("tableFormatter");
+            var exception = Assert.Throws<ArgumentNullException>(() => new SystemHelpContentProvider(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, null!, networkStatusFormatterMock.Object, externalEditorServiceMock.Object));
+            exception.ParamName.Should().Be("tableFormatter");
         }
 
 
@@ -80,8 +80,8 @@ namespace SharpBridge.Tests.Utilities
             var parameterTableConfigManagerMock = new Mock<IParameterTableConfigurationManager>();
             var tableFormatterMock = new Mock<ITableFormatter>();
             var networkStatusFormatterMock = new Mock<INetworkStatusFormatter>();
-            Action act = () => new SystemHelpContentProvider(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, null!);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("externalEditorService");
+            var exception = Assert.Throws<ArgumentNullException>(() => new SystemHelpContentProvider(shortcutConfigurationManagerMock.Object, parameterTableConfigManagerMock.Object, tableFormatterMock.Object, networkStatusFormatterMock.Object, null!));
+            exception.ParamName.Should().Be("externalEditorService");
         }
 
         [Fact]
@@ -1429,8 +1429,8 @@ namespace SharpBridge.Tests.Utilities
         public void GetContent_WithNullContext_ThrowsArgumentNullException()
         {
             // Arrange & Act & Assert
-            Action act = () => _renderer.GetContent(null!);
-            act.Should().Throw<NullReferenceException>();
+            var exception = Assert.Throws<NullReferenceException>(() => _renderer.GetContent(null!));
+            exception.Should().NotBeNull();
         }
 
         [Fact]
@@ -1586,9 +1586,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Act & Assert - Call the private method using reflection
             var method = typeof(SystemHelpContentProvider).GetMethod("CreateSectionHeader", BindingFlags.NonPublic | BindingFlags.Static);
-            Action act = () => method!.Invoke(null, new object[] { nullTitle!, maxWidth });
-            act.Should().Throw<TargetInvocationException>()
-                .WithInnerException<NullReferenceException>();
+            var exception = Assert.Throws<TargetInvocationException>(() => method!.Invoke(null, new object[] { nullTitle!, maxWidth }));
+            exception.InnerException.Should().BeOfType<NullReferenceException>();
         }
 
         #endregion
