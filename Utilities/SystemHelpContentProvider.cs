@@ -11,7 +11,7 @@ using SharpBridge.Models;
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Implementation of ISystemHelpRenderer for rendering the F2 help system display
+    /// Implementation of ISystemHelpRenderer and IConsoleModeContentProvider for rendering the F2 help system display
     /// </summary>
     public class SystemHelpContentProvider : ISystemHelpRenderer, IConsoleModeContentProvider
     {
@@ -21,11 +21,13 @@ namespace SharpBridge.Utilities
         private readonly IExternalEditorService _externalEditorService;
 
         /// <summary>
-        /// Initializes a new instance of the SystemHelpRenderer
+        /// Initializes a new instance of the SystemHelpContentProvider
         /// </summary>
         /// <param name="shortcutConfigurationManager">Configuration manager for shortcut information</param>
         /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
+        /// <param name="networkStatusFormatter">Network status formatter for troubleshooting information</param>
+        /// <param name="externalEditorService">Service for opening files in external editors</param>
         public SystemHelpContentProvider(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
@@ -286,7 +288,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Data class for shortcut display rows
         /// </summary>
-        private class ShortcutDisplayRow
+        private sealed class ShortcutDisplayRow
         {
             public string Action { get; set; } = string.Empty;
             public string Shortcut { get; set; } = string.Empty;
@@ -296,43 +298,69 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Data class for parameter table column display rows
         /// </summary>
-        private class ParameterTableColumnDisplayRow
+        private sealed class ParameterTableColumnDisplayRow
         {
             public string ColumnName { get; set; } = string.Empty;
             public int Order { get; set; }
         }
 
-        // IConsoleModeRenderer implementation
+        // IConsoleModeContentProvider implementation
 
+        /// <summary>
+        /// Gets the console mode for this content provider
+        /// </summary>
         public ConsoleMode Mode => ConsoleMode.SystemHelp;
 
+        /// <summary>
+        /// Gets the display name for this content provider
+        /// </summary>
         public string DisplayName => "System Help";
 
+        /// <summary>
+        /// Gets the shortcut action that toggles this mode
+        /// </summary>
         public ShortcutAction ToggleAction => ShortcutAction.ShowSystemHelp;
 
+        /// <summary>
+        /// Attempts to open the application configuration in an external editor
+        /// </summary>
+        /// <returns>True if the editor was successfully opened, false otherwise</returns>
         public async Task<bool> TryOpenInExternalEditorAsync()
         {
             try
             {
                 return await _externalEditorService.TryOpenApplicationConfigAsync();
             }
-            catch (Exception ex)
+            catch
             {
                 // No logger here; rely on the external editor service to log failures
                 return false;
             }
         }
 
+        /// <summary>
+        /// Called when entering this console mode
+        /// </summary>
+        /// <param name="console">The console instance</param>
         public void Enter(IConsole console)
         {
             // No specific cleanup needed for now
         }
 
+        /// <summary>
+        /// Called when exiting this console mode
+        /// </summary>
+        /// <param name="console">The console instance</param>
         public void Exit(IConsole console)
         {
             // No specific cleanup needed for now
         }
 
+        /// <summary>
+        /// Gets the content for this console mode
+        /// </summary>
+        /// <param name="context">The console rendering context</param>
+        /// <returns>Array of strings representing the content lines</returns>
         public string[] GetContent(ConsoleRenderContext context)
         {
             var width = context.ConsoleSize.Width;
@@ -340,6 +368,9 @@ namespace SharpBridge.Utilities
             return content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
         }
 
+        /// <summary>
+        /// Gets the preferred update interval for this content provider
+        /// </summary>
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
     }
 }

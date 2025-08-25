@@ -107,70 +107,65 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new MainStatusContentProvider(
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
                 null!,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockShortcutManager.Object);
-
-            act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
+                _mockShortcutManager.Object));
+            exception.ParamName.Should().Be("logger");
         }
 
         [Fact]
         public void Constructor_WithNullTransformationFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new MainStatusContentProvider(
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
                 _mockLogger.Object,
                 null!,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockShortcutManager.Object);
-
-            act.Should().Throw<ArgumentNullException>().WithParameterName("transformationFormatter");
+                _mockShortcutManager.Object));
+            exception.ParamName.Should().Be("transformationFormatter");
         }
 
         [Fact]
         public void Constructor_WithNullPhoneFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new MainStatusContentProvider(
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 null!,
                 _mockPCFormatter.Object,
-                _mockShortcutManager.Object);
-
-            act.Should().Throw<ArgumentNullException>().WithParameterName("phoneFormatter");
+                _mockShortcutManager.Object));
+            exception.ParamName.Should().Be("phoneFormatter");
         }
 
         [Fact]
         public void Constructor_WithNullPCFormatter_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new MainStatusContentProvider(
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 null!,
-                _mockShortcutManager.Object);
-
-            act.Should().Throw<ArgumentNullException>().WithParameterName("pcFormatter");
+                _mockShortcutManager.Object));
+            exception.ParamName.Should().Be("pcFormatter");
         }
 
         [Fact]
         public void Constructor_WithNullShortcutManager_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new MainStatusContentProvider(
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                null!);
-
-            act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutManager");
+                null!));
+            exception.ParamName.Should().Be("shortcutManager");
         }
 
         [Fact]
@@ -193,15 +188,14 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullExternalEditorService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new MainStatusContentProvider(
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
                 _mockShortcutManager.Object,
-                null!);
-
-            act.Should().Throw<ArgumentNullException>().WithParameterName("externalEditorService");
+                null!));
+            exception.ParamName.Should().Be("externalEditorService");
         }
 
         #endregion
@@ -796,11 +790,13 @@ namespace SharpBridge.Tests.Utilities
             var provider = CreateProvider();
             var mockFormatter = new Mock<IFormatter>();
 
-            // Act
-            Action act = () => provider.RegisterFormatter<TestEntity>(mockFormatter.Object);
+            // Act & Assert
+            // Should not throw any exception
+            provider.RegisterFormatter<TestEntity>(mockFormatter.Object);
 
-            // Assert
-            act.Should().NotThrow();
+            // Verify the formatter was registered
+            var result = provider.GetFormatter<TestEntity>();
+            result.Should().BeSameAs(mockFormatter.Object);
         }
 
         [Fact]
