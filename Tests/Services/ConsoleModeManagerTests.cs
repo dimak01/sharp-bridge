@@ -111,40 +111,40 @@ namespace SharpBridge.Tests.Services
         public void Constructor_WithNullConsole_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new ConsoleModeManager(null!, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, _allRenderers);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("console");
+            var exception = Assert.Throws<ArgumentNullException>(() => new ConsoleModeManager(null!, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, _allRenderers));
+            exception.ParamName.Should().Be("console");
         }
 
         [Fact]
         public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, null!, _loggerMock.Object, _shortcutManagerMock.Object, _allRenderers);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("configManager");
+            var exception = Assert.Throws<ArgumentNullException>(() => new ConsoleModeManager(_consoleMock.Object, null!, _loggerMock.Object, _shortcutManagerMock.Object, _allRenderers));
+            exception.ParamName.Should().Be("configManager");
         }
 
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, null!, _shortcutManagerMock.Object, _allRenderers);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
+            var exception = Assert.Throws<ArgumentNullException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, null!, _shortcutManagerMock.Object, _allRenderers));
+            exception.ParamName.Should().Be("logger");
         }
 
         [Fact]
         public void Constructor_WithNullShortcutManager_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, null!, _allRenderers);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("shortcutManager");
+            var exception = Assert.Throws<ArgumentNullException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, null!, _allRenderers));
+            exception.ParamName.Should().Be("shortcutManager");
         }
 
         [Fact]
         public void Constructor_WithNullRenderers_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, null!);
-            act.Should().Throw<ArgumentNullException>().WithParameterName("renderers");
+            var exception = Assert.Throws<ArgumentNullException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, null!));
+            exception.ParamName.Should().Be("renderers");
         }
 
         [Fact]
@@ -154,8 +154,8 @@ namespace SharpBridge.Tests.Services
             var incompleteRenderers = new List<IConsoleModeContentProvider> { _helpRendererMock.Object, _networkRendererMock.Object };
 
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers);
-            act.Should().Throw<InvalidOperationException>().WithMessage("Missing required console mode renderers: Main");
+            var exception = Assert.Throws<InvalidOperationException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers));
+            exception.Message.Should().Contain("Missing required console mode renderers: Main");
         }
 
         [Fact]
@@ -165,8 +165,8 @@ namespace SharpBridge.Tests.Services
             var incompleteRenderers = new List<IConsoleModeContentProvider> { _mainRendererMock.Object, _networkRendererMock.Object };
 
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers);
-            act.Should().Throw<InvalidOperationException>().WithMessage("Missing required console mode renderers: SystemHelp");
+            var exception = Assert.Throws<InvalidOperationException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers));
+            exception.Message.Should().Contain("Missing required console mode renderers: SystemHelp");
         }
 
         [Fact]
@@ -176,8 +176,8 @@ namespace SharpBridge.Tests.Services
             var incompleteRenderers = new List<IConsoleModeContentProvider> { _mainRendererMock.Object, _helpRendererMock.Object };
 
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers);
-            act.Should().Throw<InvalidOperationException>().WithMessage("Missing required console mode renderers: NetworkStatus");
+            var exception = Assert.Throws<InvalidOperationException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers));
+            exception.Message.Should().Contain("Missing required console mode renderers: NetworkStatus");
         }
 
         [Fact]
@@ -187,8 +187,8 @@ namespace SharpBridge.Tests.Services
             var incompleteRenderers = new List<IConsoleModeContentProvider> { _mainRendererMock.Object };
 
             // Act & Assert
-            Action act = () => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers);
-            act.Should().Throw<InvalidOperationException>().WithMessage("Missing required console mode renderers: SystemHelp, NetworkStatus");
+            var exception = Assert.Throws<InvalidOperationException>(() => new ConsoleModeManager(_consoleMock.Object, _configManagerMock.Object, _loggerMock.Object, _shortcutManagerMock.Object, incompleteRenderers));
+            exception.Message.Should().Contain("Missing required console mode renderers: SystemHelp, NetworkStatus");
         }
 
         #endregion

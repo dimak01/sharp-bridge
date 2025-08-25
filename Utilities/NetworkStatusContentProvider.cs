@@ -7,7 +7,7 @@ using SharpBridge.Models;
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Console renderer for network status and troubleshooting information
+    /// Content provider for network status and troubleshooting information in console UI
     /// </summary>
     public class NetworkStatusContentProvider : IConsoleModeContentProvider, IDisposable
     {
@@ -24,13 +24,28 @@ namespace SharpBridge.Utilities
         private readonly object _taskLock = new object();
         private bool _disposed = false;
 
+        /// <summary>
+        /// Gets the console mode for this content provider
+        /// </summary>
         public ConsoleMode Mode => ConsoleMode.NetworkStatus;
+
+        /// <summary>
+        /// Gets the human-readable display name for this content provider
+        /// </summary>
         public string DisplayName => "Network Status";
+
+        /// <summary>
+        /// Gets the shortcut action that toggles this content provider
+        /// </summary>
         public ShortcutAction ToggleAction => ShortcutAction.ShowNetworkStatus;
+
+        /// <summary>
+        /// Gets the preferred update interval for this content provider
+        /// </summary>
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100); // Hardcoded as per user feedback
 
         /// <summary>
-        /// Initializes a new instance of the NetworkStatusRenderer
+        /// Initializes a new instance of the NetworkStatusContentProvider
         /// </summary>
         /// <param name="portStatusMonitor">Service for monitoring port and network status</param>
         /// <param name="networkStatusFormatter">Formatter for network troubleshooting display</param>
@@ -45,7 +60,7 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Enters the Network Status mode
+        /// Enters the Network Status mode, clears the console, and starts background refresh
         /// </summary>
         /// <param name="console">Console to clear and prepare</param>
         public void Enter(IConsole console)
@@ -58,7 +73,7 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Exits the Network Status mode
+        /// Exits the Network Status mode, logging the exit event
         /// </summary>
         /// <param name="console">Console to clean up</param>
         public void Exit(IConsole console)
@@ -68,9 +83,10 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Renders the current network status to the console
+        /// Gets the formatted content for network status display
         /// </summary>
         /// <param name="context">Rendering context with console and configuration</param>
+        /// <returns>Array of strings representing the network status content</returns>
         public string[] GetContent(ConsoleRenderContext context)
         {
             NetworkStatus? snapshot;
@@ -99,7 +115,7 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Opens the Application configuration in an external editor
+        /// Attempts to open the application configuration in an external editor
         /// </summary>
         /// <returns>True if successfully opened, false otherwise</returns>
         public Task<bool> TryOpenInExternalEditorAsync()
@@ -204,7 +220,7 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Protected dispose method
+        /// Protected dispose method for cleanup of managed resources
         /// </summary>
         /// <param name="disposing">True if disposing managed resources</param>
         protected virtual async void Dispose(bool disposing)
