@@ -17,7 +17,7 @@ namespace SharpBridge.Tests.Utilities
         private readonly Mock<IFormatter> _mockTransformationFormatter;
         private readonly Mock<IFormatter> _mockPhoneFormatter;
         private readonly Mock<IFormatter> _mockPCFormatter;
-        private readonly Mock<IShortcutConfigurationManager> _mockShortcutManager;
+
         private readonly Mock<IExternalEditorService> _mockExternalEditorService;
         private readonly UserPreferences _userPreferences;
 
@@ -30,7 +30,7 @@ namespace SharpBridge.Tests.Utilities
         public MainStatusContentProviderTests()
         {
             _mockLogger = new Mock<IAppLogger>();
-            _mockShortcutManager = new Mock<IShortcutConfigurationManager>();
+
             _mockExternalEditorService = new Mock<IExternalEditorService>();
             _userPreferences = new UserPreferences();
 
@@ -96,8 +96,7 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object,
-                _mockShortcutManager.Object);
+                _mockPCFormatter.Object);
 
             // Assert
             provider.Should().NotBeNull();
@@ -111,8 +110,7 @@ namespace SharpBridge.Tests.Utilities
                 null!,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object,
-                _mockShortcutManager.Object));
+                _mockPCFormatter.Object));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -124,8 +122,7 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 null!,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object,
-                _mockShortcutManager.Object));
+                _mockPCFormatter.Object));
             exception.ParamName.Should().Be("transformationFormatter");
         }
 
@@ -137,8 +134,7 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 null!,
-                _mockPCFormatter.Object,
-                _mockShortcutManager.Object));
+                _mockPCFormatter.Object));
             exception.ParamName.Should().Be("phoneFormatter");
         }
 
@@ -150,23 +146,11 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                null!,
-                _mockShortcutManager.Object));
+                null!));
             exception.ParamName.Should().Be("pcFormatter");
         }
 
-        [Fact]
-        public void Constructor_WithNullShortcutManager_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
-                _mockLogger.Object,
-                _mockTransformationFormatter.Object,
-                _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object,
-                null!));
-            exception.ParamName.Should().Be("shortcutManager");
-        }
+
 
         [Fact]
         public void Constructor_WithExternalEditorService_InitializesCorrectly()
@@ -177,7 +161,6 @@ namespace SharpBridge.Tests.Utilities
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockShortcutManager.Object,
                 _mockExternalEditorService.Object);
 
             // Assert
@@ -193,7 +176,6 @@ namespace SharpBridge.Tests.Utilities
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockShortcutManager.Object,
                 null!));
             exception.ParamName.Should().Be("externalEditorService");
         }
@@ -1003,8 +985,7 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object,
-                _mockShortcutManager.Object);
+                _mockPCFormatter.Object);
         }
 
         private MainStatusContentProvider CreateProviderWithExternalEditor()
@@ -1014,7 +995,6 @@ namespace SharpBridge.Tests.Utilities
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockShortcutManager.Object,
                 _mockExternalEditorService.Object);
         }
 

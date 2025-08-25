@@ -24,11 +24,9 @@ namespace SharpBridge.Utilities
         /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
-        /// <param name="shortcutManager">The shortcut configuration manager</param>
-        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
+        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _ = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
 
             // Register formatters for known types - order determines display order
             RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
@@ -43,10 +41,9 @@ namespace SharpBridge.Utilities
         /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
-        /// <param name="shortcutManager">The shortcut configuration manager</param>
         /// <param name="externalEditorService">The external editor service for opening configuration files</param>
-        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
-            : this(logger, transformationFormatter, phoneFormatter, pcFormatter, shortcutManager)
+        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IExternalEditorService externalEditorService)
+            : this(logger, transformationFormatter, phoneFormatter, pcFormatter)
         {
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
