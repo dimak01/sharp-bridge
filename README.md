@@ -29,12 +29,13 @@ The application will create default configuration files on first run.
 
 - **Real-time Tracking Bridge** - Seamless iPhone to PC VTube Studio data flow
 - **Dynamic Configuration** - Hot-reload application settings without restart
-- **Interactive Console UI** - Real-time monitoring with verbosity controls
+- **Interactive Console UI** - Real-time monitoring with verbosity controls and multiple display modes
 - **Parameter Table Customization** - Configure which columns to display in the PC parameter table
 - **Automatic Recovery** - Self-healing from network and service failures
 - **Parameter Synchronization** - Automatic VTube Studio parameter management
 - **External Editor Integration** - Open configuration files in your preferred editor
 - **Health Monitoring** - Visual status indicators for all components
+- **Network Status Monitoring** - Real-time network interface status and troubleshooting
 
 ## Installation
 
@@ -71,7 +72,8 @@ All settings are managed in a single configuration file:
       "CyclePhoneClientVerbosity": "Alt+O",
       "ReloadTransformationConfig": "Alt+K",
       "OpenConfigInEditor": "Ctrl+Alt+E",
-      "ShowSystemHelp": "F1"
+      "ShowSystemHelp": "F1",
+      "ShowNetworkStatus": "F2"
     }
   },
   "PhoneClient": {
@@ -291,11 +293,12 @@ While running, use these keyboard shortcuts (configurable in `ApplicationConfig.
 | **Alt+K** | Hot-reload transformation configuration |
 | **Ctrl+Alt+E** | Open configuration in external editor |
 | **F1** | Show system help (includes parameter table column configuration) |
+| **F2** | Show network status and troubleshooting |
 | **Ctrl+C** | Graceful shutdown |
 
 ### Console Interface
 
-The application provides a real-time console interface with adaptive verbosity levels and detailed service monitoring:
+The application provides a real-time console interface with adaptive verbosity levels, multiple display modes, and detailed service monitoring:
 
 **Service Status Display:**
 - **Phone Client**: Face detection status, head position/rotation, blend shape tracking data
@@ -306,6 +309,11 @@ The application provides a real-time console interface with adaptive verbosity l
 - **Basic**: Essential status and health indicators
 - **Normal**: Detailed tracking data, blend shape tables, parameter information
 - **Detailed**: Full debugging information, error tables, performance metrics
+
+**Console UI Modes:**
+- **Main Status Mode** - Default display with service monitoring and tracking data
+- **System Help Mode** - Configuration display, keyboard shortcuts, and parameter table customization (F1)
+- **Network Status Mode** - Network interface status, troubleshooting information, and connection diagnostics (F2)
 
 **Visual Features:**
 - **Color-coded Parameters**: Blend shapes (cyan), head parameters (magenta), calculated parameters (yellow)
@@ -365,6 +373,7 @@ SharpBridge provides multiple ways to update configuration:
 - User preferences changes are applied immediately
 - Transformation rule changes require manual reload (`Alt+K`)
 - Use `F1` for system help to see current configuration values including parameter table columns
+- Use `F2` for network status and troubleshooting information
 - Verbosity levels can be cycled per service for detailed debugging
 
 ### Network Configuration
@@ -416,6 +425,11 @@ For different network setups:
 **"Authentication failed"**
 - Delete authentication token files and restart
 - Manually allow plugin in VTube Studio settings
+
+**"Network connectivity issues"**
+- Use `F2` to access network status mode for detailed diagnostics
+- Check firewall configuration and network interface status
+- Verify iPhone and PC are on the same network segment
 
 ### Recovery Features
 
