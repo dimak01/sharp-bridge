@@ -6,7 +6,7 @@ namespace SharpBridge.Interfaces
     /// <summary>
     /// Interface for rendering service information to the console or other display
     /// </summary>
-    public interface IConsoleRenderer
+    public interface IMainStatusRenderer
     {
         /// <summary>
         /// Registers a formatter for a specific entity type
@@ -18,14 +18,10 @@ namespace SharpBridge.Interfaces
         /// </summary>
         IFormatter? GetFormatter<T>() where T : IFormattableObject;
 
-        /// <summary>
-        /// Updates the display with service statistics
-        /// </summary>
-        void Update(IEnumerable<IServiceStats> stats);
 
         /// <summary>
         /// Clears the console
         /// </summary>
         void ClearConsole();
     }
-} 
+}

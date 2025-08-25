@@ -21,21 +21,18 @@ namespace SharpBridge.Services
         private readonly ITransformationEngine _transformationEngine;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly IAppLogger _logger;
-        private readonly IConsoleRenderer _consoleRenderer;
+        private readonly IConsoleModeManager _modeManager;
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IRecoveryPolicy _recoveryPolicy;
-        private readonly IConsole _console;
         private readonly IConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
-        private ApplicationConfig _applicationConfig;
-        private readonly ISystemHelpRenderer _systemHelpRenderer;
-        private readonly UserPreferences _userPreferences;
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
-        private readonly IPortStatusMonitorService _portStatusMonitor;
+        private readonly UserPreferences _userPreferences;
+        private ApplicationConfig _applicationConfig;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -45,8 +42,6 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
-        private bool _isShowingSystemHelp = false; // Track if currently displaying F1 help
-
 
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -56,7 +51,7 @@ namespace SharpBridge.Services
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
         /// <param name="logger">Application logger</param>
-        /// <param name="consoleRenderer">Console renderer for displaying status</param>
+        /// <param name="modeManager">Console mode manager for UI mode switching</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
@@ -66,18 +61,16 @@ namespace SharpBridge.Services
         /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
         /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
-        /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
-        /// <param name="portStatusMonitor">Port status monitor for network connectivity analysis</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
             ITransformationEngine transformationEngine,
             VTubeStudioPhoneClientConfig phoneConfig,
             IAppLogger logger,
-            IConsoleRenderer consoleRenderer,
+            IConsoleModeManager modeManager,
             IKeyboardInputHandler keyboardInputHandler,
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
@@ -87,32 +80,27 @@ namespace SharpBridge.Services
             IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
             ApplicationConfig applicationConfig,
-            ISystemHelpRenderer systemHelpRenderer,
             UserPreferences userPreferences,
             IConfigManager configManager,
-            IFileChangeWatcher appConfigWatcher,
-            IPortStatusMonitorService portStatusMonitor)
+            IFileChangeWatcher appConfigWatcher)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
             _transformationEngine = transformationEngine ?? throw new ArgumentNullException(nameof(transformationEngine));
             _phoneConfig = phoneConfig ?? throw new ArgumentNullException(nameof(phoneConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _consoleRenderer = consoleRenderer ?? throw new ArgumentNullException(nameof(consoleRenderer));
+            _modeManager = modeManager ?? throw new ArgumentNullException(nameof(modeManager));
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
-            _console = console ?? throw new ArgumentNullException(nameof(console));
             _consoleWindowManager = consoleWindowManager ?? throw new ArgumentNullException(nameof(consoleWindowManager));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _applicationConfig = applicationConfig ?? throw new ArgumentNullException(nameof(applicationConfig));
-            _systemHelpRenderer = systemHelpRenderer ?? throw new ArgumentNullException(nameof(systemHelpRenderer));
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
-            _portStatusMonitor = portStatusMonitor ?? throw new ArgumentNullException(nameof(portStatusMonitor));
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -216,8 +204,6 @@ namespace SharpBridge.Services
             _logger.Info("Application stopped");
         }
 
-
-
         private async Task InitializeTransformationEngine()
         {
             await _transformationEngine.LoadRulesAsync();
@@ -265,7 +251,7 @@ namespace SharpBridge.Services
             var nextRequestTime = DateTime.UtcNow;
             var nextStatusUpdateTime = DateTime.UtcNow;
 
-            _consoleRenderer.ClearConsole();
+            _modeManager.Clear();
 
             // Send initial tracking request                
             while (!cancellationToken.IsCancellationRequested)
@@ -332,7 +318,6 @@ namespace SharpBridge.Services
             return await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
         }
 
-
         /// <summary>
         /// Processes console status update if it's time to do so
         /// </summary>
@@ -398,12 +383,6 @@ namespace SharpBridge.Services
         {
             try
             {
-                // Skip normal updates when showing system help
-                if (_isShowingSystemHelp)
-                {
-                    return;
-                }
-
                 // Get statistics from all components
                 var transformationStats = _transformationEngine.GetServiceStats();
                 var phoneStats = _vtubeStudioPhoneClient.GetServiceStats();
@@ -417,15 +396,14 @@ namespace SharpBridge.Services
                 if (phoneStats != null) allStats.Add(phoneStats);
                 if (pcStats != null) allStats.Add(pcStats);
 
-                // Display all stats using our new covariance-enabled Update method
-                _consoleRenderer.Update(allStats);
+                // Delegate to mode manager for rendering
+                _modeManager.Update(allStats);
             }
             catch (Exception ex)
             {
                 _logger.ErrorWithException("Error updating console status", ex);
             }
         }
-
 
         /// <summary>
         /// Reloads the transformation configuration
@@ -459,67 +437,12 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
-        /// Opens the transformation configuration file in the configured external editor
-        /// </summary>
-        private async Task OpenTransformationConfigInEditor()
-        {
-            try
-            {
-                _logger.Info("Opening transformation configuration in external editor...");
-                var success = await _externalEditorService.TryOpenTransformationConfigAsync();
-                if (success)
-                {
-                    _logger.Info("Successfully opened transformation configuration in external editor");
-                }
-                else
-                {
-                    _logger.Warning("Failed to open transformation configuration in external editor");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error opening transformation configuration in external editor", ex);
-            }
-        }
-
-        /// <summary>
-        /// Opens the application configuration file in the configured external editor
-        /// </summary>
-        private async Task OpenApplicationConfigInEditor()
-        {
-            try
-            {
-                _logger.Info("Opening application configuration in external editor...");
-                var success = await _externalEditorService.TryOpenApplicationConfigAsync();
-                if (success)
-                {
-                    _logger.Info("Successfully opened application configuration in external editor");
-                }
-                else
-                {
-                    _logger.Warning("Failed to open application configuration in external editor");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error opening application configuration in external editor", ex);
-            }
-        }
-
-        /// <summary>
         /// Opens the appropriate configuration file in external editor based on current context
         /// </summary>
         private async Task OpenConfigInEditor()
         {
-            // If we're showing system help, open application config; otherwise open transformation config
-            if (_isShowingSystemHelp)
-            {
-                await OpenApplicationConfigInEditor();
-            }
-            else
-            {
-                await OpenTransformationConfigInEditor();
-            }
+            // Delegate to mode manager to forward to the active renderer
+            await _modeManager.TryOpenActiveModeInEditorAsync();
         }
 
         /// <summary>
@@ -584,8 +507,6 @@ namespace SharpBridge.Services
                 _logger.ErrorWithException("Error reloading application configuration", ex);
             }
         }
-
-
 
         /// <summary>
         /// Initializes the color service with transformation expressions and blend shape names
@@ -667,7 +588,7 @@ namespace SharpBridge.Services
             {
                 ShortcutAction.CycleTransformationEngineVerbosity => () =>
                 {
-                    var transformationFormatter = _consoleRenderer.GetFormatter<TransformationEngineInfo>();
+                    var transformationFormatter = _modeManager.MainStatusRenderer.GetFormatter<TransformationEngineInfo>();
                     var newVerbosity = transformationFormatter?.CycleVerbosity();
                     if (newVerbosity.HasValue)
                     {
@@ -677,7 +598,7 @@ namespace SharpBridge.Services
                 ,
                 ShortcutAction.CyclePCClientVerbosity => () =>
                 {
-                    var pcFormatter = _consoleRenderer.GetFormatter<PCTrackingInfo>();
+                    var pcFormatter = _modeManager.MainStatusRenderer.GetFormatter<PCTrackingInfo>();
                     var newVerbosity = pcFormatter?.CycleVerbosity();
                     if (newVerbosity.HasValue)
                     {
@@ -687,7 +608,7 @@ namespace SharpBridge.Services
                 ,
                 ShortcutAction.CyclePhoneClientVerbosity => () =>
                 {
-                    var phoneFormatter = _consoleRenderer.GetFormatter<PhoneTrackingInfo>();
+                    var phoneFormatter = _modeManager.MainStatusRenderer.GetFormatter<PhoneTrackingInfo>();
                     var newVerbosity = phoneFormatter?.CycleVerbosity();
                     if (newVerbosity.HasValue)
                     {
@@ -697,7 +618,8 @@ namespace SharpBridge.Services
                 ,
                 ShortcutAction.ReloadTransformationConfig => () => _ = ReloadTransformationConfig(),
                 ShortcutAction.OpenConfigInEditor => () => _ = OpenConfigInEditor(),
-                ShortcutAction.ShowSystemHelp => () => ToggleShortcutHelp(),
+                ShortcutAction.ShowSystemHelp => () => _modeManager.Toggle(ConsoleMode.SystemHelp),
+                ShortcutAction.ShowNetworkStatus => () => _modeManager.Toggle(ConsoleMode.NetworkStatus),
                 _ => null
             };
         }
@@ -730,70 +652,6 @@ namespace SharpBridge.Services
             {
                 _logger.Error($"Failed to save user preferences: {ex.Message}");
                 // Continue execution - preferences saving failure is not critical
-            }
-        }
-
-        /// <summary>
-        /// Shows the system help display (F1 functionality)
-        /// </summary>
-        private void ToggleShortcutHelp()
-        {
-            if (_isShowingSystemHelp)
-            {
-                ExitSystemHelp();
-            }
-            else
-            {
-                _ = UpdateConsoleWithSystemHelp();
-            }
-        }
-
-        /// <summary>
-        /// Exits system help mode and returns to normal display
-        /// </summary>
-        private void ExitSystemHelp()
-        {
-            _isShowingSystemHelp = false;
-            _logger.Debug("Exiting system help, returning to normal display");
-
-            // Clear console and let the normal update cycle refresh the display
-            _console.Clear();
-        }
-
-        /// <summary>
-        /// Updates the console display with system help content
-        /// </summary>
-        private async Task UpdateConsoleWithSystemHelp()
-        {
-            try
-            {
-                _isShowingSystemHelp = true;
-                _logger.Debug("Displaying system help (F1)");
-
-                var consoleSize = _consoleWindowManager.GetCurrentSize();
-
-                // Get current network status
-                NetworkStatus? networkStatus = null;
-                try
-                {
-                    networkStatus = await _portStatusMonitor.GetNetworkStatusAsync();
-                    _logger.Debug("Retrieved network status for system help display");
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warning("Failed to retrieve network status for system help: {0}", ex.Message);
-                    // Continue without network status - system help will still display
-                }
-
-                var helpContent = _systemHelpRenderer.RenderSystemHelp(_applicationConfig, consoleSize.width, networkStatus);
-
-                _console.Clear();
-                _console.Write(helpContent);
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error displaying system help", ex);
-                _isShowingSystemHelp = false;
             }
         }
 
