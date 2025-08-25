@@ -4,34 +4,36 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
 namespace SharpBridge.Utilities
 {
     /// <summary>
-    /// Implementation of ISystemHelpRenderer for rendering the F2 help system display
+    /// Implementation of ISystemHelpRenderer and IConsoleModeContentProvider for rendering the F2 help system display
     /// </summary>
-    public class SystemHelpRenderer : ISystemHelpRenderer
+    public class SystemHelpContentProvider : ISystemHelpRenderer, IConsoleModeContentProvider
     {
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
-        private readonly INetworkStatusFormatter _networkStatusFormatter;
+        private readonly IExternalEditorService _externalEditorService;
 
         /// <summary>
-        /// Initializes a new instance of the SystemHelpRenderer
+        /// Initializes a new instance of the SystemHelpContentProvider
         /// </summary>
         /// <param name="shortcutConfigurationManager">Configuration manager for shortcut information</param>
         /// <param name="parameterTableConfigurationManager">Configuration manager for parameter table columns</param>
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
-        /// <param name="networkStatusFormatter">Network status formatter for troubleshooting section</param>
-        public SystemHelpRenderer(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter)
+        /// <param name="networkStatusFormatter">Network status formatter for troubleshooting information</param>
+        /// <param name="externalEditorService">Service for opening files in external editors</param>
+        public SystemHelpContentProvider(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
-            _networkStatusFormatter = networkStatusFormatter ?? throw new ArgumentNullException(nameof(networkStatusFormatter));
+            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
 
         /// <summary>
@@ -45,38 +47,12 @@ namespace SharpBridge.Utilities
         {
             var builder = new StringBuilder();
 
-            var systemHelpScreenWidth = Math.Min(consoleWidth, 80);
-            // Create separator line based on console width
-            var separatorLine = new string('═', systemHelpScreenWidth);
-
-            // Get the help shortcut dynamically
-            var helpShortcut = _shortcutConfigurationManager.GetDisplayString(ShortcutAction.ShowSystemHelp);
-
-            // Header
-            builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText($"SHARP BRIDGE - SYSTEM HELP ({helpShortcut})", systemHelpScreenWidth));
-            builder.AppendLine(separatorLine);
-            builder.AppendLine();
-
             // Application Configuration sections
             builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
 
             builder.AppendLine(RenderKeyboardShortcuts(consoleWidth));
 
             builder.AppendLine(RenderParameterTableColumns(consoleWidth));
-
-            // Network Troubleshooting section (if network status provided)
-            if (networkStatus != null)
-            {
-                builder.AppendLine();
-                builder.AppendLine(_networkStatusFormatter.RenderNetworkTroubleshooting(networkStatus, applicationConfig));
-            }
-
-            // Footer
-            builder.AppendLine();
-            builder.AppendLine(separatorLine);
-            builder.AppendLine(CenterText($"Press {helpShortcut} again to return to main display", systemHelpScreenWidth));
-            builder.AppendLine(separatorLine);
 
             return builder.ToString();
         }
@@ -98,22 +74,34 @@ namespace SharpBridge.Utilities
 
             // General Settings Section
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("GENERAL SETTINGS"));
+            foreach (var line in CreateSectionHeader("GENERAL SETTINGS"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.GeneralSettings, skipProperties: new[] { nameof(GeneralSettingsConfig.Shortcuts) });
 
             // Phone Client Section  
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("PHONE CLIENT"));
+            foreach (var line in CreateSectionHeader("PHONE CLIENT"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.PhoneClient);
 
             // PC Client Section
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("PC CLIENT"));
+            foreach (var line in CreateSectionHeader("PC CLIENT"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.PCClient);
 
             // Transformation Engine Section
             builder.AppendLine();
-            builder.AppendLine(CreateSectionHeader("TRANSFORMATION ENGINE"));
+            foreach (var line in CreateSectionHeader("TRANSFORMATION ENGINE"))
+            {
+                builder.AppendLine(line);
+            }
             RenderConfigSection(builder, applicationConfig.TransformationEngine);
 
             return builder.ToString();
@@ -192,7 +180,10 @@ namespace SharpBridge.Utilities
             };
 
             // Add the header with underline manually to match other sections
-            builder.AppendLine(CreateSectionHeader("KEYBOARD SHORTCUTS"));
+            foreach (var line in CreateSectionHeader("KEYBOARD SHORTCUTS"))
+            {
+                builder.AppendLine(line);
+            }
 
             // Use TableFormatter to create the shortcuts table (without title since we added it manually)
             _tableFormatter.AppendTable(
@@ -242,7 +233,10 @@ namespace SharpBridge.Utilities
                     };
 
             // Add the header with underline manually to match other sections
-            builder.AppendLine(CreateSectionHeader("PC PARAMETER TABLE COLUMNS"));
+            foreach (var line in CreateSectionHeader("PC PARAMETER TABLE COLUMNS"))
+            {
+                builder.AppendLine(line);
+            }
 
             // Use TableFormatter to create the columns table (without title since we added it manually)
             _tableFormatter.AppendTable(
@@ -260,20 +254,7 @@ namespace SharpBridge.Utilities
 
 
 
-        /// <summary>
-        /// Centers text within the specified width
-        /// </summary>
-        /// <param name="text">Text to center</param>
-        /// <param name="width">Total width to center within</param>
-        /// <returns>Centered text with appropriate padding</returns>
-        private static string CenterText(string text, int width)
-        {
-            if (string.IsNullOrEmpty(text) || width <= text.Length)
-                return text;
 
-            var padding = (width - text.Length) / 2;
-            return new string(' ', padding) + text;
-        }
 
         /// <summary>
         /// Creates a section header with consistent formatting
@@ -281,11 +262,11 @@ namespace SharpBridge.Utilities
         /// <param name="title">Section title</param>
         /// <param name="maxWidth">Maximum width for the header (default 60)</param>
         /// <returns>Formatted section header</returns>
-        private static string CreateSectionHeader(string title, int maxWidth = 60)
+        private static string[] CreateSectionHeader(string title, int maxWidth = 60)
         {
             var headerWidth = Math.Min(title.Length + 2, maxWidth);
             var underline = new string('─', headerWidth);
-            return $"{title}:\n{underline}";
+            return [$"{title}:", $"{underline}"];
         }
 
         /// <summary>
@@ -307,7 +288,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Data class for shortcut display rows
         /// </summary>
-        private class ShortcutDisplayRow
+        private sealed class ShortcutDisplayRow
         {
             public string Action { get; set; } = string.Empty;
             public string Shortcut { get; set; } = string.Empty;
@@ -317,10 +298,79 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Data class for parameter table column display rows
         /// </summary>
-        private class ParameterTableColumnDisplayRow
+        private sealed class ParameterTableColumnDisplayRow
         {
             public string ColumnName { get; set; } = string.Empty;
             public int Order { get; set; }
         }
+
+        // IConsoleModeContentProvider implementation
+
+        /// <summary>
+        /// Gets the console mode for this content provider
+        /// </summary>
+        public ConsoleMode Mode => ConsoleMode.SystemHelp;
+
+        /// <summary>
+        /// Gets the display name for this content provider
+        /// </summary>
+        public string DisplayName => "System Help";
+
+        /// <summary>
+        /// Gets the shortcut action that toggles this mode
+        /// </summary>
+        public ShortcutAction ToggleAction => ShortcutAction.ShowSystemHelp;
+
+        /// <summary>
+        /// Attempts to open the application configuration in an external editor
+        /// </summary>
+        /// <returns>True if the editor was successfully opened, false otherwise</returns>
+        public async Task<bool> TryOpenInExternalEditorAsync()
+        {
+            try
+            {
+                return await _externalEditorService.TryOpenApplicationConfigAsync();
+            }
+            catch
+            {
+                // No logger here; rely on the external editor service to log failures
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Called when entering this console mode
+        /// </summary>
+        /// <param name="console">The console instance</param>
+        public void Enter(IConsole console)
+        {
+            // No specific cleanup needed for now
+        }
+
+        /// <summary>
+        /// Called when exiting this console mode
+        /// </summary>
+        /// <param name="console">The console instance</param>
+        public void Exit(IConsole console)
+        {
+            // No specific cleanup needed for now
+        }
+
+        /// <summary>
+        /// Gets the content for this console mode
+        /// </summary>
+        /// <param name="context">The console rendering context</param>
+        /// <returns>Array of strings representing the content lines</returns>
+        public string[] GetContent(ConsoleRenderContext context)
+        {
+            var width = context.ConsoleSize.Width;
+            var content = RenderSystemHelp(context.ApplicationConfig, width, null);
+            return content.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+        }
+
+        /// <summary>
+        /// Gets the preferred update interval for this content provider
+        /// </summary>
+        public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
     }
 }

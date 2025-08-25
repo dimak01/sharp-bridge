@@ -128,6 +128,7 @@ The application features a **console-based user interface** with dynamic configu
    - **Hot Reload** - Configuration reload without restart
    - **External Editor** - Open configuration files in external editor
    - **System Help** - F1 help system with dynamic content
+   - **Network Status** - F2 network troubleshooting and status monitoring
 
 3. **User Preferences System**
    - **Persistent Settings** - Verbosity levels and console dimensions saved
@@ -145,7 +146,8 @@ The application features a **console-based user interface** with dynamic configu
 
 #### Core Interfaces
 - **IConsole** - Abstraction over console operations (cursor, writing, sizing)
-- **IConsoleRenderer** - Central rendering coordinator with formatter management
+- **IConsoleModeManager** - Central mode coordinator with content provider management
+- **IConsoleModeContentProvider** - Interface for console mode content providers
 - **IFormatter** - Pluggable formatters for different data types with verbosity support
 - **IKeyboardInputHandler** - Keyboard shortcut registration and processing
 
@@ -155,13 +157,15 @@ The application features a **console-based user interface** with dynamic configu
 - **ISystemHelpRenderer** - Renders dynamic system help with configuration information
 
 #### Implementations
-- **ConsoleRenderer** - Central hub that coordinates all console output
+- **ConsoleModeManager** - Central hub that coordinates console modes and content providers
+- **MainStatusContentProvider** - Main status display with service monitoring and formatters
+- **SystemHelpContentProvider** - Dynamic help system with configuration display
+- **NetworkStatusContentProvider** - Network troubleshooting and status monitoring
 - **SystemConsole** - Production console wrapper with window management
 - **KeyboardInputHandler** - Real-time keyboard input processing
 - **ConsoleWindowManager** - Window size management with user preferences
 - **ShortcutConfigurationManager** - Loads and manages keyboard shortcut configurations
 - **ParameterTableConfigurationManager** - Manages parameter table column display with graceful degradation
-- **SystemHelpRenderer** - Dynamic help system with configuration display
 
 #### Specialized Formatters
 - **PhoneTrackingInfoFormatter** - Displays iPhone tracking data with multi-column parameter tables
@@ -242,6 +246,8 @@ All core architectural components are implemented:
 - **ApplicationOrchestrator** - Component coordination with recovery and console management
 - **Recovery System** - Automatic service recovery with configurable policies
 - **Console UI System** - Real-time status display with dynamic shortcuts and user preferences
+- **Console UI Modes** - Main status, system help, and network status modes with improved architecture
+- **Network Status Monitoring** - Real-time network interface status and troubleshooting capabilities
 - **Configuration Management** - Consolidated configuration with hot-reload capabilities
 - **File Change Watching** - Multi-watcher system for configuration monitoring
 - **Parameter Synchronization** - Automatic VTube Studio parameter management
@@ -258,12 +264,21 @@ All core architectural components are implemented:
    - `SetCursorPosition()` - Precise cursor control for real-time updates
    - `TrySetWindowSize()` - Temporary window resizing with restoration support
 
-2. **IConsoleRenderer** - Central rendering coordinator
-   - `RegisterFormatter<T>()` - Pluggable formatter registration
+2. **IConsoleModeManager** - Central mode coordinator
    - `Update()` - Coordinated display updates with service statistics
-   - `GetFormatter<T>()` - Runtime formatter access for verbosity control
+   - `Toggle()` - Switch between console modes
+   - `SetMode()` - Set specific console mode
+   - `TryOpenActiveModeInEditorAsync()` - Open active mode configuration in external editor
 
-3. **IFormatter** - Pluggable display formatters with verbosity support
+3. **IConsoleModeContentProvider** - Console mode content provider interface
+   - `Mode` - Console mode identifier
+   - `DisplayName` - Human-readable mode name
+   - `ToggleAction` - Shortcut action for toggling this mode
+   - `GetContent()` - Get formatted content for the mode
+   - `Enter()` / `Exit()` - Mode lifecycle management
+   - `TryOpenInExternalEditorAsync()` - Open mode configuration in external editor
+
+4. **IFormatter** - Pluggable display formatters with verbosity support
    - `CurrentVerbosity` - Three-level verbosity system (Basic/Normal/Detailed)
    - `CycleVerbosity()` - Runtime verbosity switching
    - `Format()` - Service-aware formatting with health status integration
@@ -393,8 +408,10 @@ The code follows clean architecture principles with resiliency built-in:
 14. **File Change Watching** - Comprehensive file monitoring for configuration changes
 15. **Parameter Synchronization** - Automatic VTube Studio parameter management
 16. **Customizable UI** - User-configurable parameter table columns for focused display
-17. **Custom Interpolation** - Support for Bezier curves and other interpolation methods for natural parameter responses
+17. **Console UI Modes** - Improved separation of concerns with dedicated content providers for different display modes
+18. **Network Troubleshooting** - Built-in network status monitoring and troubleshooting capabilities
+19. **Custom Interpolation** - Support for Bezier curves and other interpolation methods for natural parameter responses
 
 ## Runtime Features
 
-The application provides real-time status display, dynamic keyboard shortcuts, adaptive console management, performance metrics, health indicators, automatic recovery, configuration hot-reload capabilities, and customizable parameter table display.
+The application provides real-time status display, dynamic keyboard shortcuts, adaptive console management, performance metrics, health indicators, automatic recovery, configuration hot-reload capabilities, customizable parameter table display, console UI modes (main status, system help, network status), and network troubleshooting capabilities.

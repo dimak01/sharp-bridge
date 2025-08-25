@@ -207,13 +207,16 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")
                 ));
-            services.AddSingleton<ISystemHelpRenderer>(provider =>
-                new SystemHelpRenderer(
+            // Register SystemHelpRenderer both as interface and concrete class
+            services.AddSingleton<SystemHelpContentProvider>(provider =>
+                new SystemHelpContentProvider(
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
                     provider.GetRequiredService<ITableFormatter>(),
-                    provider.GetRequiredService<INetworkStatusFormatter>()
+                    provider.GetRequiredService<INetworkStatusFormatter>(),
+                    provider.GetRequiredService<IExternalEditorService>()
                 ));
+            services.AddSingleton<ISystemHelpRenderer>(provider => provider.GetRequiredService<SystemHelpContentProvider>());
 
             // Register parameter table configuration manager
             services.AddSingleton<IParameterTableConfigurationManager, ParameterTableConfigurationManager>();
@@ -231,8 +234,39 @@ namespace SharpBridge
                 ));
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
-            // Register console renderer - dependencies will be resolved automatically
-            services.AddSingleton<IConsoleRenderer, ConsoleRenderer>();
+            // Register MainStatusRenderer both as interface and concrete class
+            services.AddSingleton<MainStatusContentProvider>(provider =>
+                new MainStatusContentProvider(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<TransformationEngineInfoFormatter>(),
+                    provider.GetRequiredService<PhoneTrackingInfoFormatter>(),
+                    provider.GetRequiredService<PCTrackingInfoFormatter>()
+                ));
+            services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
+
+            // Register network status renderer
+            services.AddSingleton<NetworkStatusContentProvider>(provider =>
+                new NetworkStatusContentProvider(
+                    provider.GetRequiredService<IPortStatusMonitorService>(),
+                    provider.GetRequiredService<INetworkStatusFormatter>(),
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IAppLogger>()
+                ));
+
+            // Register console mode manager
+            services.AddSingleton<IConsoleModeManager>(provider =>
+                new ConsoleModeManager(
+                    provider.GetRequiredService<IConsole>(),
+                    provider.GetRequiredService<IConfigManager>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IShortcutConfigurationManager>(),
+                    new IConsoleModeContentProvider[]
+                    {
+                        provider.GetRequiredService<MainStatusContentProvider>(),
+                        provider.GetRequiredService<SystemHelpContentProvider>(),
+                        provider.GetRequiredService<NetworkStatusContentProvider>()
+                    }
+                ));
 
             // Register recovery policy
             services.AddSingleton<IRecoveryPolicy>(provider =>
@@ -249,7 +283,7 @@ namespace SharpBridge
                     provider.GetRequiredService<ITransformationEngine>(),
                     provider.GetRequiredService<VTubeStudioPhoneClientConfig>(),
                     provider.GetRequiredService<IAppLogger>(),
-                    provider.GetRequiredService<IConsoleRenderer>(),
+                    provider.GetRequiredService<IConsoleModeManager>(),
                     provider.GetRequiredService<IKeyboardInputHandler>(),
                     provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
                     provider.GetRequiredService<IRecoveryPolicy>(),
@@ -259,11 +293,9 @@ namespace SharpBridge
                     provider.GetRequiredService<IExternalEditorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<ApplicationConfig>(),
-                    provider.GetRequiredService<ISystemHelpRenderer>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
-                    provider.GetRequiredService<IPortStatusMonitorService>()
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
             return services;

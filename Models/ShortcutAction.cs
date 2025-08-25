@@ -41,6 +41,12 @@ namespace SharpBridge.Models
         /// Show the system help information (F1)
         /// </summary>
         [Description("Show System Help")]
-        ShowSystemHelp
+        ShowSystemHelp,
+
+        /// <summary>
+        /// Show the network status and troubleshooting information (F2)
+        /// </summary>
+        [Description("Show Network Status")]
+        ShowNetworkStatus
     }
 }

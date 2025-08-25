@@ -11,8 +11,7 @@ namespace SharpBridge.Tests.Utilities
     public class TestConsole : IConsole
     {
         private readonly StringBuilder _outputBuilder = new StringBuilder();
-        private int _cursorLeft = 0;
-        private int _cursorTop = 0;
+        private bool _cursorVisible = true;
 
         /// <summary>
         /// Gets the captured console output as a string
@@ -38,29 +37,17 @@ namespace SharpBridge.Tests.Utilities
         public int WindowHeight { get; set; } = 25;
 
         /// <summary>
-        /// Sets the cursor position (simulated)
+        /// Gets or sets whether the cursor is visible (simulated)
         /// </summary>
-        public void SetCursorPosition(int left, int top)
+        public bool CursorVisible
         {
-            _cursorLeft = left;
-            _cursorTop = top;
+            get => _cursorVisible;
+            set => _cursorVisible = value;
         }
 
-        /// <summary>
-        /// Writes text to the captured output
-        /// </summary>
-        public void Write(string text)
-        {
-            _outputBuilder.Append(text);
-        }
 
-        /// <summary>
-        /// Writes text followed by a newline to the captured output
-        /// </summary>
-        public void WriteLine(string text)
-        {
-            _outputBuilder.AppendLine(text);
-        }
+
+
 
         /// <summary>
         /// Clears the console (no-op in test environment)
@@ -85,6 +72,69 @@ namespace SharpBridge.Tests.Utilities
             WindowWidth = width;
             WindowHeight = height;
             return true;
+        }
+
+        /// <summary>
+        /// Writes multiple lines to the captured output (simulated flicker-free rendering)
+        /// </summary>
+        /// <param name="outputLines">Array of lines to write</param>
+        public void WriteLines(string[] outputLines)
+        {
+            // For testing, we'll simulate the rectangular buffer behavior
+            _outputBuilder.Clear();
+
+            var normalizedLines = NormalizeToRectangularBuffer(outputLines);
+            foreach (var line in normalizedLines)
+            {
+                _outputBuilder.AppendLine(line);
+            }
+        }
+
+        /// <summary>
+        /// Normalizes input lines to a rectangular buffer for testing consistency
+        /// Uses visual length calculation to properly handle ANSI color codes
+        /// </summary>
+        /// <param name="inputLines">Input lines to normalize</param>
+        /// <returns>Rectangular buffer with all lines exactly WindowWidth visual characters</returns>
+        private string[] NormalizeToRectangularBuffer(string[] inputLines)
+        {
+            int width = WindowWidth;
+            int height = WindowHeight - 1; // Reserve last line for cursor positioning
+
+            var buffer = new string[height];
+
+            for (int row = 0; row < height; row++)
+            {
+                if (row < inputLines.Length && !string.IsNullOrEmpty(inputLines[row]))
+                {
+                    string line = inputLines[row];
+                    int visualLength = SharpBridge.Utilities.ConsoleColors.GetVisualLength(line);
+
+                    // Handle visual length vs target width
+                    if (visualLength > width)
+                    {
+                        // For testing, simple truncation (could implement TruncateVisually if needed)
+                        buffer[row] = line.Substring(0, Math.Min(line.Length, width));
+                    }
+                    else if (visualLength < width)
+                    {
+                        // Pad to exact visual width (ANSI codes don't count toward padding)
+                        buffer[row] = line + new string(' ', width - visualLength);
+                    }
+                    else
+                    {
+                        // Perfect visual fit
+                        buffer[row] = line;
+                    }
+                }
+                else
+                {
+                    // Empty line - fill with spaces
+                    buffer[row] = new string(' ', width);
+                }
+            }
+
+            return buffer;
         }
     }
 }

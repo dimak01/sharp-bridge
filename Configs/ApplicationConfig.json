@@ -7,7 +7,8 @@
       "CyclePhoneClientVerbosity": "Alt+O",
       "ReloadTransformationConfig": "Alt+K",
       "OpenConfigInEditor": "Ctrl+Alt+E",
-      "ShowSystemHelp": "F1"
+      "ShowSystemHelp": "F1",
+      "ShowNetworkStatus": "F2"
     }
   },
   "PhoneClient": {

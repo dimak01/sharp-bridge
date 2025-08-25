@@ -17,24 +17,6 @@ namespace SharpBridge.Interfaces
         /// </summary>
         int WindowHeight { get; }
 
-        /// <summary>
-        /// Sets the position of the console cursor
-        /// </summary>
-        /// <param name="left">The column position</param>
-        /// <param name="top">The row position</param>
-        void SetCursorPosition(int left, int top);
-
-        /// <summary>
-        /// Writes text to the console without a line break
-        /// </summary>
-        /// <param name="text">The text to write</param>
-        void Write(string text);
-
-        /// <summary>
-        /// Writes text to the console followed by a line break
-        /// </summary>
-        /// <param name="text">The text to write</param>
-        void WriteLine(string text);
 
         /// <summary>
         /// Clears the console screen
@@ -48,5 +30,17 @@ namespace SharpBridge.Interfaces
         /// <param name="height">Height in characters</param>
         /// <returns>True if the operation was successful</returns>
         bool TrySetWindowSize(int width, int height);
+
+        /// <summary>
+        /// Writes multiple lines to the console using flicker-free in-place updating.
+        /// Overwrites existing content line-by-line and clears any remaining lines.
+        /// </summary>
+        /// <param name="outputLines">Array of lines to write</param>
+        void WriteLines(string[] outputLines);
+
+        /// <summary>
+        /// Gets or sets whether the cursor is visible
+        /// </summary>
+        bool CursorVisible { get; set; }
     }
 }
