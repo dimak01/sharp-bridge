@@ -20,11 +20,11 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Initializes a new instance of the MainStatusRenderer class
         /// </summary>
-        /// <param name="console">The console implementation to use for output</param>
         /// <param name="logger">The logger to use for error reporting</param>
         /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
+        /// <param name="shortcutManager">The shortcut configuration manager</param>
         public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IShortcutConfigurationManager shortcutManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -39,6 +39,12 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Initializes a new instance of the MainStatusRenderer class with external editor support
         /// </summary>
+        /// <param name="logger">The logger to use for error reporting</param>
+        /// <param name="transformationFormatter">The transformation engine info formatter</param>
+        /// <param name="phoneFormatter">The phone tracking info formatter</param>
+        /// <param name="pcFormatter">The PC tracking info formatter</param>
+        /// <param name="shortcutManager">The shortcut configuration manager</param>
+        /// <param name="externalEditorService">The external editor service for opening configuration files</param>
         public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IShortcutConfigurationManager shortcutManager, IExternalEditorService externalEditorService)
             : this(logger, transformationFormatter, phoneFormatter, pcFormatter, shortcutManager)
         {
@@ -48,6 +54,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Registers a formatter for a specific entity type
         /// </summary>
+        /// <typeparam name="T">The type of entity to format</typeparam>
+        /// <param name="formatter">The formatter to register</param>
         public void RegisterFormatter<T>(IFormatter formatter) where T : IFormattableObject
         {
             _formatters[typeof(T)] = formatter;
@@ -56,6 +64,8 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets a formatter for the specified type
         /// </summary>
+        /// <typeparam name="T">The type of entity to get a formatter for</typeparam>
+        /// <returns>The formatter for the specified type, or null if not found</returns>
         public IFormatter? GetFormatter<T>() where T : IFormattableObject
         {
             if (_formatters.TryGetValue(typeof(T), out var formatter))
@@ -67,13 +77,26 @@ namespace SharpBridge.Utilities
 
         // IConsoleModeRenderer implementation
 
+        /// <summary>
+        /// Gets the console mode for this content provider
+        /// </summary>
         public ConsoleMode Mode => ConsoleMode.Main;
 
+        /// <summary>
+        /// Gets the display name for this content provider
+        /// </summary>
         public string DisplayName => "Main Status";
 
-        // Main mode doesn't need a dedicated toggle action; manager can return to Main when toggling the same mode
+        /// <summary>
+        /// Gets the toggle action for this content provider
+        /// </summary>
+        /// <remarks>Main mode doesn't need a dedicated toggle action; manager can return to Main when toggling the same mode</remarks>
         public ShortcutAction ToggleAction => ShortcutAction.ShowSystemHelp; // placeholder, not used for Main mode
 
+        /// <summary>
+        /// Attempts to open the transformation configuration in an external editor
+        /// </summary>
+        /// <returns>True if successfully opened, false otherwise</returns>
         public async Task<bool> TryOpenInExternalEditorAsync()
         {
             try
@@ -91,11 +114,19 @@ namespace SharpBridge.Utilities
             }
         }
 
+        /// <summary>
+        /// Enters the main status mode
+        /// </summary>
+        /// <param name="console">The console to operate on</param>
         public void Enter(IConsole console)
         {
             // No-op for now; keep console as-is or clear if needed
         }
 
+        /// <summary>
+        /// Exits the main status mode
+        /// </summary>
+        /// <param name="console">The console to operate on</param>
         public void Exit(IConsole console)
         {
             // No-op for now; keep console as-is or clear if needed
@@ -112,13 +143,20 @@ namespace SharpBridge.Utilities
             return BuildDisplayLines(stats);
         }
 
+        /// <summary>
+        /// Gets the preferred update interval for this content provider
+        /// </summary>
         public TimeSpan PreferredUpdateInterval => TimeSpan.FromMilliseconds(100);
 
-
-
         /// <summary>
-        /// Builds the complete list of display lines from service statistics
+        /// Clears the console
         /// </summary>
+        /// <remarks>No-op for now; keep console as-is or clear if needed</remarks>
+        public void ClearConsole()
+        {
+            // No-op for now; keep console as-is or clear if needed
+        }
+
         private string[] BuildDisplayLines(IEnumerable<IServiceStats> stats)
         {
             var lines = new List<string>();
@@ -128,11 +166,6 @@ namespace SharpBridge.Utilities
             return lines.ToArray();
         }
 
-
-
-        /// <summary>
-        /// Adds service status lines to the display
-        /// </summary>
         private void AddServiceLines(List<string> lines, IEnumerable<IServiceStats> stats)
         {
             foreach (var stat in stats.Where(s => s != null))
@@ -142,18 +175,12 @@ namespace SharpBridge.Utilities
             }
         }
 
-        /// <summary>
-        /// Adds lines for a single service to the display
-        /// </summary>
         private void AddSingleServiceLines(List<string> lines, IServiceStats stat)
         {
             var formattedOutput = FormatServiceOutput(stat);
             AddFormattedOutputLines(lines, formattedOutput);
         }
 
-        /// <summary>
-        /// Formats the output for a single service
-        /// </summary>
         private string FormatServiceOutput(IServiceStats stat)
         {
             if (stat.CurrentEntity != null)
@@ -166,9 +193,6 @@ namespace SharpBridge.Utilities
             }
         }
 
-        /// <summary>
-        /// Formats service output when it has a current entity
-        /// </summary>
         private string FormatServiceWithEntity(IServiceStats stat)
         {
             var entityType = stat.CurrentEntity!.GetType();
@@ -191,9 +215,6 @@ namespace SharpBridge.Utilities
             }
         }
 
-        /// <summary>
-        /// Formats service output when it has no current entity
-        /// </summary>
         private string FormatServiceWithoutEntity(IServiceStats stat)
         {
             var formatter = FindFormatterForServiceWithoutEntity(stat);
@@ -216,9 +237,6 @@ namespace SharpBridge.Utilities
             }
         }
 
-        /// <summary>
-        /// Finds a formatter for a service that has no current entity
-        /// </summary>
         private IFormatter? FindFormatterForServiceWithoutEntity(IServiceStats stat)
         {
             if (stat.ServiceName.Contains("Phone") &&
@@ -236,27 +254,18 @@ namespace SharpBridge.Utilities
             return null;
         }
 
-        /// <summary>
-        /// Creates output when no formatter is registered
-        /// </summary>
         private static string CreateNoFormatterOutput(IServiceStats stat, Type entityType)
         {
             return $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}" +
                    $"[No formatter registered for {entityType.Name}]";
         }
 
-        /// <summary>
-        /// Creates output when no data is available
-        /// </summary>
         private static string CreateNoDataOutput(IServiceStats stat)
         {
             return $"=== {stat.ServiceName} ({stat.Status}) ==={Environment.NewLine}" +
                    "No current data available";
         }
 
-        /// <summary>
-        /// Adds formatted output lines to the display list
-        /// </summary>
         private static void AddFormattedOutputLines(List<string> lines, string formattedOutput)
         {
             foreach (var line in formattedOutput.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
@@ -264,19 +273,5 @@ namespace SharpBridge.Utilities
                 lines.Add(line);
             }
         }
-
-
-
-
-
-        /// <summary>
-        /// Clears the console
-        /// </summary>
-        public void ClearConsole()
-        {
-            // No-op for now; keep console as-is or clear if needed
-        }
-
-
     }
 }

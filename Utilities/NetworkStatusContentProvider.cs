@@ -9,7 +9,7 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Console renderer for network status and troubleshooting information
     /// </summary>
-    public class NetworkStatusContentProvider : IConsoleModeContentProvider
+    public class NetworkStatusContentProvider : IConsoleModeContentProvider, IDisposable
     {
         private readonly IPortStatusMonitorService _portStatusMonitor;
         private readonly INetworkStatusFormatter _networkStatusFormatter;
@@ -19,7 +19,10 @@ namespace SharpBridge.Utilities
         private NetworkStatus? _lastSnapshot;
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly object _snapshotLock = new object();
-        private Task? _refreshTask;
+        private Task? _backgroundTask;
+        private CancellationTokenSource _cancellationTokenSource = new();
+        private readonly object _taskLock = new object();
+        private bool _disposed = false;
 
         public ConsoleMode Mode => ConsoleMode.NetworkStatus;
         public string DisplayName => "Network Status";
@@ -51,7 +54,7 @@ namespace SharpBridge.Utilities
             _logger.Debug("Entered Network Status mode.");
 
             // Start background refresh if not already running
-            EnsureRefreshTaskRunning();
+            StartBackgroundRefresh();
         }
 
         /// <summary>
@@ -105,31 +108,62 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Ensures the background refresh task is running
+        /// Starts the background refresh task
         /// </summary>
-        private void EnsureRefreshTaskRunning()
+        private void StartBackgroundRefresh()
         {
-            if (_refreshTask == null || _refreshTask.IsCompleted)
+            lock (_taskLock)
             {
-                _refreshTask = Task.Run(BackgroundRefreshLoop);
+                if (_disposed) return;
+
+                if (_backgroundTask == null || _backgroundTask.IsCompleted)
+                {
+                    _cancellationTokenSource = new CancellationTokenSource();
+                    _backgroundTask = BackgroundRefreshLoop(_cancellationTokenSource.Token);
+                }
             }
         }
 
         /// <summary>
-        /// Background loop to refresh network status every 1-2 seconds
+        /// Stops the background refresh task
         /// </summary>
-        private async Task BackgroundRefreshLoop()
+        private async Task StopBackgroundRefresh()
+        {
+            lock (_taskLock)
+            {
+                if (_backgroundTask == null) return;
+
+                _cancellationTokenSource.Cancel();
+            }
+
+            if (_backgroundTask != null)
+            {
+                try
+                {
+                    await _backgroundTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when cancelling
+                }
+            }
+        }
+
+        /// <summary>
+        /// Background loop to refresh network status every 10 seconds
+        /// </summary>
+        private async Task BackgroundRefreshLoop(CancellationToken cancellationToken)
         {
             const int refreshIntervalMs = 10000; // 10 seconds
 
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     // Check if we need to refresh (avoid over-refreshing)
                     if (DateTime.UtcNow - _lastRefresh < TimeSpan.FromMilliseconds(refreshIntervalMs))
                     {
-                        await Task.Delay(100); // Short wait before checking again
+                        await Task.Delay(100, cancellationToken); // Short wait before checking again
                         continue;
                     }
 
@@ -144,15 +178,42 @@ namespace SharpBridge.Utilities
                     _logger.Debug("Network status refreshed successfully");
 
                     // Wait for the next refresh cycle
-                    await Task.Delay(refreshIntervalMs);
+                    await Task.Delay(refreshIntervalMs, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break; // Graceful exit when cancelled
                 }
                 catch (Exception ex)
                 {
                     _logger.Warning("Failed to refresh network status: {0}", ex.Message);
 
                     // Wait a bit longer on error before retrying
-                    await Task.Delay(refreshIntervalMs * 2);
+                    await Task.Delay(refreshIntervalMs * 2, cancellationToken);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Disposes the content provider and stops background tasks
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Protected dispose method
+        /// </summary>
+        /// <param name="disposing">True if disposing managed resources</param>
+        protected virtual async void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _disposed = true;
+                await StopBackgroundRefresh();
+                _cancellationTokenSource.Dispose();
             }
         }
     }

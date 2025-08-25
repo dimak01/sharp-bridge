@@ -25,17 +25,14 @@ namespace SharpBridge.Services
         private readonly IKeyboardInputHandler _keyboardInputHandler;
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IRecoveryPolicy _recoveryPolicy;
-        private readonly IConsole _console;
         private readonly IConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
-        private ApplicationConfig _applicationConfig;
-
-        private readonly UserPreferences _userPreferences;
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
-
+        private readonly UserPreferences _userPreferences;
+        private ApplicationConfig _applicationConfig;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -46,8 +43,6 @@ namespace SharpBridge.Services
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
 
-
-
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
         /// </summary>
@@ -56,7 +51,7 @@ namespace SharpBridge.Services
         /// <param name="transformationEngine">The transformation engine</param>
         /// <param name="phoneConfig">Configuration for the phone client</param>
         /// <param name="logger">Application logger</param>
-        /// <param name="consoleRenderer">Console renderer for displaying status</param>
+        /// <param name="modeManager">Console mode manager for UI mode switching</param>
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
@@ -66,11 +61,9 @@ namespace SharpBridge.Services
         /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
         /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
-        /// <param name="systemHelpRenderer">Renderer for the F1 system help display</param>
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
-        /// <param name="portStatusMonitor">Port status monitor for network connectivity analysis</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -100,7 +93,6 @@ namespace SharpBridge.Services
             _keyboardInputHandler = keyboardInputHandler ?? throw new ArgumentNullException(nameof(keyboardInputHandler));
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
-            _console = console ?? throw new ArgumentNullException(nameof(console));
             _consoleWindowManager = consoleWindowManager ?? throw new ArgumentNullException(nameof(consoleWindowManager));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
@@ -211,8 +203,6 @@ namespace SharpBridge.Services
 
             _logger.Info("Application stopped");
         }
-
-
 
         private async Task InitializeTransformationEngine()
         {
@@ -328,7 +318,6 @@ namespace SharpBridge.Services
             return await _vtubeStudioPhoneClient.ReceiveResponseAsync(cancellationToken);
         }
 
-
         /// <summary>
         /// Processes console status update if it's time to do so
         /// </summary>
@@ -416,7 +405,6 @@ namespace SharpBridge.Services
             }
         }
 
-
         /// <summary>
         /// Reloads the transformation configuration
         /// </summary>
@@ -445,54 +433,6 @@ namespace SharpBridge.Services
             catch (Exception ex)
             {
                 _logger.ErrorWithException("Error reloading transformation config", ex);
-            }
-        }
-
-        /// <summary>
-        /// Opens the transformation configuration file in the configured external editor
-        /// </summary>
-        private async Task OpenTransformationConfigInEditor()
-        {
-            try
-            {
-                _logger.Info("Opening transformation configuration in external editor...");
-                var success = await _externalEditorService.TryOpenTransformationConfigAsync();
-                if (success)
-                {
-                    _logger.Info("Successfully opened transformation configuration in external editor");
-                }
-                else
-                {
-                    _logger.Warning("Failed to open transformation configuration in external editor");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error opening transformation configuration in external editor", ex);
-            }
-        }
-
-        /// <summary>
-        /// Opens the application configuration file in the configured external editor
-        /// </summary>
-        private async Task OpenApplicationConfigInEditor()
-        {
-            try
-            {
-                _logger.Info("Opening application configuration in external editor...");
-                var success = await _externalEditorService.TryOpenApplicationConfigAsync();
-                if (success)
-                {
-                    _logger.Info("Successfully opened application configuration in external editor");
-                }
-                else
-                {
-                    _logger.Warning("Failed to open application configuration in external editor");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error opening application configuration in external editor", ex);
             }
         }
 
@@ -567,8 +507,6 @@ namespace SharpBridge.Services
                 _logger.ErrorWithException("Error reloading application configuration", ex);
             }
         }
-
-
 
         /// <summary>
         /// Initializes the color service with transformation expressions and blend shape names
@@ -716,8 +654,6 @@ namespace SharpBridge.Services
                 // Continue execution - preferences saving failure is not critical
             }
         }
-
-
 
         /// <summary>
         /// Attempts to recover unhealthy components
