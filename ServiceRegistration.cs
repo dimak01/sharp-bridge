@@ -31,9 +31,16 @@ namespace SharpBridge
             if (string.IsNullOrEmpty(configDirectory))
                 throw new ArgumentException("Config directory cannot be null or empty", nameof(configDirectory));
 
+            // Register migration service
+            services.AddSingleton<IConfigMigrationService, ConfigMigrationService>();
+
+            // Register validation and first-time setup services
+            services.AddSingleton<IConfigValidator, ConfigValidator>();
+            services.AddSingleton<IFirstTimeSetupService, FirstTimeSetupService>();
+
             // Register config manager
             services.AddSingleton<IConfigManager>(provider =>
-                new ConfigManager(configDirectory));
+                new ConfigManager(configDirectory, provider.GetRequiredService<IConfigMigrationService>()));
 
             // Register configurations
             services.AddSingleton(provider =>
@@ -295,7 +302,9 @@ namespace SharpBridge
                     provider.GetRequiredService<ApplicationConfig>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetRequiredService<IConfigValidator>(),
+                    provider.GetRequiredService<IFirstTimeSetupService>()
                 ));
 
             return services;

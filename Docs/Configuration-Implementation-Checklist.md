@@ -4,23 +4,23 @@
 **Goal**: Add versioning support without changing current behavior
 
 ### Step 1.1: Add Version Properties to Current DTOs
-- [ ] Add version property to `ApplicationConfig` class with default value
-- [ ] Add version property to `UserPreferences` class with default value
-- [ ] Add current version constants to both classes
-- [ ] Test: Verify existing configs still load/save correctly with new version fields
+- [x] Add version property to `ApplicationConfig` class with default value
+- [x] Add version property to `UserPreferences` class with default value
+- [x] Add current version constants to both classes
+- [x] Test: Verify existing configs still load/save correctly with new version fields
 
 ### Step 1.2: Create Migration Infrastructure
-- [ ] Create `IConfigMigrationService` interface
-- [ ] Create `ConfigMigrationService` implementation with version probing capability
-- [ ] Create `ConfigLoadResult<T>` model to wrap loaded configs with metadata
-- [ ] Test: Can probe version from existing configs, returns current version correctly
+- [x] Create `IConfigMigrationService` interface
+- [x] Create `ConfigMigrationService` implementation with version probing capability
+- [x] Create `ConfigLoadResult<T>` model to wrap loaded configs with metadata
+- [x] Test: Can probe version from existing configs, returns current version correctly
 
 ### Step 1.3: Update ConfigManager to Use Migration Service
-- [ ] Modify `LoadApplicationConfigAsync()` to use migration service
-- [ ] Modify `LoadUserPreferencesAsync()` to use migration service
-- [ ] Keep current behavior but route through new infrastructure
-- [ ] Register migration service in DI container
-- [ ] Test: All existing functionality works unchanged
+- [x] Modify `LoadApplicationConfigAsync()` to use migration service
+- [x] Modify `LoadUserPreferencesAsync()` to use migration service
+- [x] Keep current behavior but route through new infrastructure
+- [x] Register migration service in DI container
+- [x] Test: All existing functionality works unchanged
 
 ---
 
@@ -28,27 +28,27 @@
 **Goal**: Add validation and setup flow without breaking existing startup
 
 ### Step 2.1: Create Validation Infrastructure
-- [ ] Create `MissingField` enum with relevant field identifiers
-- [ ] Create `ConfigValidationResult` model
-- [ ] Create `IConfigValidator` interface
-- [ ] Create `ConfigValidator` implementation
-- [ ] Define validation rules for required fields (phone IP, PC host/port logic)
-- [ ] Test: Can validate current configs, identifies missing fields correctly
+- [x] Create `MissingField` enum with relevant field identifiers
+- [x] Create `ConfigValidationResult` model
+- [x] Create `IConfigValidator` interface
+- [x] Create `ConfigValidator` implementation
+- [x] Define validation rules for required fields (phone IP, PC host/port logic)
+- [x] Test: Can validate current configs, identifies missing fields correctly
 
 ### Step 2.2: Create First-Time Setup Service
-- [ ] Create `IFirstTimeSetupService` interface
-- [ ] Create console-based `FirstTimeSetupService` implementation
-- [ ] Implement prompting logic for each missing field type
-- [ ] Add input validation and error handling for user entries
-- [ ] Test: Can prompt for and collect missing fields in isolation
+- [x] Create `IFirstTimeSetupService` interface
+- [x] Create console-based `FirstTimeSetupService` implementation
+- [x] Implement prompting logic for each missing field type
+- [x] Add input validation and error handling for user entries
+- [x] Test: Can prompt for and collect missing fields in isolation
 
 ### Step 2.3: Integrate Setup into ApplicationOrchestrator
-- [ ] Add validation check in `InitializeAsync()` before service initialization
-- [ ] Add first-time setup call when validation fails
-- [ ] Ensure file watchers start after potential setup saves
-- [ ] Keep existing behavior as fallback for validation errors
-- [ ] Register setup service in DI container
-- [ ] Test: Normal startup unchanged, setup triggers when fields missing
+- [x] Add validation check in `InitializeAsync()` before service initialization
+- [x] Add first-time setup call when validation fails
+- [x] Ensure file watchers start after potential setup saves
+- [x] Keep existing behavior as fallback for validation errors
+- [x] Register setup service in DI container
+- [x] Test: Normal startup unchanged, setup triggers when fields missing
 
 ---
 
@@ -114,14 +114,14 @@
 ## Testing Milestones
 
 ### After Phase 1
-- [ ] All existing configuration loading works unchanged
-- [ ] Version information is correctly read from config files
-- [ ] Migration infrastructure exists but doesn't affect current behavior
+- [x] All existing configuration loading works unchanged
+- [x] Version information is correctly read from config files
+- [x] Migration infrastructure exists but doesn't affect current behavior
 
 ### After Phase 2
-- [ ] First-time setup can collect missing required fields
-- [ ] Validation correctly identifies which fields are missing
-- [ ] Setup integrates with startup flow without breaking existing paths
+- [x] First-time setup can collect missing required fields
+- [x] Validation correctly identifies which fields are missing
+- [x] Setup integrates with startup flow without breaking existing paths
 
 ### After Phase 3
 - [ ] Robust handling of missing, corrupted, or invalid config files

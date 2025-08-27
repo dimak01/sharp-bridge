@@ -25,6 +25,13 @@ namespace SharpBridge.Interfaces
         Task<ApplicationConfig> LoadApplicationConfigAsync();
 
         /// <summary>
+        /// Saves the consolidated application configuration to file
+        /// </summary>
+        /// <param name="config">The application configuration to save</param>
+        /// <returns>A task representing the asynchronous save operation</returns>
+        Task SaveApplicationConfigAsync(ApplicationConfig config);
+
+        /// <summary>
         /// Loads the PC configuration from the consolidated config
         /// </summary>
         /// <returns>The PC configuration</returns>

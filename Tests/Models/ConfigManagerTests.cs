@@ -6,6 +6,7 @@ using SharpBridge.Models;
 using Xunit;
 using FluentAssertions;
 using SharpBridge.Utilities;
+using Moq;
 
 namespace SharpBridge.Tests.Models
 {
@@ -15,14 +16,18 @@ namespace SharpBridge.Tests.Models
         private readonly string _applicationConfigPath;
         private readonly string _userPreferencesPath;
         private readonly ConfigManager _configManager;
+        private readonly Mock<IConfigMigrationService> _mockMigrationService;
 
         public ConfigManagerTests()
         {
             // Create test directory 
             Directory.CreateDirectory(_testDirectory);
 
-            // Create config manager with test directory
-            _configManager = new ConfigManager(_testDirectory);
+            // Create mock migration service
+            _mockMigrationService = new Mock<IConfigMigrationService>();
+
+            // Create config manager with test directory and mock migration service
+            _configManager = new ConfigManager(_testDirectory, _mockMigrationService.Object);
             _applicationConfigPath = Path.Combine(_testDirectory, "ApplicationConfig.json");
             _userPreferencesPath = Path.Combine(_testDirectory, "UserPreferences.json");
         }
@@ -44,6 +49,12 @@ namespace SharpBridge.Tests.Models
             {
                 File.Delete(_applicationConfigPath);
             }
+
+            // Setup mock to return a created config
+            var defaultConfig = new ApplicationConfig();
+            var mockResult = new ConfigLoadResult<ApplicationConfig>(defaultConfig, WasCreated: true, WasMigrated: false, OriginalVersion: 1);
+            _mockMigrationService.Setup(m => m.LoadWithMigrationAsync<ApplicationConfig>(It.IsAny<string>(), It.IsAny<Func<ApplicationConfig>>()))
+                                .ReturnsAsync(mockResult);
 
             // Act
             var config = await _configManager.LoadApplicationConfigAsync();
