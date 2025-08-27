@@ -32,6 +32,8 @@ namespace SharpBridge.Services
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
         private readonly UserPreferences _userPreferences;
+        private readonly IConfigValidator _configValidator;
+        private readonly IFirstTimeSetupService _firstTimeSetupService;
         private ApplicationConfig _applicationConfig;
 
         /// <summary>
@@ -64,6 +66,8 @@ namespace SharpBridge.Services
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
+        /// <param name="configValidator">Configuration validator for detecting missing required fields</param>
+        /// <param name="firstTimeSetupService">Service for handling first-time setup of missing configuration</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -82,7 +86,9 @@ namespace SharpBridge.Services
             ApplicationConfig applicationConfig,
             UserPreferences userPreferences,
             IConfigManager configManager,
-            IFileChangeWatcher appConfigWatcher)
+            IFileChangeWatcher appConfigWatcher,
+            IConfigValidator configValidator,
+            IFirstTimeSetupService firstTimeSetupService)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -101,6 +107,8 @@ namespace SharpBridge.Services
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
+            _configValidator = configValidator ?? throw new ArgumentNullException(nameof(configValidator));
+            _firstTimeSetupService = firstTimeSetupService ?? throw new ArgumentNullException(nameof(firstTimeSetupService));
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -113,6 +121,9 @@ namespace SharpBridge.Services
         /// <returns>A task that completes when initialization and connection are done</returns>
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
+            // Validate configuration and run first-time setup if needed
+            await ValidateAndSetupConfigurationAsync();
+
             // Set preferred console window size
             SetupConsoleWindow();
 
@@ -149,6 +160,51 @@ namespace SharpBridge.Services
             }
 
             _logger.Info("Application initialized successfully");
+        }
+
+        /// <summary>
+        /// Validates configuration and runs first-time setup if needed
+        /// </summary>
+        private async Task ValidateAndSetupConfigurationAsync()
+        {
+            _logger.Info("Validating application configuration...");
+
+            var validationResult = _configValidator.ValidateConfiguration(_applicationConfig);
+
+            if (validationResult.IsValid)
+            {
+                _logger.Info("Configuration validation passed - all required fields are present");
+                return;
+            }
+
+            _logger.Warning("Configuration validation failed - missing required fields: {0}",
+                string.Join(", ", validationResult.MissingFields));
+
+            // Run first-time setup
+            _logger.Info("Starting first-time setup for missing configuration fields...");
+
+            var (setupSuccessful, updatedConfig) = await _firstTimeSetupService.RunSetupAsync(validationResult.MissingFields, _applicationConfig);
+
+            if (!setupSuccessful || updatedConfig == null)
+            {
+                throw new InvalidOperationException("First-time setup was cancelled or failed. Sharp Bridge cannot start without the required configuration.");
+            }
+
+            // Update the application config reference with the new immutable config
+            _applicationConfig = updatedConfig;
+
+            // Save the updated configuration
+            _logger.Info("Saving updated configuration after first-time setup...");
+            await _configManager.SaveApplicationConfigAsync(_applicationConfig);
+
+            // Re-validate to ensure everything is now correct
+            var revalidationResult = _configValidator.ValidateConfiguration(_applicationConfig);
+            if (!revalidationResult.IsValid)
+            {
+                throw new InvalidOperationException($"Configuration is still invalid after setup. Missing fields: {string.Join(", ", revalidationResult.MissingFields)}");
+            }
+
+            _logger.Info("Configuration setup completed successfully");
         }
 
         /// <summary>

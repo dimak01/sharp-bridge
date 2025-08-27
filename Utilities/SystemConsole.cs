@@ -36,13 +36,7 @@ namespace SharpBridge.Utilities
             Console.SetCursorPosition(left, top);
         }
 
-        /// <summary>
-        /// Writes text to the console without a line break (private - all output should go through WriteLines)
-        /// </summary>
-        private static void Write(string text)
-        {
-            Console.Write(text);
-        }
+
 
         /// <summary>
         /// Clears the console screen
@@ -133,7 +127,7 @@ namespace SharpBridge.Utilities
 
                     // Update the entire line (it's already normalized to WindowWidth)
                     SetCursorPosition(0, row);
-                    Write(newLine);
+                    Console.Write(newLine);
                 }
 
                 // Store normalized buffer as shadow buffer for next comparison
@@ -245,6 +239,15 @@ namespace SharpBridge.Utilities
             }
 
             return result.ToString();
+        }
+
+        /// <summary>
+        /// Reads a line of input from the console
+        /// </summary>
+        /// <returns>The line read from the console</returns>
+        public string? ReadLine()
+        {
+            return System.Console.ReadLine();
         }
     }
 }

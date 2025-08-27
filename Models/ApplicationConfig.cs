@@ -30,6 +30,15 @@ namespace SharpBridge.Models
     public class ApplicationConfig
     {
         /// <summary>
+        /// Configuration version for migration support
+        /// </summary>
+        public const int CurrentVersion = 1;
+
+        /// <summary>
+        /// Version of this configuration instance
+        /// </summary>
+        public int Version { get; init; } = CurrentVersion;
+        /// <summary>
         /// General application settings (editor, shortcuts)
         /// </summary>
         public GeneralSettingsConfig GeneralSettings { get; set; } = new();

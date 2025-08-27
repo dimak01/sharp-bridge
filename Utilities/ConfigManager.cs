@@ -17,14 +17,17 @@ namespace SharpBridge.Utilities
         private readonly string _configDirectory;
         private readonly string _applicationConfigFilename = "ApplicationConfig.json";
         private readonly string _userPreferencesFilename = "UserPreferences.json";
+        private readonly IConfigMigrationService _migrationService;
 
         /// <summary>
         /// Initializes a new instance of the ConfigManager class.
         /// </summary>
         /// <param name="configDirectory">The directory where config files are stored</param>
-        public ConfigManager(string configDirectory)
+        /// <param name="migrationService">Service for handling configuration migration</param>
+        public ConfigManager(string configDirectory, IConfigMigrationService migrationService)
         {
             _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
+            _migrationService = migrationService ?? throw new ArgumentNullException(nameof(migrationService));
 
             _jsonOptions = new JsonSerializerOptions
             {
@@ -52,7 +55,32 @@ namespace SharpBridge.Utilities
         /// <returns>The consolidated application configuration.</returns>
         public async Task<ApplicationConfig> LoadApplicationConfigAsync()
         {
-            return await LoadConfigAsync<ApplicationConfig>(ApplicationConfigPath, () => new ApplicationConfig());
+            var result = await _migrationService.LoadWithMigrationAsync<ApplicationConfig>(
+                ApplicationConfigPath,
+                () => new ApplicationConfig());
+
+            // For Phase 1, we'll save the config if it was created to maintain current behavior
+            if (result.WasCreated)
+            {
+                await SaveConfigAsync(ApplicationConfigPath, result.Config);
+            }
+
+            return result.Config;
+        }
+
+        /// <summary>
+        /// Saves the consolidated application configuration to file
+        /// </summary>
+        /// <param name="config">The application configuration to save</param>
+        /// <returns>A task representing the asynchronous save operation</returns>
+        public async Task SaveApplicationConfigAsync(ApplicationConfig config)
+        {
+            if (config == null)
+            {
+                throw new ArgumentNullException(nameof(config));
+            }
+
+            await SaveConfigAsync(ApplicationConfigPath, config);
         }
 
         /// <summary>
@@ -101,7 +129,17 @@ namespace SharpBridge.Utilities
         /// <returns>The user preferences.</returns>
         public async Task<UserPreferences> LoadUserPreferencesAsync()
         {
-            return await LoadConfigAsync<UserPreferences>(UserPreferencesPath, () => new UserPreferences());
+            var result = await _migrationService.LoadWithMigrationAsync<UserPreferences>(
+                UserPreferencesPath,
+                () => new UserPreferences());
+
+            // For Phase 1, we'll save the config if it was created to maintain current behavior
+            if (result.WasCreated)
+            {
+                await SaveConfigAsync(UserPreferencesPath, result.Config);
+            }
+
+            return result.Config;
         }
 
         /// <summary>
@@ -185,32 +223,7 @@ namespace SharpBridge.Utilities
             await SaveConfigAsync(ApplicationConfigPath, appConfig);
         }
 
-        private async Task<T> LoadConfigAsync<T>(string path, Func<T> defaultConfigFactory) where T : class
-        {
-            if (!File.Exists(path))
-            {
-                var defaultConfig = defaultConfigFactory();
-                await SaveConfigAsync(path, defaultConfig);
-                return defaultConfig;
-            }
 
-            try
-            {
-                using var fileStream = File.OpenRead(path);
-                var config = await JsonSerializer.DeserializeAsync<T>(fileStream, _jsonOptions);
-
-                if (config == null)
-                {
-                    throw new InvalidOperationException($"Failed to deserialize configuration from {path}");
-                }
-
-                return config;
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidOperationException($"Error parsing configuration file {path}: {ex.Message}", ex);
-            }
-        }
 
         private async Task SaveConfigAsync<T>(string path, T config) where T : class
         {
