@@ -56,18 +56,18 @@
 **Goal**: Improve config creation and error handling
 
 ### Step 3.1: Enhance ConfigManager Load-or-Create Logic
-- [ ] Improve load-or-create logic to handle missing files consistently
-- [ ] Add better error handling for corrupted/invalid JSON files
-- [ ] Ensure uniform behavior for both `ApplicationConfig` and `UserPreferences`
-- [ ] Add logging for config creation and error scenarios
-- [ ] Test: Handles missing/corrupted files gracefully, creates defaults when needed
+- [x] Improve load-or-create logic to handle missing files consistently
+- [x] Add better error handling for corrupted/invalid JSON files
+- [x] Ensure uniform behavior for both `ApplicationConfig` and `UserPreferences`
+- [x] Add logging for config creation and error scenarios
+- [x] Test: Handles missing/corrupted files gracefully, creates defaults when needed
 
 ### Step 3.2: Add Required Field Detection
-- [ ] Determine strategy for "unset" vs "default" field detection
-- [ ] Update DTOs to support unset detection (nullable strings or sentinel values)
-- [ ] Update validation to distinguish between user-set and default values
-- [ ] Ensure first-time setup only triggers for truly missing fields
-- [ ] Test: Can distinguish between user-set and default values correctly
+- [x] Determine strategy for "unset" vs "default" field detection
+- [x] Update DTOs to support unset detection (nullable strings or sentinel values)
+- [x] Update validation to distinguish between user-set and default values
+- [x] Ensure first-time setup only triggers for truly missing fields
+- [x] Test: Can distinguish between user-set and default values correctly
 
 ---
 
@@ -82,12 +82,12 @@
 - [ ] Test: Can deserialize legacy configs to old DTO structures
 
 ### Step 4.2: Implement Migration Pipeline
-- [ ] Create migration function interface/pattern
-- [ ] Implement example migration (V1→V2) for testing
-- [ ] Add migration chain execution logic
-- [ ] Add migration validation and error handling
-- [ ] Ensure migrations are idempotent and side-effect-free
-- [ ] Test: Can migrate old configs to current version successfully
+- [x] Create migration function interface/pattern
+- [x] Implement example migration (V0→V1) for handling current no-version files
+- [x] Add migration chain execution logic
+- [x] Add migration validation and error handling
+- [x] Ensure migrations are idempotent and side-effect-free
+- [x] Test: Can migrate old configs to current version successfully
 
 ---
 
@@ -95,19 +95,19 @@
 **Goal**: Refine the complete flow and user experience
 
 ### Step 5.1: File Watcher Integration
-- [ ] Ensure file watchers start after potential first-time setup saves
-- [ ] Handle runtime validation failures when configs change
-- [ ] Add debouncing/suppression for setup-triggered file saves
-- [ ] Test runtime config change scenarios with validation
-- [ ] Test: No watcher loops, runtime changes handled correctly
+- [x] Ensure file watchers start after potential first-time setup saves
+- [x] Handle runtime validation failures when configs change
+- [x] Add debouncing/suppression for setup-triggered file saves
+- [x] Test runtime config change scenarios with validation
+- [x] Test: No watcher loops, runtime changes handled correctly
 
 ### Step 5.2: Error Handling & User Experience
-- [ ] Improve error messages throughout the configuration flow
-- [ ] Add clear progress indicators during first-time setup
-- [ ] Add helpful validation feedback for user input errors
-- [ ] Add graceful fallbacks for setup cancellation/failures
-- [ ] Add logging for troubleshooting configuration issues
-- [ ] Test: User-friendly experience for common error scenarios
+- [x] Improve error messages throughout the configuration flow
+- [x] Add clear progress indicators during first-time setup
+- [x] Add helpful validation feedback for user input errors
+- [x] Add graceful fallbacks for setup cancellation/failures
+- [x] Add logging for troubleshooting configuration issues
+- [x] Test: User-friendly experience for common error scenarios
 
 ---
 
@@ -124,9 +124,9 @@
 - [x] Setup integrates with startup flow without breaking existing paths
 
 ### After Phase 3
-- [ ] Robust handling of missing, corrupted, or invalid config files
-- [ ] Consistent load-or-create behavior across both config types
-- [ ] Clear distinction between unset and default values
+- [x] Robust handling of missing, corrupted, or invalid config files
+- [x] Consistent load-or-create behavior across both config types
+- [x] Clear distinction between unset and default values
 
 ### After Phase 4
 - [ ] Migration pipeline can handle legacy configuration formats
@@ -134,9 +134,9 @@
 - [ ] Legacy DTO handling is isolated and testable
 
 ### After Phase 5
-- [ ] Complete end-to-end flow works seamlessly
-- [ ] File watching integration doesn't cause issues
-- [ ] User experience is polished and error-tolerant
+- [x] Complete end-to-end flow works seamlessly
+- [x] File watching integration doesn't cause issues
+- [x] User experience is polished and error-tolerant
 
 ---
 

@@ -7,57 +7,160 @@ using Xunit;
 using FluentAssertions;
 using SharpBridge.Utilities;
 using Moq;
+using System.Text.Json;
 
 namespace SharpBridge.Tests.Models
 {
     public class ConfigManagerTests : IDisposable
     {
-        private readonly string _testDirectory = Path.Combine(Path.GetTempPath(), "ConfigManagerTests_" + Guid.NewGuid().ToString("N")[0..8]);
+        private readonly DirectoryInfo _testDirectory;
         private readonly string _applicationConfigPath;
         private readonly string _userPreferencesPath;
-        private readonly ConfigManager _configManager;
-        private readonly Mock<IConfigMigrationService> _mockMigrationService;
 
         public ConfigManagerTests()
         {
-            // Create test directory 
-            Directory.CreateDirectory(_testDirectory);
-
-            // Create mock migration service
-            _mockMigrationService = new Mock<IConfigMigrationService>();
-
-            // Create config manager with test directory and mock migration service
-            _configManager = new ConfigManager(_testDirectory, _mockMigrationService.Object);
-            _applicationConfigPath = Path.Combine(_testDirectory, "ApplicationConfig.json");
-            _userPreferencesPath = Path.Combine(_testDirectory, "UserPreferences.json");
+            // Create a unique temp directory that's automatically cleaned up
+            _testDirectory = Directory.CreateTempSubdirectory();
+            _applicationConfigPath = Path.Combine(_testDirectory.FullName, "ApplicationConfig.json");
+            _userPreferencesPath = Path.Combine(_testDirectory.FullName, "UserPreferences.json");
         }
 
         public void Dispose()
         {
-            // Clean up test files
-            if (Directory.Exists(_testDirectory))
+            // The temp directory is automatically cleaned up when disposed
+            // But we can also manually clean up if needed for immediate cleanup
+            try
             {
-                Directory.Delete(_testDirectory, true);
+                if (_testDirectory.Exists)
+                {
+                    _testDirectory.Delete(true);
+                }
+            }
+            catch
+            {
+                // Ignore cleanup errors - the OS will clean up temp files eventually
+                // This prevents test cleanup failures from masking actual test failures
             }
         }
+
+        #region Mock Helper Methods
+
+        private static Mock<IConfigMigrationService> CreateMockMigrationService()
+        {
+            var mock = new Mock<IConfigMigrationService>();
+
+            // Default behavior - return factory-created configs with WasCreated: true
+            mock.Setup(x => x.LoadWithMigrationAsync<ApplicationConfig>(
+                It.IsAny<string>(), It.IsAny<Func<ApplicationConfig>>()))
+                .ReturnsAsync((string path, Func<ApplicationConfig> factory) =>
+                    new ConfigLoadResult<ApplicationConfig>(factory(), true, false, 1));
+
+            mock.Setup(x => x.LoadWithMigrationAsync<UserPreferences>(
+                It.IsAny<string>(), It.IsAny<Func<UserPreferences>>()))
+                .ReturnsAsync((string path, Func<UserPreferences> factory) =>
+                    new ConfigLoadResult<UserPreferences>(factory(), true, false, 1));
+
+            return mock;
+        }
+
+        private static Mock<IConfigMigrationService> CreateMockMigrationService_FileExists()
+        {
+            var mock = new Mock<IConfigMigrationService>();
+
+            // Behavior for when files exist - read from disk and return WasCreated: false
+            mock.Setup(x => x.LoadWithMigrationAsync<ApplicationConfig>(
+                It.IsAny<string>(), It.IsAny<Func<ApplicationConfig>>()))
+                .ReturnsAsync((string path, Func<ApplicationConfig> factory) =>
+                {
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            var jsonText = File.ReadAllText(path);
+                            if (!string.IsNullOrWhiteSpace(jsonText))
+                            {
+                                var config = JsonSerializer.Deserialize<ApplicationConfig>(jsonText);
+                                if (config != null)
+                                {
+                                    return new ConfigLoadResult<ApplicationConfig>(config, false, false, 1);
+                                }
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // If JSON parsing fails, return factory-created config with WasCreated: true
+                            return new ConfigLoadResult<ApplicationConfig>(factory(), true, false, 1);
+                        }
+                    }
+                    // File doesn't exist or parsing failed - return factory-created config
+                    return new ConfigLoadResult<ApplicationConfig>(factory(), true, false, 1);
+                });
+
+            mock.Setup(x => x.LoadWithMigrationAsync<UserPreferences>(
+                It.IsAny<string>(), It.IsAny<Func<UserPreferences>>()))
+                .ReturnsAsync((string path, Func<UserPreferences> factory) =>
+                {
+                    if (File.Exists(path))
+                    {
+                        try
+                        {
+                            var jsonText = File.ReadAllText(path);
+                            if (!string.IsNullOrWhiteSpace(jsonText))
+                            {
+                                var config = JsonSerializer.Deserialize<UserPreferences>(jsonText);
+                                if (config != null)
+                                {
+                                    return new ConfigLoadResult<UserPreferences>(config, false, false, 1);
+                                }
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // If JSON parsing fails, return factory-created config with WasCreated: true
+                            return new ConfigLoadResult<UserPreferences>(factory(), true, false, 1);
+                        }
+                    }
+                    // File doesn't exist or parsing failed - return factory-created config
+                    return new ConfigLoadResult<UserPreferences>(factory(), true, false, 1);
+                });
+
+            return mock;
+        }
+
+        private static Mock<IConfigMigrationService> CreateMockMigrationService_InvalidJson()
+        {
+            var mock = new Mock<IConfigMigrationService>();
+
+            // Behavior that simulates JSON parsing errors - return WasCreated: true
+            mock.Setup(x => x.LoadWithMigrationAsync<ApplicationConfig>(
+                It.IsAny<string>(), It.IsAny<Func<ApplicationConfig>>()))
+                .ReturnsAsync((string path, Func<ApplicationConfig> factory) =>
+                    new ConfigLoadResult<ApplicationConfig>(factory(), true, false, 1));
+
+            mock.Setup(x => x.LoadWithMigrationAsync<UserPreferences>(
+                It.IsAny<string>(), It.IsAny<Func<UserPreferences>>()))
+                .ReturnsAsync((string path, Func<UserPreferences> factory) =>
+                    new ConfigLoadResult<UserPreferences>(factory(), true, false, 1));
+
+            return mock;
+        }
+
+        #endregion
 
         [Fact]
         public async Task LoadApplicationConfigAsync_CreatesDefaultConfigIfNotExists()
         {
-            // Arrange - Make sure config doesn't exist
-            if (File.Exists(_applicationConfigPath))
-            {
-                File.Delete(_applicationConfigPath);
-            }
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
 
             // Setup mock to return a created config
-            var defaultConfig = new ApplicationConfig();
-            var mockResult = new ConfigLoadResult<ApplicationConfig>(defaultConfig, WasCreated: true, WasMigrated: false, OriginalVersion: 1);
-            _mockMigrationService.Setup(m => m.LoadWithMigrationAsync<ApplicationConfig>(It.IsAny<string>(), It.IsAny<Func<ApplicationConfig>>()))
-                                .ReturnsAsync(mockResult);
+            mockMigrationService.Setup(m => m.LoadWithMigrationAsync<ApplicationConfig>(It.IsAny<string>(), It.IsAny<Func<ApplicationConfig>>()))
+                                .ReturnsAsync((string path, Func<ApplicationConfig> factory) =>
+                                    new ConfigLoadResult<ApplicationConfig>(factory(), true, false, 1));
 
             // Act
-            var config = await _configManager.LoadApplicationConfigAsync();
+            var config = await configManager.LoadApplicationConfigAsync();
 
             // Assert
             config.Should().NotBeNull();
@@ -71,14 +174,12 @@ namespace SharpBridge.Tests.Models
         [Fact]
         public async Task LoadPCConfigAsync_CreatesDefaultConfigIfNotExists()
         {
-            // Arrange - Make sure config doesn't exist
-            if (File.Exists(_applicationConfigPath))
-            {
-                File.Delete(_applicationConfigPath);
-            }
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
 
             // Act
-            var config = await _configManager.LoadPCConfigAsync();
+            var config = await configManager.LoadPCConfigAsync();
 
             // Assert
             config.Should().NotBeNull();
@@ -90,14 +191,12 @@ namespace SharpBridge.Tests.Models
         [Fact]
         public async Task LoadPhoneConfigAsync_CreatesDefaultConfigIfNotExists()
         {
-            // Arrange - Make sure config doesn't exist
-            if (File.Exists(_applicationConfigPath))
-            {
-                File.Delete(_applicationConfigPath);
-            }
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
 
             // Act
-            var config = await _configManager.LoadPhoneConfigAsync();
+            var config = await configManager.LoadPhoneConfigAsync();
 
             // Assert
             config.Should().NotBeNull();
@@ -110,7 +209,10 @@ namespace SharpBridge.Tests.Models
         public async Task LoadAndSavePCConfigAsync_PreservesChanges()
         {
             // Arrange
-            await _configManager.LoadPCConfigAsync(); // Load to create initial file
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
+
+            await configManager.LoadPCConfigAsync(); // Load to create initial file
             const string newHost = "test-host";
             const int newPort = 9999;
 
@@ -128,10 +230,10 @@ namespace SharpBridge.Tests.Models
                 UsePortDiscovery = true
             };
 
-            await _configManager.SavePCConfigAsync(updatedConfig);
+            await configManager.SavePCConfigAsync(updatedConfig);
 
             // Load the config again to check if changes were saved
-            var reloadedConfig = await _configManager.LoadPCConfigAsync();
+            var reloadedConfig = await configManager.LoadPCConfigAsync();
 
             // Assert
             reloadedConfig.Host.Should().Be(newHost, "saved host should be preserved");
@@ -142,7 +244,10 @@ namespace SharpBridge.Tests.Models
         public async Task LoadAndSavePhoneConfigAsync_PreservesChanges()
         {
             // Arrange
-            await _configManager.LoadPhoneConfigAsync(); // Load to create initial file
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
+
+            await configManager.LoadPhoneConfigAsync(); // Load to create initial file
             const string newIp = "10.0.0.42";
             const int newPort = 9876;
 
@@ -158,10 +263,10 @@ namespace SharpBridge.Tests.Models
                 ReceiveTimeoutMs = 100
             };
 
-            await _configManager.SavePhoneConfigAsync(updatedConfig);
+            await configManager.SavePhoneConfigAsync(updatedConfig);
 
             // Load the config again to check if changes were saved
-            var reloadedConfig = await _configManager.LoadPhoneConfigAsync();
+            var reloadedConfig = await configManager.LoadPhoneConfigAsync();
 
             // Assert
             reloadedConfig.IphoneIpAddress.Should().Be(newIp, "saved IP address should be preserved");
@@ -171,14 +276,12 @@ namespace SharpBridge.Tests.Models
         [Fact]
         public async Task LoadUserPreferencesAsync_CreatesDefaultIfNotExists()
         {
-            // Arrange - Make sure preferences don't exist
-            if (File.Exists(_userPreferencesPath))
-            {
-                File.Delete(_userPreferencesPath);
-            }
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
 
             // Act
-            var preferences = await _configManager.LoadUserPreferencesAsync();
+            var preferences = await configManager.LoadUserPreferencesAsync();
 
             // Assert
             preferences.Should().NotBeNull();
@@ -192,6 +295,9 @@ namespace SharpBridge.Tests.Models
         public async Task SaveAndLoadUserPreferencesAsync_PreservesChanges()
         {
             // Arrange
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
+
             var preferences = new UserPreferences
             {
                 PhoneClientVerbosity = VerbosityLevel.Detailed,
@@ -202,8 +308,8 @@ namespace SharpBridge.Tests.Models
             };
 
             // Act
-            await _configManager.SaveUserPreferencesAsync(preferences);
-            var reloadedPreferences = await _configManager.LoadUserPreferencesAsync();
+            await configManager.SaveUserPreferencesAsync(preferences);
+            var reloadedPreferences = await configManager.LoadUserPreferencesAsync();
 
             // Assert
             reloadedPreferences.PhoneClientVerbosity.Should().Be(VerbosityLevel.Detailed);
@@ -216,17 +322,21 @@ namespace SharpBridge.Tests.Models
         [Fact]
         public async Task ResetUserPreferencesAsync_CreatesDefaultPreferences()
         {
-            // Arrange - Create and save some custom preferences first
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
+
+            // Create and save some custom preferences first
             var customPreferences = new UserPreferences
             {
                 PhoneClientVerbosity = VerbosityLevel.Detailed,
                 PreferredConsoleWidth = 200
             };
-            await _configManager.SaveUserPreferencesAsync(customPreferences);
+            await configManager.SaveUserPreferencesAsync(customPreferences);
 
             // Act
-            await _configManager.ResetUserPreferencesAsync();
-            var resetPreferences = await _configManager.LoadUserPreferencesAsync();
+            await configManager.ResetUserPreferencesAsync();
+            var resetPreferences = await configManager.LoadUserPreferencesAsync();
 
             // Assert
             resetPreferences.PhoneClientVerbosity.Should().Be(VerbosityLevel.Normal, "should be reset to default");
@@ -238,9 +348,10 @@ namespace SharpBridge.Tests.Models
         {
             // Arrange
             string customDir = "CustomDir";
+            var mockMigrationService = CreateMockMigrationService();
 
             // Act
-            var manager = new ConfigManager(customDir);
+            var manager = new ConfigManager(customDir, mockMigrationService.Object);
 
             // Assert
             manager.ApplicationConfigPath.Should().Be(Path.Combine(customDir, "ApplicationConfig.json"));
@@ -250,8 +361,11 @@ namespace SharpBridge.Tests.Models
         [Fact]
         public void ConfigManager_Constructor_NullConfigDirectory_ThrowsArgumentNullException()
         {
-            // Arrange & Act & Assert
-            Action act = () => new ConfigManager(null!);
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService();
+
+            // Act & Assert
+            Action act = () => new ConfigManager(null!, mockMigrationService.Object);
             act.Should().Throw<ArgumentNullException>()
                .And.ParamName.Should().Be("configDirectory");
         }
@@ -260,28 +374,28 @@ namespace SharpBridge.Tests.Models
         public void EnsureConfigDirectoryExists_CreatesDirectoryIfNotExists()
         {
             // Arrange
-            string testDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var testDir = Directory.CreateTempSubdirectory();
+            var mockMigrationService = CreateMockMigrationService();
 
             try
             {
-                // Make sure directory doesn't exist
-                if (Directory.Exists(testDir))
-                {
-                    Directory.Delete(testDir, true);
-                }
-
                 // Act - constructor calls EnsureConfigDirectoryExists internally
-                _ = new ConfigManager(testDir);
+                _ = new ConfigManager(testDir.FullName, mockMigrationService.Object);
 
                 // Assert
-                Directory.Exists(testDir).Should().BeTrue("directory should be created if it doesn't exist");
+                Directory.Exists(testDir.FullName).Should().BeTrue("directory should be created if it doesn't exist");
             }
             finally
             {
                 // Cleanup
-                if (Directory.Exists(testDir))
+                try
                 {
-                    Directory.Delete(testDir, true);
+                    if (testDir.Exists)
+                        testDir.Delete(true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
                 }
             }
         }
@@ -290,75 +404,203 @@ namespace SharpBridge.Tests.Models
         public async Task LoadConfigAsync_JsonException_ThrowsInvalidOperationException()
         {
             // Arrange
-            string testDir = Path.Combine(_testDirectory, "InvalidJson");
-            Directory.CreateDirectory(testDir);
-            string invalidJsonPath = Path.Combine(testDir, "ApplicationConfig.json");
+            var testDir = Directory.CreateTempSubdirectory();
+            string invalidJsonPath = Path.Combine(testDir.FullName, "ApplicationConfig.json");
+            var mockMigrationService = CreateMockMigrationService_InvalidJson();
+            var manager = new ConfigManager(testDir.FullName, mockMigrationService.Object);
 
-            // Create a file with invalid JSON content
-            File.WriteAllText(invalidJsonPath, "{ invalid json content }");
+            try
+            {
+                // Create a file with invalid JSON content
+                File.WriteAllText(invalidJsonPath, "{ invalid json content }");
 
-            var manager = new ConfigManager(testDir);
+                // Act & Assert
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => manager.LoadApplicationConfigAsync());
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => manager.LoadApplicationConfigAsync());
-
-            exception.Message.Should().Contain("Error parsing configuration file");
+                exception.Message.Should().Contain("Error parsing configuration file");
+            }
+            finally
+            {
+                // Cleanup
+                try
+                {
+                    if (testDir.Exists)
+                        testDir.Delete(true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
         }
 
         [Fact]
         public async Task LoadConfigAsync_DeserializesToNull_ThrowsInvalidOperationException()
         {
             // Arrange
-            string testDir = Path.Combine(_testDirectory, "NullDeserialization");
-            Directory.CreateDirectory(testDir);
-            string nullJsonPath = Path.Combine(testDir, "ApplicationConfig.json");
+            var testDir = Directory.CreateTempSubdirectory();
+            string nullJsonPath = Path.Combine(testDir.FullName, "ApplicationConfig.json");
+            var mockMigrationService = CreateMockMigrationService_InvalidJson();
+            var manager = new ConfigManager(testDir.FullName, mockMigrationService.Object);
 
-            // Create a file with null content (empty JSON object won't deserialize to null, but this simulates the condition)
-            File.WriteAllText(nullJsonPath, "null");
+            try
+            {
+                // Create a file with null content (empty JSON object won't deserialize to null, but this simulates the condition)
+                File.WriteAllText(nullJsonPath, "null");
 
-            var manager = new ConfigManager(testDir);
+                // Act & Assert
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                    () => manager.LoadApplicationConfigAsync());
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                () => manager.LoadApplicationConfigAsync());
-
-            exception.Message.Should().Contain("Failed to deserialize configuration");
+                exception.Message.Should().Contain("Failed to deserialize configuration");
+            }
+            finally
+            {
+                // Cleanup
+                try
+                {
+                    if (testDir.Exists)
+                        testDir.Delete(true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
         }
 
         [Fact]
         public async Task SaveConfigAsync_IOException_ThrowsInvalidOperationException()
         {
             // Arrange - Create a readonly file to cause IOException
-            string testDir = Path.Combine(_testDirectory, "ReadOnlyFile");
-            Directory.CreateDirectory(testDir);
-
-            // Create config manager and load to create initial preferences file
-            var manager = new ConfigManager(testDir);
-            await manager.LoadUserPreferencesAsync(); // This creates the UserPreferences.json file
-
-            // Make the UserPreferences file readonly to cause IOException on save
-            string preferencesPath = Path.Combine(testDir, "UserPreferences.json");
-            var fileInfo = new FileInfo(preferencesPath);
-            fileInfo.IsReadOnly = true;
+            var testDir = Directory.CreateTempSubdirectory();
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var manager = new ConfigManager(testDir.FullName, mockMigrationService.Object);
 
             try
             {
-                // Act & Assert
-                var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => manager.SaveUserPreferencesAsync(new UserPreferences()));
+                // Create config manager and load to create initial preferences file
+                await manager.LoadUserPreferencesAsync(); // This creates the UserPreferences.json file
 
-                exception.Message.Should().Contain("Error saving configuration");
+                // Make the UserPreferences file readonly to cause IOException on save
+                string preferencesPath = Path.Combine(testDir.FullName, "UserPreferences.json");
+                var fileInfo = new FileInfo(preferencesPath);
+                fileInfo.IsReadOnly = true;
+
+                try
+                {
+                    // Act & Assert
+                    var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                        () => manager.SaveUserPreferencesAsync(new UserPreferences()));
+
+                    exception.Message.Should().Contain("Error saving configuration");
+                }
+                finally
+                {
+                    // Cleanup - remove readonly attribute
+                    var fileInfo2 = new FileInfo(preferencesPath);
+                    if (fileInfo2.Exists)
+                    {
+                        fileInfo2.IsReadOnly = false;
+                    }
+                }
             }
             finally
             {
-                // Cleanup - remove readonly attribute
-                var fileInfo2 = new FileInfo(preferencesPath);
-                if (fileInfo2.Exists)
+                // Cleanup
+                try
                 {
-                    fileInfo2.IsReadOnly = false;
+                    if (testDir.Exists)
+                        testDir.Delete(true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
                 }
             }
+        }
+
+        [Fact]
+        public async Task Debug_MockFilePersistence_ShouldWork()
+        {
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
+
+            var preferences = new UserPreferences
+            {
+                PhoneClientVerbosity = VerbosityLevel.Detailed,
+                PCClientVerbosity = VerbosityLevel.Basic,
+                TransformationEngineVerbosity = VerbosityLevel.Detailed,
+                PreferredConsoleWidth = 120,
+                PreferredConsoleHeight = 40
+            };
+
+            // Act - Save preferences
+            await configManager.SaveUserPreferencesAsync(preferences);
+
+            // Verify file was actually created
+            File.Exists(_userPreferencesPath).Should().BeTrue("file should exist after save");
+
+            // Read the file content manually to verify
+            var fileContent = File.ReadAllText(_userPreferencesPath);
+            fileContent.Should().NotBeNullOrEmpty("file should contain saved content");
+
+            // Act - Load preferences
+            var reloadedPreferences = await configManager.LoadUserPreferencesAsync();
+
+            // Assert
+            reloadedPreferences.PhoneClientVerbosity.Should().Be(VerbosityLevel.Detailed);
+            reloadedPreferences.PCClientVerbosity.Should().Be(VerbosityLevel.Basic);
+            reloadedPreferences.TransformationEngineVerbosity.Should().Be(VerbosityLevel.Detailed);
+            reloadedPreferences.PreferredConsoleWidth.Should().Be(120);
+            reloadedPreferences.PreferredConsoleHeight.Should().Be(40);
+        }
+
+        [Fact]
+        public async Task Debug_CheckSavedFileContent()
+        {
+            // Arrange
+            var mockMigrationService = CreateMockMigrationService_FileExists();
+            var configManager = new ConfigManager(_testDirectory.FullName, mockMigrationService.Object);
+
+            var preferences = new UserPreferences
+            {
+                PhoneClientVerbosity = VerbosityLevel.Detailed,
+                PCClientVerbosity = VerbosityLevel.Basic,
+                TransformationEngineVerbosity = VerbosityLevel.Detailed,
+                PreferredConsoleWidth = 120,
+                PreferredConsoleHeight = 40
+            };
+
+            // Act - Save preferences
+            await configManager.SaveUserPreferencesAsync(preferences);
+
+            // Verify file was actually created
+            File.Exists(_userPreferencesPath).Should().BeTrue("file should exist after save");
+
+            // Read the file content manually to verify
+            var fileContent = File.ReadAllText(_userPreferencesPath);
+            Console.WriteLine($"DEBUG: Saved file content: {fileContent}");
+
+            // Try to deserialize manually to see what happens
+            try
+            {
+                var manuallyDeserialized = JsonSerializer.Deserialize<UserPreferences>(fileContent);
+                Console.WriteLine($"DEBUG: Manual deserialization successful: {manuallyDeserialized != null}");
+                if (manuallyDeserialized != null)
+                {
+                    Console.WriteLine($"DEBUG: PhoneClientVerbosity: {manuallyDeserialized.PhoneClientVerbosity}");
+                    Console.WriteLine($"DEBUG: PCClientVerbosity: {manuallyDeserialized.PCClientVerbosity}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DEBUG: Manual deserialization failed: {ex.Message}");
+            }
+
+            // This test is just for debugging, so we don't need assertions
         }
     }
 }

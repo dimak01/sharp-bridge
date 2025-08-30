@@ -85,7 +85,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Creates a deep copy of ApplicationConfig
         /// </summary>
-        public static ApplicationConfig Clone(ApplicationConfig original)
+        public static ApplicationConfig Clone(ApplicationConfig? original)
         {
             if (original == null) return new ApplicationConfig();
 

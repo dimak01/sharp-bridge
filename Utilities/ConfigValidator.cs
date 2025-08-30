@@ -15,7 +15,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="config">The application configuration to validate</param>
         /// <returns>Validation result indicating which fields are missing</returns>
-        public ConfigValidationResult ValidateConfiguration(ApplicationConfig config)
+        public ConfigValidationResult ValidateConfiguration(ApplicationConfig? config)
         {
             if (config == null)
             {
@@ -32,7 +32,8 @@ namespace SharpBridge.Utilities
             // Validate phone configuration
             if (config.PhoneClient != null)
             {
-                if (!IsValidIpAddress(config.PhoneClient.IphoneIpAddress))
+                // Check if iPhone IP address is set (null means user needs to configure it)
+                if (string.IsNullOrWhiteSpace(config.PhoneClient.IphoneIpAddress) || !IsValidIpAddress(config.PhoneClient.IphoneIpAddress))
                 {
                     missingFields.Add(MissingField.PhoneIpAddress);
                 }
@@ -51,6 +52,7 @@ namespace SharpBridge.Utilities
             // Validate PC configuration
             if (config.PCClient != null)
             {
+                // Check if PC Host is set (null means user should configure it, but localhost is a reasonable default)
                 if (string.IsNullOrWhiteSpace(config.PCClient.Host))
                 {
                     missingFields.Add(MissingField.PCHost);
@@ -82,24 +84,8 @@ namespace SharpBridge.Utilities
                 return false;
             }
 
-            // Check if it's a valid IP address and not a default placeholder
-            if (!IPAddress.TryParse(ipAddress, out _))
-            {
-                return false;
-            }
-
-            // Consider common default/placeholder IPs as invalid for phone IP
-            // These are typically placeholders that need user configuration
-            var defaultIps = new[] { "192.168.1.178", "192.168.1.1", "127.0.0.1", "localhost" };
-            foreach (var defaultIp in defaultIps)
-            {
-                if (string.Equals(ipAddress, defaultIp, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return false; // Treat defaults as requiring user input
-                }
-            }
-
-            return true;
+            // Check if it's a valid IP address format
+            return IPAddress.TryParse(ipAddress, out _);
         }
 
         /// <summary>

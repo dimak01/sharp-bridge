@@ -179,7 +179,11 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var config = new ApplicationConfig
             {
-                PhoneClient = null,
+                PhoneClient = new VTubeStudioPhoneClientConfig
+                {
+                    IphoneIpAddress = null, // Missing IP address
+                    IphonePort = 21412
+                },
                 PCClient = new VTubeStudioPCConfig
                 {
                     Host = "localhost",

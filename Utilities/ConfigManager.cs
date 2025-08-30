@@ -18,16 +18,19 @@ namespace SharpBridge.Utilities
         private readonly string _applicationConfigFilename = "ApplicationConfig.json";
         private readonly string _userPreferencesFilename = "UserPreferences.json";
         private readonly IConfigMigrationService _migrationService;
+        private readonly IAppLogger? _logger;
 
         /// <summary>
         /// Initializes a new instance of the ConfigManager class.
         /// </summary>
         /// <param name="configDirectory">The directory where config files are stored</param>
         /// <param name="migrationService">Service for handling configuration migration</param>
-        public ConfigManager(string configDirectory, IConfigMigrationService migrationService)
+        /// <param name="logger">Optional logger for configuration operations</param>
+        public ConfigManager(string configDirectory, IConfigMigrationService migrationService, IAppLogger? logger = null)
         {
             _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
             _migrationService = migrationService ?? throw new ArgumentNullException(nameof(migrationService));
+            _logger = logger;
 
             _jsonOptions = new JsonSerializerOptions
             {
@@ -55,6 +58,8 @@ namespace SharpBridge.Utilities
         /// <returns>The consolidated application configuration.</returns>
         public async Task<ApplicationConfig> LoadApplicationConfigAsync()
         {
+            _logger?.Debug("Loading ApplicationConfig from: {0}", ApplicationConfigPath);
+
             var result = await _migrationService.LoadWithMigrationAsync<ApplicationConfig>(
                 ApplicationConfigPath,
                 () => new ApplicationConfig());
@@ -62,6 +67,12 @@ namespace SharpBridge.Utilities
             // For Phase 1, we'll save the config if it was created to maintain current behavior
             if (result.WasCreated)
             {
+                _logger?.Info("ApplicationConfig was created from defaults, saving to: {0}", ApplicationConfigPath);
+                await SaveConfigAsync(ApplicationConfigPath, result.Config);
+            }
+            else if (result.WasMigrated)
+            {
+                _logger?.Info("ApplicationConfig was migrated from version {0}, saving updated version to: {1}", result.OriginalVersion, ApplicationConfigPath);
                 await SaveConfigAsync(ApplicationConfigPath, result.Config);
             }
 
@@ -129,6 +140,8 @@ namespace SharpBridge.Utilities
         /// <returns>The user preferences.</returns>
         public async Task<UserPreferences> LoadUserPreferencesAsync()
         {
+            _logger?.Debug("Loading UserPreferences from: {0}", UserPreferencesPath);
+
             var result = await _migrationService.LoadWithMigrationAsync<UserPreferences>(
                 UserPreferencesPath,
                 () => new UserPreferences());
@@ -136,6 +149,12 @@ namespace SharpBridge.Utilities
             // For Phase 1, we'll save the config if it was created to maintain current behavior
             if (result.WasCreated)
             {
+                _logger?.Info("UserPreferences was created from defaults, saving to: {0}", UserPreferencesPath);
+                await SaveConfigAsync(UserPreferencesPath, result.Config);
+            }
+            else if (result.WasMigrated)
+            {
+                _logger?.Info("UserPreferences was migrated from version {0}, saving updated version to: {1}", result.OriginalVersion, UserPreferencesPath);
                 await SaveConfigAsync(UserPreferencesPath, result.Config);
             }
 
@@ -229,11 +248,46 @@ namespace SharpBridge.Utilities
         {
             try
             {
+                _logger?.Debug("Saving {0} configuration to: {1}", typeof(T).Name, path);
+
+                // Create a backup if the file already exists
+                var backupPath = path + ".backup";
+                if (File.Exists(path))
+                {
+                    File.Copy(path, backupPath, overwrite: true);
+                    _logger?.Debug("Created backup of existing configuration: {0}", backupPath);
+                }
+
                 using var fileStream = File.Create(path);
                 await JsonSerializer.SerializeAsync(fileStream, config, _jsonOptions);
+
+                _logger?.Info("Successfully saved {0} configuration to: {1}", typeof(T).Name, path);
+
+                // Remove backup after successful save
+                if (File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                    _logger?.Debug("Removed backup file after successful save: {0}", backupPath);
+                }
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger?.ErrorWithException("JSON serialization error saving configuration to: {0}", jsonEx, path);
+                throw new InvalidOperationException($"JSON serialization error saving configuration to {path}: {jsonEx.Message}", jsonEx);
+            }
+            catch (IOException ioEx)
+            {
+                _logger?.ErrorWithException("IO error saving configuration to: {0}", ioEx, path);
+                throw new InvalidOperationException($"IO error saving configuration to {path}: {ioEx.Message}", ioEx);
+            }
+            catch (UnauthorizedAccessException accessEx)
+            {
+                _logger?.ErrorWithException("Access denied saving configuration to: {0}", accessEx, path);
+                throw new InvalidOperationException($"Access denied saving configuration to {path}: {accessEx.Message}", accessEx);
             }
             catch (Exception ex)
             {
+                _logger?.ErrorWithException("Unexpected error saving configuration to: {0}", ex, path);
                 throw new InvalidOperationException($"Error saving configuration to {path}: {ex.Message}", ex);
             }
         }
@@ -242,6 +296,7 @@ namespace SharpBridge.Utilities
         {
             if (!Directory.Exists(_configDirectory))
             {
+                _logger?.Info("Creating configuration directory: {0}", _configDirectory);
                 Directory.CreateDirectory(_configDirectory);
             }
         }
