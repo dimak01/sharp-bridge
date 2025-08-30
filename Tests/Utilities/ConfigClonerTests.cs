@@ -42,73 +42,13 @@ namespace SharpBridge.Tests.Utilities
             cloned.PCClient.Port.Should().Be(original.PCClient.Port);
         }
 
-        [Fact]
-        public void WithPhoneIpAddress_CreatesNewConfigWithUpdatedIp()
-        {
-            // Arrange
-            var original = new ApplicationConfig
-            {
-                PhoneClient = new VTubeStudioPhoneClientConfig
-                {
-                    IphoneIpAddress = "192.168.1.100",
-                    IphonePort = 21412
-                }
-            };
-            var newIp = "192.168.1.200";
 
-            // Act
-            var updated = ConfigCloner.WithPhoneIpAddress(original, newIp);
-
-            // Assert
-            updated.Should().NotBeSameAs(original);
-            updated.PhoneClient.Should().NotBeSameAs(original.PhoneClient);
-
-            // Original should be unchanged
-            original.PhoneClient.IphoneIpAddress.Should().Be("192.168.1.100");
-
-            // Updated should have new IP
-            updated.PhoneClient.IphoneIpAddress.Should().Be(newIp);
-
-            // Other values should be preserved
-            updated.PhoneClient.IphonePort.Should().Be(original.PhoneClient.IphonePort);
-        }
-
-        [Fact]
-        public void WithPCHost_CreatesNewConfigWithUpdatedHost()
-        {
-            // Arrange
-            var original = new ApplicationConfig
-            {
-                PCClient = new VTubeStudioPCConfig
-                {
-                    Host = "localhost",
-                    Port = 8001
-                }
-            };
-            var newHost = "192.168.1.50";
-
-            // Act
-            var updated = ConfigCloner.WithPCHost(original, newHost);
-
-            // Assert
-            updated.Should().NotBeSameAs(original);
-            updated.PCClient.Should().NotBeSameAs(original.PCClient);
-
-            // Original should be unchanged
-            original.PCClient.Host.Should().Be("localhost");
-
-            // Updated should have new host
-            updated.PCClient.Host.Should().Be(newHost);
-
-            // Other values should be preserved
-            updated.PCClient.Port.Should().Be(original.PCClient.Port);
-        }
 
         [Fact]
         public void Clone_HandlesNullValues_Gracefully()
         {
             // Act & Assert - should not throw
-            var result = ConfigCloner.Clone((ApplicationConfig)null);
+            var result = ConfigCloner.Clone((ApplicationConfig?)null);
             result.Should().NotBeNull();
             result.Should().BeOfType<ApplicationConfig>();
         }

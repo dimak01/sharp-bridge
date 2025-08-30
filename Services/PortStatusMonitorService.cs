@@ -38,9 +38,9 @@ namespace SharpBridge.Services
             var phoneConfig = await _configManager.LoadPhoneConfigAsync();
             var pcConfig = await _configManager.LoadPCConfigAsync();
 
-            var iphoneHost = phoneConfig.IphoneIpAddress;
+            var iphoneHost = phoneConfig.IphoneIpAddress ?? "192.168.1.178"; // Default if not configured
             var iphonePort = phoneConfig.IphonePort.ToString();
-            var pcHost = pcConfig.Host;
+            var pcHost = pcConfig.Host ?? "localhost"; // Default if not configured
             var pcPort = pcConfig.Port.ToString();
             var discoveryPort = "47779"; // VTube Studio discovery port
             var usePortDiscovery = pcConfig.UsePortDiscovery;

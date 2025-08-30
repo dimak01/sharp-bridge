@@ -50,8 +50,14 @@ namespace SharpBridge.Services
             // Display initial setup screen
             DisplaySetupIntroduction(fieldList);
 
+            var totalSteps = fieldList.Count;
+            var currentStep = 0;
+
             foreach (var field in fieldList)
             {
+                currentStep++;
+                DisplayProgressIndicator(currentStep, totalSteps, field);
+
                 try
                 {
                     var (success, updatedConfig) = field switch
@@ -98,6 +104,13 @@ namespace SharpBridge.Services
                 _console.WriteLines(setupScreen);
 
                 var input = _console.ReadLine();
+
+                // Allow user to cancel setup
+                if (IsCancellationRequest(input))
+                {
+                    DisplaySetupCancellation();
+                    return (false, config);
+                }
 
                 if (string.IsNullOrWhiteSpace(input))
                 {
@@ -166,17 +179,7 @@ namespace SharpBridge.Services
                 var input = _console.ReadLine();
 
                 // Allow empty input to use default
-                if (string.IsNullOrWhiteSpace(input))
-                {
-                    input = "localhost";
-                }
-
-                var host = input.Trim();
-                if (string.IsNullOrEmpty(host))
-                {
-                    DisplayValidationError("Host cannot be empty. Please try again.");
-                    continue;
-                }
+                var host = string.IsNullOrWhiteSpace(input) ? "localhost" : input.Trim();
 
                 // Create new config with updated host
                 var updatedConfig = WithPCHost(config, host);
@@ -367,6 +370,7 @@ namespace SharpBridge.Services
                 "",
                 "Enter the host address where VTube Studio is running on your PC.",
                 "Use 'localhost' if VTube Studio is on the same computer as Sharp Bridge.",
+                "Leave empty to use 'localhost' as default.",
                 "",
                 "PC Host (default: localhost): "
             };
@@ -390,6 +394,86 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
+        /// Displays a progress indicator showing current step and field being configured
+        /// </summary>
+        private void DisplayProgressIndicator(int currentStep, int totalSteps, MissingField field)
+        {
+            var fieldName = field switch
+            {
+                MissingField.PhoneIpAddress => "iPhone IP Address",
+                MissingField.PhonePort => "iPhone Port",
+                MissingField.PCHost => "PC Host",
+                MissingField.PCPort => "PC Port",
+                _ => "Unknown Field"
+            };
+
+            var progressBar = GenerateProgressBar(currentStep, totalSteps);
+
+            var lines = new[]
+            {
+                "",
+                "═══════════════════════════════════════════════════════════════════════",
+                $"  FIRST-TIME SETUP - Step {currentStep} of {totalSteps}",
+                $"  Configuring: {fieldName}",
+                "",
+                $"  Progress: {progressBar} ({currentStep}/{totalSteps})",
+                "═══════════════════════════════════════════════════════════════════════",
+                ""
+            };
+
+            _console.WriteLines(lines);
+        }
+
+        /// <summary>
+        /// Generates a visual progress bar
+        /// </summary>
+        private static string GenerateProgressBar(int current, int total, int width = 20)
+        {
+            var progress = (double)current / total;
+            var filled = (int)(progress * width);
+            var empty = width - filled;
+
+            return $"[{new string('█', filled)}{new string('░', empty)}]";
+        }
+
+        /// <summary>
+        /// Checks if user input indicates they want to cancel setup
+        /// </summary>
+        private static bool IsCancellationRequest(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            var trimmed = input.Trim();
+            return trimmed.Equals("cancel", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("quit", StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.Equals("exit", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Displays setup cancellation message
+        /// </summary>
+        private void DisplaySetupCancellation()
+        {
+            var lines = new[]
+            {
+                "",
+                "⚠️  Setup cancelled by user.",
+                "",
+                "The application will continue with the current configuration,",
+                "but some features may not work properly until the missing",
+                "fields are configured.",
+                "",
+                "You can restart the application to run setup again, or",
+                "manually edit the configuration file.",
+                "",
+                "Press Enter to continue..."
+            };
+            _console.WriteLines(lines);
+            _console.ReadLine(); // Wait for user acknowledgment
+        }
+
+        /// <summary>
         /// Displays a validation error message
         /// </summary>
         private void DisplayValidationError(string message)
@@ -399,7 +483,8 @@ namespace SharpBridge.Services
                 "",
                 $"❌ {message}",
                 "Press Enter to try again...",
-                ""
+                "",
+                "💡 Tip: Type 'cancel', 'quit', or 'exit' to skip setup"
             };
             _console.WriteLines(lines);
             _console.ReadLine(); // Wait for user to press Enter

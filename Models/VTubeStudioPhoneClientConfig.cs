@@ -13,10 +13,10 @@ public class VTubeStudioPhoneClientConfig
     // ========================================
 
     /// <summary>
-    /// IP address of the iPhone
+    /// IP address of the iPhone (defaults to 127.0.0.1, null indicates user needs to set this)
     /// </summary>
     [Description("iPhone IP Address")]
-    public string IphoneIpAddress { get; set; } = "192.168.1.178";
+    public string? IphoneIpAddress { get; set; } = "127.0.0.1";
 
     /// <summary>
     /// Port on the iPhone where VTube Studio is broadcasting

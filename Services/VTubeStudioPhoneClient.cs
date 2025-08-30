@@ -65,7 +65,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         _config = _configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
         if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
             throw new ArgumentException("iPhone IP address must not be empty", "config");
-        _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress, _config.IphonePort);
+        _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress ?? "not configured", _config.IphonePort);
 
         // Subscribe to application config changes if watcher is provided
         if (_appConfigWatcher != null)
@@ -198,7 +198,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
 
             var json = JsonSerializer.Serialize(request);
             var data = Encoding.UTF8.GetBytes(json);
-            await _udpClient.SendAsync(data, data.Length, _config.IphoneIpAddress, _config.IphonePort);
+            await _udpClient.SendAsync(data, data.Length, _config.IphoneIpAddress ?? "127.0.0.1", _config.IphonePort);
         }
         catch (Exception ex)
         {
@@ -288,7 +288,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
                 _configChanged = true;
 
                 _logger.Debug("Phone client config updated - IP: {0}:{1}, LocalPort: {2}",
-                    _config.IphoneIpAddress, _config.IphonePort, _config.LocalPort);
+                    _config.IphoneIpAddress ?? "not configured", _config.IphonePort, _config.LocalPort);
             }
         }
         catch (Exception ex)

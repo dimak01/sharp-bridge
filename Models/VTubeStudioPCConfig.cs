@@ -14,10 +14,10 @@ namespace SharpBridge.Models
         // ========================================
 
         /// <summary>
-        /// Host address of VTube Studio, defaults to localhost
+        /// Host address of VTube Studio (defaults to localhost, null indicates user should set this)
         /// </summary>
         [Description("Host Address")]
-        public string Host { get; set; } = "localhost";
+        public string? Host { get; set; } = "localhost";
 
         /// <summary>
         /// Port number of VTube Studio API, defaults to 8001

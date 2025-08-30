@@ -101,11 +101,11 @@ namespace SharpBridge.Services
             }
 
             _connectionAttempts++;
-            _logger.Info("Connecting to VTube Studio at {0}:{1}", _config.Host, _config.Port);
+            _logger.Info("Connecting to VTube Studio at {0}:{1}", _config.Host ?? "localhost", _config.Port);
 
             try
             {
-                var uri = new Uri($"ws://{_config.Host}:{_config.Port}");
+                var uri = new Uri($"ws://{_config.Host ?? "localhost"}:{_config.Port}");
                 await _webSocket.ConnectAsync(uri, cancellationToken);
                 _logger.Info("Connected to VTube Studio");
             }
@@ -519,7 +519,7 @@ namespace SharpBridge.Services
                     _configChanged = true;
 
                     _logger.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",
-                        _config.Host, _config.Port, _config.PluginName);
+                        _config.Host ?? "localhost", _config.Port, _config.PluginName);
                 }
             }
             catch (Exception ex)

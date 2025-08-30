@@ -12,6 +12,6 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <param name="config">The application configuration to validate</param>
         /// <returns>Validation result indicating which fields are missing</returns>
-        ConfigValidationResult ValidateConfiguration(ApplicationConfig config);
+        ConfigValidationResult ValidateConfiguration(ApplicationConfig? config);
     }
 }

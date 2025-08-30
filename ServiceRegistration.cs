@@ -3,6 +3,7 @@ using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
 using SharpBridge.Utilities;
+using SharpBridge.Utilities.Migrations;
 using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
@@ -31,16 +32,59 @@ namespace SharpBridge
             if (string.IsNullOrEmpty(configDirectory))
                 throw new ArgumentException("Config directory cannot be null or empty", nameof(configDirectory));
 
-            // Register migration service
-            services.AddSingleton<IConfigMigrationService, ConfigMigrationService>();
+            // Register logging services
+            services.AddSingleton(ConfigureSerilog());
+
+            // Register the Serilog logger as a singleton
+            services.AddSingleton<IAppLogger, SerilogAppLogger>();
+
+            // Register console abstraction
+            services.AddSingleton<IConsole, SystemConsole>();
+
+            // Register console window manager
+            services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
+
+            // Register migration service and chains
+            services.AddSingleton<IConfigMigrationService>(provider =>
+                new ConfigMigrationService(provider.GetRequiredService<IAppLogger>()));
+
+            services.AddSingleton<IConfigMigrationChain<ApplicationConfig>>(provider =>
+                new ConfigMigrationChain<ApplicationConfig>(provider.GetRequiredService<IAppLogger>()));
+
+            services.AddSingleton<IConfigMigrationChain<UserPreferences>>(provider =>
+                new ConfigMigrationChain<UserPreferences>(provider.GetRequiredService<IAppLogger>()));
 
             // Register validation and first-time setup services
             services.AddSingleton<IConfigValidator, ConfigValidator>();
             services.AddSingleton<IFirstTimeSetupService, FirstTimeSetupService>();
 
+            // Register config remediation service (remediation already executed above)
+            services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
+
             // Register config manager
             services.AddSingleton<IConfigManager>(provider =>
-                new ConfigManager(configDirectory, provider.GetRequiredService<IConfigMigrationService>()));
+                new ConfigManager(configDirectory, provider.GetRequiredService<IConfigMigrationService>(), provider.GetRequiredService<IAppLogger>()));
+
+            // Build temporary container to get core services for immediate configuration remediation
+            var tempServiceProvider = services.BuildServiceProvider();
+
+            try
+            {
+                // Create and run remediation service immediately to ensure configuration is valid
+                // before any config-dependent services are created
+                var remediationService = new ConfigRemediationService(
+                    tempServiceProvider.GetRequiredService<IConfigManager>(),
+                    tempServiceProvider.GetRequiredService<IConfigValidator>(),
+                    tempServiceProvider.GetRequiredService<IFirstTimeSetupService>(),
+                    tempServiceProvider.GetRequiredService<IAppLogger>()
+                );
+                remediationService.RemediateConfiguration();
+            }
+            finally
+            {
+                // Always dispose the temporary container
+                tempServiceProvider.Dispose();
+            }
 
             // Register configurations
             services.AddSingleton(provider =>
@@ -160,18 +204,6 @@ namespace SharpBridge
                     factory.CreateForPortDiscovery()
                 );
             });
-
-            // Register console abstraction
-            services.AddSingleton<IConsole, SystemConsole>();
-
-            // Register console window manager
-            services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
-
-            // Register logging services
-            services.AddSingleton(ConfigureSerilog());
-
-            // Register the Serilog logger as a singleton
-            services.AddSingleton<IAppLogger, SerilogAppLogger>();
 
             // Register keyboard input handler
             services.AddSingleton<IKeyboardInputHandler, KeyboardInputHandler>();
@@ -302,9 +334,7 @@ namespace SharpBridge
                     provider.GetRequiredService<ApplicationConfig>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
-                    provider.GetRequiredService<IConfigValidator>(),
-                    provider.GetRequiredService<IFirstTimeSetupService>()
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
                 ));
 
             return services;

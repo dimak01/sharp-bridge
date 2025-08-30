@@ -178,7 +178,7 @@ namespace SharpBridge.Utilities
 
             // Check/Test commands
             var checkCmd = _commandProvider.GetCheckPortStatusCommand(pcConfig.Port.ToString(), "TCP");
-            var testCmd = _commandProvider.GetTestConnectivityCommand(pcConfig.Host, pcConfig.Port.ToString());
+            var testCmd = _commandProvider.GetTestConnectivityCommand(pcConfig.Host ?? "localhost", pcConfig.Port.ToString());
             sb.AppendLine($"    {ConsoleColors.Colorize("Check WebSocket port", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(checkCmd)}");
             sb.AppendLine($"    {ConsoleColors.Colorize("Test connectivity", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(testCmd)}");
 
