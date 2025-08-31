@@ -1,182 +1,206 @@
-# Configuration Management & First-Time Setup - Implementation Checklist
+# Configuration Management & Field-Driven Remediation - Implementation Checklist
 
-## Phase 1: Foundation (Versioning & Migration Infrastructure)
-**Goal**: Add versioning support without changing current behavior
+## Phase 1: Cleanup and Removal of Old System
+**Goal**: Remove old versioning and migration infrastructure that's no longer needed
 
-### Step 1.1: Add Version Properties to Current DTOs
-- [x] Add version property to `ApplicationConfig` class with default value
-- [x] Add version property to `UserPreferences` class with default value
-- [x] Add current version constants to both classes
-- [x] Test: Verify existing configs still load/save correctly with new version fields
+### Step 1.1: Remove Versioning Infrastructure
+- [ ] Remove `Version` properties from all DTOs
+- [ ] Remove `IConfigMigrationService` and `ConfigMigrationService`
+- [ ] Remove `IConfigMigration` and related interfaces
+- [ ] Remove migration chain classes and logic
+- [ ] Test: Application still works without versioning
 
-### Step 1.2: Create Migration Infrastructure
-- [x] Create `IConfigMigrationService` interface
-- [x] Create `ConfigMigrationService` implementation with version probing capability
-- [x] Create `ConfigLoadResult<T>` model to wrap loaded configs with metadata
-- [x] Test: Can probe version from existing configs, returns current version correctly
+### Step 1.2: Remove Old Validation System
+- [ ] Remove `IConfigValidator` and `ConfigValidator` (old system)
+- [ ] Remove `MissingField` enum and `ConfigValidationResult` (old system)
+- [ ] Remove `IFirstTimeSetupService` and `FirstTimeSetupService` (old system)
+- [ ] Update any remaining references to remove old system dependencies
+- [ ] Test: No old validation code remains
 
-### Step 1.3: Update ConfigManager to Use Migration Service
-- [x] Modify `LoadApplicationConfigAsync()` to use migration service
-- [x] Modify `LoadUserPreferencesAsync()` to use migration service
-- [x] Keep current behavior but route through new infrastructure
-- [x] Register migration service in DI container
-- [x] Test: All existing functionality works unchanged
-
----
-
-## Phase 2: Validation & First-Time Setup
-**Goal**: Add validation and setup flow without breaking existing startup
-
-### Step 2.1: Create Validation Infrastructure
-- [x] Create `MissingField` enum with relevant field identifiers
-- [x] Create `ConfigValidationResult` model
-- [x] Create `IConfigValidator` interface
-- [x] Create `ConfigValidator` implementation
-- [x] Define validation rules for required fields (phone IP, PC host/port logic)
-- [x] Test: Can validate current configs, identifies missing fields correctly
-
-### Step 2.2: Create First-Time Setup Service
-- [x] Create `IFirstTimeSetupService` interface
-- [x] Create console-based `FirstTimeSetupService` implementation
-- [x] Implement prompting logic for each missing field type
-- [x] Add input validation and error handling for user entries
-- [x] Test: Can prompt for and collect missing fields in isolation
-
-### Step 2.3: Integrate Setup into ApplicationOrchestrator
-- [x] Add validation check in `InitializeAsync()` before service initialization
-- [x] Add first-time setup call when validation fails
-- [x] Ensure file watchers start after potential setup saves
-- [x] Keep existing behavior as fallback for validation errors
-- [x] Register setup service in DI container
-- [x] Test: Normal startup unchanged, setup triggers when fields missing
+### Step 1.3: Update Tests
+- [ ] Remove tests for old versioning system
+- [ ] Remove tests for old validation system
+- [ ] Ensure all tests pass after cleanup
+- [ ] Test: Test suite is clean and focused
 
 ---
 
-## Phase 3: Enhanced Loading (Load-or-Create)
-**Goal**: Improve config creation and error handling
+## Phase 2: Foundation (Field-Driven Infrastructure)
+**Goal**: Implement the core field-driven validation and remediation system
 
-### Step 3.1: Enhance ConfigManager Load-or-Create Logic
-- [x] Improve load-or-create logic to handle missing files consistently
-- [x] Add better error handling for corrupted/invalid JSON files
-- [x] Ensure uniform behavior for both `ApplicationConfig` and `UserPreferences`
-- [x] Add logging for config creation and error scenarios
-- [x] Test: Handles missing/corrupted files gracefully, creates defaults when needed
+### Step 2.1: Create Core Interfaces and Models
+- [ ] Create `ConfigSectionTypes` enum with all section types
+- [ ] Create `IConfigSection` interface (marker interface)
+- [ ] Create `ConfigFieldState` record for field-level validation
+- [ ] Update all existing DTOs to implement `IConfigSection`
+- [ ] Test: Verify all DTOs can be cast to `IConfigSection`
 
-### Step 3.2: Add Required Field Detection
-- [x] Determine strategy for "unset" vs "default" field detection
-- [x] Update DTOs to support unset detection (nullable strings or sentinel values)
-- [x] Update validation to distinguish between user-set and default values
-- [x] Ensure first-time setup only triggers for truly missing fields
-- [x] Test: Can distinguish between user-set and default values correctly
+### Step 2.2: Create Factory Interfaces
+- [ ] Create `IConfigSectionValidator` interface (non-generic)
+- [ ] Create `IConfigSectionFirstTimeSetupService` interface (non-generic)
+- [ ] Create `IConfigSectionValidatorsFactory` interface
+- [ ] Create `IConfigSectionFirstTimeSetupFactory` interface
+- [ ] Test: Verify interfaces compile and can be mocked
 
----
-
-## Phase 4: Migration Support (Future-Proofing)
-**Goal**: Add support for future config migrations
-
-### Step 4.1: Create Legacy DTO Structure
-- [ ] Create `Models/Legacy/` folder structure
-- [ ] Create `Models/Legacy/V1/` subfolder for version 1 DTOs
-- [ ] Create example legacy DTOs for testing migration functionality
-- [ ] Ensure legacy DTOs are internal/separate from current DTOs
-- [ ] Test: Can deserialize legacy configs to old DTO structures
-
-### Step 4.2: Implement Migration Pipeline
-- [x] Create migration function interface/pattern
-- [x] Implement example migration (V0→V1) for handling current no-version files
-- [x] Add migration chain execution logic
-- [x] Add migration validation and error handling
-- [x] Ensure migrations are idempotent and side-effect-free
-- [x] Test: Can migrate old configs to current version successfully
+### Step 2.3: Update ConfigManager Interface
+- [ ] Add `LoadSectionAsync<T>()` method to `IConfigManager`
+- [ ] Add `SaveSectionAsync<T>()` method to `IConfigManager`
+- [ ] Add `GetSectionFieldsAsync<T>()` method to `IConfigManager`
+- [ ] Add non-generic versions using `ConfigSectionTypes` enum
+- [ ] Test: Verify interface changes compile
 
 ---
 
-## Phase 5: Integration & Polish
-**Goal**: Refine the complete flow and user experience
+## Phase 3: Implementation of Field-Driven System
+**Goal**: Implement the actual field-driven validation and remediation logic
 
-### Step 5.1: File Watcher Integration
-- [x] Ensure file watchers start after potential first-time setup saves
-- [x] Handle runtime validation failures when configs change
-- [x] Add debouncing/suppression for setup-triggered file saves
-- [x] Test runtime config change scenarios with validation
-- [x] Test: No watcher loops, runtime changes handled correctly
+### Step 3.1: Implement ConfigManager Updates
+- [ ] Implement `LoadSectionAsync<T>()` methods in `ConfigManager`
+- [ ] Implement `SaveSectionAsync<T>()` methods in `ConfigManager`
+- [ ] Implement `GetSectionFieldsAsync<T>()` methods in `ConfigManager`
+- [ ] Implement non-generic versions using switch expressions
+- [ ] Test: Verify section loading/saving works correctly
 
-### Step 5.2: Error Handling & User Experience
-- [x] Improve error messages throughout the configuration flow
-- [x] Add clear progress indicators during first-time setup
-- [x] Add helpful validation feedback for user input errors
-- [x] Add graceful fallbacks for setup cancellation/failures
-- [x] Add logging for troubleshooting configuration issues
-- [x] Test: User-friendly experience for common error scenarios
+### Step 3.2: Implement Section-Specific Validators
+- [ ] Create `VTubeStudioPCConfigValidator` implementing `IConfigSectionValidator`
+- [ ] Create `VTubeStudioPhoneClientConfigValidator` implementing `IConfigSectionValidator`
+- [ ] Create `GeneralSettingsConfigValidator` implementing `IConfigSectionValidator`
+- [ ] Create `TransformationEngineConfigValidator` implementing `IConfigSectionValidator`
+- [ ] Test: Each validator correctly identifies missing/invalid fields
 
----
+### Step 3.3: Implement Section-Specific Setup Services
+- [ ] Create `VTubeStudioPCConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [ ] Create `VTubeStudioPhoneClientConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [ ] Create `GeneralSettingsConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [ ] Create `TransformationEngineConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [ ] Test: Each setup service can fix missing fields correctly
 
-## Testing Milestones
-
-### After Phase 1
-- [x] All existing configuration loading works unchanged
-- [x] Version information is correctly read from config files
-- [x] Migration infrastructure exists but doesn't affect current behavior
-
-### After Phase 2
-- [x] First-time setup can collect missing required fields
-- [x] Validation correctly identifies which fields are missing
-- [x] Setup integrates with startup flow without breaking existing paths
-
-### After Phase 3
-- [x] Robust handling of missing, corrupted, or invalid config files
-- [x] Consistent load-or-create behavior across both config types
-- [x] Clear distinction between unset and default values
-
-### After Phase 4
-- [ ] Migration pipeline can handle legacy configuration formats
-- [ ] Future config version changes are supported
-- [ ] Legacy DTO handling is isolated and testable
-
-### After Phase 5
-- [x] Complete end-to-end flow works seamlessly
-- [x] File watching integration doesn't cause issues
-- [x] User experience is polished and error-tolerant
+### Step 3.4: Implement Factory Services
+- [ ] Create `ConfigSectionValidatorsFactory` implementing `IConfigSectionValidatorsFactory`
+- [ ] Create `ConfigSectionFirstTimeSetupFactory` implementing `IConfigSectionFirstTimeSetupFactory`
+- [ ] Use DI keyed services or switch-based implementation
+- [ ] Test: Factories return correct services for each section type
 
 ---
 
-## Integration Tests
+## Phase 4: Integration and Refinement
+**Goal**: Integrate the field-driven system and refine the user experience
 
-### End-to-End Scenarios
+### Step 4.1: Update ConfigRemediationService
+- [ ] Refactor to use new factory-based approach
+- [ ] Implement type-driven iteration using `ConfigSectionTypes` enum
+- [ ] Update to handle section-by-section validation and remediation
+- [ ] Ensure proper error handling and retry logic
+- [ ] Test: Complete flow works end-to-end
+
+### Step 4.2: Update Service Registration
+- [ ] Register new factory services in DI container
+- [ ] Register all section-specific validators and setup services
+- [ ] Update `ConfigRemediationService` registration
+- [ ] Remove old migration-related registrations
+- [ ] Test: All services resolve correctly from DI container
+
+### Step 4.3: Refine User Experience
+- [ ] Improve progress indicators during remediation
+- [ ] Add better error messages and validation feedback
+- [ ] Implement graceful cancellation handling
+- [ ] Add logging for troubleshooting
+- [ ] Test: User experience is polished and error-tolerant
+
+---
+
+## Phase 5: Testing and Validation
+**Goal**: Ensure the complete field-driven system works correctly
+
+### Step 5.1: End-to-End Testing
 - [ ] Fresh installation with no config files
 - [ ] Startup with missing required fields
 - [ ] Startup with corrupted config files
 - [ ] Runtime config file changes
 - [ ] Config file deletion during runtime
-- [ ] Migration from legacy config versions
+- [ ] Test: All scenarios work correctly
 
-### Error Scenarios
-- [ ] Invalid user input during first-time setup
-- [ ] Setup cancellation/interruption
+### Step 5.2: Error Scenario Testing
+- [ ] Invalid user input during remediation
+- [ ] Remediation cancellation/interruption
 - [ ] File system permission errors
 - [ ] Malformed JSON in config files
-- [ ] Network connectivity issues during setup
+- [ ] Test: Error handling is robust
 
 ---
 
-## Rollback & Risk Mitigation
+## Legacy Items (Already Implemented - Review for Removal/Adjustment)
 
-### Backward Compatibility Checks
-- [ ] Existing config files continue to work without modification
-- [ ] No breaking changes to public configuration APIs
-- [ ] Graceful degradation when new features fail
+### Migration Infrastructure (Phase 1 from old checklist)
+- [x] Add version property to `ApplicationConfig` class with default value
+- [x] Add version property to `UserPreferences` class with default value
+- [x] Add current version constants to both classes
+- [x] Create `IConfigMigrationService` interface
+- [x] Create `ConfigMigrationService` implementation with version probing capability
+- [x] Create `ConfigLoadResult<T>` model to wrap loaded configs with metadata
+- [x] Modify `LoadApplicationConfigAsync()` to use migration service
+- [x] Modify `LoadUserPreferencesAsync()` to use migration service
+- [x] Register migration service in DI container
 
-### Rollback Preparation
-- [ ] Feature flags or configuration switches for new functionality
-- [ ] Ability to disable first-time setup if needed
-- [ ] Fallback to original loading logic in case of issues
-- [ ] Clear documentation for reverting changes
+### Old Validation System (Phase 2 from old checklist)
+- [x] Create `MissingField` enum with relevant field identifiers
+- [x] Create `ConfigValidationResult` model
+- [x] Create `IConfigValidator` interface
+- [x] Create `ConfigValidator` implementation
+- [x] Create `IFirstTimeSetupService` interface
+- [x] Create console-based `FirstTimeSetupService` implementation
+- [x] Add validation check in `InitializeAsync()` before service initialization
+- [x] Add first-time setup call when validation fails
+- [x] Register setup service in DI container
+
+### Enhanced Loading (Phase 3 from old checklist)
+- [x] Improve load-or-create logic to handle missing files consistently
+- [x] Add better error handling for corrupted/invalid JSON files
+- [x] Ensure uniform behavior for both `ApplicationConfig` and `UserPreferences`
+- [x] Add logging for config creation and error scenarios
+
+### Integration and Polish (Phase 5 from old checklist)
+- [x] Ensure file watchers start after potential first-time setup saves
+- [x] Handle runtime validation failures when configs change
+- [x] Add debouncing/suppression for setup-triggered file saves
+- [x] Improve error messages throughout the configuration flow
+- [x] Add clear progress indicators during first-time setup
+- [x] Add helpful validation feedback for user input errors
+- [x] Add graceful fallbacks for setup cancellation/failures
+- [x] Add logging for troubleshooting configuration issues
 
 ---
 
-## Documentation Updates (Post-Implementation)
-- [ ] Update main README with first-time setup information
-- [ ] Update ProjectOverview.md with new configuration architecture
-- [ ] Document new configuration validation rules
-- [ ] Update troubleshooting guide with setup-related issues
-- [ ] Create developer documentation for adding new config migrations
+## Discrepancy Analysis
+
+### Items to Review for Removal
+- [ ] **Version properties** - Remove from all DTOs
+- [ ] **Migration services** - Remove entire migration infrastructure
+- [ ] **Old validation interfaces** - Remove `IConfigValidator`, `ConfigValidator`
+- [ ] **Old setup interfaces** - Remove `IFirstTimeSetupService`, `FirstTimeSetupService`
+- [ ] **Old validation models** - Remove `MissingField`, `ConfigValidationResult`
+
+### Items to Review for Adjustment
+- [ ] **ConfigRemediationService** - Update to use new factory-based approach
+- [ ] **Service registration** - Update DI registrations for new system
+- [ ] **Tests** - Update all tests to use new approach
+- [ ] **Documentation** - Ensure all docs reflect new approach
+
+### Items to Keep (Already Working)
+- [x] **ConfigManager core functionality** - Keep load/save methods
+- [x] **File watching** - Keep file watcher integration
+- [x] **Error handling** - Keep robust error handling patterns
+- [x] **Logging** - Keep comprehensive logging
+- [x] **Console UI** - Keep console-based user interaction
+
+---
+
+## Next Steps Priority
+
+1. **Phase 1** - Clean up and remove old system
+2. **Phase 2** - Create new interfaces and models
+3. **Phase 3** - Implement the field-driven system
+4. **Phase 4** - Integrate and refine
+5. **Phase 5** - Test and validate
+
+**Goal**: Transform from complex versioning system to simple, field-driven remediation system while maintaining all existing functionality.
