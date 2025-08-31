@@ -3,7 +3,7 @@ using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
 using SharpBridge.Utilities;
-using SharpBridge.Utilities.Migrations;
+
 using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
@@ -44,47 +44,21 @@ namespace SharpBridge
             // Register console window manager
             services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
 
-            // Register migration service and chains
-            services.AddSingleton<IConfigMigrationService>(provider =>
-                new ConfigMigrationService(provider.GetRequiredService<IAppLogger>()));
 
-            services.AddSingleton<IConfigMigrationChain<ApplicationConfig>>(provider =>
-                new ConfigMigrationChain<ApplicationConfig>(provider.GetRequiredService<IAppLogger>()));
 
-            services.AddSingleton<IConfigMigrationChain<UserPreferences>>(provider =>
-                new ConfigMigrationChain<UserPreferences>(provider.GetRequiredService<IAppLogger>()));
-
-            // Register validation and first-time setup services
-            services.AddSingleton<IConfigValidator, ConfigValidator>();
-            services.AddSingleton<IFirstTimeSetupService, FirstTimeSetupService>();
-
-            // Register config remediation service (remediation already executed above)
-            services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
+            // TODO: Re-enable config remediation service when new field-driven system is implemented
+            // services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 
             // Register config manager
             services.AddSingleton<IConfigManager>(provider =>
-                new ConfigManager(configDirectory, provider.GetRequiredService<IConfigMigrationService>(), provider.GetRequiredService<IAppLogger>()));
+                new ConfigManager(configDirectory, provider.GetRequiredService<IAppLogger>()));
 
             // Build temporary container to get core services for immediate configuration remediation
             var tempServiceProvider = services.BuildServiceProvider();
 
-            try
-            {
-                // Create and run remediation service immediately to ensure configuration is valid
-                // before any config-dependent services are created
-                var remediationService = new ConfigRemediationService(
-                    tempServiceProvider.GetRequiredService<IConfigManager>(),
-                    tempServiceProvider.GetRequiredService<IConfigValidator>(),
-                    tempServiceProvider.GetRequiredService<IFirstTimeSetupService>(),
-                    tempServiceProvider.GetRequiredService<IAppLogger>()
-                );
-                remediationService.RemediateConfiguration();
-            }
-            finally
-            {
-                // Always dispose the temporary container
-                tempServiceProvider.Dispose();
-            }
+            // TODO: Re-enable config remediation when new field-driven system is implemented
+            // For now, just dispose the temporary container
+            tempServiceProvider.Dispose();
 
             // Register configurations
             services.AddSingleton(provider =>

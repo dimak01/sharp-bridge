@@ -17,19 +17,16 @@ namespace SharpBridge.Utilities
         private readonly string _configDirectory;
         private readonly string _applicationConfigFilename = "ApplicationConfig.json";
         private readonly string _userPreferencesFilename = "UserPreferences.json";
-        private readonly IConfigMigrationService _migrationService;
         private readonly IAppLogger? _logger;
 
         /// <summary>
         /// Initializes a new instance of the ConfigManager class.
         /// </summary>
         /// <param name="configDirectory">The directory where config files are stored</param>
-        /// <param name="migrationService">Service for handling configuration migration</param>
         /// <param name="logger">Optional logger for configuration operations</param>
-        public ConfigManager(string configDirectory, IConfigMigrationService migrationService, IAppLogger? logger = null)
+        public ConfigManager(string configDirectory, IAppLogger? logger = null)
         {
             _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
-            _migrationService = migrationService ?? throw new ArgumentNullException(nameof(migrationService));
             _logger = logger;
 
             _jsonOptions = new JsonSerializerOptions
@@ -60,23 +57,33 @@ namespace SharpBridge.Utilities
         {
             _logger?.Debug("Loading ApplicationConfig from: {0}", ApplicationConfigPath);
 
-            var result = await _migrationService.LoadWithMigrationAsync<ApplicationConfig>(
-                ApplicationConfigPath,
-                () => new ApplicationConfig());
-
-            // For Phase 1, we'll save the config if it was created to maintain current behavior
-            if (result.WasCreated)
+            try
             {
-                _logger?.Info("ApplicationConfig was created from defaults, saving to: {0}", ApplicationConfigPath);
-                await SaveConfigAsync(ApplicationConfigPath, result.Config);
+                if (File.Exists(ApplicationConfigPath))
+                {
+                    var json = await File.ReadAllTextAsync(ApplicationConfigPath);
+                    var config = JsonSerializer.Deserialize<ApplicationConfig>(json, _jsonOptions);
+                    if (config != null)
+                    {
+                        _logger?.Debug("ApplicationConfig loaded successfully from: {0}", ApplicationConfigPath);
+                        return config;
+                    }
+                }
             }
-            else if (result.WasMigrated)
+            catch (JsonException ex)
             {
-                _logger?.Info("ApplicationConfig was migrated from version {0}, saving updated version to: {1}", result.OriginalVersion, ApplicationConfigPath);
-                await SaveConfigAsync(ApplicationConfigPath, result.Config);
+                _logger?.Warning("Failed to parse ApplicationConfig from {0}: {1}", ApplicationConfigPath, ex.Message);
+            }
+            catch (IOException ex)
+            {
+                _logger?.Warning("Failed to read ApplicationConfig from {0}: {1}", ApplicationConfigPath, ex.Message);
             }
 
-            return result.Config;
+            // Create default config if file doesn't exist or is invalid
+            _logger?.Info("Creating default ApplicationConfig");
+            var defaultConfig = new ApplicationConfig();
+            await SaveApplicationConfigAsync(defaultConfig);
+            return defaultConfig;
         }
 
         /// <summary>
@@ -142,23 +149,33 @@ namespace SharpBridge.Utilities
         {
             _logger?.Debug("Loading UserPreferences from: {0}", UserPreferencesPath);
 
-            var result = await _migrationService.LoadWithMigrationAsync<UserPreferences>(
-                UserPreferencesPath,
-                () => new UserPreferences());
-
-            // For Phase 1, we'll save the config if it was created to maintain current behavior
-            if (result.WasCreated)
+            try
             {
-                _logger?.Info("UserPreferences was created from defaults, saving to: {0}", UserPreferencesPath);
-                await SaveConfigAsync(UserPreferencesPath, result.Config);
+                if (File.Exists(UserPreferencesPath))
+                {
+                    var json = await File.ReadAllTextAsync(UserPreferencesPath);
+                    var preferences = JsonSerializer.Deserialize<UserPreferences>(json, _jsonOptions);
+                    if (preferences != null)
+                    {
+                        _logger?.Debug("UserPreferences loaded successfully from: {0}", UserPreferencesPath);
+                        return preferences;
+                    }
+                }
             }
-            else if (result.WasMigrated)
+            catch (JsonException ex)
             {
-                _logger?.Info("UserPreferences was migrated from version {0}, saving updated version to: {1}", result.OriginalVersion, UserPreferencesPath);
-                await SaveConfigAsync(UserPreferencesPath, result.Config);
+                _logger?.Warning("Failed to parse UserPreferences from {0}: {1}", UserPreferencesPath, ex.Message);
+            }
+            catch (IOException ex)
+            {
+                _logger?.Warning("Failed to read UserPreferences from {0}: {1}", UserPreferencesPath, ex.Message);
             }
 
-            return result.Config;
+            // Create default preferences if file doesn't exist or is invalid
+            _logger?.Info("Creating default UserPreferences");
+            var defaultPreferences = new UserPreferences();
+            await SaveUserPreferencesAsync(defaultPreferences);
+            return defaultPreferences;
         }
 
         /// <summary>
