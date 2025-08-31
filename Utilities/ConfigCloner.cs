@@ -91,7 +91,6 @@ namespace SharpBridge.Utilities
 
             return new ApplicationConfig
             {
-                Version = original.Version,
                 GeneralSettings = Clone(original.GeneralSettings),
                 PhoneClient = Clone(original.PhoneClient),
                 PCClient = Clone(original.PCClient),

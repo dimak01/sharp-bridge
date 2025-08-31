@@ -8,15 +8,7 @@ namespace SharpBridge.Models
     /// </summary>
     public class UserPreferences
     {
-        /// <summary>
-        /// Configuration version for migration support
-        /// </summary>
-        public const int CurrentVersion = 1;
 
-        /// <summary>
-        /// Version of this configuration instance
-        /// </summary>
-        public int Version { get; init; } = CurrentVersion;
         /// <summary>
         /// Verbosity level for the Phone Client display
         /// </summary>
