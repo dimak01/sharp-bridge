@@ -46,11 +46,36 @@ namespace SharpBridge
             // Register console window manager
             services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
 
+            // Register field extractors
+            services.AddTransient<SharpBridge.Services.FieldExtractors.VTubeStudioPCConfigFieldExtractor>();
+            services.AddTransient<SharpBridge.Services.FieldExtractors.VTubeStudioPhoneClientConfigFieldExtractor>();
+            services.AddTransient<SharpBridge.Services.FieldExtractors.GeneralSettingsConfigFieldExtractor>();
+            services.AddTransient<SharpBridge.Services.FieldExtractors.TransformationEngineConfigFieldExtractor>();
+
+            // Register field extractors factory
+            services.AddSingleton<IConfigSectionFieldExtractorsFactory, ConfigSectionFieldExtractorsFactory>();
+
+            // Register validators and remediation services (needed by ConfigRemediationService)
+            services.AddTransient<VTubeStudioPCConfigValidator>();
+            services.AddTransient<VTubeStudioPhoneClientConfigValidator>();
+            services.AddTransient<GeneralSettingsConfigValidator>();
+            services.AddTransient<TransformationEngineConfigValidator>();
+
+            services.AddTransient<VTubeStudioPCConfigRemediationService>();
+            services.AddTransient<VTubeStudioPhoneClientConfigRemediationService>();
+            services.AddTransient<GeneralSettingsConfigRemediationService>();
+            services.AddTransient<TransformationEngineConfigRemediationService>();
+
+            services.AddSingleton<IConfigSectionValidatorsFactory, ConfigSectionValidatorsFactory>();
+            services.AddSingleton<IConfigSectionRemediationServiceFactory, ConfigSectionRemediationServiceFactory>();
+
             services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 
             // Register config manager
             services.AddSingleton<IConfigManager>(provider =>
-                new ConfigManager(configDirectory, provider.GetRequiredService<IAppLogger>()));
+                new ConfigManager(configDirectory,
+                    provider.GetRequiredService<IConfigSectionFieldExtractorsFactory>(),
+                    provider.GetRequiredService<IAppLogger>()));
 
             // Build temporary container to get core services for immediate configuration remediation
             var tempServiceProvider = services.BuildServiceProvider();
@@ -293,21 +318,6 @@ namespace SharpBridge
                 var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
                 return new SimpleRecoveryPolicy(TimeSpan.FromSeconds(pcConfig.RecoveryIntervalSeconds));
             });
-
-            services.AddTransient<VTubeStudioPCConfigValidator>();
-            services.AddTransient<VTubeStudioPhoneClientConfigValidator>();
-            services.AddTransient<GeneralSettingsConfigValidator>();
-            services.AddTransient<TransformationEngineConfigValidator>();
-
-            services.AddTransient<VTubeStudioPCConfigRemediationService>();
-            services.AddTransient<VTubeStudioPhoneClientConfigRemediationService>();
-            services.AddTransient<GeneralSettingsConfigRemediationService>();
-            services.AddTransient<TransformationEngineConfigRemediationService>();
-
-            services.AddSingleton<IConfigSectionValidatorsFactory, ConfigSectionValidatorsFactory>();
-            services.AddSingleton<IConfigSectionRemediationServiceFactory, ConfigSectionRemediationServiceFactory>();
-
-            services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator>(provider =>

@@ -40,14 +40,13 @@ namespace SharpBridge.Services
         public async Task<bool> RemediateConfigurationAsync()
         {
             _logger?.Info("Starting configuration remediation process");
-
+            Dictionary<ConfigSectionTypes, IConfigSection> updatedConfigSections = new();
             try
             {
                 // Process each configuration section in order
                 var sectionConfigTypes = Enum.GetValues<ConfigSectionTypes>();
 
-                foreach (var sectionType in sectionConfigTypes)
-                {
+                foreach (var sectionType in sectionConfigTypes){
                     // Load current field state for this section
                     var fields = await _configManager.GetSectionFieldsAsync(sectionType);
 
@@ -61,12 +60,15 @@ namespace SharpBridge.Services
                         return false;
                     }
 
-                    // Persist changes if any
-                    if (updatedConfig != null)
-                    {
-                        await _configManager.SaveSectionAsync(sectionType, updatedConfig);
-                        _logger?.Info($"Saved configuration for {sectionType}");
+                    if (updatedConfig != null) {
+                        updatedConfigSections[sectionType] = updatedConfig!;
                     }
+                }
+
+
+                foreach(var sectionType in updatedConfigSections.Keys) {
+                    await _configManager.SaveSectionAsync(sectionType, updatedConfigSections[sectionType]);
+                    _logger?.Info($"Saved configuration for {sectionType}");
                 }
 
                 _logger?.Info("Configuration remediation completed successfully");
