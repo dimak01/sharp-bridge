@@ -13,11 +13,5 @@ namespace SharpBridge.Interfaces
         /// </summary>
         /// <returns>True if all configuration issues were resolved, false otherwise</returns>
         Task<bool> RemediateConfigurationAsync();
-
-        /// <summary>
-        /// Validates all configuration sections without attempting remediation.
-        /// </summary>
-        /// <returns>True if all sections are valid, false if any issues are found</returns>
-        Task<bool> ValidateConfigurationAsync();
     }
 }

@@ -305,7 +305,7 @@ namespace SharpBridge
             services.AddTransient<TransformationEngineConfigRemediationService>();
 
             services.AddSingleton<IConfigSectionValidatorsFactory, ConfigSectionValidatorsFactory>();
-            services.AddSingleton<IConfigSectionRemediationFactory, ConfigSectionFirstTimeSetupFactory>();
+            services.AddSingleton<IConfigSectionRemediationServiceFactory, ConfigSectionRemediationServiceFactory>();
 
             services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 

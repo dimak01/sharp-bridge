@@ -36,5 +36,11 @@ namespace SharpBridge.Services.Validators
 
             return new ConfigValidationResult(missingFields);
         }
+
+        public (bool IsValid, FieldValidationIssue? Issue) ValidateSingleField(ConfigFieldState field)
+        {
+            throw new System.NotImplementedException();
+        }
+
     }
 }
