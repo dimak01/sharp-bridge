@@ -65,6 +65,7 @@ namespace SharpBridge.Services.Remediation
         {
             var activeFieldName = initialIssue.FieldName;
             var hint = GetFieldHint(activeFieldName);
+            string? lastError = null;
 
             while (true)
             {
@@ -72,23 +73,22 @@ namespace SharpBridge.Services.Remediation
                 var current = workingFields.FirstOrDefault(f => f.FieldName == activeFieldName)
                               ?? new ConfigFieldState(activeFieldName, null, false, initialIssue.ExpectedType, initialIssue.Description);
 
-                // Render frame focused on the active field with optional hint
-                var frame = BuildFieldFrame(current, hint, errorText: null);
+                // Render frame focused on the active field with optional hint and persistent error
+                var frame = BuildFieldFrame(current, hint, lastError);
                 _console.WriteLines(frame);
                 var input = _console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(input))
                 {
-                    // Re-render with an inline error and continue prompting same field
-                    var err = "Input cannot be empty. Please provide a value.";
-                    _console.WriteLines(BuildFieldFrame(current, hint, err));
+                    // Set error and continue prompting same field
+                    lastError = "Input cannot be empty. Please provide a value.";
                     continue;
                 }
 
                 // Parse basic type
                 if (!TryParseInput(current.ExpectedType, input!, out var parsed, out var parseError))
                 {
-                    _console.WriteLines(BuildFieldFrame(current, hint, parseError));
+                    lastError = parseError;
                     continue;
                 }
 
@@ -97,8 +97,7 @@ namespace SharpBridge.Services.Remediation
                 var (isValid, issue) = _validator.ValidateSingleField(candidate);
                 if (!isValid)
                 {
-                    var err = issue?.Description ?? "Invalid value.";
-                    _console.WriteLines(BuildFieldFrame(candidate, hint, err));
+                    lastError = issue?.Description ?? "Invalid value.";
                     continue;
                 }
 
@@ -113,6 +112,9 @@ namespace SharpBridge.Services.Remediation
                 {
                     workingFields.Add(candidate);
                 }
+
+                // Clear screen after successful field remediation for clean transition
+                _console.Clear();
 
                 await Task.CompletedTask;
                 return;
