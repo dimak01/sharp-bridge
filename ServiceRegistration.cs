@@ -3,7 +3,7 @@ using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
 using SharpBridge.Services.Validators;
-using SharpBridge.Services.FirstTimeSetup;
+using SharpBridge.Services.Remediation;
 using SharpBridge.Utilities;
 
 using System;
@@ -46,10 +46,7 @@ namespace SharpBridge
             // Register console window manager
             services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
 
-
-
-            // TODO: Re-enable config remediation service when new field-driven system is implemented
-            // services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
+            services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 
             // Register config manager
             services.AddSingleton<IConfigManager>(provider =>
@@ -58,8 +55,15 @@ namespace SharpBridge
             // Build temporary container to get core services for immediate configuration remediation
             var tempServiceProvider = services.BuildServiceProvider();
 
-            // TODO: Re-enable config remediation when new field-driven system is implemented
-            // For now, just dispose the temporary container
+            // Run configuration remediation immediately to ensure valid config before service initialization
+            var configRemediationService = tempServiceProvider.GetRequiredService<IConfigRemediationService>();
+            var remediationSuccess = configRemediationService.RemediateConfigurationAsync().GetAwaiter().GetResult();
+
+            if (!remediationSuccess)
+            {
+                throw new InvalidOperationException("Configuration remediation failed during startup");
+            }
+
             tempServiceProvider.Dispose();
 
             // Register configurations
@@ -295,13 +299,13 @@ namespace SharpBridge
             services.AddTransient<GeneralSettingsConfigValidator>();
             services.AddTransient<TransformationEngineConfigValidator>();
 
-            services.AddTransient<VTubeStudioPCConfigFirstTimeSetup>();
-            services.AddTransient<VTubeStudioPhoneClientConfigFirstTimeSetup>();
-            services.AddTransient<GeneralSettingsConfigFirstTimeSetup>();
-            services.AddTransient<TransformationEngineConfigFirstTimeSetup>();
+            services.AddTransient<VTubeStudioPCConfigRemediationService>();
+            services.AddTransient<VTubeStudioPhoneClientConfigRemediationService>();
+            services.AddTransient<GeneralSettingsConfigRemediationService>();
+            services.AddTransient<TransformationEngineConfigRemediationService>();
 
             services.AddSingleton<IConfigSectionValidatorsFactory, ConfigSectionValidatorsFactory>();
-            services.AddSingleton<IConfigSectionFirstTimeSetupFactory, ConfigSectionFirstTimeSetupFactory>();
+            services.AddSingleton<IConfigSectionRemediationFactory, ConfigSectionFirstTimeSetupFactory>();
 
             services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 

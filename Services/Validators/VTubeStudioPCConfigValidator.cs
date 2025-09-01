@@ -16,13 +16,21 @@ namespace SharpBridge.Services.Validators
         /// <returns>Validation result indicating if the section is valid and what fields need attention</returns>
         public ConfigValidationResult ValidateSection(List<ConfigFieldState> fieldsState)
         {
-            var missingFields = new List<MissingField>();
+            // TODO: IMPLEMENT PROPER VTubeStudioPCConfig VALIDATION
+            // This is currently a placeholder implementation. Need to implement:
+            // 1. Field-specific validation (e.g., Host should not be empty, Port should be 1-65535)
+            // 2. Business rule validation (e.g., API key format if required, connection timeout ranges)
+            // 3. Cross-field validation (e.g., if using SSL, port should typically be 443 or custom)
+            // 4. Proper error messages for each validation failure
+            // 5. Handle optional vs required fields appropriately
+
+            var missingFields = new List<FieldValidationIssue>();
 
             foreach (var field in fieldsState)
             {
                 if (!field.IsPresent || field.Value == null)
                 {
-                    missingFields.Add(new MissingField(field.FieldName, field.ExpectedType, field.Description));
+                    missingFields.Add(new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description));
                 }
             }
 

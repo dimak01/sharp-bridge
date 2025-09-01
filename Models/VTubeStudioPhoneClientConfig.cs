@@ -14,22 +14,22 @@ public class VTubeStudioPhoneClientConfig : IConfigSection
     // ========================================
 
     /// <summary>
-    /// IP address of the iPhone (defaults to 127.0.0.1, null indicates user needs to set this)
+    /// IP address of the iPhone
     /// </summary>
     [Description("iPhone IP Address")]
-    public string? IphoneIpAddress { get; set; } = "127.0.0.1";
+    public string IphoneIpAddress { get; set; }
 
     /// <summary>
     /// Port on the iPhone where VTube Studio is broadcasting
     /// </summary>
     [Description("iPhone Port")]
-    public int IphonePort { get; set; } = 21412;
+    public int IphonePort { get; set; }
 
     /// <summary>
     /// Local port to receive tracking data on
     /// </summary>
     [Description("Local Port")]
-    public int LocalPort { get; set; } = 28964;
+    public int LocalPort { get; set; }
 
     // ========================================
     // Internal Settings (Not User-Configurable)
@@ -39,23 +39,42 @@ public class VTubeStudioPhoneClientConfig : IConfigSection
     /// How often to request tracking data (in seconds)
     /// </summary>
     [JsonIgnore]
-    public double RequestIntervalSeconds { get; set; } = 3;
+    public double RequestIntervalSeconds { get; set; }
 
     /// <summary>
     /// How long to ask the iPhone to send data for (in seconds)
     /// </summary>
     [JsonIgnore]
-    public int SendForSeconds { get; set; } = 4;
+    public int SendForSeconds { get; set; }
 
     /// <summary>
     /// Timeout for receiving data (in milliseconds)
     /// </summary>
     [JsonIgnore]
-    public int ReceiveTimeoutMs { get; set; } = 100;
+    public int ReceiveTimeoutMs { get; set; }
 
     /// <summary>
     /// The delay in milliseconds after an error in the main loop before retrying (default: 1000)
     /// </summary>
     [JsonIgnore]
-    public int ErrorDelayMs { get; set; } = 1000;
+    public int ErrorDelayMs { get; set; }
+
+    /// <summary>
+    /// Constructor to ensure all required fields are properly initialized
+    /// </summary>
+    /// <param name="iphoneIpAddress">IP address of the iPhone (required)</param>
+    /// <param name="iphonePort">Port on the iPhone (default: 21412)</param>
+    /// <param name="localPort">Local port to receive data (default: 28964)</param>
+    public VTubeStudioPhoneClientConfig(string iphoneIpAddress = "", int iphonePort = 21412, int localPort = 28964)
+    {
+        IphoneIpAddress = iphoneIpAddress;
+        IphonePort = iphonePort;
+        LocalPort = localPort;
+
+        // Set internal defaults
+        RequestIntervalSeconds = 3;
+        SendForSeconds = 4;
+        ReceiveTimeoutMs = 100;
+        ErrorDelayMs = 1000;
+    }
 }

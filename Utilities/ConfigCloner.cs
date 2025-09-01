@@ -27,15 +27,10 @@ namespace SharpBridge.Utilities
         /// </summary>
         public static VTubeStudioPhoneClientConfig Clone(VTubeStudioPhoneClientConfig original)
         {
-            if (original == null) return new VTubeStudioPhoneClientConfig();
+            if (original == null) return new VTubeStudioPhoneClientConfig("127.0.0.1");
 
-            return new VTubeStudioPhoneClientConfig
+            return new VTubeStudioPhoneClientConfig(original.IphoneIpAddress, original.IphonePort, original.LocalPort)
             {
-                // User-Configurable Settings
-                IphoneIpAddress = original.IphoneIpAddress,
-                IphonePort = original.IphonePort,
-                LocalPort = original.LocalPort,
-
                 // Internal Settings
                 RequestIntervalSeconds = original.RequestIntervalSeconds,
                 SendForSeconds = original.SendForSeconds,

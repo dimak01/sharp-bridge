@@ -8,14 +8,14 @@ using SharpBridge.Models;
 namespace SharpBridge.Services
 {
     /// <summary>
-    /// Orchestrates configuration validation and remediation using the field-driven system.
-    /// Iterates over all configuration sections, validates them, and runs first-time setup for any invalid sections.
+    /// Service that orchestrates configuration validation and remediation.
+    /// Iterates over all configuration sections, validates them, and runs remediation for any invalid sections.
     /// </summary>
     public class ConfigRemediationService : IConfigRemediationService
     {
         private readonly IConfigManager _configManager;
         private readonly IConfigSectionValidatorsFactory _validatorsFactory;
-        private readonly IConfigSectionFirstTimeSetupFactory _firstTimeSetupFactory;
+        private readonly IConfigSectionRemediationFactory _remediationFactory;
         private readonly IAppLogger? _logger;
 
         /// <summary>
@@ -23,23 +23,22 @@ namespace SharpBridge.Services
         /// </summary>
         /// <param name="configManager">Configuration manager for loading and saving sections</param>
         /// <param name="validatorsFactory">Factory for creating section validators</param>
-        /// <param name="firstTimeSetupFactory">Factory for creating first-time setup services</param>
+        /// <param name="remediationFactory">Factory for creating remediation services</param>
         /// <param name="logger">Optional logger for operation tracking</param>
         public ConfigRemediationService(
             IConfigManager configManager,
             IConfigSectionValidatorsFactory validatorsFactory,
-            IConfigSectionFirstTimeSetupFactory firstTimeSetupFactory,
+            IConfigSectionRemediationFactory remediationFactory,
             IAppLogger? logger = null)
         {
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _validatorsFactory = validatorsFactory ?? throw new ArgumentNullException(nameof(validatorsFactory));
-            _firstTimeSetupFactory = firstTimeSetupFactory ?? throw new ArgumentNullException(nameof(firstTimeSetupFactory));
+            _remediationFactory = remediationFactory ?? throw new ArgumentNullException(nameof(remediationFactory));
             _logger = logger;
         }
 
         /// <summary>
-        /// Runs the complete configuration remediation process.
-        /// Validates all sections and runs first-time setup for any invalid ones.
+        /// Remediates all configuration sections by validating them and running remediation for any invalid ones.
         /// </summary>
         /// <returns>True if all configuration issues were resolved, false otherwise</returns>
         public async Task<bool> RemediateConfigurationAsync()
@@ -48,6 +47,7 @@ namespace SharpBridge.Services
 
             try
             {
+                // Get all configuration section types
                 var sectionConfigTypes = Enum.GetValues<ConfigSectionTypes>();
                 var allSectionFields = new Dictionary<ConfigSectionTypes, List<ConfigFieldState>>();
                 var allUpdatedConfigs = new Dictionary<ConfigSectionTypes, IConfigSection>();
@@ -55,54 +55,48 @@ namespace SharpBridge.Services
                 // Load field states for all sections
                 foreach (var sectionType in sectionConfigTypes)
                 {
-                    _logger?.Debug("Loading field states for section: {0}", sectionType);
-                    var sectionFields = await _configManager.GetSectionFieldsAsync(sectionType);
-                    allSectionFields[sectionType] = sectionFields;
+                    var fields = await _configManager.GetSectionFieldsAsync(sectionType);
+                    allSectionFields[sectionType] = fields;
                 }
 
-                // Validate and fix each section
-                foreach (var sectionType in allSectionFields.Keys)
+                // Validate each section
+                foreach (var (sectionType, fields) in allSectionFields)
                 {
-                    _logger?.Debug("Validating section: {0}", sectionType);
-                    var fields = allSectionFields[sectionType];
+                    _logger?.Info($"Validating {sectionType} configuration section");
+
                     var validator = _validatorsFactory.GetValidator(sectionType);
                     var validation = validator.ValidateSection(fields);
 
                     if (!validation.IsValid)
                     {
-                        _logger?.Info("Section {0} validation failed. Missing fields: {1}",
-                            sectionType, string.Join(", ", validation.MissingFields.Select(f => f.FieldName)));
+                        _logger?.Warning($"Configuration section {sectionType} has validation issues: " +
+                            string.Join(", ", validation.Issues.Select(f => f.FieldName)));
 
-                        var setupService = _firstTimeSetupFactory.GetFirstTimeSetupService(sectionType);
-                        var (success, updatedConfig) = await setupService.RunSetupAsync(fields);
+                        var remediationService = _remediationFactory.GetRemediationService(sectionType);
+                        var (success, updatedConfig) = await remediationService.Remediate(fields);
 
                         if (!success)
                         {
-                            _logger?.Error("Failed to setup section {0} after first attempt", sectionType);
+                            _logger?.Error($"Failed to remediate configuration section {sectionType}");
                             return false;
                         }
 
                         if (updatedConfig != null)
                         {
                             allUpdatedConfigs[sectionType] = updatedConfig;
-                            _logger?.Info("Successfully updated section: {0}", sectionType);
                         }
-                    }
-                    else
-                    {
-                        _logger?.Debug("Section {0} is valid, no remediation needed", sectionType);
                     }
                 }
 
-                // Save all updated sections
+                // If we have updated configs, save them
                 if (allUpdatedConfigs.Any())
                 {
-                    _logger?.Info("Saving {0} updated configuration sections", allUpdatedConfigs.Count);
-                    foreach (var sectionType in allUpdatedConfigs.Keys)
+                    _logger?.Info("Saving remediated configuration sections");
+
+                    foreach (var (sectionType, updatedConfig) in allUpdatedConfigs)
                     {
-                        var updatedConfig = allUpdatedConfigs[sectionType];
                         await _configManager.SaveSectionAsync(sectionType, updatedConfig);
-                        _logger?.Debug("Saved updated section: {0}", sectionType);
+                        _logger?.Info($"Saved remediated configuration for {sectionType}");
                     }
                 }
 
@@ -111,7 +105,7 @@ namespace SharpBridge.Services
             }
             catch (Exception ex)
             {
-                _logger?.ErrorWithException("Configuration remediation failed", ex);
+                _logger?.Error($"Configuration remediation failed: {ex.Message}");
                 return false;
             }
         }
@@ -139,7 +133,7 @@ namespace SharpBridge.Services
                     if (!validation.IsValid)
                     {
                         _logger?.Warning("Section {0} validation failed. Missing fields: {1}",
-                            sectionType, string.Join(", ", validation.MissingFields.Select(f => f.FieldName)));
+                            sectionType, string.Join(", ", validation.Issues.Select(f => f.FieldName)));
                         allValid = false;
                     }
                     else
