@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using SharpBridge.Interfaces;
 
 namespace SharpBridge.Models
 {
     /// <summary>
     /// Configuration for general application settings
     /// </summary>
-    public class GeneralSettingsConfig
+    public class GeneralSettingsConfig : IConfigSection
     {
         /// <summary>
         /// Command to execute when opening files in external editor.

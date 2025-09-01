@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SharpBridge.Models;
 
@@ -101,5 +102,29 @@ namespace SharpBridge.Interfaces
         /// <param name="config">The configuration to save</param>
         /// <returns>A task representing the asynchronous save operation</returns>
         Task SaveTransformationConfigAsync(TransformationEngineConfig config);
+
+
+
+        /// <summary>
+        /// Loads a configuration section using the enum type identifier
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section to load</param>
+        /// <returns>The loaded configuration section</returns>
+        Task<IConfigSection> LoadSectionAsync(ConfigSectionTypes sectionType);
+
+        /// <summary>
+        /// Saves a configuration section using the enum type identifier
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section to save</param>
+        /// <param name="config">The configuration section to save</param>
+        /// <returns>A task representing the asynchronous save operation</returns>
+        Task SaveSectionAsync(ConfigSectionTypes sectionType, IConfigSection config);
+
+        /// <summary>
+        /// Gets the raw field states for a configuration section using the enum type identifier
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section</param>
+        /// <returns>List of field states for validation purposes</returns>
+        Task<List<ConfigFieldState>> GetSectionFieldsAsync(ConfigSectionTypes sectionType);
     }
 }

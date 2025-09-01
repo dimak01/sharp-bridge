@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -316,6 +319,96 @@ namespace SharpBridge.Utilities
                 _logger?.Info("Creating configuration directory: {0}", _configDirectory);
                 Directory.CreateDirectory(_configDirectory);
             }
+        }
+
+        // ========================================
+        // New Methods for Field-Driven System
+        // ========================================
+
+        /// <summary>
+        /// Loads a configuration section using the enum type identifier
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section to load</param>
+        /// <returns>The loaded configuration section</returns>
+        public async Task<IConfigSection> LoadSectionAsync(ConfigSectionTypes sectionType)
+        {
+            return sectionType switch
+            {
+                ConfigSectionTypes.VTubeStudioPCConfig => await LoadPCConfigAsync(),
+                ConfigSectionTypes.VTubeStudioPhoneClientConfig => await LoadPhoneConfigAsync(),
+                ConfigSectionTypes.GeneralSettingsConfig => await LoadGeneralSettingsConfigAsync(),
+                ConfigSectionTypes.TransformationEngineConfig => await LoadTransformationConfigAsync(),
+                _ => throw new ArgumentException($"Unknown section type: {sectionType}", nameof(sectionType))
+            };
+        }
+
+        /// <summary>
+        /// Saves a configuration section using the enum type identifier
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section to save</param>
+        /// <param name="config">The configuration section to save</param>
+        /// <returns>A task representing the asynchronous save operation</returns>
+        public async Task SaveSectionAsync(ConfigSectionTypes sectionType, IConfigSection config)
+        {
+            switch (sectionType)
+            {
+                case ConfigSectionTypes.VTubeStudioPCConfig when config is VTubeStudioPCConfig pcConfig:
+                    await SavePCConfigAsync(pcConfig);
+                    break;
+                case ConfigSectionTypes.VTubeStudioPhoneClientConfig when config is VTubeStudioPhoneClientConfig phoneConfig:
+                    await SavePhoneConfigAsync(phoneConfig);
+                    break;
+                case ConfigSectionTypes.GeneralSettingsConfig when config is GeneralSettingsConfig generalConfig:
+                    await SaveGeneralSettingsConfigAsync(generalConfig);
+                    break;
+                case ConfigSectionTypes.TransformationEngineConfig when config is TransformationEngineConfig transformConfig:
+                    await SaveTransformationConfigAsync(transformConfig);
+                    break;
+                default:
+                    throw new ArgumentException($"Invalid config type {config.GetType().Name} for section {sectionType}", nameof(config));
+            }
+        }
+
+        /// <summary>
+        /// Gets the raw field states for a configuration section using the enum type identifier
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section</param>
+        /// <returns>List of field states for validation purposes</returns>
+        public async Task<List<ConfigFieldState>> GetSectionFieldsAsync(ConfigSectionTypes sectionType)
+        {
+            var section = await LoadSectionAsync(sectionType);
+            return ExtractFieldStates(section);
+        }
+
+        /// <summary>
+        /// Extracts field states from a configuration section for validation purposes
+        /// </summary>
+        /// <param name="section">The configuration section to analyze</param>
+        /// <returns>List of field states</returns>
+        private static List<ConfigFieldState> ExtractFieldStates(IConfigSection section)
+        {
+            var fieldStates = new List<ConfigFieldState>();
+            var properties = section.GetType().GetProperties();
+
+            foreach (var property in properties)
+            {
+                var descriptionAttr = property.GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false)
+                    .FirstOrDefault() as System.ComponentModel.DescriptionAttribute;
+
+                var description = descriptionAttr?.Description ?? property.Name;
+                var value = property.GetValue(section);
+                var isPresent = value != null;
+
+                fieldStates.Add(new ConfigFieldState(
+                    property.Name,
+                    value,
+                    isPresent,
+                    property.PropertyType,
+                    description
+                ));
+            }
+
+            return fieldStates;
         }
     }
 }
