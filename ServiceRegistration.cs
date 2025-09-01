@@ -2,6 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
+using SharpBridge.Services.Validators;
+using SharpBridge.Services.FirstTimeSetup;
 using SharpBridge.Utilities;
 
 using System;
@@ -287,6 +289,21 @@ namespace SharpBridge
                 var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
                 return new SimpleRecoveryPolicy(TimeSpan.FromSeconds(pcConfig.RecoveryIntervalSeconds));
             });
+
+            services.AddTransient<VTubeStudioPCConfigValidator>();
+            services.AddTransient<VTubeStudioPhoneClientConfigValidator>();
+            services.AddTransient<GeneralSettingsConfigValidator>();
+            services.AddTransient<TransformationEngineConfigValidator>();
+
+            services.AddTransient<VTubeStudioPCConfigFirstTimeSetup>();
+            services.AddTransient<VTubeStudioPhoneClientConfigFirstTimeSetup>();
+            services.AddTransient<GeneralSettingsConfigFirstTimeSetup>();
+            services.AddTransient<TransformationEngineConfigFirstTimeSetup>();
+
+            services.AddSingleton<IConfigSectionValidatorsFactory, ConfigSectionValidatorsFactory>();
+            services.AddSingleton<IConfigSectionFirstTimeSetupFactory, ConfigSectionFirstTimeSetupFactory>();
+
+            services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
 
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator>(provider =>

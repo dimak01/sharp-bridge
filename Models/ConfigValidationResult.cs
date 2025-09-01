@@ -1,45 +1,64 @@
 using System.Collections.Generic;
-using System.Linq;
+using System;
 
 namespace SharpBridge.Models
 {
     /// <summary>
-    /// Result of configuration validation indicating what fields are missing or require setup
+    /// Represents the result of validating a configuration section.
     /// </summary>
     public class ConfigValidationResult
     {
         /// <summary>
-        /// Initializes a new instance of ConfigValidationResult
+        /// Initializes a new instance of the ConfigValidationResult class.
         /// </summary>
-        /// <param name="missingFields">Collection of fields that are missing or require setup</param>
-        public ConfigValidationResult(IEnumerable<MissingField> missingFields)
+        /// <param name="missingFields">List of fields that are missing or invalid</param>
+        public ConfigValidationResult(List<MissingField> missingFields)
         {
-            MissingFields = missingFields?.ToList() ?? new List<MissingField>();
+            MissingFields = missingFields ?? new List<MissingField>();
         }
 
         /// <summary>
-        /// Fields that are missing or require user configuration
+        /// Gets whether the configuration section is valid.
         /// </summary>
-        public IReadOnlyList<MissingField> MissingFields { get; }
+        public bool IsValid => MissingFields.Count == 0;
 
         /// <summary>
-        /// Whether the configuration is valid (no missing fields)
+        /// Gets the list of missing or invalid fields.
         /// </summary>
-        public bool IsValid => !MissingFields.Any();
+        public List<MissingField> MissingFields { get; }
+    }
+
+    /// <summary>
+    /// Represents a missing or invalid configuration field.
+    /// </summary>
+    public class MissingField
+    {
+        /// <summary>
+        /// Initializes a new instance of the MissingField class.
+        /// </summary>
+        /// <param name="fieldName">The name of the missing field</param>
+        /// <param name="expectedType">The expected type for this field</param>
+        /// <param name="description">Human-readable description of the field</param>
+        public MissingField(string fieldName, Type expectedType, string description)
+        {
+            FieldName = fieldName ?? throw new ArgumentNullException(nameof(fieldName));
+            ExpectedType = expectedType ?? throw new ArgumentNullException(nameof(expectedType));
+            Description = description ?? throw new ArgumentNullException(nameof(description));
+        }
 
         /// <summary>
-        /// Whether first-time setup is required
+        /// Gets the name of the missing field.
         /// </summary>
-        public bool RequiresSetup => MissingFields.Any();
+        public string FieldName { get; }
 
         /// <summary>
-        /// Creates a valid configuration result
+        /// Gets the expected type for this field.
         /// </summary>
-        public static ConfigValidationResult Valid() => new(new List<MissingField>());
+        public Type ExpectedType { get; }
 
         /// <summary>
-        /// Creates an invalid configuration result with the specified missing fields
+        /// Gets the human-readable description of the field.
         /// </summary>
-        public static ConfigValidationResult Invalid(params MissingField[] missingFields) => new(missingFields);
+        public string Description { get; }
     }
 }

@@ -1,12 +1,13 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using SharpBridge.Interfaces;
 
 namespace SharpBridge.Models
 {
     /// <summary>
     /// Configuration for the transformation engine
     /// </summary>
-    public class TransformationEngineConfig
+    public class TransformationEngineConfig : IConfigSection
     {
         // ========================================
         // User-Configurable Settings

@@ -55,31 +55,40 @@
 **Goal**: Implement the actual field-driven validation and remediation logic
 
 ### Step 3.1: Implement ConfigManager Updates
-- [ ] Implement `LoadSectionAsync<T>()` methods in `ConfigManager`
-- [ ] Implement `SaveSectionAsync<T>()` methods in `ConfigManager`
-- [ ] Implement `GetSectionFieldsAsync<T>()` methods in `ConfigManager`
-- [ ] Implement non-generic versions using switch expressions
-- [ ] Test: Verify section loading/saving works correctly
+- [x] Implement `LoadSectionAsync<T>()` methods in `ConfigManager`
+- [x] Implement `SaveSectionAsync<T>()` methods in `ConfigManager`
+- [x] Implement `GetSectionFieldsAsync<T>()` methods in `ConfigManager`
+- [x] Implement non-generic versions using switch expressions
+- [x] Test: Verify section loading/saving works correctly
 
 ### Step 3.2: Implement Section-Specific Validators
-- [ ] Create `VTubeStudioPCConfigValidator` implementing `IConfigSectionValidator`
-- [ ] Create `VTubeStudioPhoneClientConfigValidator` implementing `IConfigSectionValidator`
-- [ ] Create `GeneralSettingsConfigValidator` implementing `IConfigSectionValidator`
-- [ ] Create `TransformationEngineConfigValidator` implementing `IConfigSectionValidator`
-- [ ] Test: Each validator correctly identifies missing/invalid fields
+- [x] Create `VTubeStudioPCConfigValidator` implementing `IConfigSectionValidator`
+- [x] Create `VTubeStudioPhoneClientConfigValidator` implementing `IConfigSectionValidator`
+- [x] Create `GeneralSettingsConfigValidator` implementing `IConfigSectionValidator`
+- [x] Create `TransformationEngineConfigValidator` implementing `IConfigSectionValidator`
+- [x] Test: Each validator correctly identifies missing/invalid fields
 
 ### Step 3.3: Implement Section-Specific Setup Services
-- [ ] Create `VTubeStudioPCConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
-- [ ] Create `VTubeStudioPhoneClientConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
-- [ ] Create `GeneralSettingsConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
-- [ ] Create `TransformationEngineConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
-- [ ] Test: Each setup service can fix missing fields correctly
+- [x] Create `VTubeStudioPCConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [x] Create `VTubeStudioPhoneClientConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [x] Create `GeneralSettingsConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [x] Create `TransformationEngineConfigFirstTimeSetup` implementing `IConfigSectionFirstTimeSetupService`
+- [x] Test: Each setup service can fix missing fields correctly
 
 ### Step 3.4: Implement Factory Services
-- [ ] Create `ConfigSectionValidatorsFactory` implementing `IConfigSectionValidatorsFactory`
-- [ ] Create `ConfigSectionFirstTimeSetupFactory` implementing `IConfigSectionFirstTimeSetupFactory`
-- [ ] Use DI keyed services or switch-based implementation
-- [ ] Test: Factories return correct services for each section type
+- [x] Create `ConfigSectionValidatorsFactory` implementing `IConfigSectionValidatorsFactory`
+- [x] Create `ConfigSectionFirstTimeSetupFactory` implementing `IConfigSectionFirstTimeSetupFactory`
+- [x] Use DI keyed services or switch-based implementation
+- [x] Test: Factories return correct services for each section type
+
+### Step 3.5: Implement Core Remediation Service
+- [x] Create `IConfigRemediationService` interface
+- [x] Create `ConfigRemediationService` implementation
+- [x] Implement type-driven iteration using `ConfigSectionTypes` enum
+- [x] Implement section-by-section validation and remediation
+- [x] Add proper error handling and logging
+- [x] Register service in DI container
+- [x] Test: Service compiles and can be resolved from DI
 
 ---
 
@@ -87,18 +96,18 @@
 **Goal**: Integrate the field-driven system and refine the user experience
 
 ### Step 4.1: Update ConfigRemediationService
-- [ ] Refactor to use new factory-based approach
-- [ ] Implement type-driven iteration using `ConfigSectionTypes` enum
-- [ ] Update to handle section-by-section validation and remediation
-- [ ] Ensure proper error handling and retry logic
+- [x] Refactor to use new factory-based approach
+- [x] Implement type-driven iteration using `ConfigSectionTypes` enum
+- [x] Update to handle section-by-section validation and remediation
+- [x] Ensure proper error handling and retry logic
 - [ ] Test: Complete flow works end-to-end
 
 ### Step 4.2: Update Service Registration
-- [ ] Register new factory services in DI container
-- [ ] Register all section-specific validators and setup services
-- [ ] Update `ConfigRemediationService` registration
-- [ ] Remove old migration-related registrations
-- [ ] Test: All services resolve correctly from DI container
+- [x] Register new factory services in DI container
+- [x] Register all section-specific validators and setup services
+- [x] Update `ConfigRemediationService` registration
+- [x] Remove old migration-related registrations
+- [x] Test: All services resolve correctly from DI container
 
 ### Step 4.3: Refine User Experience
 - [ ] Improve progress indicators during remediation

@@ -1,12 +1,13 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using SharpBridge.Interfaces;
 
 namespace SharpBridge.Models;
 
 /// <summary>
 /// Configuration for the VTube Studio Phone Client
 /// </summary>
-public class VTubeStudioPhoneClientConfig
+public class VTubeStudioPhoneClientConfig : IConfigSection
 {
     // ========================================
     // User-Configurable Settings
