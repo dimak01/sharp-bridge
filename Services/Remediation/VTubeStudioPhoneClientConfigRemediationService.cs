@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -64,7 +65,7 @@ namespace SharpBridge.Services.Remediation
             List<ConfigFieldState> workingFields)
         {
             var activeFieldName = initialIssue.FieldName;
-            var hint = GetFieldHint(activeFieldName);
+            var notes = GetFieldNotes(activeFieldName);
             string? lastError = null;
 
             while (true)
@@ -73,16 +74,26 @@ namespace SharpBridge.Services.Remediation
                 var current = workingFields.FirstOrDefault(f => f.FieldName == activeFieldName)
                               ?? new ConfigFieldState(activeFieldName, null, false, initialIssue.ExpectedType, initialIssue.Description);
 
-                // Render frame focused on the active field with optional hint and persistent error
-                var frame = BuildFieldFrame(current, hint, lastError);
+                // Render frame focused on the active field with optional notes and persistent error
+                var frame = BuildFieldFrame(current, notes, lastError);
                 _console.WriteLines(frame);
                 var input = _console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(input))
                 {
-                    // Set error and continue prompting same field
-                    lastError = "Input cannot be empty. Please provide a value.";
-                    continue;
+                    // Check if there's a default for this field
+                    var defaultValue = GetFieldDefault(activeFieldName);
+                    if (defaultValue != null)
+                    {
+                        // Use default value - convert to string for parsing
+                        input = defaultValue.ToString();
+                    }
+                    else
+                    {
+                        // No default available - set error and continue prompting same field
+                        lastError = "Input cannot be empty. Please provide a value.";
+                        continue;
+                    }
                 }
 
                 // Parse basic type
@@ -164,21 +175,61 @@ namespace SharpBridge.Services.Remediation
             return missingIp && missingIphonePort && missingLocalPort;
         }
 
-        private static readonly Dictionary<string, string> FieldHints = new()
+        private static readonly Dictionary<string, string[]> FieldNotes = new()
         {
-            ["IphoneIpAddress"] = "Find your iPhone's IP in Wi‑Fi settings. Ensure phone and PC are on the same network.",
-            ["IphonePort"] = "Enter the UDP port configured in your iPhone tracking app.",
-            ["LocalPort"] = "Local UDP port to bind on this PC. Avoid ports < 1024; 20000–60000 is typical."
+            ["IphoneIpAddress"] = new[]
+            {
+                "To find your iPhone's IP address:",
+                "1. Open VTube Studio app on your iPhone",
+                "2. Go to Settings (Gear Icon) → Scroll all the way down to '3rd Party PC Clients'",
+                "3. Tap on 'Show IP List' - this is what you need (pick the 'IPv4' address where possible)",
+                "",
+                "Important: Ensure you use the iPhone IP address that matches the Wi-Fi network of your PC!"
+            },
+            ["IphonePort"] = new[]
+            {
+                "To find your iPhone's port number:",
+                "1. Open VTube Studio app on your iPhone",
+                "2. Go to Settings (Gear Icon) → Scroll all the way down to '3rd Party PC Clients'",
+                "3. Tap on 'Show IP List' - this is what you need (look for the 'Port' number)",
+            },
+            ["LocalPort"] = new[]
+            {
+                "This is the UDP port that Sharp Bridge will listen on to receive tracking data from your iPhone.",
+                "",
+                "Port selection guidelines:",
+                "• Use ports 1024-65535 (avoid system ports < 1024)",
+                "• Recommended range: 20000-60000",
+                "",
+                "!!! FIREWALL SETUP REQUIRED:",
+                "Your iPhone won't be able to connect until you allow this port through Windows Firewall.",
+                "",
+                "Manual firewall rule (replace XXXX with your chosen port):",
+                "netsh advfirewall firewall add rule name=\"SharpBridge iPhone UDP Inbound\" dir=in action=allow protocol=UDP localport=XXXX",
+                "",
+                "Need help? Press F2 after the application has been started to access Network Status mode for detailed connectivity diagnostics."
+            }
         };
 
-        private static string? GetFieldHint(string fieldName)
+        private static string[]? GetFieldNotes(string fieldName)
         {
-            return FieldHints.TryGetValue(fieldName, out var hint) ? hint : null;
+            return FieldNotes.TryGetValue(fieldName, out var notes) ? notes : null;
+        }
+
+        private static readonly Dictionary<string, object> FieldDefaults = new()
+        {
+            ["LocalPort"] = 28964
+            // No defaults for IphoneIpAddress or IphonePort - user must look them up
+        };
+
+        private static object? GetFieldDefault(string fieldName)
+        {
+            return FieldDefaults.TryGetValue(fieldName, out var defaultValue) ? defaultValue : null;
         }
 
         private static string[] BuildFieldFrame(
             ConfigFieldState activeField,
-            string? hint,
+            string[]? notes,
             string? errorText)
         {
             var lines = new List<string>
@@ -192,15 +243,22 @@ namespace SharpBridge.Services.Remediation
             {
                 lines.Add($"Current value: {activeField.Value}");
             }
-            if (!string.IsNullOrWhiteSpace(hint))
+            if (notes != null && notes.Length > 0)
             {
-                lines.Add($"Hint: {hint}");
+                lines.AddRange(from noteLine in notes where !string.IsNullOrWhiteSpace(noteLine) select noteLine);
             }
+
             if (!string.IsNullOrWhiteSpace(errorText))
             {
                 lines.Add($"Error: {errorText}");
             }
-            lines.Add("Enter new value (cannot be empty):");
+
+            // Dynamic prompt with inline default
+            var defaultValue = GetFieldDefault(activeField.FieldName);
+            string promptText = defaultValue != null
+                ? $"Enter new value (or press Enter for default value of {defaultValue}):"
+                : "Enter new value (cannot be empty):";
+            lines.Add(promptText);
 
             return lines.ToArray();
         }
