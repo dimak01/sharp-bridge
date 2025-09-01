@@ -21,15 +21,18 @@ namespace SharpBridge.Utilities
         private readonly string _applicationConfigFilename = "ApplicationConfig.json";
         private readonly string _userPreferencesFilename = "UserPreferences.json";
         private readonly IAppLogger? _logger;
+        private readonly IConfigSectionFieldExtractorsFactory _fieldExtractorsFactory;
 
         /// <summary>
         /// Initializes a new instance of the ConfigManager class.
         /// </summary>
         /// <param name="configDirectory">The directory where config files are stored</param>
+        /// <param name="fieldExtractorsFactory">Factory for creating field extractors</param>
         /// <param name="logger">Optional logger for configuration operations</param>
-        public ConfigManager(string configDirectory, IAppLogger? logger = null)
+        public ConfigManager(string configDirectory, IConfigSectionFieldExtractorsFactory fieldExtractorsFactory, IAppLogger? logger = null)
         {
             _configDirectory = configDirectory ?? throw new ArgumentNullException(nameof(configDirectory));
+            _fieldExtractorsFactory = fieldExtractorsFactory ?? throw new ArgumentNullException(nameof(fieldExtractorsFactory));
             _logger = logger;
 
             _jsonOptions = new JsonSerializerOptions
@@ -376,39 +379,16 @@ namespace SharpBridge.Utilities
         /// <returns>List of field states for validation purposes</returns>
         public async Task<List<ConfigFieldState>> GetSectionFieldsAsync(ConfigSectionTypes sectionType)
         {
-            var section = await LoadSectionAsync(sectionType);
-            return ExtractFieldStates(section);
-        }
-
-        /// <summary>
-        /// Extracts field states from a configuration section for validation purposes
-        /// </summary>
-        /// <param name="section">The configuration section to analyze</param>
-        /// <returns>List of field states</returns>
-        private static List<ConfigFieldState> ExtractFieldStates(IConfigSection section)
-        {
-            var fieldStates = new List<ConfigFieldState>();
-            var properties = section.GetType().GetProperties();
-
-            foreach (var property in properties)
+            try
             {
-                var descriptionAttr = property.GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false)
-                    .FirstOrDefault() as System.ComponentModel.DescriptionAttribute;
-
-                var description = descriptionAttr?.Description ?? property.Name;
-                var value = property.GetValue(section);
-                var isPresent = value != null;
-
-                fieldStates.Add(new ConfigFieldState(
-                    property.Name,
-                    value,
-                    isPresent,
-                    property.PropertyType,
-                    description
-                ));
+                var extractor = _fieldExtractorsFactory.GetExtractor(sectionType);
+                return await extractor.ExtractFieldStatesAsync(ApplicationConfigPath);
             }
-
-            return fieldStates;
+            catch (Exception ex)
+            {
+                _logger?.ErrorWithException("Failed to extract field states for section {0}", ex, sectionType);
+                throw new InvalidOperationException($"Failed to extract field states for section {sectionType}: {ex.Message}", ex);
+            }
         }
     }
 }
