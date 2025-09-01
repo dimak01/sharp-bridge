@@ -13,7 +13,6 @@ namespace SharpBridge.Tests.Utilities
             // Arrange
             var original = new ApplicationConfig
             {
-                Version = 1,
                 PhoneClient = new VTubeStudioPhoneClientConfig
                 {
                     IphoneIpAddress = "192.168.1.100",
@@ -35,7 +34,6 @@ namespace SharpBridge.Tests.Utilities
             cloned.PCClient.Should().NotBeSameAs(original.PCClient);
 
             // Values should be equal
-            cloned.Version.Should().Be(original.Version);
             cloned.PhoneClient.IphoneIpAddress.Should().Be(original.PhoneClient.IphoneIpAddress);
             cloned.PhoneClient.IphonePort.Should().Be(original.PhoneClient.IphonePort);
             cloned.PCClient.Host.Should().Be(original.PCClient.Host);

@@ -16,13 +16,21 @@ namespace SharpBridge.Services.Validators
         /// <returns>Validation result indicating if the section is valid and what fields need attention</returns>
         public ConfigValidationResult ValidateSection(List<ConfigFieldState> fieldsState)
         {
-            var missingFields = new List<MissingField>();
+            // TODO: IMPLEMENT PROPER GeneralSettingsConfig VALIDATION
+            // This is currently a placeholder implementation. Need to implement:
+            // 1. Field-specific validation (e.g., LogLevel should be valid enum value, LogFilePath should be writable)
+            // 2. Business rule validation (e.g., file paths should be accessible, log rotation settings should be reasonable)
+            // 3. Cross-field validation (e.g., if log to file is enabled, log file path must be specified)
+            // 4. Proper error messages for each validation failure
+            // 5. Handle optional vs required fields appropriately
+
+            var missingFields = new List<FieldValidationIssue>();
 
             foreach (var field in fieldsState)
             {
                 if (!field.IsPresent || field.Value == null)
                 {
-                    missingFields.Add(new MissingField(field.FieldName, field.ExpectedType, field.Description));
+                    missingFields.Add(new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description));
                 }
             }
 

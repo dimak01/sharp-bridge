@@ -39,7 +39,7 @@ namespace SharpBridge.Models
         /// <summary>
         /// Phone client settings for connecting to iPhone VTube Studio
         /// </summary>
-        public VTubeStudioPhoneClientConfig PhoneClient { get; set; } = new();
+        public VTubeStudioPhoneClientConfig PhoneClient { get; set; } = new("127.0.0.1");
 
         /// <summary>
         /// PC client settings for connecting to VTube Studio on PC
