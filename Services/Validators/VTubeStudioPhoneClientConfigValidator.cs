@@ -17,35 +17,51 @@ namespace SharpBridge.Services.Validators
         /// <returns>Validation result indicating if the section is valid and what fields need attention</returns>
         public ConfigValidationResult ValidateSection(List<ConfigFieldState> fieldsState)
         {
-            var missingFields = new List<FieldValidationIssue>();
+            var issues = new List<FieldValidationIssue>();
 
             foreach (var field in fieldsState)
             {
-                // Skip internal settings (JsonIgnore fields) - they have defaults
-                if (field.FieldName == "RequestIntervalSeconds" ||
-                    field.FieldName == "SendForSeconds" ||
-                    field.FieldName == "ReceiveTimeoutMs" ||
-                    field.FieldName == "ErrorDelayMs")
+                var (isValid, issue) = ValidateSingleField(field);
+                if (!isValid && issue != null)
                 {
-                    continue;
-                }
-
-                // Check if required field is missing
-                if (!field.IsPresent || field.Value == null)
-                {
-                    missingFields.Add(new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description));
-                    continue;
-                }
-
-                // Validate field values based on field type
-                var validationError = ValidateFieldValue(field);
-                if (validationError != null)
-                {
-                    missingFields.Add(validationError);
+                    issues.Add(issue);
                 }
             }
 
-            return new ConfigValidationResult(missingFields);
+            return new ConfigValidationResult(issues);
+        }
+
+        /// <summary>
+        /// Validates a single configuration field and returns the validation result.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <returns>Tuple indicating if the field is valid and any validation issue</returns>
+        public (bool IsValid, FieldValidationIssue? Issue) ValidateSingleField(ConfigFieldState field)
+        {
+            // Skip internal settings (JsonIgnore fields) - they have defaults
+            if (field.FieldName == "RequestIntervalSeconds" ||
+                field.FieldName == "SendForSeconds" ||
+                field.FieldName == "ReceiveTimeoutMs" ||
+                field.FieldName == "ErrorDelayMs")
+            {
+                return (true, null);
+            }
+
+            // Check if required field is missing
+            if (!field.IsPresent || field.Value == null)
+            {
+                var issue = new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description, providedValueText: null);
+                return (false, issue);
+            }
+
+            // Validate field values based on field type
+            var validationError = ValidateFieldValue(field);
+            if (validationError != null)
+            {
+                return (false, validationError);
+            }
+
+            return (true, null);
         }
 
         /// <summary>
@@ -67,7 +83,7 @@ namespace SharpBridge.Services.Validators
                 default:
                     // Unknown field - this shouldn't happen but let's be defensive
                     return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                        $"Unknown field '{field.FieldName}' in VTubeStudioPhoneClientConfig");
+                        $"Unknown field '{field.FieldName}' in VTubeStudioPhoneClientConfig", FormatForDisplay(field.Value));
             }
         }
 
@@ -81,14 +97,14 @@ namespace SharpBridge.Services.Validators
             if (field.Value is not string ipAddress || string.IsNullOrWhiteSpace(ipAddress))
             {
                 return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    "IP address cannot be null or empty");
+                    "IP address cannot be null or empty", FormatForDisplay(field.Value));
             }
 
             // Check if it's a valid IP address
             if (!IPAddress.TryParse(ipAddress, out _))
             {
                 return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"'{ipAddress}' is not a valid IP address");
+                    $"'{ipAddress}' is not a valid IP address", ipAddress);
             }
 
             // Optional: Check if it's not localhost (127.0.0.1) for production use
@@ -112,14 +128,14 @@ namespace SharpBridge.Services.Validators
             if (field.Value is not int port)
             {
                 return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Port value must be an integer, got {field.Value?.GetType().Name ?? "null"}");
+                    $"Port value must be an integer, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
             }
 
             // Check if port is in valid range (1-65535)
             if (port < 1 || port > 65535)
             {
                 return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Port {port} is out of valid range (1-65535)");
+                    $"Port {port} is out of valid range (1-65535)", port.ToString());
             }
 
             // Check for common reserved ports (optional, could be configurable)
@@ -131,6 +147,22 @@ namespace SharpBridge.Services.Validators
             }
 
             return null; // Validation passed
+        }
+
+        private static string? FormatForDisplay(object? value)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+
+            if (value is string s)
+            {
+                const int max = 128;
+                return s.Length > max ? s.Substring(0, max - 3) + "..." : s;
+            }
+
+            return value.ToString();
         }
     }
 }

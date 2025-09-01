@@ -10,15 +10,15 @@ namespace SharpBridge.Services
     /// Factory implementation for creating configuration section remediation services.
     /// Provides type-safe access to remediation services for each configuration section type.
     /// </summary>
-    public class ConfigSectionFirstTimeSetupFactory : IConfigSectionRemediationFactory
+    public class ConfigSectionRemediationServiceFactory : IConfigSectionRemediationServiceFactory
     {
         private readonly IServiceProvider _serviceProvider;
 
         /// <summary>
-        /// Initializes a new instance of the ConfigSectionFirstTimeSetupFactory class.
+        /// Initializes a new instance of the ConfigSectionRemediationServiceFactory class.
         /// </summary>
         /// <param name="serviceProvider">The service provider for resolving remediation services</param>
-        public ConfigSectionFirstTimeSetupFactory(IServiceProvider serviceProvider)
+        public ConfigSectionRemediationServiceFactory(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }

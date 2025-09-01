@@ -6,7 +6,7 @@ namespace SharpBridge.Interfaces
     /// Factory interface for creating configuration section remediation services.
     /// Provides type-safe access to remediation services for each configuration section type.
     /// </summary>
-    public interface IConfigSectionRemediationFactory
+    public interface IConfigSectionRemediationServiceFactory
     {
         /// <summary>
         /// Gets the remediation service for the specified configuration section type.
