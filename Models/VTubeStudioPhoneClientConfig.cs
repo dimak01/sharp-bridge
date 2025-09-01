@@ -22,13 +22,13 @@ public class VTubeStudioPhoneClientConfig : IConfigSection
     /// <summary>
     /// Port on the iPhone where VTube Studio is broadcasting
     /// </summary>
-    [Description("iPhone Port")]
+    [Description("iPhone VTube Studio App Port")]
     public int IphonePort { get; set; }
 
     /// <summary>
     /// Local port to receive tracking data on
     /// </summary>
-    [Description("Local Port")]
+    [Description("Local Port on this PC for iPhone's VTube Studio App to connect to our plugin")]
     public int LocalPort { get; set; }
 
     // ========================================

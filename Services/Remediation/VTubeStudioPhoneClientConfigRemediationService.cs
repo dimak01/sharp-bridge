@@ -138,7 +138,7 @@ namespace SharpBridge.Services.Remediation
                 var detail = string.IsNullOrWhiteSpace(issue.ProvidedValueText)
                     ? issue.Description
                     : $"{issue.Description} (provided: '{issue.ProvidedValueText}')";
-                lines.Add($" - {issue.FieldName}: {detail}");
+                lines.Add($" - {detail}");
             }
 
             lines.Add("");
@@ -187,15 +187,10 @@ namespace SharpBridge.Services.Remediation
             };
 
             lines.Add("");
-            lines.Add($"Now editing: {activeField.FieldName}");
-            lines.Add($"Expected: {activeField.ExpectedType.Name}");
+            lines.Add($"Now editing: {activeField.Description}");
             if (activeField.Value != null)
             {
                 lines.Add($"Current value: {activeField.Value}");
-            }
-            if (!string.IsNullOrWhiteSpace(activeField.Description))
-            {
-                lines.Add($"Description: {activeField.Description}");
             }
             if (!string.IsNullOrWhiteSpace(hint))
             {
