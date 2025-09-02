@@ -15,7 +15,7 @@ namespace SharpBridge.Interfaces
         /// validating them, and prompting the user to fix any problems.
         /// </summary>
         /// <param name="fieldsState">The raw state of all fields in the configuration section</param>
-        /// <returns>A tuple indicating success and the updated configuration section</returns>
-        Task<(bool Success, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState);
+        /// <returns>A tuple indicating the remediation result and the updated configuration section (if changes were made)</returns>
+        Task<(RemediationResult Result, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState);
     }
 }

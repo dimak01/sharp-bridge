@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -347,11 +348,48 @@ namespace SharpBridge.Utilities
 
         /// <summary>
         /// Saves a configuration section using the enum type identifier
+        /// Uses JSON path-based updates to preserve all other sections exactly as-is
         /// </summary>
         /// <param name="sectionType">The type of configuration section to save</param>
         /// <param name="config">The configuration section to save</param>
         /// <returns>A task representing the asynchronous save operation</returns>
         public async Task SaveSectionAsync(ConfigSectionTypes sectionType, IConfigSection config)
+        {
+            try
+            {
+                _logger?.Debug("Saving {0} section using JSON path-based update", sectionType);
+
+                // Get the JSON path for this section
+                var sectionPath = GetSectionJsonPath(sectionType);
+
+                // Read the current JSON file
+                var json = await File.ReadAllTextAsync(ApplicationConfigPath);
+
+                // Update only the specific section using JSON path
+                var updatedJson = UpdateJsonSection(json, sectionPath, config);
+
+                // Create backup before writing
+                var backupPath = ApplicationConfigPath + ".backup";
+                if (File.Exists(ApplicationConfigPath))
+                {
+                    File.Copy(ApplicationConfigPath, backupPath, overwrite: true);
+                }
+
+                // Write the updated JSON
+                await File.WriteAllTextAsync(ApplicationConfigPath, updatedJson);
+
+                _logger?.Debug("Successfully saved {0} section", sectionType);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Failed to save {0} section using JSON path method: {1}", sectionType, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Legacy save method - kept as fallback
+        /// </summary>
+        private async Task SaveSectionLegacyAsync(ConfigSectionTypes sectionType, IConfigSection config)
         {
             switch (sectionType)
             {
@@ -369,6 +407,76 @@ namespace SharpBridge.Utilities
                     break;
                 default:
                     throw new ArgumentException($"Invalid config type {config.GetType().Name} for section {sectionType}", nameof(config));
+            }
+        }
+
+        /// <summary>
+        /// Gets the JSON path for a configuration section
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section</param>
+        /// <returns>The JSON path string for the section</returns>
+        private static string GetSectionJsonPath(ConfigSectionTypes sectionType)
+        {
+            return sectionType switch
+            {
+                ConfigSectionTypes.VTubeStudioPCConfig => "PCClient",
+                ConfigSectionTypes.VTubeStudioPhoneClientConfig => "PhoneClient",
+                ConfigSectionTypes.GeneralSettingsConfig => "GeneralSettings",
+                ConfigSectionTypes.TransformationEngineConfig => "TransformationEngine",
+                _ => throw new ArgumentException($"Unknown section type: {sectionType}", nameof(sectionType))
+            };
+        }
+
+        /// <summary>
+        /// Updates a specific section in JSON using path-based replacement
+        /// </summary>
+        /// <param name="json">The original JSON string</param>
+        /// <param name="sectionPath">The JSON path to the section (e.g., "PhoneClient")</param>
+        /// <param name="config">The configuration object to serialize</param>
+        /// <returns>The updated JSON string</returns>
+        private string UpdateJsonSection(string json, string sectionPath, IConfigSection config)
+        {
+            try
+            {
+                // Parse the original JSON
+                using var jsonDoc = JsonDocument.Parse(json);
+                var root = jsonDoc.RootElement;
+
+                // Create a new JSON object with the updated section
+                var updatedJson = new Dictionary<string, object>();
+
+                // Copy all existing properties
+                foreach (var property in root.EnumerateObject())
+                {
+                    if (property.Name == sectionPath)
+                    {
+                        // Replace the target section with the new config
+                        updatedJson[property.Name] = config;
+                    }
+                    else
+                    {
+                        // Preserve all other sections exactly as-is
+                        updatedJson[property.Name] = JsonSerializer.Deserialize<object>(property.Value.GetRawText())!;
+                    }
+                }
+
+                // If the section doesn't exist, add it
+                if (!root.TryGetProperty(sectionPath, out _))
+                {
+                    updatedJson[sectionPath] = config;
+                }
+
+                // Serialize back to JSON with proper formatting
+                return JsonSerializer.Serialize(updatedJson, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = null, // Don't change property names from original
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping // Less aggressive escaping
+                });
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException($"Failed to parse or update JSON for section '{sectionPath}'", ex);
             }
         }
 
