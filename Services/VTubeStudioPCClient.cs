@@ -81,7 +81,7 @@ namespace SharpBridge.Services
             _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
             _appConfigWatcher = appConfigWatcher;
             _startTime = DateTime.Now;
-            _config = _configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
+            _config = _configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
 
             // Subscribe to application config changes if watcher is provided
             if (_appConfigWatcher != null)

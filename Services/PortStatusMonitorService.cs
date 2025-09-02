@@ -35,10 +35,10 @@ namespace SharpBridge.Services
             var status = new NetworkStatus();
 
             // Get real configuration values
-            var phoneConfig = await _configManager.LoadPhoneConfigAsync();
-            var pcConfig = await _configManager.LoadPCConfigAsync();
+            var phoneConfig = await _configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>();
+            var pcConfig = await _configManager.LoadSectionAsync<VTubeStudioPCConfig>();
 
-            var iphoneHost = phoneConfig.IphoneIpAddress ?? "192.168.1.178"; // Default if not configured
+            var iphoneHost = phoneConfig.IphoneIpAddress;
             var iphonePort = phoneConfig.IphonePort.ToString();
             var pcHost = pcConfig.Host ?? "localhost"; // Default if not configured
             var pcPort = pcConfig.Port.ToString();
@@ -63,7 +63,7 @@ namespace SharpBridge.Services
             };
 
             // Get local port from configuration
-            var phoneConfig = await _configManager.LoadPhoneConfigAsync();
+            var phoneConfig = await _configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>();
             var localPort = phoneConfig.LocalPort.ToString();
 
             // Check if firewall allows inbound traffic to our local port (for receiving)

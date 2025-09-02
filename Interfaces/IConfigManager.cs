@@ -33,30 +33,6 @@ namespace SharpBridge.Interfaces
         Task SaveApplicationConfigAsync(ApplicationConfig config);
 
         /// <summary>
-        /// Loads the PC configuration from the consolidated config
-        /// </summary>
-        /// <returns>The PC configuration</returns>
-        Task<VTubeStudioPCConfig> LoadPCConfigAsync();
-
-        /// <summary>
-        /// Loads the Phone configuration from the consolidated config
-        /// </summary>
-        /// <returns>The Phone configuration</returns>
-        Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync();
-
-        /// <summary>
-        /// Loads the GeneralSettings configuration from the consolidated config
-        /// </summary>
-        /// <returns>The GeneralSettings configuration</returns>
-        Task<GeneralSettingsConfig> LoadGeneralSettingsConfigAsync();
-
-        /// <summary>
-        /// Loads the TransformationEngine configuration from the consolidated config
-        /// </summary>
-        /// <returns>The TransformationEngine configuration</returns>
-        Task<TransformationEngineConfig> LoadTransformationConfigAsync();
-
-        /// <summary>
         /// Loads user preferences from file or creates default ones if the file doesn't exist
         /// </summary>
         /// <returns>The user preferences</returns>
@@ -76,34 +52,11 @@ namespace SharpBridge.Interfaces
         Task ResetUserPreferencesAsync();
 
         /// <summary>
-        /// Saves the PC configuration to file (for API symmetry - unused in production)
+        /// Loads a configuration section using the enum type identifier
         /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SavePCConfigAsync(VTubeStudioPCConfig config);
-
-        /// <summary>
-        /// Saves the Phone configuration to file (for API symmetry - unused in production)
-        /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SavePhoneConfigAsync(VTubeStudioPhoneClientConfig config);
-
-        /// <summary>
-        /// Saves the GeneralSettings configuration to file (for API symmetry - unused in production)
-        /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SaveGeneralSettingsConfigAsync(GeneralSettingsConfig config);
-
-        /// <summary>
-        /// Saves the TransformationEngine configuration to file (for API symmetry - unused in production)
-        /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SaveTransformationConfigAsync(TransformationEngineConfig config);
-
-
+        /// <typeparam name="T">The type of configuration section to load</typeparam>
+        /// <returns>The loaded configuration section</returns>
+        Task<T> LoadSectionAsync<T>() where T : IConfigSection;
 
         /// <summary>
         /// Loads a configuration section using the enum type identifier
@@ -118,7 +71,7 @@ namespace SharpBridge.Interfaces
         /// <param name="sectionType">The type of configuration section to save</param>
         /// <param name="config">The configuration section to save</param>
         /// <returns>A task representing the asynchronous save operation</returns>
-        Task SaveSectionAsync(ConfigSectionTypes sectionType, IConfigSection config);
+        Task SaveSectionAsync<T>(ConfigSectionTypes sectionType, T config) where T : IConfigSection;
 
         /// <summary>
         /// Gets the raw field states for a configuration section using the enum type identifier

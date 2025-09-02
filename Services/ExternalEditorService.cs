@@ -75,8 +75,8 @@ namespace SharpBridge.Services
         /// </summary>
         private void LoadConfiguration()
         {
-            _generalSettingsConfig = _configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
-            _transformationConfig = _configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+            _generalSettingsConfig = _configManager.LoadSectionAsync<GeneralSettingsConfig>().GetAwaiter().GetResult();
+            _transformationConfig = _configManager.LoadSectionAsync<TransformationEngineConfig>().GetAwaiter().GetResult();
         }
 
         /// <summary>
