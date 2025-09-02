@@ -48,7 +48,7 @@ namespace SharpBridge.Utilities
             InitializeWithDefaults();
 
             // Load initial config
-            _config = _configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+            _config = _configManager.LoadSectionAsync<GeneralSettingsConfig>().GetAwaiter().GetResult();
 
             // Subscribe to application config changes if watcher is provided
             if (_appConfigWatcher != null)

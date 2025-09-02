@@ -62,7 +62,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         };
 
         _startTime = DateTime.UtcNow;
-        _config = _configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
+        _config = _configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>().GetAwaiter().GetResult();
         if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
             throw new ArgumentException("iPhone IP address must not be empty", "config");
         _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress ?? "not configured", _config.IphonePort);

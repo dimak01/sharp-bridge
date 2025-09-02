@@ -109,46 +109,6 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Loads the PC configuration from the consolidated config.
-        /// </summary>
-        /// <returns>The PC configuration.</returns>
-        public async Task<VTubeStudioPCConfig> LoadPCConfigAsync()
-        {
-            var appConfig = await LoadApplicationConfigAsync();
-            return appConfig.PCClient;
-        }
-
-        /// <summary>
-        /// Loads the Phone configuration from the consolidated config.
-        /// </summary>
-        /// <returns>The Phone configuration.</returns>
-        public async Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync()
-        {
-            var appConfig = await LoadApplicationConfigAsync();
-            return appConfig.PhoneClient;
-        }
-
-        /// <summary>
-        /// Loads the GeneralSettings configuration from the consolidated config.
-        /// </summary>
-        /// <returns>The GeneralSettings configuration.</returns>
-        public async Task<GeneralSettingsConfig> LoadGeneralSettingsConfigAsync()
-        {
-            var appConfig = await LoadApplicationConfigAsync();
-            return appConfig.GeneralSettings;
-        }
-
-        /// <summary>
-        /// Loads the TransformationEngine configuration from the consolidated config.
-        /// </summary>
-        /// <returns>The TransformationEngine configuration.</returns>
-        public async Task<TransformationEngineConfig> LoadTransformationConfigAsync()
-        {
-            var appConfig = await LoadApplicationConfigAsync();
-            return appConfig.TransformationEngine;
-        }
-
-        /// <summary>
         /// Loads user preferences from file or creates default ones if the file doesn't exist.
         /// </summary>
         /// <returns>The user preferences.</returns>
@@ -209,64 +169,6 @@ namespace SharpBridge.Utilities
             var defaultPreferences = new UserPreferences();
             await SaveUserPreferencesAsync(defaultPreferences);
         }
-
-        /// <summary>
-        /// Saves the PC configuration to file (for API symmetry - unused in production).
-        /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SavePCConfigAsync(VTubeStudioPCConfig config)
-        {
-            // For API symmetry only - not used in production
-            // In the future, this could update the consolidated config
-            var appConfig = await LoadApplicationConfigAsync();
-            appConfig.PCClient = config;
-            await SaveConfigAsync(ApplicationConfigPath, appConfig);
-        }
-
-        /// <summary>
-        /// Saves the Phone configuration to file (for API symmetry - unused in production).
-        /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SavePhoneConfigAsync(VTubeStudioPhoneClientConfig config)
-        {
-            // For API symmetry only - not used in production
-            // In the future, this could update the consolidated config
-            var appConfig = await LoadApplicationConfigAsync();
-            appConfig.PhoneClient = config;
-            await SaveConfigAsync(ApplicationConfigPath, appConfig);
-        }
-
-        /// <summary>
-        /// Saves the GeneralSettings configuration to file (for API symmetry - unused in production).
-        /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SaveGeneralSettingsConfigAsync(GeneralSettingsConfig config)
-        {
-            // For API symmetry only - not used in production
-            // In the future, this could update the consolidated config
-            var appConfig = await LoadApplicationConfigAsync();
-            appConfig.GeneralSettings = config;
-            await SaveConfigAsync(ApplicationConfigPath, appConfig);
-        }
-
-        /// <summary>
-        /// Saves the TransformationEngine configuration to file (for API symmetry - unused in production).
-        /// </summary>
-        /// <param name="config">The configuration to save.</param>
-        /// <returns>A task representing the asynchronous save operation.</returns>
-        public async Task SaveTransformationConfigAsync(TransformationEngineConfig config)
-        {
-            // For API symmetry only - not used in production
-            // In the future, this could update the consolidated config
-            var appConfig = await LoadApplicationConfigAsync();
-            appConfig.TransformationEngine = config;
-            await SaveConfigAsync(ApplicationConfigPath, appConfig);
-        }
-
-
 
         private async Task SaveConfigAsync<T>(string path, T config) where T : class
         {
@@ -336,14 +238,36 @@ namespace SharpBridge.Utilities
         /// <returns>The loaded configuration section</returns>
         public async Task<IConfigSection> LoadSectionAsync(ConfigSectionTypes sectionType)
         {
+            var appConfig = await LoadApplicationConfigAsync();
             return sectionType switch
             {
-                ConfigSectionTypes.VTubeStudioPCConfig => await LoadPCConfigAsync(),
-                ConfigSectionTypes.VTubeStudioPhoneClientConfig => await LoadPhoneConfigAsync(),
-                ConfigSectionTypes.GeneralSettingsConfig => await LoadGeneralSettingsConfigAsync(),
-                ConfigSectionTypes.TransformationEngineConfig => await LoadTransformationConfigAsync(),
+                ConfigSectionTypes.VTubeStudioPCConfig => appConfig.PCClient,
+                ConfigSectionTypes.VTubeStudioPhoneClientConfig => appConfig.PhoneClient,
+                ConfigSectionTypes.GeneralSettingsConfig => appConfig.GeneralSettings,
+                ConfigSectionTypes.TransformationEngineConfig => appConfig.TransformationEngine,
                 _ => throw new ArgumentException($"Unknown section type: {sectionType}", nameof(sectionType))
             };
+        }
+
+        /// <summary>
+        /// Loads a configuration section using the type identifier
+        /// </summary>
+        /// <typeparam name="T">The type of configuration section to load</typeparam>
+        /// <returns>The loaded configuration section</returns>
+        public async Task<T> LoadSectionAsync<T>() where T : IConfigSection
+        {
+            var appConfig = await LoadApplicationConfigAsync();
+
+            if (typeof(T) == typeof(VTubeStudioPCConfig))
+                return (T)(object)appConfig.PCClient;
+            else if (typeof(T) == typeof(VTubeStudioPhoneClientConfig))
+                return (T)(object)appConfig.PhoneClient;
+            else if (typeof(T) == typeof(GeneralSettingsConfig))
+                return (T)(object)appConfig.GeneralSettings;
+            else if (typeof(T) == typeof(TransformationEngineConfig))
+                return (T)(object)appConfig.TransformationEngine;
+            else
+                throw new ArgumentException($"Unknown section type: {typeof(T)}", nameof(T));
         }
 
         /// <summary>
@@ -353,7 +277,7 @@ namespace SharpBridge.Utilities
         /// <param name="sectionType">The type of configuration section to save</param>
         /// <param name="config">The configuration section to save</param>
         /// <returns>A task representing the asynchronous save operation</returns>
-        public async Task SaveSectionAsync(ConfigSectionTypes sectionType, IConfigSection config)
+        public async Task SaveSectionAsync<T>(ConfigSectionTypes sectionType, T config) where T : IConfigSection
         {
             try
             {
@@ -383,30 +307,6 @@ namespace SharpBridge.Utilities
             catch (Exception ex)
             {
                 _logger?.Error("Failed to save {0} section using JSON path method: {1}", sectionType, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Legacy save method - kept as fallback
-        /// </summary>
-        private async Task SaveSectionLegacyAsync(ConfigSectionTypes sectionType, IConfigSection config)
-        {
-            switch (sectionType)
-            {
-                case ConfigSectionTypes.VTubeStudioPCConfig when config is VTubeStudioPCConfig pcConfig:
-                    await SavePCConfigAsync(pcConfig);
-                    break;
-                case ConfigSectionTypes.VTubeStudioPhoneClientConfig when config is VTubeStudioPhoneClientConfig phoneConfig:
-                    await SavePhoneConfigAsync(phoneConfig);
-                    break;
-                case ConfigSectionTypes.GeneralSettingsConfig when config is GeneralSettingsConfig generalConfig:
-                    await SaveGeneralSettingsConfigAsync(generalConfig);
-                    break;
-                case ConfigSectionTypes.TransformationEngineConfig when config is TransformationEngineConfig transformConfig:
-                    await SaveTransformationConfigAsync(transformConfig);
-                    break;
-                default:
-                    throw new ArgumentException($"Invalid config type {config.GetType().Name} for section {sectionType}", nameof(config));
             }
         }
 

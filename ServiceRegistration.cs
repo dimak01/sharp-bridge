@@ -95,20 +95,20 @@ namespace SharpBridge
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
             });
 
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>().GetAwaiter().GetResult();
             });
 
             // Register GeneralSettingsConfig
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<GeneralSettingsConfig>().GetAwaiter().GetResult();
             });
 
             // Register ApplicationConfig (full consolidated config)
@@ -122,7 +122,7 @@ namespace SharpBridge
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<TransformationEngineConfig>().GetAwaiter().GetResult();
             });
 
             // Register UserPreferences
