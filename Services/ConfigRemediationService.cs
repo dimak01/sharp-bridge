@@ -46,27 +46,35 @@ namespace SharpBridge.Services
                 // Process each configuration section in order
                 var sectionConfigTypes = Enum.GetValues<ConfigSectionTypes>();
 
-                foreach (var sectionType in sectionConfigTypes){
+                foreach (var sectionType in sectionConfigTypes)
+                {
                     // Load current field state for this section
                     var fields = await _configManager.GetSectionFieldsAsync(sectionType);
 
                     // Always attempt remediation; section services will validate first and no-op if already valid
                     var remediationService = _remediationFactory.GetRemediationService(sectionType);
-                    var (success, updatedConfig) = await remediationService.Remediate(fields);
+                    var (result, updatedConfig) = await remediationService.Remediate(fields);
 
-                    if (!success)
+                    switch (result)
                     {
-                        _logger?.Error($"Remediation aborted for section {sectionType}");
-                        return false;
-                    }
-
-                    if (updatedConfig != null) {
-                        updatedConfigSections[sectionType] = updatedConfig!;
+                        case RemediationResult.NoRemediationNeeded:
+                            // Section was already valid, skip saving
+                            _logger?.Debug($"No remediation needed for section {sectionType}");
+                            break;
+                        case RemediationResult.Succeeded:
+                            // Section was remediated successfully, save it
+                            updatedConfigSections[sectionType] = updatedConfig!;
+                            _logger?.Debug($"Remediation succeeded for section {sectionType}");
+                            break;
+                        case RemediationResult.Failed:
+                            _logger?.Error($"Remediation failed for section {sectionType}");
+                            return false;
                     }
                 }
 
 
-                foreach(var sectionType in updatedConfigSections.Keys) {
+                foreach (var sectionType in updatedConfigSections.Keys)
+                {
                     await _configManager.SaveSectionAsync(sectionType, updatedConfigSections[sectionType]);
                     _logger?.Info($"Saved configuration for {sectionType}");
                 }

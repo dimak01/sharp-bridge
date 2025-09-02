@@ -15,7 +15,7 @@ namespace SharpBridge.Services.Remediation
         /// </summary>
         /// <param name="fieldsState">The raw state of all fields in the configuration section</param>
         /// <returns>A tuple indicating success and the updated configuration section</returns>
-        public async Task<(bool Success, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState)
+        public async Task<(RemediationResult Result, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState)
         {
             // TODO: IMPLEMENT PROPER TransformationEngineConfig REMEDIATION
             // This is currently a placeholder implementation. Need to implement:
@@ -27,7 +27,7 @@ namespace SharpBridge.Services.Remediation
             // 6. Proper error handling and user cancellation support
             // For now, return a default config
             var config = new TransformationEngineConfig();
-            return (true, config);
+            return (RemediationResult.NoRemediationNeeded, config);
         }
     }
 }

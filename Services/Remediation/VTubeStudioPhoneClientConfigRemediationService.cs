@@ -32,31 +32,44 @@ namespace SharpBridge.Services.Remediation
         /// Remediates configuration issues for a VTubeStudioPhoneClientConfig section by fixing missing or invalid fields.
         /// </summary>
         /// <param name="fieldsState">The raw state of all fields in the configuration section</param>
-        /// <returns>A tuple indicating success and the updated configuration section</returns>
-        public async Task<(bool Success, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState)
+        /// <returns>A tuple indicating the remediation result and the updated configuration section (if changes were made)</returns>
+        public async Task<(RemediationResult Result, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState)
         {
             var workingFields = new List<ConfigFieldState>(fieldsState);
 
-            while (true)
+            // First validation: check if section is already valid
+            var initialValidation = _validator.ValidateSection(workingFields);
+            if (initialValidation.IsValid)
             {
-                var validation = _validator.ValidateSection(workingFields);
-                if (validation.IsValid)
-                {
-                    var config = CreateConfigFromFieldStates(workingFields);
-                    return (true, config);
-                }
+                // Section was already valid, no remediation needed
+                return (RemediationResult.NoRemediationNeeded, null);
+            }
 
-                // Splash: show full list and wait for Enter
-                var isFirstTimeSetup = IsFirstTimeSetup(workingFields);
-                var splash = BuildSplashLines(validation.Issues, isFirstTimeSetup);
-                _console.WriteLines(splash);
-                _console.ReadLine();
+            // Show splash screen and wait for user to start
+            var isFirstTimeSetup = IsFirstTimeSetup(workingFields);
+            var splash = BuildSplashLines(initialValidation.Issues, isFirstTimeSetup);
+            _console.WriteLines(splash);
+            _console.ReadLine();
 
-                // Remediate each issue with a tight per-field loop
-                foreach (var issue in validation.Issues)
-                {
-                    await RemediateFieldUntilValidAsync(issue, workingFields);
-                }
+            // Remediate each issue - each method will loop until the field is valid
+            foreach (var issue in initialValidation.Issues)
+            {
+                await RemediateFieldUntilValidAsync(issue, workingFields);
+            }
+
+            // Final validation: ensure all fields are now valid
+            var finalValidation = _validator.ValidateSection(workingFields);
+            if (finalValidation.IsValid)
+            {
+                // Section was successfully remediated
+                var config = CreateConfigFromFieldStates(workingFields);
+                return (RemediationResult.Succeeded, config);
+            }
+            else
+            {
+                // This shouldn't happen since RemediateFieldUntilValidAsync should fix each field
+                // But if it does, we should return Failed
+                return (RemediationResult.Failed, null);
             }
         }
 

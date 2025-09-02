@@ -14,8 +14,8 @@ namespace SharpBridge.Services.Remediation
         /// Remediates configuration issues for a VTubeStudioPCConfig section by fixing missing or invalid fields.
         /// </summary>
         /// <param name="fieldsState">The raw state of all fields in the configuration section</param>
-        /// <returns>A tuple indicating success and the updated configuration section</returns>
-        public async Task<(bool Success, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState)
+        /// <returns>A tuple indicating the remediation result and the updated configuration section (if changes were made)</returns>
+        public async Task<(RemediationResult Result, IConfigSection? UpdatedConfig)> Remediate(List<ConfigFieldState> fieldsState)
         {
             // TODO: IMPLEMENT PROPER VTubeStudioPCConfig REMEDIATION
             // This is currently a placeholder implementation. Need to implement:
@@ -25,9 +25,9 @@ namespace SharpBridge.Services.Remediation
             // 4. Help text explaining what each field does
             // 5. Retry logic for invalid input
             // 6. Proper error handling and user cancellation support
-            // For now, return a default config
+            // For now, return a default config (placeholder behavior)
             var config = new VTubeStudioPCConfig();
-            return (true, config);
+            return (RemediationResult.NoRemediationNeeded, config);
         }
     }
 }
