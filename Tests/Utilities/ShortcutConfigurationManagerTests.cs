@@ -637,7 +637,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup mock to return different configs to trigger the change
-            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+            _mockConfigManager.Setup(c => c.LoadSectionAsync<GeneralSettingsConfig>())
                 .ReturnsAsync(defaultConfig);
             _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
                 .ReturnsAsync(newConfig);
@@ -672,7 +672,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup mock to return the same config for both initial load and reload
-            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+            _mockConfigManager.Setup(c => c.LoadSectionAsync<GeneralSettingsConfig>())
                 .ReturnsAsync(defaultConfig);
             _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
                 .ReturnsAsync(newConfig);
@@ -729,7 +729,7 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup mock to return different configs to trigger the change
-            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+            _mockConfigManager.Setup(c => c.LoadSectionAsync<GeneralSettingsConfig>())
                 .ReturnsAsync(defaultConfig);
             _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
                 .ReturnsAsync(new ApplicationConfig { GeneralSettings = newGeneralSettings });

@@ -12,23 +12,33 @@ using SharpBridge.Models;
 namespace SharpBridge.Services.FieldExtractors
 {
     /// <summary>
-    /// Field extractor for VTubeStudioPhoneClientConfig configuration sections.
+    /// Generic field extractor for any configuration section type.
+    /// Extracts field states from JSON configuration files using reflection-based property discovery.
     /// </summary>
-    public class VTubeStudioPhoneClientConfigFieldExtractor : IConfigSectionFieldExtractor
+    public class ConfigSectionFieldExtractor : IConfigSectionFieldExtractor
     {
+        private readonly IEnumerable<PropertyInfo> _properties;
+
         /// <summary>
-        /// Extracts field states from the PhoneClient section of the configuration file.
+        /// Initializes a new instance of the ConfigSectionFieldExtractor class.
+        /// </summary>
+        /// <param name="properties">The properties to extract from the configuration section</param>
+        public ConfigSectionFieldExtractor(IEnumerable<PropertyInfo> properties)
+        {
+            _properties = properties ?? throw new ArgumentNullException(nameof(properties));
+        }
+
+        /// <summary>
+        /// Extracts field states from the specified configuration section of the configuration file.
         /// </summary>
         /// <param name="configFilePath">Path to the ApplicationConfig.json file</param>
-        /// <returns>List of field states for the phone client configuration</returns>
+        /// <returns>List of field states for the configuration section</returns>
         public async Task<List<ConfigFieldState>> ExtractFieldStatesAsync(string configFilePath)
         {
             var fieldStates = new List<ConfigFieldState>();
-            var phoneConfigType = typeof(VTubeStudioPhoneClientConfig);
-            var properties = phoneConfigType.GetProperties();
 
-            // Get expected field schema from the DTO type
-            foreach (var property in properties)
+            // Get expected field schema from the provided properties
+            foreach (var property in _properties)
             {
                 var description = GetPropertyDescription(property);
                 var fieldState = await ExtractFieldState(configFilePath, property, description);
@@ -51,15 +61,16 @@ namespace SharpBridge.Services.FieldExtractors
                 var jsonText = await File.ReadAllTextAsync(configFilePath);
                 using var document = JsonDocument.Parse(jsonText);
 
-                // Navigate to PhoneClient section
-                if (!document.RootElement.TryGetProperty("PhoneClient", out var phoneClientSection))
+                // Navigate to the section (this will be determined by the factory)
+                var sectionName = GetSectionNameFromProperty(property);
+                if (!document.RootElement.TryGetProperty(sectionName, out var sectionElement))
                 {
-                    // PhoneClient section doesn't exist - field is not present
+                    // Section doesn't exist - field is not present
                     return new ConfigFieldState(property.Name, null, false, property.PropertyType, description);
                 }
 
-                // Look for the property in the PhoneClient section (case-insensitive)
-                if (!TryGetPropertyIgnoreCase(phoneClientSection, property.Name, out var jsonElement))
+                // Look for the property in the section (case-insensitive)
+                if (!TryGetPropertyIgnoreCase(sectionElement, property.Name, out var jsonElement))
                 {
                     // Property not found in JSON - field is not present
                     return new ConfigFieldState(property.Name, null, false, property.PropertyType, description);
@@ -111,6 +122,24 @@ namespace SharpBridge.Services.FieldExtractors
         {
             var descriptionAttr = property.GetCustomAttribute<DescriptionAttribute>();
             return descriptionAttr?.Description ?? property.Name;
+        }
+
+        private static string GetSectionNameFromProperty(PropertyInfo property)
+        {
+            // This is a temporary solution - the factory should pass the section name
+            // For now, we'll determine it from the property's declaring type
+            var declaringType = property.DeclaringType;
+            if (declaringType == typeof(VTubeStudioPhoneClientConfig))
+                return "PhoneClient";
+            if (declaringType == typeof(VTubeStudioPCConfig))
+                return "PCClient";
+            if (declaringType == typeof(GeneralSettingsConfig))
+                return "GeneralSettings";
+            if (declaringType == typeof(TransformationEngineConfig))
+                return "TransformationEngine";
+
+            // Fallback to type name
+            return declaringType?.Name ?? "Unknown";
         }
     }
 }

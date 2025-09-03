@@ -1,5 +1,7 @@
 using System;
-using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json.Serialization;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services.FieldExtractors;
@@ -12,15 +14,11 @@ namespace SharpBridge.Services
     /// </summary>
     public class ConfigSectionFieldExtractorsFactory : IConfigSectionFieldExtractorsFactory
     {
-        private readonly IServiceProvider _serviceProvider;
-
         /// <summary>
         /// Initializes a new instance of the ConfigSectionFieldExtractorsFactory class.
         /// </summary>
-        /// <param name="serviceProvider">The service provider for resolving field extractors</param>
-        public ConfigSectionFieldExtractorsFactory(IServiceProvider serviceProvider)
+        public ConfigSectionFieldExtractorsFactory()
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
 
         /// <summary>
@@ -30,18 +28,31 @@ namespace SharpBridge.Services
         /// <returns>The field extractor for the specified section type</returns>
         public IConfigSectionFieldExtractor GetExtractor(ConfigSectionTypes sectionType)
         {
-            return sectionType switch
+            var properties = GetPropertiesForSection(sectionType);
+            return new ConfigSectionFieldExtractor(properties);
+        }
+
+        /// <summary>
+        /// Gets the properties for the specified configuration section type.
+        /// </summary>
+        /// <param name="sectionType">The type of configuration section</param>
+        /// <returns>Collection of PropertyInfo objects for the section type</returns>
+        private static PropertyInfo[] GetPropertiesForSection(ConfigSectionTypes sectionType)
+        {
+            var allProperties = sectionType switch
             {
-                ConfigSectionTypes.VTubeStudioPCConfig =>
-                    _serviceProvider.GetRequiredService<VTubeStudioPCConfigFieldExtractor>(),
-                ConfigSectionTypes.VTubeStudioPhoneClientConfig =>
-                    _serviceProvider.GetRequiredService<VTubeStudioPhoneClientConfigFieldExtractor>(),
-                ConfigSectionTypes.GeneralSettingsConfig =>
-                    _serviceProvider.GetRequiredService<GeneralSettingsConfigFieldExtractor>(),
-                ConfigSectionTypes.TransformationEngineConfig =>
-                    _serviceProvider.GetRequiredService<TransformationEngineConfigFieldExtractor>(),
+                ConfigSectionTypes.VTubeStudioPCConfig => typeof(VTubeStudioPCConfig).GetProperties(),
+                ConfigSectionTypes.VTubeStudioPhoneClientConfig => typeof(VTubeStudioPhoneClientConfig).GetProperties(),
+                ConfigSectionTypes.GeneralSettingsConfig => typeof(GeneralSettingsConfig).GetProperties(),
+                ConfigSectionTypes.TransformationEngineConfig => typeof(TransformationEngineConfig).GetProperties(),
                 _ => throw new ArgumentException($"Unknown section type: {sectionType}", nameof(sectionType))
             };
+
+            // Filter out properties marked with [JsonIgnore] - these are internal fields
+            // that should be set from defaults, not exposed to user during remediation
+            return allProperties
+                .Where(p => !p.GetCustomAttributes<JsonIgnoreAttribute>().Any())
+                .ToArray();
         }
     }
 }

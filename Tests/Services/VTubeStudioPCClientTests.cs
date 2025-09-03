@@ -60,7 +60,7 @@ namespace SharpBridge.Tests.Services
             portDiscoveryService ??= _mockPortDiscoveryService.Object;
 
             // Setup the config manager to return the provided config
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(config);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(config);
             return new VTubeStudioPCClient(logger, _mockConfigManager.Object, webSocket, portDiscoveryService, _mockAppConfigWatcher.Object);
         }
 

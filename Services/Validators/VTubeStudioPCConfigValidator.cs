@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
@@ -9,6 +10,16 @@ namespace SharpBridge.Services.Validators
     /// </summary>
     public class VTubeStudioPCConfigValidator : IConfigSectionValidator
     {
+        private readonly IConfigFieldValidator _fieldValidator;
+
+        /// <summary>
+        /// Initializes a new instance of the VTubeStudioPCConfigValidator class.
+        /// </summary>
+        /// <param name="fieldValidator">The field validator for common validation operations</param>
+        public VTubeStudioPCConfigValidator(IConfigFieldValidator fieldValidator)
+        {
+            _fieldValidator = fieldValidator ?? throw new ArgumentNullException(nameof(fieldValidator));
+        }
         /// <summary>
         /// Validates a VTubeStudioPCConfig section's fields and returns validation results.
         /// </summary>
@@ -16,31 +27,78 @@ namespace SharpBridge.Services.Validators
         /// <returns>Validation result indicating if the section is valid and what fields need attention</returns>
         public ConfigValidationResult ValidateSection(List<ConfigFieldState> fieldsState)
         {
-            // TODO: IMPLEMENT PROPER VTubeStudioPCConfig VALIDATION
-            // This is currently a placeholder implementation. Need to implement:
-            // 1. Field-specific validation (e.g., Host should not be empty, Port should be 1-65535)
-            // 2. Business rule validation (e.g., API key format if required, connection timeout ranges)
-            // 3. Cross-field validation (e.g., if using SSL, port should typically be 443 or custom)
-            // 4. Proper error messages for each validation failure
-            // 5. Handle optional vs required fields appropriately
-
-            var missingFields = new List<FieldValidationIssue>();
+            var issues = new List<FieldValidationIssue>();
 
             foreach (var field in fieldsState)
             {
-                if (!field.IsPresent || field.Value == null)
+                var (isValid, issue) = ValidateSingleField(field);
+                if (!isValid && issue != null)
                 {
-                    missingFields.Add(new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description));
+                    issues.Add(issue);
                 }
             }
 
-            return new ConfigValidationResult(missingFields);
+            return new ConfigValidationResult(issues);
         }
 
+        /// <summary>
+        /// Validates a single configuration field and returns the validation result.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <returns>Tuple indicating if the field is valid and any validation issue</returns>
         public (bool IsValid, FieldValidationIssue? Issue) ValidateSingleField(ConfigFieldState field)
         {
-            throw new System.NotImplementedException();
+            // Skip internal settings (JsonIgnore fields) - they have defaults
+            if (field.FieldName == "ConnectionTimeoutMs" ||
+                field.FieldName == "ReconnectionDelayMs" ||
+                field.FieldName == "RecoveryIntervalSeconds")
+            {
+                return (true, null);
+            }
+
+            // Check if required field is missing
+            if (!field.IsPresent || field.Value == null)
+            {
+                var issue = new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description, providedValueText: null);
+                return (false, issue);
+            }
+
+            // Validate field values based on field type
+            var validationError = ValidateFieldValue(field);
+            if (validationError != null)
+            {
+                return (false, validationError);
+            }
+
+            return (true, null);
         }
 
+        /// <summary>
+        /// Validates a specific field's value according to business rules.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        private FieldValidationIssue? ValidateFieldValue(ConfigFieldState field)
+        {
+            return field.FieldName switch
+            {
+                "Host" => _fieldValidator.ValidateHost(field),
+                "Port" => _fieldValidator.ValidatePort(field),
+                "UsePortDiscovery" => _fieldValidator.ValidateBoolean(field),
+                _ => CreateUnknownFieldError(field)
+            };
+        }
+
+        /// <summary>
+        /// Creates a validation error for unknown fields.
+        /// </summary>
+        /// <param name="field">The unknown field</param>
+        /// <returns>FieldValidationIssue for the unknown field</returns>
+        private static FieldValidationIssue CreateUnknownFieldError(ConfigFieldState field)
+        {
+            return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                $"Unknown field '{field.FieldName}' in VTubeStudioPCConfig",
+                field.Value?.ToString());
+        }
     }
 }

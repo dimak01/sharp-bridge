@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Net;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
@@ -10,6 +10,16 @@ namespace SharpBridge.Services.Validators
     /// </summary>
     public class VTubeStudioPhoneClientConfigValidator : IConfigSectionValidator
     {
+        private readonly IConfigFieldValidator _fieldValidator;
+
+        /// <summary>
+        /// Initializes a new instance of the VTubeStudioPhoneClientConfigValidator class.
+        /// </summary>
+        /// <param name="fieldValidator">The field validator for common validation operations</param>
+        public VTubeStudioPhoneClientConfigValidator(IConfigFieldValidator fieldValidator)
+        {
+            _fieldValidator = fieldValidator ?? throw new ArgumentNullException(nameof(fieldValidator));
+        }
         /// <summary>
         /// Validates a VTubeStudioPhoneClientConfig section's fields and returns validation results.
         /// </summary>
@@ -68,101 +78,28 @@ namespace SharpBridge.Services.Validators
         /// Validates a specific field's value according to business rules.
         /// </summary>
         /// <param name="field">The field to validate</param>
-        /// <returns>MissingField if validation fails, null if validation passes</returns>
-        private static FieldValidationIssue? ValidateFieldValue(ConfigFieldState field)
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        private FieldValidationIssue? ValidateFieldValue(ConfigFieldState field)
         {
-            switch (field.FieldName)
+            return field.FieldName switch
             {
-                case "IphoneIpAddress":
-                    return ValidateIpAddress(field);
-
-                case "IphonePort":
-                case "LocalPort":
-                    return ValidatePort(field);
-
-                default:
-                    // Unknown field - this shouldn't happen but let's be defensive
-                    return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                        $"Unknown field '{field.FieldName}' in VTubeStudioPhoneClientConfig", FormatForDisplay(field.Value));
-            }
+                "IphoneIpAddress" => _fieldValidator.ValidateIpAddress(field),
+                "IphonePort" => _fieldValidator.ValidatePort(field),
+                "LocalPort" => _fieldValidator.ValidatePort(field),
+                _ => CreateUnknownFieldError(field)
+            };
         }
 
         /// <summary>
-        /// Validates that an IP address field contains a valid IP address.
+        /// Creates a validation error for unknown fields.
         /// </summary>
-        /// <param name="field">The IP address field to validate</param>
-        /// <returns>MissingField if validation fails, null if validation passes</returns>
-        private static FieldValidationIssue? ValidateIpAddress(ConfigFieldState field)
+        /// <param name="field">The unknown field</param>
+        /// <returns>FieldValidationIssue for the unknown field</returns>
+        private static FieldValidationIssue CreateUnknownFieldError(ConfigFieldState field)
         {
-            if (field.Value is not string ipAddress || string.IsNullOrWhiteSpace(ipAddress))
-            {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    "IP address cannot be null or empty", FormatForDisplay(field.Value));
-            }
-
-            // Check if it's a valid IP address
-            if (!IPAddress.TryParse(ipAddress, out _))
-            {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"'{ipAddress}' is not a valid IP address", ipAddress);
-            }
-
-            // Optional: Check if it's not localhost (127.0.0.1) for production use
-            // This could be configurable based on environment
-            if (ipAddress == "127.0.0.1" || ipAddress == "localhost")
-            {
-                // Warning: This might be localhost - ensure this is intended for development
-                // For now, we'll allow it but could add a warning or make this configurable
-            }
-
-            return null; // Validation passed
-        }
-
-        /// <summary>
-        /// Validates that a port field contains a valid port number.
-        /// </summary>
-        /// <param name="field">The port field to validate</param>
-        /// <returns>MissingField if validation fails, null if validation passes</returns>
-        private static FieldValidationIssue? ValidatePort(ConfigFieldState field)
-        {
-            if (field.Value is not int port)
-            {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Port value must be an integer, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
-            }
-
-            // Check if port is in valid range (1-65535)
-            if (port < 1 || port > 65535)
-            {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Port {port} is out of valid range (1-65535)", port.ToString());
-            }
-
-            // Check for common reserved ports (optional, could be configurable)
-            if (port <= 1024)
-            {
-                // Warning: Ports 1-1024 are privileged ports on Unix systems
-                // This might require elevated privileges to bind to
-                // For now, we'll allow it but could add a warning
-            }
-
-            return null; // Validation passed
-        }
-
-        private static string? FormatForDisplay(object? value)
-        {
-            if (value == null)
-            {
-                return null;
-            }
-
-            if (value is string s)
-            {
-                const int max = 128;
-                return s.Length > max ? s.Substring(0, max - 3) + "..." : s;
-            }
-
-            return value.ToString();
+            return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                $"Unknown field '{field.FieldName}' in VTubeStudioPhoneClientConfig",
+                field.Value?.ToString());
         }
     }
 }

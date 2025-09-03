@@ -45,8 +45,8 @@ namespace SharpBridge.Tests.Services
 
             // Setup config manager
             _mockConfigManager.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            _mockConfigManager.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
-            _mockConfigManager.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(_transformationConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(_config);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(_transformationConfig);
 
             // Default setup: process launcher succeeds
             _processLauncherMock.Setup(x => x.TryStartProcess(It.IsAny<string>(), It.IsAny<string>()))
@@ -71,8 +71,8 @@ namespace SharpBridge.Tests.Services
         {
             var configManagerMock = new Mock<IConfigManager>();
             configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(config);
-            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(_transformationConfig);
+            configManagerMock.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(config);
+            configManagerMock.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(_transformationConfig);
 
             return new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
         }
@@ -88,8 +88,8 @@ namespace SharpBridge.Tests.Services
 
             var configManagerMock = new Mock<IConfigManager>();
             configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(config);
-            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(_transformationConfig);
+            configManagerMock.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(config);
+            configManagerMock.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(_transformationConfig);
 
             return new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, processLauncherMock.Object, _mockFileWatcher.Object);
         }
@@ -331,8 +331,8 @@ namespace SharpBridge.Tests.Services
             var configWithNullPath = new TransformationEngineConfig { ConfigPath = null! };
             var configManagerMock = new Mock<IConfigManager>();
             configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
-            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithNullPath);
+            configManagerMock.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(configWithNullPath);
             var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
 
             // Act
@@ -350,8 +350,8 @@ namespace SharpBridge.Tests.Services
             var configWithEmptyPath = new TransformationEngineConfig { ConfigPath = string.Empty };
             var configManagerMock = new Mock<IConfigManager>();
             configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
-            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithEmptyPath);
+            configManagerMock.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(configWithEmptyPath);
             var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
 
             // Act
@@ -369,8 +369,8 @@ namespace SharpBridge.Tests.Services
             var configWithWhitespacePath = new TransformationEngineConfig { ConfigPath = "   " };
             var configManagerMock = new Mock<IConfigManager>();
             configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
-            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithWhitespacePath);
+            configManagerMock.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(configWithWhitespacePath);
             var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
 
             // Act
@@ -389,8 +389,8 @@ namespace SharpBridge.Tests.Services
             var configWithNonExistentFile = new TransformationEngineConfig { ConfigPath = nonExistentPath };
             var configManagerMock = new Mock<IConfigManager>();
             configManagerMock.Setup(x => x.ApplicationConfigPath).Returns(_tempConfigPath);
-            configManagerMock.Setup(x => x.LoadGeneralSettingsConfigAsync()).ReturnsAsync(_config);
-            configManagerMock.Setup(x => x.LoadTransformationConfigAsync()).ReturnsAsync(configWithNonExistentFile);
+            configManagerMock.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(_config);
+            configManagerMock.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(configWithNonExistentFile);
             var service = new ExternalEditorService(configManagerMock.Object, _loggerMock.Object, _processLauncherMock.Object, _mockFileWatcher.Object);
 
             // Act
