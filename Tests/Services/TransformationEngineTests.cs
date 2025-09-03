@@ -708,7 +708,7 @@ namespace SharpBridge.Tests.Services
             // Arrange
             var engine = CreateEngine();
             var newConfig = new TransformationEngineConfig { ConfigPath = "different.json" };
-            _mockConfigManager.Setup(c => c.LoadTransformationConfigAsync()).ReturnsAsync(newConfig);
+            _mockConfigManager.Setup(c => c.LoadSectionAsync<TransformationEngineConfig>()).ReturnsAsync(newConfig);
 
             // Act & Assert
             // Since we can't directly test the private event handler, we test the initial state
@@ -786,7 +786,7 @@ namespace SharpBridge.Tests.Services
         {
             // Arrange
             CreateEngine(); // Create engine to subscribe to events
-            _mockConfigManager.Setup(x => x.LoadTransformationConfigAsync())
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
                 .ThrowsAsync(new InvalidOperationException("Test exception"));
 
             // Act - Raise the event that the engine is subscribed to

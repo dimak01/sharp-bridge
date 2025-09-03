@@ -15,61 +15,82 @@ namespace SharpBridge.Models
         // ========================================
 
         /// <summary>
-        /// Host address of VTube Studio (defaults to localhost, null indicates user should set this)
+        /// Host address of VTube Studio
         /// </summary>
-        [Description("Host Address")]
-        public string? Host { get; set; } = "localhost";
+        [Description("VTube Studio PC Host Address")]
+        public string Host { get; set; }
 
         /// <summary>
-        /// Port number of VTube Studio API, defaults to 8001
+        /// Port number of VTube Studio API
         /// </summary>
-        [Description("Port Number")]
-        public int Port { get; set; } = 8001;
+        [Description("VTube Studio PC API Port")]
+        public int Port { get; set; }
 
         /// <summary>
         /// Use port discovery if the specified port doesn't connect
         /// </summary>
-        [Description("Use Port Discovery")]
-        public bool UsePortDiscovery { get; set; } = true;
+        [Description("Enable Automatic Port Discovery")]
+        public bool UsePortDiscovery { get; set; }
 
         // ========================================
         // Internal Settings (Not User-Configurable)
         // ========================================
 
         /// <summary>
-        /// Plugin name for authentication, defaults to SharpBridge
+        /// Plugin name for authentication
         /// </summary>
         [JsonIgnore]
-        public string PluginName { get; set; } = "SharpBridge";
+        public string PluginName { get; set; }
 
         /// <summary>
         /// Plugin developer name for authentication
         /// </summary>
         [JsonIgnore]
-        public string PluginDeveloper { get; set; } = "Dimak@Shift";
+        public string PluginDeveloper { get; set; }
 
         /// <summary>
-        /// Path to saved authentication token file, defaults to "auth_token.txt"
+        /// Path to saved authentication token file
         /// </summary>
         [JsonIgnore]
-        public string TokenFilePath { get; set; } = "auth_token.txt";
+        public string TokenFilePath { get; set; }
 
         /// <summary>
-        /// Connection timeout in milliseconds, defaults to 1000 (1 second)
+        /// Connection timeout in milliseconds
         /// </summary>
         [JsonIgnore]
-        public int ConnectionTimeoutMs { get; set; } = 5000;
+        public int ConnectionTimeoutMs { get; set; }
 
         /// <summary>
-        /// Reconnection delay in milliseconds, defaults to 2000 (2 seconds)
+        /// Reconnection delay in milliseconds
         /// </summary>
         [JsonIgnore]
-        public int ReconnectionDelayMs { get; set; } = 2000;
+        public int ReconnectionDelayMs { get; set; }
 
         /// <summary>
         /// The interval in seconds between recovery attempts when services are unhealthy
         /// </summary>
         [JsonIgnore]
-        public double RecoveryIntervalSeconds { get; set; } = 2.0;
+        public double RecoveryIntervalSeconds { get; set; }
+
+        /// <summary>
+        /// Constructor to ensure all required fields are properly initialized
+        /// </summary>
+        /// <param name="host">Host address for VTube Studio (default: "localhost")</param>
+        /// <param name="port">Port number for VTube Studio API (default: 8001)</param>
+        /// <param name="usePortDiscovery">Enable port discovery (default: true)</param>
+        public VTubeStudioPCConfig(string host = "localhost", int port = 8001, bool usePortDiscovery = true)
+        {
+            Host = host;
+            Port = port;
+            UsePortDiscovery = usePortDiscovery;
+
+            // Set internal defaults
+            PluginName = "SharpBridge";
+            PluginDeveloper = "Dimak@Shift";
+            TokenFilePath = "auth_token.txt";
+            ConnectionTimeoutMs = 5000;
+            ReconnectionDelayMs = 2000;
+            RecoveryIntervalSeconds = 2.0;
+        }
     }
 }

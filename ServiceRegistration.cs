@@ -47,13 +47,13 @@ namespace SharpBridge
             services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
 
             // Register field extractors
-            services.AddTransient<SharpBridge.Services.FieldExtractors.VTubeStudioPCConfigFieldExtractor>();
-            services.AddTransient<SharpBridge.Services.FieldExtractors.VTubeStudioPhoneClientConfigFieldExtractor>();
-            services.AddTransient<SharpBridge.Services.FieldExtractors.GeneralSettingsConfigFieldExtractor>();
-            services.AddTransient<SharpBridge.Services.FieldExtractors.TransformationEngineConfigFieldExtractor>();
+            services.AddTransient<SharpBridge.Services.FieldExtractors.ConfigSectionFieldExtractor>();
 
             // Register field extractors factory
             services.AddSingleton<IConfigSectionFieldExtractorsFactory, ConfigSectionFieldExtractorsFactory>();
+
+            // Register field validator
+            services.AddSingleton<IConfigFieldValidator, ConfigFieldValidator>();
 
             // Register validators and remediation services (needed by ConfigRemediationService)
             services.AddTransient<VTubeStudioPCConfigValidator>();

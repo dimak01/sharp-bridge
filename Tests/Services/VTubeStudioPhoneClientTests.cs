@@ -36,7 +36,7 @@ namespace SharpBridge.Tests.Services
             };
 
             // Setup the config manager to return the provided config
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(config);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(config);
             return new VTubeStudioPhoneClient(udpClient, _mockConfigManager.Object, logger, _mockAppConfigWatcher.Object);
         }
 
