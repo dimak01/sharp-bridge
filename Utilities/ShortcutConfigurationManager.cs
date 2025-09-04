@@ -257,16 +257,7 @@ namespace SharpBridge.Utilities
         /// <returns>Dictionary mapping actions to their default shortcuts</returns>
         public Dictionary<ShortcutAction, Shortcut> GetDefaultShortcuts()
         {
-            return new Dictionary<ShortcutAction, Shortcut>
-            {
-                [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
-                [ShortcutAction.CyclePCClientVerbosity] = new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt),
-                [ShortcutAction.CyclePhoneClientVerbosity] = new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt),
-                [ShortcutAction.ReloadTransformationConfig] = new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt),
-                [ShortcutAction.OpenConfigInEditor] = new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt),
-                [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, 0),
-                [ShortcutAction.ShowNetworkStatus] = new Shortcut(ConsoleKey.F2, 0)
-            };
+            return DefaultShortcutsProvider.GetDefaultShortcuts();
         }
 
         /// <summary>

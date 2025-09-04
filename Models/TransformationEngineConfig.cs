@@ -16,13 +16,13 @@ namespace SharpBridge.Models
         /// <summary>
         /// Path to the transformation rules JSON file
         /// </summary>
-        [Description("Config File Path")]
+        [Description("Path to Transformation Rules JSON File")]
         public string ConfigPath { get; set; } = "Configs/vts_transforms.json";
 
         /// <summary>
         /// Maximum number of evaluation iterations for parameter dependencies
         /// </summary>
-        [Description("Max Evaluation Iterations")]
+        [Description("Maximum Evaluation Iterations for Parameter Dependencies")]
         public int MaxEvaluationIterations { get; set; } = 10;
         // ========================================
         // Internal Settings (Not User-Configurable) - add these properties with[JsonIgnore] attribute
