@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using SharpBridge.Interfaces;
@@ -133,6 +134,71 @@ namespace SharpBridge.Utilities
             }
 
             return null; // Validation passed
+        }
+
+        /// <summary>
+        /// Validates that a field contains a valid integer within the specified range.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <param name="minValue">The minimum allowed value (inclusive)</param>
+        /// <param name="maxValue">The maximum allowed value (inclusive)</param>
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        public FieldValidationIssue? ValidateIntegerRange(ConfigFieldState field, int minValue, int maxValue)
+        {
+            if (field.Value is not int value)
+            {
+                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                    $"Value must be an integer, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
+            }
+
+            if (value < minValue || value > maxValue)
+            {
+                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                    $"Value {value} is out of valid range ({minValue}-{maxValue})", value.ToString());
+            }
+
+            return null; // Validation passed
+        }
+
+        /// <summary>
+        /// Validates that a field contains a valid file path.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        public FieldValidationIssue? ValidateFilePath(ConfigFieldState field)
+        {
+            if (field.Value is not string path || string.IsNullOrWhiteSpace(path))
+            {
+                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                    "File path cannot be null or empty", FormatForDisplay(field.Value));
+            }
+
+            try
+            {
+                // Use Path.GetFullPath to validate the path format
+                // This will throw an exception if the path contains invalid characters
+                _ = Path.GetFullPath(path);
+
+                // Check for invalid characters in the path
+                var invalidChars = Path.GetInvalidPathChars();
+                if (path.IndexOfAny(invalidChars) >= 0)
+                {
+                    return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                        $"File path contains invalid characters: {string.Join(", ", invalidChars.Where(c => path.Contains(c)))}", path);
+                }
+
+                return null; // Validation passed
+            }
+            catch (ArgumentException ex)
+            {
+                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                    $"Invalid file path format: {ex.Message}", path);
+            }
+            catch (NotSupportedException ex)
+            {
+                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
+                    $"Unsupported file path: {ex.Message}", path);
+            }
         }
 
         /// <summary>

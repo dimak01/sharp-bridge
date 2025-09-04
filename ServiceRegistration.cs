@@ -55,6 +55,9 @@ namespace SharpBridge
             // Register field validator
             services.AddSingleton<IConfigFieldValidator, ConfigFieldValidator>();
 
+            // Register shortcut parser (needed by remediation services)
+            services.AddSingleton<IShortcutParser, ShortcutParser>();
+
             // Register validators and remediation services (needed by ConfigRemediationService)
             services.AddTransient<VTubeStudioPCConfigValidator>();
             services.AddTransient<VTubeStudioPhoneClientConfigValidator>();
@@ -243,7 +246,6 @@ namespace SharpBridge
             services.AddSingleton<IPortStatusMonitorService, PortStatusMonitorService>();
 
             // Register shortcut services
-            services.AddSingleton<IShortcutParser, ShortcutParser>();
             services.AddSingleton<IShortcutConfigurationManager>(provider =>
                 new ShortcutConfigurationManager(
                     provider.GetRequiredService<IShortcutParser>(),

@@ -43,5 +43,21 @@ namespace SharpBridge.Interfaces
         /// <param name="allowEmpty">Whether empty strings are allowed (default: false)</param>
         /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
         FieldValidationIssue? ValidateString(ConfigFieldState field, bool allowEmpty = false);
+
+        /// <summary>
+        /// Validates that a field contains a valid integer within the specified range.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <param name="minValue">The minimum allowed value (inclusive)</param>
+        /// <param name="maxValue">The maximum allowed value (inclusive)</param>
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        FieldValidationIssue? ValidateIntegerRange(ConfigFieldState field, int minValue, int maxValue);
+
+        /// <summary>
+        /// Validates that a field contains a valid file path.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        FieldValidationIssue? ValidateFilePath(ConfigFieldState field);
     }
 }
