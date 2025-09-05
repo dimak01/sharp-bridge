@@ -230,10 +230,6 @@ namespace SharpBridge.Utilities
             }
         }
 
-        // ========================================
-        // New Methods for Field-Driven System
-        // ========================================
-
         /// <summary>
         /// Loads a configuration section using the enum type identifier
         /// </summary>

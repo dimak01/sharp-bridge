@@ -272,12 +272,12 @@ namespace SharpBridge.Utilities
                 _logger.Debug("Application config changed, checking if general settings were affected");
 
                 // Load new config and compare general settings section
-                var newConfig = await _configManager.LoadApplicationConfigAsync();
-                if (!ConfigComparers.GeneralSettingsEqual(_config, newConfig.GeneralSettings))
+                var newConfig = await _configManager.LoadSectionAsync<GeneralSettingsConfig>();
+                if (!ConfigComparers.GeneralSettingsEqual(_config, newConfig))
                 {
                     _logger.Info("General settings changed, updating internal config and reloading shortcuts");
-                    UpdateConfig(newConfig.GeneralSettings);
-                    LoadFromConfiguration(newConfig.GeneralSettings);
+                    UpdateConfig(newConfig);
+                    LoadFromConfiguration(newConfig);
                 }
             }
             catch (Exception ex)

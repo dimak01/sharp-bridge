@@ -84,13 +84,19 @@ namespace SharpBridge.Models
             Port = port;
             UsePortDiscovery = usePortDiscovery;
 
-            // Set internal defaults
-            PluginName = "SharpBridge";
-            PluginDeveloper = "Dimak@Shift";
-            TokenFilePath = "auth_token.txt";
-            ConnectionTimeoutMs = 5000;
-            ReconnectionDelayMs = 2000;
-            RecoveryIntervalSeconds = 2.0;
+            // Set internal defaults only if not already set
+            if (string.IsNullOrEmpty(PluginName))
+                PluginName = "SharpBridge";
+            if (string.IsNullOrEmpty(PluginDeveloper))
+                PluginDeveloper = "Dimak@Shift";
+            if (string.IsNullOrEmpty(TokenFilePath))
+                TokenFilePath = "auth_token.txt";
+            if (ConnectionTimeoutMs == 0)
+                ConnectionTimeoutMs = 5000;
+            if (ReconnectionDelayMs == 0)
+                ReconnectionDelayMs = 2000;
+            if (RecoveryIntervalSeconds == 0)
+                RecoveryIntervalSeconds = 2.0;
         }
     }
 }

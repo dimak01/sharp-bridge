@@ -81,8 +81,8 @@ namespace SharpBridge.Repositories
 
             try
             {
-                var appConfig = await _configManager.LoadApplicationConfigAsync();
-                var configPath = appConfig.TransformationEngine.ConfigPath;
+                var appConfig = await _configManager.LoadSectionAsync<TransformationEngineConfig>();
+                var configPath = appConfig.ConfigPath;
 
                 if (string.IsNullOrEmpty(configPath))
                 {
@@ -318,8 +318,8 @@ namespace SharpBridge.Repositories
                 _logger.Debug("Application config changed, checking if transformation engine config path was affected");
 
                 // Load new app config and check if transformation engine config path changed
-                var newAppConfig = await _configManager.LoadApplicationConfigAsync();
-                var newConfigPath = newAppConfig.TransformationEngine.ConfigPath;
+                var newAppConfig = await _configManager.LoadSectionAsync<TransformationEngineConfig>();
+                var newConfigPath = newAppConfig.ConfigPath;
 
                 if (string.IsNullOrEmpty(newConfigPath))
                 {
