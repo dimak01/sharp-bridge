@@ -46,7 +46,7 @@ namespace SharpBridge.Tests.Services
                 .Callback(() => _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed));
         }
 
-        private VTubeStudioPCClient CreateClient(IAppLogger? logger = null, VTubeStudioPCConfig? config = null, IWebSocketWrapper? webSocket = null, IPortDiscoveryService? portDiscoveryService = null)
+        private VTubeStudioPCClient CreateClient(IAppLogger? logger = null, VTubeStudioPCConfig? config = null, IWebSocketWrapper? webSocket = null, IPortDiscoveryService? portDiscoveryService = null, bool setupMock = true)
         {
             _config = config ??= new VTubeStudioPCConfig
             {
@@ -59,8 +59,13 @@ namespace SharpBridge.Tests.Services
             webSocket ??= _mockWebSocket.Object;
             portDiscoveryService ??= _mockPortDiscoveryService.Object;
 
-            // Setup the config manager to return the provided config
-            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(config);
+            // Setup for constructor call (initial load) - only if not already set up
+            if (setupMock)
+            {
+                _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                    .ReturnsAsync(_config);
+            }
+
             return new VTubeStudioPCClient(logger, _mockConfigManager.Object, webSocket, portDiscoveryService, _mockAppConfigWatcher.Object);
         }
 
@@ -93,7 +98,7 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public void GetServiceStats_ReturnsCorrectStats()
         {
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             var stats = client.GetServiceStats();
 
             Assert.Equal("VTubeStudioPCClient", stats.ServiceName);
@@ -106,7 +111,7 @@ namespace SharpBridge.Tests.Services
         public void GetServiceStats_ReturnsValidStats()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act
             var stats = client.GetServiceStats();
@@ -137,7 +142,7 @@ namespace SharpBridge.Tests.Services
         public async Task ConnectAsync_WhenNotConnected_ConnectsSuccessfully()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act
             await client.ConnectAsync(CancellationToken.None);
@@ -150,7 +155,7 @@ namespace SharpBridge.Tests.Services
         public async Task State_TransitionsCorrectly_ThroughConnectionLifecycle()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act - Connect
             await client.ConnectAsync(CancellationToken.None);
@@ -169,7 +174,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetServiceStats_AfterConnectAndSend_UpdatesStatistics()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act - Connect and send tracking data
             await client.ConnectAsync(CancellationToken.None);
@@ -238,7 +243,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_ReturnsTrue_AndLogsExpectedMessages()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Queue token acquisition and authentication responses
@@ -311,7 +316,7 @@ namespace SharpBridge.Tests.Services
         public async Task ConnectAsync_WhenAlreadyConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Act & Assert
@@ -323,7 +328,7 @@ namespace SharpBridge.Tests.Services
         public async Task CloseAsync_WhenConnected_ClosesConnection()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Act
@@ -337,7 +342,7 @@ namespace SharpBridge.Tests.Services
         public async Task CloseAsync_WhenNotConnected_DoesNothing()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act
             await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", CancellationToken.None);
@@ -350,7 +355,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -361,7 +366,7 @@ namespace SharpBridge.Tests.Services
         public async Task SendTrackingAsync_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -381,7 +386,7 @@ namespace SharpBridge.Tests.Services
                 TokenFilePath = "test-token.txt"
             };
 
-            var client = CreateClient(_mockLogger.Object, config);
+            var client = CreateClient(config: config);
             await client.ConnectAsync(CancellationToken.None);
 
             // Queue token acquisition and authentication responses
@@ -423,7 +428,7 @@ namespace SharpBridge.Tests.Services
             // Create token file
             File.WriteAllText(config.TokenFilePath, "existing-test-token");
 
-            var client = CreateClient(_mockLogger.Object, config);
+            var client = CreateClient(config: config);
             await client.ConnectAsync(CancellationToken.None);
 
             // Queue authentication response (no token acquisition needed)
@@ -720,7 +725,7 @@ namespace SharpBridge.Tests.Services
                 It.IsAny<string>(), It.IsAny<InjectParamsRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Send failed"));
 
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             var trackingData = new PCTrackingInfo();
 
             // Act & Assert
@@ -822,7 +827,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetTokenAsync_WhenTokenFileEmpty_RequestsNewToken()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Create empty token file
@@ -848,7 +853,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetTokenAsync_WhenTokenFileInvalid_RequestsNewToken()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Create invalid token file
@@ -874,7 +879,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WhenTokenFileCorrupted_RequestsNewToken()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Create corrupted token file
@@ -903,7 +908,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WhenTokenExpired_RequestsNewToken()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             await client.ConnectAsync(CancellationToken.None);
 
             // Create token file with expired token
@@ -937,7 +942,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetTokenAsync_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             // Do not connect
 
             // Act & Assert
@@ -948,7 +953,7 @@ namespace SharpBridge.Tests.Services
         public async Task AuthenticateAsync_WithToken_WhenNotConnected_ThrowsInvalidOperationException()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
             // Do not connect
 
             // Act & Assert
@@ -1164,7 +1169,7 @@ namespace SharpBridge.Tests.Services
         public void LastInitializationError_ReturnsEmpty_WhenNoErrorOccurred()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act
             var error = client.LastInitializationError;
@@ -1201,7 +1206,7 @@ namespace SharpBridge.Tests.Services
         public void Dispose_WhenAlreadyDisposed_DoesNotThrow()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act & Assert - First disposal should work
             client.Dispose();
@@ -1217,7 +1222,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetServiceStats_ReturnsHealthyFalse_WhenNotConnected()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act
             var stats = client.GetServiceStats();
@@ -1230,7 +1235,7 @@ namespace SharpBridge.Tests.Services
         public void ConfigChanged_InitiallyReturnsFalse()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Act & Assert
             Assert.False(client.ConfigChanged);
@@ -1248,25 +1253,25 @@ namespace SharpBridge.Tests.Services
                 PluginDeveloper = "OriginalDeveloper"
             };
 
-            var newConfig = new ApplicationConfig
+            var newPCConfig = new VTubeStudioPCConfig
             {
-                PCClient = new VTubeStudioPCConfig
-                {
-                    Host = "newhost",
-                    Port = 8002,
-                    PluginName = "NewPlugin",
-                    PluginDeveloper = "NewDeveloper"
-                }
+                Host = "newhost",
+                Port = 8002,
+                PluginName = "NewPlugin",
+                PluginDeveloper = "NewDeveloper"
             };
 
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
-                .ReturnsAsync(newConfig);
+            // Setup for constructor call (initial load) and config change event
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                .ReturnsAsync(originalConfig) // Constructor call
+                .ReturnsAsync(newPCConfig); // Config change event
 
-            var client = CreateClient(_mockLogger.Object, originalConfig);
+            var client = CreateClient(config: originalConfig, setupMock: false);
 
             // Act - Simulate config change event
             _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
                 new FileChangeEventArgs("test.json"));
+
 
             // Assert
             Assert.True(client.ConfigChanged);
@@ -1293,21 +1298,23 @@ namespace SharpBridge.Tests.Services
                 PluginDeveloper = "TestDeveloper"
             };
 
-            var newConfig = new ApplicationConfig
+            var newConfig = new VTubeStudioPCConfig
             {
-                PCClient = new VTubeStudioPCConfig
-                {
-                    Host = "localhost",
-                    Port = 8001,
-                    PluginName = "TestPlugin",
-                    PluginDeveloper = "TestDeveloper"
-                }
+                Host = "localhost",
+                Port = 8001,
+                PluginName = "TestPlugin",
+                PluginDeveloper = "TestDeveloper"
             };
 
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
-                .ReturnsAsync(newConfig);
+            // Setup for constructor call (initial load)
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                .ReturnsAsync(originalConfig);
 
-            var client = CreateClient(_mockLogger.Object, originalConfig);
+            var client = CreateClient(config: originalConfig);
+
+            // Setup for config change event (should return same config)
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                .ReturnsAsync(newConfig);
 
             // Act - Simulate config change event
             _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
@@ -1336,10 +1343,12 @@ namespace SharpBridge.Tests.Services
                 PluginDeveloper = "TestDeveloper"
             };
 
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
-                .ThrowsAsync(new InvalidOperationException("Test exception"));
+            // Setup for constructor call (initial load) and config change event (should throw exception)
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                .ReturnsAsync(originalConfig) // Constructor call
+                .ThrowsAsync(new InvalidOperationException("Test exception")); // Config change event
 
-            var client = CreateClient(_mockLogger.Object, originalConfig);
+            var client = CreateClient(config: originalConfig, setupMock: false);
 
             // Act - Simulate config change event
             _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
@@ -1363,10 +1372,12 @@ namespace SharpBridge.Tests.Services
                 PluginDeveloper = "TestDeveloper"
             };
 
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
-                .ReturnsAsync((ApplicationConfig?)null);
+            // Setup for constructor call (initial load) and config change event (should throw exception)
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                .ReturnsAsync(originalConfig) // Constructor call
+                .ThrowsAsync(new InvalidOperationException("Config not found")); // Config change event
 
-            var client = CreateClient(_mockLogger.Object, originalConfig);
+            var client = CreateClient(config: originalConfig, setupMock: false);
 
             // Act - Simulate config change event
             _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
@@ -1390,24 +1401,21 @@ namespace SharpBridge.Tests.Services
                 PluginDeveloper = "TestDeveloper"
             };
 
-            var newConfig = new ApplicationConfig
-            {
-                PCClient = null!
-            };
+            // Setup for constructor call (initial load) and config change event (should throw exception)
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPCConfig>())
+                .ReturnsAsync(originalConfig) // Constructor call
+                .ThrowsAsync(new InvalidOperationException("PC client config not found")); // Config change event
 
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
-                .ReturnsAsync(newConfig);
-
-            var client = CreateClient(_mockLogger.Object, originalConfig);
+            var client = CreateClient(config: originalConfig, setupMock: false);
 
             // Act - Simulate config change event
             _mockAppConfigWatcher.Raise(x => x.FileChanged += null,
                 new FileChangeEventArgs("test.json"));
 
             // Assert
-            Assert.True(client.ConfigChanged);
+            Assert.False(client.ConfigChanged); // ConfigChanged should be false when exception occurs
             _mockLogger.Verify(x => x.Debug("Application config changed, checking if PC client config was affected"), Times.Once);
-            _mockLogger.Verify(x => x.Error(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            _mockLogger.Verify(x => x.Error("Error handling application config change: {0}", "PC client config not found"), Times.Once);
         }
 
         [Fact]
@@ -1458,7 +1466,7 @@ namespace SharpBridge.Tests.Services
                 _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
             });
 
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Setup successful initialization
             _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -1490,7 +1498,7 @@ namespace SharpBridge.Tests.Services
                 _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
             });
 
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Setup successful initialization
             _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -1516,7 +1524,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetServiceStats_WhenConfigChanged_ReturnsUnhealthy()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Simulate config change
             var newConfig = new ApplicationConfig
@@ -1547,7 +1555,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetServiceStats_WhenConnectedAndConfigNotChanged_ReturnsHealthy()
         {
             // Arrange
-            var client = CreateClient(_mockLogger.Object);
+            var client = CreateClient();
 
             // Setup successful connection and authentication
             _mockPortDiscoveryService.Setup(x => x.DiscoverAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))

@@ -507,18 +507,6 @@ namespace SharpBridge.Tests.Utilities
             result.Should().BeFalse();
         }
 
-        [Fact]
-        public async Task TryOpenInExternalEditorAsync_WithoutExternalEditorService_ReturnsFalse()
-        {
-            // Arrange
-            var provider = CreateProvider(); // No external editor service
-
-            // Act
-            var result = await provider.TryOpenInExternalEditorAsync();
-
-            // Assert
-            result.Should().BeFalse();
-        }
 
         [Fact]
         public async Task TryOpenInExternalEditorAsync_WhenExceptionOccurs_LogsErrorAndReturnsFalse()

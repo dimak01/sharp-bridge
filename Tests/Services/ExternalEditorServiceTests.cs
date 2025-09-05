@@ -179,12 +179,9 @@ namespace SharpBridge.Tests.Services
         public async Task OnApplicationConfigChanged_WhenGeneralSettingsChanged_ReloadsConfiguration()
         {
             // Arrange
-            var newConfig = new ApplicationConfig
-            {
-                GeneralSettings = new GeneralSettingsConfig { EditorCommand = "new-editor.exe \"%f\"" }
-            };
+            var newGeneralSettings = new GeneralSettingsConfig { EditorCommand = "new-editor.exe \"%f\"" };
 
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync()).ReturnsAsync(newConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(newGeneralSettings);
 
             // Act - Simulate config change event
             _mockFileWatcher.Raise(x => x.FileChanged += null, this, new FileChangeEventArgs("test.json"));
@@ -201,12 +198,7 @@ namespace SharpBridge.Tests.Services
         public async Task OnApplicationConfigChanged_WhenGeneralSettingsUnchanged_DoesNotReloadConfiguration()
         {
             // Arrange
-            var newConfig = new ApplicationConfig
-            {
-                GeneralSettings = _config // Same config
-            };
-
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync()).ReturnsAsync(newConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>()).ReturnsAsync(_config);
 
             // Act - Simulate config change event
             _mockFileWatcher.Raise(x => x.FileChanged += null, this, new FileChangeEventArgs("test.json"));
@@ -223,7 +215,7 @@ namespace SharpBridge.Tests.Services
         public async Task OnApplicationConfigChanged_WhenConfigLoadingFails_LogsError()
         {
             // Arrange
-            _mockConfigManager.Setup(x => x.LoadApplicationConfigAsync())
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<GeneralSettingsConfig>())
                 .ThrowsAsync(new IOException("Config file not found"));
 
             // Act - Simulate config change event
