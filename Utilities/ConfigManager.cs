@@ -57,9 +57,10 @@ namespace SharpBridge.Utilities
         public string UserPreferencesPath => Path.Combine(_configDirectory, _userPreferencesFilename);
 
         /// <summary>
-        /// Loads the consolidated application configuration from file or creates a default one if it doesn't exist.
+        /// Loads the consolidated application configuration from file.
         /// </summary>
         /// <returns>The consolidated application configuration.</returns>
+        /// <exception cref="FileNotFoundException">Thrown when the configuration file doesn't exist or is invalid.</exception>
         public async Task<ApplicationConfig> LoadApplicationConfigAsync()
         {
             _logger?.Debug("Loading ApplicationConfig from: {0}", ApplicationConfigPath);
@@ -86,11 +87,13 @@ namespace SharpBridge.Utilities
                 _logger?.Warning("Failed to read ApplicationConfig from {0}: {1}", ApplicationConfigPath, ex.Message);
             }
 
-            // Create default config if file doesn't exist or is invalid
-            _logger?.Info("Creating default ApplicationConfig");
-            var defaultConfig = new ApplicationConfig();
-            await SaveApplicationConfigAsync(defaultConfig);
-            return defaultConfig;
+            // Configuration file doesn't exist or is invalid - throw exception
+            var errorMessage = File.Exists(ApplicationConfigPath)
+                ? $"ApplicationConfig file exists but is invalid or corrupted: {ApplicationConfigPath}"
+                : $"ApplicationConfig file not found: {ApplicationConfigPath}";
+
+            _logger?.Error(errorMessage);
+            throw new FileNotFoundException(errorMessage, ApplicationConfigPath);
         }
 
         /// <summary>
@@ -285,6 +288,13 @@ namespace SharpBridge.Utilities
 
                 // Get the JSON path for this section
                 var sectionPath = GetSectionJsonPath(sectionType);
+
+                // If config file doesn't exist, create an empty JSON container
+                if (!File.Exists(ApplicationConfigPath))
+                {
+                    var newJson = "{}";
+                    await File.WriteAllTextAsync(ApplicationConfigPath, newJson);
+                }
 
                 // Read the current JSON file
                 var json = await File.ReadAllTextAsync(ApplicationConfigPath);

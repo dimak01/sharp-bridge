@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services.Remediation
 {
@@ -187,8 +188,8 @@ namespace SharpBridge.Services.Remediation
             {
                 var detail = string.IsNullOrWhiteSpace(issue.ProvidedValueText)
                     ? issue.Description
-                    : $"{issue.Description} (provided: '{issue.ProvidedValueText}')";
-                lines.Add($" - {detail}");
+                    : $"{issue.Description} (provided: '{ConsoleColors.Colorize(issue.ProvidedValueText, ConsoleColors.Error)}')";
+                lines.Add($" - {ConsoleColors.ColorizeBasicType(detail)}");
             }
 
             lines.Add("");
@@ -220,27 +221,27 @@ namespace SharpBridge.Services.Remediation
             {
                 "This is the host address where VTube Studio is running on your PC.",
                 "",
-                "Common value is 'localhost' or '127.0.0.1' - if VTube Studio is on the same PC. Leave it as is if you're not sure.",
+                "Common value is \u001b[96mlocalhost\u001b[0m or \u001b[96m127.0.0.1\u001b[0m - if VTube Studio is on the same PC. Leave it as is if you're not sure.",
                 "",
             },
             ["Port"] = new[]
             {
                 "This is the port number that VTube Studio's API is listening on.",
                 "",
-                "Default VTube Studio API port is 8001.",
+                "Default VTube Studio API port is \u001b[38;5;215m8001\u001b[0m.",
                 "You can check/change this in VTube Studio:",
                 "1. Open VTube Studio",
                 "2. Go to Settings (Gear Icon) → Plugins",
-                "3. Check the 'Port' setting",
+                "3. Check the \u001b[96m'Port'\u001b[0m setting",
                 "",
-                "Common ports: 8001 (default), 8002, 8003, etc."
+                "Common ports: \u001b[38;5;215m8001\u001b[0m (default), \u001b[38;5;215m8002\u001b[0m, \u001b[38;5;215m8003\u001b[0m, etc."
             },
             ["UsePortDiscovery"] = new[]
             {
-                "When enabled, Sharp Bridge will automatically try to find VTube Studio using its discovery port (47779).",
+                "When enabled, Sharp Bridge will automatically try to find VTube Studio using its discovery port (\u001b[38;5;215m47779\u001b[0m).",
                 "It is recommended to keep this setting enabled.",
                 "",
-                "Allowed values:'true' to enable, 'false' to disable."
+                "Allowed values: \u001b[96mtrue\u001b[0m to enable, \u001b[96mfalse\u001b[0m to disable."
             }
         };
 
@@ -272,10 +273,10 @@ namespace SharpBridge.Services.Remediation
             };
 
             lines.Add("");
-            lines.Add($"Now editing: {activeField.Description}");
+            lines.Add($"Now editing: {ConsoleColors.ColorizeBasicType(activeField.Description)}");
             if (activeField.Value != null)
             {
-                lines.Add($"Current value: {activeField.Value}");
+                lines.Add($"Current value: {ConsoleColors.ColorizeBasicType(activeField.Value)}");
             }
             if (notes != null && notes.Length > 0)
             {
@@ -284,13 +285,13 @@ namespace SharpBridge.Services.Remediation
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
-                lines.Add($"Error: {errorText}");
+                lines.Add($"Error: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}");
             }
 
             // Dynamic prompt with inline default
             var defaultValue = GetFieldDefault(activeField.FieldName);
             string promptText = defaultValue != null
-                ? $"Enter new value (or press Enter for default value of {defaultValue}):"
+                ? $"Enter new value (or press Enter for default value of {ConsoleColors.ColorizeBasicType(defaultValue)}):"
                 : "Enter new value (cannot be empty):";
             lines.Add(promptText);
 

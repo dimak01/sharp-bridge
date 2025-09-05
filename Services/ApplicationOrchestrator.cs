@@ -489,14 +489,20 @@ namespace SharpBridge.Services
             {
                 _logger.Info("Application configuration file changed: {0}", e.FilePath);
 
-                // Reload the application configuration
-                var newApplicationConfig = await _configManager.LoadApplicationConfigAsync();
+                // Reload general settings configuration
+                var newGeneralSettings = await _configManager.LoadSectionAsync<GeneralSettingsConfig>();
 
-                // Update the internal reference
-                _applicationConfig = newApplicationConfig;
+                // Update the internal reference (create new ApplicationConfig with updated GeneralSettings)
+                _applicationConfig = new ApplicationConfig
+                {
+                    PCClient = _applicationConfig.PCClient,
+                    PhoneClient = _applicationConfig.PhoneClient,
+                    GeneralSettings = newGeneralSettings,
+                    TransformationEngine = _applicationConfig.TransformationEngine
+                };
 
                 // Reload shortcut configuration with new settings
-                _shortcutConfigurationManager.LoadFromConfiguration(newApplicationConfig.GeneralSettings);
+                _shortcutConfigurationManager.LoadFromConfiguration(newGeneralSettings);
 
                 // Re-register keyboard shortcuts with new configuration
                 RegisterKeyboardShortcuts();

@@ -286,7 +286,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<TransformationEngineInfoFormatter>(),
                     provider.GetRequiredService<PhoneTrackingInfoFormatter>(),
-                    provider.GetRequiredService<PCTrackingInfoFormatter>()
+                    provider.GetRequiredService<PCTrackingInfoFormatter>(),
+                    provider.GetRequiredService<IExternalEditorService>()
                 ));
             services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
 

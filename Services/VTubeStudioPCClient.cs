@@ -510,12 +510,12 @@ namespace SharpBridge.Services
             {
                 _logger.Debug("Application config changed, checking if PC client config was affected");
 
-                // Load new config and compare PC client section
-                var newConfig = await _configManager.LoadApplicationConfigAsync();
-                if (!ConfigComparers.PCClientConfigsEqual(_config, newConfig.PCClient))
+                // Load new PC client config and compare
+                var newPCConfig = await _configManager.LoadSectionAsync<VTubeStudioPCConfig>();
+                if (!ConfigComparers.PCClientConfigsEqual(_config, newPCConfig))
                 {
                     _logger.Info("PC client configuration changed, updating internal config");
-                    _config = newConfig.PCClient;
+                    _config = newPCConfig;
                     _configChanged = true;
 
                     _logger.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",

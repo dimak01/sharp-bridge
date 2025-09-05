@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services.Remediation
 {
@@ -163,8 +164,8 @@ namespace SharpBridge.Services.Remediation
             {
                 var detail = string.IsNullOrWhiteSpace(issue.ProvidedValueText)
                     ? issue.Description
-                    : $"{issue.Description} (provided: '{issue.ProvidedValueText}')";
-                lines.Add($" - {detail}");
+                    : $"{issue.Description} (provided: '{ConsoleColors.Colorize(issue.ProvidedValueText, ConsoleColors.Error)}')";
+                lines.Add($" - {ConsoleColors.ColorizeBasicType(detail)}");
             }
 
             lines.Add("");
@@ -234,8 +235,8 @@ namespace SharpBridge.Services.Remediation
                 "The transformation rules file defines how tracking parameters from your iPhone",
                 "are mapped and transformed before being sent to VTube Studio on PC.",
                 "",
-                "Default location: Configs/vts_transforms.json",
-                "You can place this file anywhere, but keep it in the Configs folder for organization."
+                "Default location: \u001b[96m'Configs/vts_transforms.json'\u001b[0m",
+                "You can place this file anywhere, but keep it in the \u001b[96m'Configs'\u001b[0m folder for organization."
             },
             ["MaxEvaluationIterations"] = new[]
             {
@@ -245,7 +246,7 @@ namespace SharpBridge.Services.Remediation
                 "Higher values allow for more complex dependency chains but may impact performance.",
                 "Lower values may not fully resolve all parameter dependencies.",
                 "",
-                "Recommended range: 5-20 (default: 10)"
+                "Recommended range: \u001b[38;5;215m5-20\u001b[0m (default: \u001b[38;5;215m10\u001b[0m)"
             }
         };
 
@@ -276,10 +277,10 @@ namespace SharpBridge.Services.Remediation
             };
 
             lines.Add("");
-            lines.Add($"Now editing: {activeField.Description}");
+            lines.Add($"Now editing: {ConsoleColors.ColorizeBasicType(activeField.Description)}");
             if (activeField.Value != null)
             {
-                lines.Add($"Current value: {activeField.Value}");
+                lines.Add($"Current value: {ConsoleColors.ColorizeBasicType(activeField.Value)}");
             }
             if (notes != null && notes.Length > 0)
             {
@@ -288,13 +289,13 @@ namespace SharpBridge.Services.Remediation
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
-                lines.Add($"Error: {errorText}");
+                lines.Add($"Error: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}");
             }
 
             // Dynamic prompt with inline default
             var defaultValue = GetFieldDefault(activeField.FieldName);
             string promptText = defaultValue != null
-                ? $"Enter new value (or press Enter for default value of {defaultValue}):"
+                ? $"Enter new value (or press Enter for default value of {ConsoleColors.ColorizeBasicType(defaultValue)}):"
                 : "Enter new value (cannot be empty):";
             lines.Add(promptText);
 

@@ -203,7 +203,7 @@ namespace SharpBridge.Utilities
                 string str => Colorize(str, StringValueColor), // Light cyan for strings
                 int or long or short or byte => Colorize(value.ToString()!, NumericValueColor), // Light orange for integers
                 double or float or decimal => Colorize(value.ToString()!, NumericValueColor), // Light orange for decimals
-                bool b => Colorize(b ? "Yes" : "No", BooleanValueColor), // Light magenta for booleans
+                bool b => Colorize(b ? "true" : "false", BooleanValueColor), // Light magenta for booleans
                 _ => value.ToString() ?? "Not set" // Default for other types
             };
         }

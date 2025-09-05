@@ -15,7 +15,7 @@ namespace SharpBridge.Utilities
     {
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private readonly IAppLogger _logger;
-        private readonly IExternalEditorService? _externalEditorService;
+        private readonly IExternalEditorService _externalEditorService;
 
         /// <summary>
         /// Initializes a new instance of the MainStatusRenderer class
@@ -24,28 +24,16 @@ namespace SharpBridge.Utilities
         /// <param name="transformationFormatter">The transformation engine info formatter</param>
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
-        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter)
+        /// <param name="externalEditorService">The external editor service for opening configuration files</param>
+        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IExternalEditorService externalEditorService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
 
             // Register formatters for known types - order determines display order
             RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
             RegisterFormatter<PhoneTrackingInfo>(phoneFormatter ?? throw new ArgumentNullException(nameof(phoneFormatter)));
             RegisterFormatter<PCTrackingInfo>(pcFormatter ?? throw new ArgumentNullException(nameof(pcFormatter)));
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the MainStatusRenderer class with external editor support
-        /// </summary>
-        /// <param name="logger">The logger to use for error reporting</param>
-        /// <param name="transformationFormatter">The transformation engine info formatter</param>
-        /// <param name="phoneFormatter">The phone tracking info formatter</param>
-        /// <param name="pcFormatter">The PC tracking info formatter</param>
-        /// <param name="externalEditorService">The external editor service for opening configuration files</param>
-        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IExternalEditorService externalEditorService)
-            : this(logger, transformationFormatter, phoneFormatter, pcFormatter)
-        {
-            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
         }
 
         /// <summary>
@@ -98,10 +86,6 @@ namespace SharpBridge.Utilities
         {
             try
             {
-                if (_externalEditorService == null)
-                {
-                    return false;
-                }
                 return await _externalEditorService.TryOpenTransformationConfigAsync();
             }
             catch (Exception ex)
