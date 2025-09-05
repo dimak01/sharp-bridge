@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
+using SharpBridge.Utilities;
 
 namespace SharpBridge.Services.Remediation
 {
@@ -161,8 +162,8 @@ namespace SharpBridge.Services.Remediation
             {
                 var detail = string.IsNullOrWhiteSpace(issue.ProvidedValueText)
                     ? issue.Description
-                    : $"{issue.Description} (provided: '{issue.ProvidedValueText}')";
-                lines.Add($" - {detail}");
+                    : $"{issue.Description} (provided: '{ConsoleColors.Colorize(issue.ProvidedValueText, ConsoleColors.Error)}')";
+                lines.Add($" - {ConsoleColors.ColorizeBasicType(detail)}");
             }
 
             lines.Add("");
@@ -194,8 +195,8 @@ namespace SharpBridge.Services.Remediation
             {
                 "To find your iPhone's IP address:",
                 "1. Open VTube Studio app on your iPhone",
-                "2. Go to Settings (Gear Icon) → Scroll all the way down to '3rd Party PC Clients'",
-                "3. Tap on 'Show IP List' - this is what you need (pick the 'IPv4' address where possible)",
+                "2. Go to Settings (Gear Icon) → Scroll all the way down to \u001b[96m'3rd Party PC Clients'\u001b[0m",
+                "3. Tap on \u001b[96m'Show IP List'\u001b[0m - this is what you need (pick the \u001b[96m'IPv4'\u001b[0m address where possible)",
                 "",
                 "Important: Ensure you use the iPhone IP address that matches the Wi-Fi network of your PC!"
             },
@@ -203,22 +204,22 @@ namespace SharpBridge.Services.Remediation
             {
                 "To find your iPhone's port number:",
                 "1. Open VTube Studio app on your iPhone",
-                "2. Go to Settings (Gear Icon) → Scroll all the way down to '3rd Party PC Clients'",
-                "3. Tap on 'Show IP List' - this is what you need (look for the 'Port' number)",
+                "2. Go to Settings (Gear Icon) → Scroll all the way down to \u001b[96m'3rd Party PC Clients'\u001b[0m",
+                "3. Tap on \u001b[96m'Show IP List'\u001b[0m - this is what you need (look for the \u001b[96m'Port'\u001b[0m number)",
             },
             ["LocalPort"] = new[]
             {
                 "This is the UDP port that Sharp Bridge will listen on to receive tracking data from your iPhone.",
                 "",
                 "Port selection guidelines:",
-                "• Use ports 1024-65535 (avoid system ports < 1024)",
-                "• Recommended range: 20000-60000",
+                "• Use ports \u001b[38;5;215m1024-65535\u001b[0m (avoid system ports < \u001b[38;5;215m1024\u001b[0m)",
+                "• Recommended range: \u001b[38;5;215m20000-60000\u001b[0m",
                 "",
                 "!!! FIREWALL SETUP REQUIRED:",
                 "Your iPhone won't be able to connect until you allow this port through Windows Firewall.",
                 "",
-                "Manual firewall rule (replace XXXX with your chosen port):",
-                "netsh advfirewall firewall add rule name=\"SharpBridge iPhone UDP Inbound\" dir=in action=allow protocol=UDP localport=XXXX",
+                "Manual firewall rule (replace \u001b[38;5;215mXXXX\u001b[0m with your chosen port):",
+                "\u001b[96mnetsh advfirewall firewall add rule name=\u001b[96m\"SharpBridge iPhone UDP Inbound\"\u001b[0m dir=in action=allow protocol=UDP localport=\u001b[38;5;215mXXXX\u001b[0m\u001b[0m",
                 "",
                 "Need help? Press F2 after the application has been started to access Network Status mode for detailed connectivity diagnostics."
             }
@@ -240,6 +241,7 @@ namespace SharpBridge.Services.Remediation
             return FieldDefaults.TryGetValue(fieldName, out var defaultValue) ? defaultValue : null;
         }
 
+
         private static string[] BuildFieldFrame(
             ConfigFieldState activeField,
             string[]? notes,
@@ -251,10 +253,10 @@ namespace SharpBridge.Services.Remediation
             };
 
             lines.Add("");
-            lines.Add($"Now editing: {activeField.Description}");
+            lines.Add($"Now editing: {ConsoleColors.ColorizeBasicType(activeField.Description)}");
             if (activeField.Value != null)
             {
-                lines.Add($"Current value: {activeField.Value}");
+                lines.Add($"Current value: {ConsoleColors.ColorizeBasicType(activeField.Value)}");
             }
             if (notes != null && notes.Length > 0)
             {
@@ -263,13 +265,13 @@ namespace SharpBridge.Services.Remediation
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
-                lines.Add($"Error: {errorText}");
+                lines.Add($"Error: {ConsoleColors.Colorize(errorText, ConsoleColors.Error)}");
             }
 
             // Dynamic prompt with inline default
             var defaultValue = GetFieldDefault(activeField.FieldName);
             string promptText = defaultValue != null
-                ? $"Enter new value (or press Enter for default value of {defaultValue}):"
+                ? $"Enter new value (or press Enter for default value of {ConsoleColors.ColorizeBasicType(defaultValue)}):"
                 : "Enter new value (cannot be empty):";
             lines.Add(promptText);
 

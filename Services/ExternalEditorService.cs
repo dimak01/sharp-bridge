@@ -90,9 +90,9 @@ namespace SharpBridge.Services
             {
                 _logger.Debug("Application config changed, checking if general settings were affected");
 
-                // Load new config and compare general settings section
-                var newConfig = await _configManager.LoadApplicationConfigAsync();
-                if (!ConfigComparers.GeneralSettingsEqual(_generalSettingsConfig, newConfig.GeneralSettings))
+                // Load new general settings config and compare
+                var newGeneralSettings = await _configManager.LoadSectionAsync<GeneralSettingsConfig>();
+                if (!ConfigComparers.GeneralSettingsEqual(_generalSettingsConfig, newGeneralSettings))
                 {
                     _logger.Info("General settings changed, updating external editor service");
                     LoadConfiguration();

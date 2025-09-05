@@ -279,12 +279,12 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         {
             _logger.Debug("Application config changed, checking if phone client config was affected");
 
-            // Load new config and compare phone client section
-            var newConfig = await _configManager.LoadApplicationConfigAsync();
-            if (!ConfigComparers.PhoneClientConfigsEqual(_config, newConfig.PhoneClient))
+            // Load new phone client config and compare
+            var newPhoneConfig = await _configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>();
+            if (!ConfigComparers.PhoneClientConfigsEqual(_config, newPhoneConfig))
             {
                 _logger.Info("Phone client configuration changed, updating internal config");
-                _config = newConfig.PhoneClient;
+                _config = newPhoneConfig;
                 _configChanged = true;
 
                 _logger.Debug("Phone client config updated - IP: {0}:{1}, LocalPort: {2}",
