@@ -358,7 +358,7 @@ namespace SharpBridge.Services
                 // Scale the interpolated value back to the parameter range
                 return ScaleToRange(interpolatedValue, rule.Min, rule.Max);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the error and fallback to linear interpolation
                 // Note: We can't use _logger here since this is a static method

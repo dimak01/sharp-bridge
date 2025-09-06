@@ -25,7 +25,7 @@ namespace SharpBridge.Utilities
         private readonly HashSet<ShortcutAction> _explicitlyDisabled = new();
 
         // Legacy support
-        private GeneralSettingsConfig _config;
+        private readonly GeneralSettingsConfig _config;
 
         // Disposal tracking
         private bool _isDisposed;

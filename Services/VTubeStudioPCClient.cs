@@ -23,7 +23,7 @@ namespace SharpBridge.Services
         private readonly IPortDiscoveryService _portDiscoveryService;
         private readonly IFileChangeWatcher? _appConfigWatcher;
         private bool _isDisposed;
-        private DateTime _startTime;
+        private readonly DateTime _startTime;
         private int _messagesSent;
         private PCTrackingInfo _lastTrackingData = new PCTrackingInfo();
         private int _connectionAttempts;

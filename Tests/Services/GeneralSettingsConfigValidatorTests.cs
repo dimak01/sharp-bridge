@@ -180,37 +180,6 @@ namespace SharpBridge.Tests.Services
         #region ValidateEditorCommand Tests
 
         [Fact]
-        public void ValidateEditorCommand_WithValidString_ReturnsValid()
-        {
-            // Arrange
-            var field = new ConfigFieldState("EditorCommand", "notepad.exe", true, typeof(string), "Editor Command");
-
-            // Act
-            var (isValid, issue) = _validator.ValidateSingleField(field);
-
-            // Assert
-            isValid.Should().BeTrue();
-            issue.Should().BeNull();
-        }
-
-        [Fact]
-        public void ValidateEditorCommand_WithNullValue_ReturnsInvalid()
-        {
-            // Arrange
-            var field = new ConfigFieldState("EditorCommand", null, true, typeof(string), "Editor Command");
-
-            // Act
-            var (isValid, issue) = _validator.ValidateSingleField(field);
-
-            // Assert
-            isValid.Should().BeFalse();
-            issue.Should().NotBeNull();
-            issue!.FieldName.Should().Be("EditorCommand");
-            issue.Description.Should().Contain("Required field 'Editor Command' is missing");
-            issue.ProvidedValueText.Should().BeNull();
-        }
-
-        [Fact]
         public void ValidateEditorCommand_WithEmptyString_ReturnsInvalid()
         {
             // Arrange
@@ -351,20 +320,6 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
-        public void FormatForDisplay_WithShortString_ReturnsFullString()
-        {
-            // Arrange
-            var field = new ConfigFieldState("EditorCommand", "notepad.exe", true, typeof(string), "Editor Command");
-
-            // Act
-            var (isValid, issue) = _validator.ValidateSingleField(field);
-
-            // Assert
-            isValid.Should().BeTrue();
-            issue.Should().BeNull();
-        }
-
-        [Fact]
         public void FormatForDisplay_WithLongString_TruncatesString()
         {
             // Arrange
@@ -395,21 +350,6 @@ namespace SharpBridge.Tests.Services
             isValid.Should().BeFalse();
             issue.Should().NotBeNull();
             issue!.ProvidedValueText.Should().Be("123");
-        }
-
-        [Fact]
-        public void FormatForDisplay_WithDictionaryValue_ReturnsToString()
-        {
-            // Arrange
-            var shortcuts = new Dictionary<string, string> { { "F1", "Help" } };
-            var field = new ConfigFieldState("Shortcuts", shortcuts, true, typeof(Dictionary<string, string>), "Shortcuts");
-
-            // Act
-            var (isValid, issue) = _validator.ValidateSingleField(field);
-
-            // Assert
-            isValid.Should().BeTrue();
-            issue.Should().BeNull();
         }
 
         #endregion

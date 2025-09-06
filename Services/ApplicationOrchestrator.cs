@@ -27,7 +27,6 @@ namespace SharpBridge.Services
         private readonly IRecoveryPolicy _recoveryPolicy;
         private readonly IConsoleWindowManager _consoleWindowManager;
         private readonly IParameterColorService _colorService;
-        private readonly IExternalEditorService _externalEditorService;
         private readonly IShortcutConfigurationManager _shortcutConfigurationManager;
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
@@ -59,7 +58,6 @@ namespace SharpBridge.Services
         /// <param name="console">Console abstraction for window management</param>
         /// <param name="consoleWindowManager">Console window manager for size management and tracking</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
-        /// <param name="externalEditorService">Service for opening files in external editors</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
         /// <param name="applicationConfig">Application configuration containing shortcut definitions</param>
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
@@ -78,7 +76,6 @@ namespace SharpBridge.Services
             IConsole console,
             IConsoleWindowManager consoleWindowManager,
             IParameterColorService colorService,
-            IExternalEditorService externalEditorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
             ApplicationConfig applicationConfig,
             UserPreferences userPreferences,
@@ -96,7 +93,6 @@ namespace SharpBridge.Services
             _recoveryPolicy = recoveryPolicy ?? throw new ArgumentNullException(nameof(recoveryPolicy));
             _consoleWindowManager = consoleWindowManager ?? throw new ArgumentNullException(nameof(consoleWindowManager));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
-            _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _applicationConfig = applicationConfig ?? throw new ArgumentNullException(nameof(applicationConfig));
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
@@ -199,7 +195,7 @@ namespace SharpBridge.Services
             }
             finally
             {
-                await PerformCleanup(cancellationToken);
+                await PerformCleanup();
             }
 
             _logger.Info("Application stopped");
@@ -260,7 +256,7 @@ namespace SharpBridge.Services
                 try
                 {
                     await ProcessRecoveryIfNeeded(cancellationToken);
-                    nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime, cancellationToken);
+                    nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     _keyboardInputHandler.CheckForKeyboardInput();
                     _consoleWindowManager.ProcessSizeChanges();
@@ -293,7 +289,7 @@ namespace SharpBridge.Services
         /// <summary>
         /// Processes tracking request if it's time to send one
         /// </summary>
-        private async Task<DateTime> ProcessTrackingRequestIfNeeded(DateTime nextRequestTime, CancellationToken cancellationToken)
+        private async Task<DateTime> ProcessTrackingRequestIfNeeded(DateTime nextRequestTime)
         {
             if (DateTime.UtcNow >= nextRequestTime)
             {
@@ -353,7 +349,7 @@ namespace SharpBridge.Services
             await Task.Delay(_phoneConfig.ErrorDelayMs, cancellationToken);
         }
 
-        private async Task PerformCleanup(CancellationToken cancellationToken)
+        private async Task PerformCleanup()
         {
             UnsubscribeFromEvents();
             await CloseVTubeStudioConnection();

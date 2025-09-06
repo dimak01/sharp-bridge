@@ -341,7 +341,6 @@ namespace SharpBridge
                     provider.GetRequiredService<IConsole>(),
                     provider.GetRequiredService<IConsoleWindowManager>(),
                     provider.GetRequiredService<IParameterColorService>(),
-                    provider.GetRequiredService<IExternalEditorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<ApplicationConfig>(),
                     provider.GetRequiredService<UserPreferences>(),
