@@ -31,6 +31,7 @@ The application will create default configuration files on first run.
 - **Dynamic Configuration** - Hot-reload application settings without restart
 - **Interactive Console UI** - Real-time monitoring with verbosity controls and multiple display modes
 - **Parameter Table Customization** - Configure which columns to display in the PC parameter table
+- **Advanced Table Formatting** - Structured table display with indentation support and responsive layout
 - **Automatic Recovery** - Self-healing from network and service failures
 - **Parameter Synchronization** - Automatic VTube Studio parameter management
 - **External Editor Integration** - Open configuration files in your preferred editor
@@ -313,7 +314,7 @@ The application provides a real-time console interface with adaptive verbosity l
 **Console UI Modes:**
 - **Main Status Mode** - Default display with service monitoring and tracking data
 - **System Help Mode** - Configuration display, keyboard shortcuts, and parameter table customization (F1)
-- **Network Status Mode** - Network interface status, troubleshooting information, and connection diagnostics (F2)
+- **Network Status Mode** - Network interface status, troubleshooting information, and connection diagnostics with structured firewall rules tables (F2)
 
 **Visual Features:**
 - **Color-coded Parameters**: Blend shapes (cyan), head parameters (magenta), calculated parameters (yellow)
@@ -321,6 +322,7 @@ The application provides a real-time console interface with adaptive verbosity l
 - **Status Indicators**: Service health, connection state, error conditions
 - **Adaptive Layout**: Automatically adjusts to console window size
 - **Customizable Parameter Table**: Configure which columns to display via UserPreferences.json
+- **Structured Tables**: Advanced table formatting with indentation support and responsive design
 
 ## Advanced Usage
 
@@ -427,7 +429,7 @@ For different network setups:
 - Manually allow plugin in VTube Studio settings
 
 **"Network connectivity issues"**
-- Use `F2` to access network status mode for detailed diagnostics
+- Use `F2` to access network status mode for detailed diagnostics with structured firewall rules display
 - Check firewall configuration and network interface status
 - Verify iPhone and PC are on the same network segment
 
