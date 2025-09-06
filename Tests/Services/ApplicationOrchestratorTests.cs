@@ -717,6 +717,101 @@ namespace SharpBridge.Tests.Services
             result.Should().BeNull();
         }
 
+        [Fact]
+        public void GetActionMethod_CycleTransformationEngineVerbosity_ExecutesImplementation()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("GetActionMethod", BindingFlags.NonPublic | BindingFlags.Instance);
+            var mockFormatter = new Mock<IFormatter>();
+            mockFormatter.Setup(x => x.CycleVerbosity()).Returns(VerbosityLevel.Detailed);
+
+            _mockModeManager.Setup(x => x.MainStatusRenderer.GetFormatter<TransformationEngineInfo>())
+                .Returns(mockFormatter.Object);
+
+            // Act
+            var action = (Action?)method!.Invoke(orchestrator, new object[] { ShortcutAction.CycleTransformationEngineVerbosity });
+            action!.Invoke(); // Execute the action
+
+            // Assert
+            action.Should().NotBeNull();
+            mockFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public void GetActionMethod_CyclePCClientVerbosity_ExecutesImplementation()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("GetActionMethod", BindingFlags.NonPublic | BindingFlags.Instance);
+            var mockFormatter = new Mock<IFormatter>();
+            mockFormatter.Setup(x => x.CycleVerbosity()).Returns(VerbosityLevel.Normal);
+
+            _mockModeManager.Setup(x => x.MainStatusRenderer.GetFormatter<PCTrackingInfo>())
+                .Returns(mockFormatter.Object);
+
+            // Act
+            var action = (Action?)method!.Invoke(orchestrator, new object[] { ShortcutAction.CyclePCClientVerbosity });
+            action!.Invoke(); // Execute the action
+
+            // Assert
+            action.Should().NotBeNull();
+            mockFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public void GetActionMethod_CyclePhoneClientVerbosity_ExecutesImplementation()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("GetActionMethod", BindingFlags.NonPublic | BindingFlags.Instance);
+            var mockFormatter = new Mock<IFormatter>();
+            mockFormatter.Setup(x => x.CycleVerbosity()).Returns(VerbosityLevel.Basic);
+
+            _mockModeManager.Setup(x => x.MainStatusRenderer.GetFormatter<PhoneTrackingInfo>())
+                .Returns(mockFormatter.Object);
+
+            // Act
+            var action = (Action?)method!.Invoke(orchestrator, new object[] { ShortcutAction.CyclePhoneClientVerbosity });
+            action!.Invoke(); // Execute the action
+
+            // Assert
+            action.Should().NotBeNull();
+            mockFormatter.Verify(x => x.CycleVerbosity(), Times.Once);
+        }
+
+        [Fact]
+        public void GetActionMethod_ShowSystemHelp_ExecutesImplementation()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("GetActionMethod", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Act
+            var action = (Action?)method!.Invoke(orchestrator, new object[] { ShortcutAction.ShowSystemHelp });
+            action!.Invoke(); // Execute the action
+
+            // Assert
+            action.Should().NotBeNull();
+            _mockModeManager.Verify(x => x.Toggle(ConsoleMode.SystemHelp), Times.Once);
+        }
+
+        [Fact]
+        public void GetActionMethod_ShowNetworkStatus_ExecutesImplementation()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("GetActionMethod", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Act
+            var action = (Action?)method!.Invoke(orchestrator, new object[] { ShortcutAction.ShowNetworkStatus });
+            action!.Invoke(); // Execute the action
+
+            // Assert
+            action.Should().NotBeNull();
+            _mockModeManager.Verify(x => x.Toggle(ConsoleMode.NetworkStatus), Times.Once);
+        }
+
         [Theory]
         [InlineData(ShortcutAction.CycleTransformationEngineVerbosity, "Cycle Transformation Engine Verbosity")]
         [InlineData(ShortcutAction.CyclePCClientVerbosity, "Cycle PC Client Verbosity")]
@@ -737,6 +832,138 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             result.Should().Be(expectedDescription);
+        }
+
+        #endregion
+
+        #region OnTrackingDataReceived Exception Handling Tests
+
+        [Fact]
+        public async Task OnTrackingDataReceived_WhenExceptionOccurs_LogsError()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("OnTrackingDataReceived", BindingFlags.NonPublic | BindingFlags.Instance);
+            var trackingData = new PhoneTrackingInfo();
+
+            // Mock transformation engine to throw exception
+            _mockTransformationEngine.Setup(x => x.TransformData(It.IsAny<PhoneTrackingInfo>()))
+                .Throws(new Exception("Transformation failed"));
+
+            // Act
+            method!.Invoke(orchestrator, new object[] { null!, trackingData });
+
+            // Wait a bit for the async void method to complete
+            await Task.Delay(100);
+
+            // Assert
+            _mockLogger.Verify(x => x.ErrorWithException("Error processing tracking data", It.IsAny<Exception>()), Times.Once);
+        }
+
+        #endregion
+
+        #region InitializeColorServiceIfNeeded Exception Handling Tests
+
+        [Fact]
+        public void InitializeColorServiceIfNeeded_WhenExceptionOccurs_LogsWarning()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("InitializeColorServiceIfNeeded", BindingFlags.NonPublic | BindingFlags.Instance);
+            var trackingData = new PhoneTrackingInfo { BlendShapes = new List<BlendShape> { new BlendShape { Key = "TestBlendShape", Value = 0.5 } } };
+
+            // Mock transformation engine to return parameters
+            _mockTransformationEngine.Setup(x => x.GetParameterDefinitions())
+                .Returns(new List<VTSParameter>());
+
+            // Mock color service to throw exception
+            _mockColorService.Setup(x => x.InitializeFromConfiguration(It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+                .Throws(new Exception("Color service initialization failed"));
+
+            // Act
+            method!.Invoke(orchestrator, new object[] { trackingData });
+
+            // Assert
+            _mockLogger.Verify(x => x.Warning(It.Is<string>(s => s.Contains("Failed to initialize color service"))), Times.Once);
+        }
+
+        #endregion
+
+        #region AttemptRecoveryAsync PC Client Recovery Tests
+
+        [Fact]
+        public async Task AttemptRecoveryAsync_WhenPCClientRecovers_AttemptsParameterSynchronization()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("AttemptRecoveryAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            var cancellationToken = CancellationToken.None;
+
+            // Mock PC client to be unhealthy initially, then healthy after recovery
+            var unhealthyStats = new ServiceStats("PCClient", "Unhealthy", null, false);
+            var healthyStats = new ServiceStats("PCClient", "Healthy", null, true);
+
+            _mockPCClient.SetupSequence(x => x.GetServiceStats())
+                .Returns(unhealthyStats)  // First call - unhealthy
+                .Returns(healthyStats);   // Second call - healthy after recovery
+
+            _mockPCClient.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            // Mock phone client to be healthy (no recovery needed)
+            var phoneStats = new ServiceStats("PhoneClient", "Healthy", null, true);
+            _mockPhoneClient.Setup(x => x.GetServiceStats())
+                .Returns(phoneStats);
+
+            // Mock parameter manager to succeed
+            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            // Act
+            var task = (Task)method!.Invoke(orchestrator, new object[] { cancellationToken })!;
+            await task;
+
+            // Assert
+            _mockLogger.Verify(x => x.Info("PC client recovered successfully, attempting parameter synchronization..."), Times.Once);
+            _mockParameterManager.Verify(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken), Times.Once);
+        }
+
+        [Fact]
+        public async Task AttemptRecoveryAsync_WhenPCClientRecoversButParameterSyncFails_LogsWarning()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var method = typeof(ApplicationOrchestrator).GetMethod("AttemptRecoveryAsync", BindingFlags.NonPublic | BindingFlags.Instance);
+            var cancellationToken = CancellationToken.None;
+
+            // Mock PC client to be unhealthy initially, then healthy after recovery
+            var unhealthyStats = new ServiceStats("PCClient", "Unhealthy", null, false);
+            var healthyStats = new ServiceStats("PCClient", "Healthy", null, true);
+
+            _mockPCClient.SetupSequence(x => x.GetServiceStats())
+                .Returns(unhealthyStats)  // First call - unhealthy
+                .Returns(healthyStats);   // Second call - healthy after recovery
+
+            _mockPCClient.Setup(x => x.TryInitializeAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            // Mock phone client to be healthy (no recovery needed)
+            var phoneStats = new ServiceStats("PhoneClient", "Healthy", null, true);
+            _mockPhoneClient.Setup(x => x.GetServiceStats())
+                .Returns(phoneStats);
+
+            // Mock parameter manager to fail
+            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            // Act
+            var task = (Task)method!.Invoke(orchestrator, new object[] { cancellationToken })!;
+            await task;
+
+            // Assert
+            _mockLogger.Verify(x => x.Info("PC client recovered successfully, attempting parameter synchronization..."), Times.Once);
+            _mockLogger.Verify(x => x.Warning("Parameter synchronization failed after PC client recovery"), Times.Once);
+            _mockParameterManager.Verify(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken), Times.Once);
         }
 
         #endregion
