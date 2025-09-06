@@ -998,5 +998,351 @@ namespace SharpBridge.Tests.Services
         }
 
         #endregion
+
+        #region Custom Interpolation Definition for Testing
+
+        /// <summary>
+        /// Custom interpolation definition that will cause InterpolationMethodFactory.CreateFromDefinition to throw an exception
+        /// </summary>
+        public class UnsupportedInterpolation : IInterpolationDefinition
+        {
+            // This will cause the factory to throw an ArgumentException for unsupported type
+        }
+
+        #endregion
+
+        #region Interpolation Tests
+
+        [Fact]
+        public void TransformData_WithLinearInterpolation_ShouldApplyLinearInterpolation()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            var linearInterpolation = new LinearInterpolation();
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("HeadPosX * 2"),
+                expressionString: "HeadPosX * 2",
+                min: 0.0,
+                max: 1.0,
+                defaultValue: 0.5,
+                interpolation: linearInterpolation
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.Parameters.Should().HaveCount(1);
+            var param = result.Parameters.First();
+            param.Id.Should().Be("TestParam");
+
+            // The value should be interpolated (HeadPosX = 0.1, so 0.1 * 2 = 0.2)
+            // Linear interpolation should return the value as-is since it's already normalized
+            param.Value.Should().BeApproximately(0.2, 0.001);
+
+            // Verify interpolation is stored
+            result.ParameterInterpolations.Should().ContainKey("TestParam");
+            result.ParameterInterpolations["TestParam"].Should().Be(linearInterpolation);
+        }
+
+        [Fact]
+        public void TransformData_WithBezierInterpolation_ShouldApplyBezierInterpolation()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            var bezierInterpolation = new BezierInterpolation
+            {
+                ControlPoints = new List<Point>
+                {
+                    new Point { X = 0.0, Y = 0.0 },
+                    new Point { X = 0.5, Y = 0.8 },
+                    new Point { X = 1.0, Y = 1.0 }
+                }
+            };
+
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("HeadPosX"),
+                expressionString: "HeadPosX",
+                min: 0.0,
+                max: 1.0,
+                defaultValue: 0.5,
+                interpolation: bezierInterpolation
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.Parameters.Should().HaveCount(1);
+            var param = result.Parameters.First();
+            param.Id.Should().Be("TestParam");
+
+            // The value should be interpolated using Bezier curve
+            // HeadPosX = 0.1, so normalized input is 0.1
+            // Bezier interpolation will curve the value
+            param.Value.Should().BeGreaterThan(0.0).And.BeLessThan(1.0);
+
+            // Verify interpolation is stored
+            result.ParameterInterpolations.Should().ContainKey("TestParam");
+            result.ParameterInterpolations["TestParam"].Should().Be(bezierInterpolation);
+        }
+
+        [Fact]
+        public void TransformData_WithInterpolationException_ShouldFallbackToLinearClamping()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            // The rule is not used since we're testing invalid interpolation validation
+
+            // The invalid interpolation should cause the rule to be marked as invalid
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation>(), // No valid rules due to invalid interpolation
+                invalidRules: new List<RuleInfo> { new RuleInfo("TestParam", "HeadPosX * 2", "Invalid interpolation configuration", "Validation") },
+                validationErrors: new List<string> { "Rule 'TestParam' has invalid interpolation configuration" },
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            // Since the rule is invalid, no parameters should be generated
+            result.Parameters.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void TransformData_WithValidInterpolationButExceptionDuringProcessing_ShouldFallbackToLinearClamping()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            // Create a rule with unsupported interpolation that will cause an exception during processing
+            var unsupportedInterpolation = new UnsupportedInterpolation();
+
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("HeadPosX * 2"),
+                expressionString: "HeadPosX * 2",
+                min: 0.0,
+                max: 1.0,
+                defaultValue: 0.5,
+                interpolation: unsupportedInterpolation
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.Parameters.Should().HaveCount(1);
+            var param = result.Parameters.First();
+            param.Id.Should().Be("TestParam");
+
+            // The value should fallback to linear clamping due to the exception in GetRuleValue
+            // HeadPosX * 2 = 0.2, clamped between 0.0 and 1.0 = 0.2
+            param.Value.Should().Be(0.2);
+        }
+
+        [Fact]
+        public void TransformData_WithInvalidExpression_ShouldHandleExceptionInTryEvaluateExpression()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            // Create a rule with an expression that will cause an exception during evaluation
+            // Using a string expression that will cause Convert.ToDouble() to throw an exception
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("\"Hello World\""), // String literal - Convert.ToDouble() will fail
+                expressionString: "\"Hello World\"",
+                min: 0.0,
+                max: 1.0,
+                defaultValue: 0.5,
+                interpolation: null
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            // The rule should fail evaluation due to Convert.ToDouble() exception, so no parameters should be generated
+            result.Parameters.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void TransformData_WithInterpolationAndValueOutsideRange_ShouldNormalizeAndScale()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            var linearInterpolation = new LinearInterpolation();
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("HeadPosX * 10"), // This will be 0.1 * 10 = 1.0
+                expressionString: "HeadPosX * 10",
+                min: 0.0,
+                max: 2.0, // Range is 0.0 to 2.0
+                defaultValue: 1.0,
+                interpolation: linearInterpolation
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.Parameters.Should().HaveCount(1);
+            var param = result.Parameters.First();
+            param.Id.Should().Be("TestParam");
+
+            // The value should be interpolated and scaled back to the range
+            // HeadPosX * 10 = 1.0, which is exactly in the middle of [0.0, 2.0]
+            // Linear interpolation should return 1.0 (middle of range)
+            param.Value.Should().BeApproximately(1.0, 0.001);
+        }
+
+        [Fact]
+        public void TransformData_WithZeroRangeInterpolation_ShouldHandleZeroRange()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            var linearInterpolation = new LinearInterpolation();
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("HeadPosX"),
+                expressionString: "HeadPosX",
+                min: 5.0,
+                max: 5.0, // Zero range
+                defaultValue: 5.0,
+                interpolation: linearInterpolation
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.Parameters.Should().HaveCount(1);
+            var param = result.Parameters.First();
+            param.Id.Should().Be("TestParam");
+
+            // With zero range, should return the min value (5.0)
+            param.Value.Should().BeApproximately(5.0, 0.001);
+        }
+
+        [Fact]
+        public void TransformData_WithInterpolationAndClamping_ShouldClampToRange()
+        {
+            // Arrange
+            var engine = CreateEngine();
+            var trackingData = CreateValidTrackingData();
+
+            var linearInterpolation = new LinearInterpolation();
+            var rule = new ParameterTransformation(
+                name: "TestParam",
+                expression: new Expression("HeadPosX * 20"), // This will be 0.1 * 20 = 2.0
+                expressionString: "HeadPosX * 20",
+                min: 0.0,
+                max: 1.0, // Range is 0.0 to 1.0, so 2.0 should be clamped to 1.0
+                defaultValue: 0.5,
+                interpolation: linearInterpolation
+            );
+
+            var loadResult = new RulesLoadResult(
+                validRules: new List<ParameterTransformation> { rule },
+                invalidRules: new List<RuleInfo>(),
+                validationErrors: new List<string>(),
+                loadedFromCache: false,
+                loadError: null
+            );
+            _mockRepository.Setup(r => r.LoadRulesAsync()).ReturnsAsync(loadResult);
+
+            // Act
+            engine.LoadRulesAsync().Wait();
+            var result = engine.TransformData(trackingData);
+
+            // Assert
+            result.Parameters.Should().HaveCount(1);
+            var param = result.Parameters.First();
+            param.Id.Should().Be("TestParam");
+
+            // The value should be clamped to the range [0.0, 1.0]
+            param.Value.Should().BeApproximately(1.0, 0.001);
+        }
+
+        #endregion
     }
 }

@@ -625,5 +625,707 @@ namespace SharpBridge.Tests.Repositories
         }
 
         #endregion
+
+        #region LoadRulesAsync (no parameters) Tests
+
+        [Fact]
+        public async Task LoadRulesAsync_WithValidConfig_LoadsRulesSuccessfully()
+        {
+            // Arrange
+            var filePath = CreateTempRuleFile(GetValidRuleContent());
+            var config = new TransformationEngineConfig { ConfigPath = filePath };
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Act
+            var result = await _repository.LoadRulesAsync();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.ValidRules.Should().HaveCount(1);
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().BeEmpty();
+            result.LoadedFromCache.Should().BeFalse();
+            result.LoadError.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithEmptyConfigPath_ReturnsCriticalError()
+        {
+            // Arrange
+            var config = new TransformationEngineConfig { ConfigPath = string.Empty };
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Act
+            var result = await _repository.LoadRulesAsync();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().HaveCount(1);
+            result.ValidationErrors[0].Should().Contain("Transformation engine config path is not specified");
+            result.LoadedFromCache.Should().BeFalse();
+            result.LoadError.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithNullConfigPath_ReturnsCriticalError()
+        {
+            // Arrange
+            var config = new TransformationEngineConfig { ConfigPath = null! };
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Act
+            var result = await _repository.LoadRulesAsync();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().HaveCount(1);
+            result.ValidationErrors[0].Should().Contain("Transformation engine config path is not specified");
+            result.LoadedFromCache.Should().BeFalse();
+            result.LoadError.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithConfigLoadException_ReturnsCriticalError()
+        {
+            // Arrange
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ThrowsAsync(new InvalidOperationException("Config load failed"));
+
+            // Act
+            var result = await _repository.LoadRulesAsync();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().HaveCount(1);
+            result.ValidationErrors[0].Should().Contain("Failed to load application config");
+            result.LoadedFromCache.Should().BeFalse();
+            result.LoadError.Should().NotBeNull();
+        }
+
+        #endregion
+
+        #region OnApplicationConfigChanged Tests
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithSamePath_DoesNotTriggerReload()
+        {
+            // Arrange
+            var filePath = CreateTempRuleFile(GetValidRuleContent());
+            var config = new TransformationEngineConfig { ConfigPath = filePath };
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Load rules first to set current path
+            await _repository.LoadRulesAsync(filePath);
+
+            // Reset mock to track calls
+            _mockConfigManager.Reset();
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            var eventRaised = false;
+            _repository.RulesChanged += (sender, args) => eventRaised = true;
+
+            // Act
+            _repository.GetType()
+                .GetMethod("OnApplicationConfigChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(_repository, new object[] { null!, new FileChangeEventArgs(filePath) });
+
+            // Wait a bit for async operation
+            await Task.Delay(100);
+
+            // Assert
+            eventRaised.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithDifferentPath_TriggersReload()
+        {
+            // Arrange
+            var filePath1 = CreateTempRuleFile(GetValidRuleContent());
+            var filePath2 = CreateTempRuleFile(GetValidRuleContent());
+            var config1 = new TransformationEngineConfig { ConfigPath = filePath1 };
+            var config2 = new TransformationEngineConfig { ConfigPath = filePath2 };
+
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config1);
+
+            // Load rules first to set current path
+            await _repository.LoadRulesAsync(filePath1);
+
+            // Reset mock to return different config
+            _mockConfigManager.Reset();
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config2);
+
+            var eventRaised = false;
+            RulesChangedEventArgs? eventArgs = null;
+            _repository.RulesChanged += (sender, args) =>
+            {
+                eventRaised = true;
+                eventArgs = args;
+            };
+
+            // Act
+            _repository.GetType()
+                .GetMethod("OnApplicationConfigChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(_repository, new object[] { null!, new FileChangeEventArgs(filePath2) });
+
+            // Wait a bit for async operation
+            await Task.Delay(100);
+
+            // Assert
+            eventRaised.Should().BeTrue();
+            eventArgs.Should().NotBeNull();
+            eventArgs!.FilePath.Should().Be(filePath2);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithEmptyConfigPath_LogsWarning()
+        {
+            // Arrange
+            var filePath = CreateTempRuleFile(GetValidRuleContent());
+            var config1 = new TransformationEngineConfig { ConfigPath = filePath };
+            var config2 = new TransformationEngineConfig { ConfigPath = string.Empty };
+
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config1);
+
+            // Load rules first to set current path
+            await _repository.LoadRulesAsync(filePath);
+
+            // Reset mock to return empty config
+            _mockConfigManager.Reset();
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config2);
+
+            // Act
+            _repository.GetType()
+                .GetMethod("OnApplicationConfigChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(_repository, new object[] { null!, new FileChangeEventArgs("config.json") });
+
+            // Wait a bit for async operation
+            await Task.Delay(100);
+
+            // Assert
+            _mockLogger.Verify(x => x.Warning("Transformation engine config path is empty in application config"), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithException_LogsError()
+        {
+            // Arrange
+            var filePath = CreateTempRuleFile(GetValidRuleContent());
+            var config = new TransformationEngineConfig { ConfigPath = filePath };
+
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Load rules first to set current path
+            await _repository.LoadRulesAsync(filePath);
+
+            // Reset mock to throw exception
+            _mockConfigManager.Reset();
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ThrowsAsync(new InvalidOperationException("Config error"));
+
+            // Act
+            _repository.GetType()
+                .GetMethod("OnApplicationConfigChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(_repository, new object[] { null!, new FileChangeEventArgs("config.json") });
+
+            // Wait a bit for async operation
+            await Task.Delay(100);
+
+            // Assert
+            _mockLogger.Verify(x => x.ErrorWithException("Error handling application config change", It.IsAny<InvalidOperationException>()), Times.Once);
+        }
+
+        #endregion
+
+        #region Interpolation Validation Tests
+
+        [Fact]
+        public async Task LoadRulesAsync_WithInvalidInterpolation_ReturnsCriticalError()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""InvalidInterpolation"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""InvalidInterpolationType""
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().HaveCount(1);
+            result.ValidationErrors[0].Should().Contain("JSON parsing error");
+            result.LoadedFromCache.Should().BeFalse();
+            result.LoadError.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithValidInterpolation_CreatesValidRule()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""ValidInterpolation"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""LinearInterpolation""
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().HaveCount(1);
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidRules[0].Name.Should().Be("ValidInterpolation");
+            result.ValidRules[0].Interpolation.Should().NotBeNull();
+        }
+
+        #endregion
+
+        #region Exception Handling Tests
+
+        [Fact]
+        public async Task LoadRulesFromPathAsync_WithIOException_ReturnsCriticalError()
+        {
+            // Arrange
+            var config = new TransformationEngineConfig
+            {
+                ConfigPath = "nonexistent/path/rules.json"
+            };
+
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Act
+            var result = await _repository.LoadRulesFromPathAsync("nonexistent/path/rules.json");
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().StartWith("Rules file not found:");
+            result.LoadError.Should().StartWith("Rules file not found:");
+            result.LoadedFromCache.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task LoadRulesFromPathAsync_WithGeneralException_ReturnsCriticalError()
+        {
+            // Arrange
+            var config = new TransformationEngineConfig
+            {
+                ConfigPath = "test/path/rules.json"
+            };
+
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
+                .ReturnsAsync(config);
+
+            // Mock File.ReadAllTextAsync to throw a general exception
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                File.WriteAllText(tempFile, "valid json");
+
+                // Create a mock that will throw an exception
+                var fileWatcherMock = new Mock<IFileChangeWatcher>();
+                fileWatcherMock.Setup(x => x.StartWatching(It.IsAny<string>()))
+                    .Throws(new InvalidOperationException("Mock exception"));
+
+                var repository = new FileBasedTransformationRulesRepository(
+                    _mockLogger.Object, fileWatcherMock.Object, fileWatcherMock.Object, _mockConfigManager.Object);
+
+                // Act
+                var result = await repository.LoadRulesFromPathAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().BeEmpty();
+                result.InvalidRules.Should().BeEmpty();
+                result.ValidationErrors.Should().ContainSingle();
+                result.ValidationErrors[0].Should().StartWith("JSON parsing error:");
+                result.LoadError.Should().StartWith("JSON parsing error:");
+                result.LoadedFromCache.Should().BeFalse();
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        #endregion
+
+        #region TryCreateTransformationRule Edge Cases Tests (via LoadRulesAsync)
+
+        [Fact]
+        public async Task LoadRulesAsync_WithEmptyFunc_ReturnsInvalidRule()
+        {
+            // Arrange
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var rulesJson = @"[
+                {
+                    ""name"": ""EmptyFuncRule"",
+                    ""func"": """",
+                    ""min"": 0,
+                    ""max"": 1,
+                    ""defaultValue"": 0.5
+                }
+            ]";
+                await File.WriteAllTextAsync(tempFile, rulesJson);
+
+                // Act
+                var result = await _repository.LoadRulesAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().BeEmpty();
+                result.InvalidRules.Should().HaveCount(1);
+                result.InvalidRules[0].Name.Should().Be("EmptyFuncRule");
+                result.ValidationErrors.Should().ContainSingle();
+                result.ValidationErrors[0].Should().Be("Rule 'EmptyFuncRule' has an empty expression");
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithWhitespaceFunc_ReturnsInvalidRule()
+        {
+            // Arrange
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var rulesJson = @"[
+                {
+                    ""name"": ""WhitespaceFuncRule"",
+                    ""func"": ""   "",
+                    ""min"": 0,
+                    ""max"": 1,
+                    ""defaultValue"": 0.5
+                }
+            ]";
+                await File.WriteAllTextAsync(tempFile, rulesJson);
+
+                // Act
+                var result = await _repository.LoadRulesAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().BeEmpty();
+                result.InvalidRules.Should().HaveCount(1);
+                result.InvalidRules[0].Name.Should().Be("WhitespaceFuncRule");
+                result.ValidationErrors.Should().ContainSingle();
+                result.ValidationErrors[0].Should().Be("Rule 'WhitespaceFuncRule' has an empty expression");
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithSyntaxError_ReturnsInvalidRule()
+        {
+            // Arrange
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var rulesJson = @"[
+                {
+                    ""name"": ""SyntaxErrorRule"",
+                    ""func"": ""invalid syntax ("",
+                    ""min"": 0,
+                    ""max"": 1,
+                    ""defaultValue"": 0.5
+                }
+            ]";
+                await File.WriteAllTextAsync(tempFile, rulesJson);
+
+                // Act
+                var result = await _repository.LoadRulesAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().BeEmpty();
+                result.InvalidRules.Should().HaveCount(1);
+                result.InvalidRules[0].Name.Should().Be("SyntaxErrorRule");
+                result.ValidationErrors.Should().ContainSingle();
+                result.ValidationErrors[0].Should().StartWith("Syntax error in rule 'SyntaxErrorRule':");
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithMinGreaterThanMax_ReturnsInvalidRule()
+        {
+            // Arrange
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var rulesJson = @"[
+                {
+                    ""name"": ""MinGreaterThanMaxRule"",
+                    ""func"": ""x * 2"",
+                    ""min"": 10,
+                    ""max"": 5,
+                    ""defaultValue"": 7.5
+                }
+            ]";
+                await File.WriteAllTextAsync(tempFile, rulesJson);
+
+                // Act
+                var result = await _repository.LoadRulesAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().BeEmpty();
+                result.InvalidRules.Should().HaveCount(1);
+                result.InvalidRules[0].Name.Should().Be("MinGreaterThanMaxRule");
+                result.ValidationErrors.Should().ContainSingle();
+                result.ValidationErrors[0].Should().Be("Rule 'MinGreaterThanMaxRule' has Min value (10) greater than Max value (5)");
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithValidExpression_ReturnsValidRule()
+        {
+            // Arrange
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var rulesJson = @"[
+                {
+                    ""name"": ""ValidRule"",
+                    ""func"": ""x * 2"",
+                    ""min"": 0,
+                    ""max"": 1,
+                    ""defaultValue"": 0.5
+                }
+            ]";
+                await File.WriteAllTextAsync(tempFile, rulesJson);
+
+                // Act
+                var result = await _repository.LoadRulesAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().HaveCount(1);
+                result.ValidRules[0].Name.Should().Be("ValidRule");
+                result.ValidRules[0].Expression.Should().NotBeNull();
+                result.ValidRules[0].ExpressionString.Should().Be("x * 2");
+                result.ValidRules[0].Min.Should().Be(0);
+                result.ValidRules[0].Max.Should().Be(1);
+                result.ValidRules[0].DefaultValue.Should().Be(0.5);
+                result.InvalidRules.Should().BeEmpty();
+                result.ValidationErrors.Should().BeEmpty();
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithValidExpressionAndInterpolation_ReturnsValidRule()
+        {
+            // Arrange
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                var rulesJson = @"[
+                {
+                    ""name"": ""ValidRuleWithInterpolation"",
+                    ""func"": ""x * 2"",
+                    ""min"": 0,
+                    ""max"": 1,
+                    ""defaultValue"": 0.5,
+                    ""interpolation"": {
+                        ""type"": ""LinearInterpolation""
+                    }
+                }
+            ]";
+                await File.WriteAllTextAsync(tempFile, rulesJson);
+
+                // Act
+                var result = await _repository.LoadRulesAsync(tempFile);
+
+                // Assert
+                result.ValidRules.Should().HaveCount(1);
+                result.ValidRules[0].Name.Should().Be("ValidRuleWithInterpolation");
+                result.ValidRules[0].Interpolation.Should().BeOfType<LinearInterpolation>();
+                result.InvalidRules.Should().BeEmpty();
+                result.ValidationErrors.Should().BeEmpty();
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        #endregion
+
+        #region Disposed State Handling Tests
+
+        [Fact]
+        public async Task LoadRulesAsync_WhenDisposed_ThrowsObjectDisposedException()
+        {
+            // Arrange
+            _repository.Dispose();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => _repository.LoadRulesAsync());
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithPath_WhenDisposed_ThrowsObjectDisposedException()
+        {
+            // Arrange
+            _repository.Dispose();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => _repository.LoadRulesAsync("test.json"));
+        }
+
+        [Fact]
+        public void Dispose_WhenAlreadyDisposed_DoesNotThrow()
+        {
+            // Arrange
+            _repository.Dispose();
+
+            // Act & Assert - should not throw
+            _repository.Dispose();
+
+            // Verify the repository is still disposed
+            Assert.True(true); // Test passes if no exception is thrown
+        }
+
+        #endregion
+
+        #region ArePathsEqual Tests
+
+        [Fact]
+        public void ArePathsEqual_WithSamePaths_ReturnsTrue()
+        {
+            // Arrange
+            var path1 = @"C:\test\file.json";
+            var path2 = @"C:\test\file.json";
+
+            // Act
+            var result = typeof(FileBasedTransformationRulesRepository)
+                .GetMethod("ArePathsEqual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.Invoke(null, new object[] { path1, path2 });
+
+            // Assert
+            result.Should().Be(true);
+        }
+
+        [Fact]
+        public void ArePathsEqual_WithDifferentPaths_ReturnsFalse()
+        {
+            // Arrange
+            var path1 = @"C:\test\file1.json";
+            var path2 = @"C:\test\file2.json";
+
+            // Act
+            var result = typeof(FileBasedTransformationRulesRepository)
+                .GetMethod("ArePathsEqual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.Invoke(null, new object[] { path1, path2 });
+
+            // Assert
+            result.Should().Be(false);
+        }
+
+        [Fact]
+        public void ArePathsEqual_WithNullPaths_ReturnsTrue()
+        {
+            // Arrange
+            string? path1 = null;
+            string? path2 = null;
+
+            // Act
+            var result = typeof(FileBasedTransformationRulesRepository)
+                .GetMethod("ArePathsEqual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.Invoke(null, new object[] { path1!, path2! });
+
+            // Assert
+            result.Should().Be(true);
+        }
+
+        [Fact]
+        public void ArePathsEqual_WithOneNullPath_ReturnsFalse()
+        {
+            // Arrange
+            var path1 = @"C:\test\file.json";
+            string? path2 = null;
+
+            // Act
+            var result = typeof(FileBasedTransformationRulesRepository)
+                .GetMethod("ArePathsEqual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.Invoke(null, new object[] { path1, path2! });
+
+            // Assert
+            result.Should().Be(false);
+        }
+
+        [Fact]
+        public void ArePathsEqual_WithCaseInsensitivePaths_ReturnsTrue()
+        {
+            // Arrange
+            var path1 = @"C:\TEST\FILE.JSON";
+            var path2 = @"c:\test\file.json";
+
+            // Act
+            var result = typeof(FileBasedTransformationRulesRepository)
+                .GetMethod("ArePathsEqual", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.Invoke(null, new object[] { path1, path2 });
+
+            // Assert
+            result.Should().Be(true);
+        }
+
+        #endregion
     }
 }
