@@ -242,7 +242,11 @@ namespace SharpBridge
             services.AddSingleton<IFirewallEngine, WindowsFirewallEngine>();
             services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
             services.AddSingleton<INetworkCommandProvider, WindowsNetworkCommandProvider>();
-            services.AddSingleton<INetworkStatusFormatter, NetworkStatusFormatter>();
+            services.AddSingleton<INetworkStatusFormatter>(provider =>
+                new NetworkStatusFormatter(
+                    provider.GetRequiredService<INetworkCommandProvider>(),
+                    provider.GetRequiredService<ITableFormatter>()
+                ));
             services.AddSingleton<IPortStatusMonitorService, PortStatusMonitorService>();
 
             // Register shortcut services

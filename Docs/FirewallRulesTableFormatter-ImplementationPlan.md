@@ -76,27 +76,25 @@ Create column formatters for each field:
 - Width: Flexible, truncate long paths with ellipsis
 - Handle null/empty application names
 
-### 4. Modify NetworkStatusFormatter
+### 4. Integrate Table Rendering into NetworkStatusFormatter
 - Update `AppendFirewallRules` method to use `ITableFormatter.AppendTable`
-- Create the column formatters list
+- Create the column formatters list using `FirewallRuleTableFormatters.CreateColumnFormatters()`
 - Set target column count to 1 (single column layout)
 - Pass the indent parameter from the method parameter
 - Change rule limit from 5 to 10
 - Update the "more rules" message to show "top 10 of X" when applicable
-
-### 5. Update Method Signature
 - Modify `AppendFirewallRules` to accept `ITableFormatter` as a parameter
 - Update the constructor to inject `ITableFormatter` dependency
 - Update all callers to pass the table formatter
 
-### 6. Handle Edge Cases
+### 5. Handle Edge Cases
 - Empty rule lists: Show "No explicit rules found" message (current behavior)
 - Rule count display: "Matching rules (X found):" or "Matching rules (top 10 of X):"
 - Long rule names: Truncate with ellipsis
 - Long application paths: Truncate with ellipsis
 - Wildcard values: Display as `*` or `any` consistently
 
-### 7. Update Tests
+### 6. Update Tests
 - Modify existing tests to expect table format instead of list format
 - Add tests for the new table formatter integration
 - Test edge cases (empty rules, long names, etc.)

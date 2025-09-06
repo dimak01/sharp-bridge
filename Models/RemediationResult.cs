@@ -21,3 +21,4 @@ namespace SharpBridge.Models
         NoRemediationNeeded
     }
 }
+
