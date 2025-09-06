@@ -171,7 +171,8 @@ The application features a **console-based user interface** with dynamic configu
 - **PhoneTrackingInfoFormatter** - Displays iPhone tracking data with multi-column parameter tables
 - **PCTrackingInfoFormatter** - Shows PC client status and outgoing parameter data with customizable columns
 - **TransformationEngineInfoFormatter** - Real-time transformation engine statistics with rule status tables
-- **TableFormatter** - Utility for complex tabular data with responsive layout
+- **NetworkStatusFormatter** - Network troubleshooting display with structured firewall rules tables
+- **TableFormatter** - Utility for complex tabular data with responsive layout and indentation support
 
 ## Service Registration & Dependency Injection
 
@@ -247,7 +248,7 @@ All core architectural components are implemented:
 - **Recovery System** - Automatic service recovery with configurable policies
 - **Console UI System** - Real-time status display with dynamic shortcuts and user preferences
 - **Console UI Modes** - Main status, system help, and network status modes with improved architecture
-- **Network Status Monitoring** - Real-time network interface status and troubleshooting capabilities
+- **Network Status Monitoring** - Real-time network interface status and troubleshooting capabilities with structured firewall rules display
 - **Configuration Management** - Consolidated configuration with hot-reload capabilities
 - **File Change Watching** - Multi-watcher system for configuration monitoring
 - **Parameter Synchronization** - Automatic VTube Studio parameter management
@@ -409,8 +410,9 @@ The code follows clean architecture principles with resiliency built-in:
 15. **Parameter Synchronization** - Automatic VTube Studio parameter management
 16. **Customizable UI** - User-configurable parameter table columns for focused display
 17. **Console UI Modes** - Improved separation of concerns with dedicated content providers for different display modes
-18. **Network Troubleshooting** - Built-in network status monitoring and troubleshooting capabilities
+18. **Network Troubleshooting** - Built-in network status monitoring and troubleshooting capabilities with structured table display
 19. **Custom Interpolation** - Support for Bezier curves and other interpolation methods for natural parameter responses
+20. **Table Formatting System** - Advanced table rendering with indentation support, responsive layout, and specialized column formatters
 
 ## Runtime Features
 
