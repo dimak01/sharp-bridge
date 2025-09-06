@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using FluentAssertions;
+using Moq;
+using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services.Validators;
 using Xunit;
@@ -10,10 +12,12 @@ namespace SharpBridge.Tests.Services
     public class GeneralSettingsConfigValidatorTests
     {
         private readonly GeneralSettingsConfigValidator _validator;
+        private readonly Mock<IConfigFieldValidator> _mockFieldValidator;
 
         public GeneralSettingsConfigValidatorTests()
         {
-            _validator = new GeneralSettingsConfigValidator();
+            _mockFieldValidator = new Mock<IConfigFieldValidator>();
+            _validator = new GeneralSettingsConfigValidator(_mockFieldValidator.Object);
         }
 
         #region ValidateSection Tests

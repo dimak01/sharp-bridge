@@ -307,7 +307,7 @@ namespace SharpBridge.Tests.Services
             Assert.Equal("IphoneIpAddress", issue.FieldName);
             Assert.Equal(typeof(string), issue.ExpectedType);
             // Null fields are handled as missing fields, not empty string validation
-            Assert.Equal("iPhone IP address", issue.Description);
+            Assert.Equal("Required field 'iPhone IP address' is missing", issue.Description);
         }
 
         [Fact]
@@ -417,7 +417,7 @@ namespace SharpBridge.Tests.Services
             Assert.Equal("IphonePort", issue.FieldName);
             Assert.Equal(typeof(int), issue.ExpectedType);
             // Null fields are handled as missing fields, not type validation
-            Assert.Equal("iPhone port number", issue.Description);
+            Assert.Equal("Required field 'iPhone port number' is missing", issue.Description);
         }
 
         [Fact]

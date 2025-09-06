@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
@@ -8,69 +7,24 @@ namespace SharpBridge.Services.Validators
     /// <summary>
     /// Validator for VTubeStudioPCConfig configuration sections.
     /// </summary>
-    public class VTubeStudioPCConfigValidator : IConfigSectionValidator
+    public class VTubeStudioPCConfigValidator : BaseConfigSectionValidator
     {
-        private readonly IConfigFieldValidator _fieldValidator;
-
         /// <summary>
         /// Initializes a new instance of the VTubeStudioPCConfigValidator class.
         /// </summary>
         /// <param name="fieldValidator">The field validator for common validation operations</param>
         public VTubeStudioPCConfigValidator(IConfigFieldValidator fieldValidator)
+            : base(fieldValidator)
         {
-            _fieldValidator = fieldValidator ?? throw new ArgumentNullException(nameof(fieldValidator));
-        }
-        /// <summary>
-        /// Validates a VTubeStudioPCConfig section's fields and returns validation results.
-        /// </summary>
-        /// <param name="fieldsState">The raw state of all fields in the configuration section</param>
-        /// <returns>Validation result indicating if the section is valid and what fields need attention</returns>
-        public ConfigValidationResult ValidateSection(List<ConfigFieldState> fieldsState)
-        {
-            var issues = new List<FieldValidationIssue>();
-
-            foreach (var field in fieldsState)
-            {
-                var (isValid, issue) = ValidateSingleField(field);
-                if (!isValid && issue != null)
-                {
-                    issues.Add(issue);
-                }
-            }
-
-            return new ConfigValidationResult(issues);
         }
 
         /// <summary>
-        /// Validates a single configuration field and returns the validation result.
+        /// Gets the list of field names that should be ignored during validation.
         /// </summary>
-        /// <param name="field">The field to validate</param>
-        /// <returns>Tuple indicating if the field is valid and any validation issue</returns>
-        public (bool IsValid, FieldValidationIssue? Issue) ValidateSingleField(ConfigFieldState field)
+        /// <returns>Array of field names to ignore</returns>
+        protected override string[] GetIgnoredFields()
         {
-            // Skip internal settings (JsonIgnore fields) - they have defaults
-            if (field.FieldName == "ConnectionTimeoutMs" ||
-                field.FieldName == "ReconnectionDelayMs" ||
-                field.FieldName == "RecoveryIntervalSeconds")
-            {
-                return (true, null);
-            }
-
-            // Check if required field is missing
-            if (!field.IsPresent || field.Value == null)
-            {
-                var issue = new FieldValidationIssue(field.FieldName, field.ExpectedType, field.Description, providedValueText: null);
-                return (false, issue);
-            }
-
-            // Validate field values based on field type
-            var validationError = ValidateFieldValue(field);
-            if (validationError != null)
-            {
-                return (false, validationError);
-            }
-
-            return (true, null);
+            return new[] { "ConnectionTimeoutMs", "ReconnectionDelayMs", "RecoveryIntervalSeconds" };
         }
 
         /// <summary>
@@ -78,27 +32,24 @@ namespace SharpBridge.Services.Validators
         /// </summary>
         /// <param name="field">The field to validate</param>
         /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
-        private FieldValidationIssue? ValidateFieldValue(ConfigFieldState field)
+        protected override FieldValidationIssue? ValidateFieldValue(ConfigFieldState field)
         {
             return field.FieldName switch
             {
-                "Host" => _fieldValidator.ValidateHost(field),
-                "Port" => _fieldValidator.ValidatePort(field),
-                "UsePortDiscovery" => _fieldValidator.ValidateBoolean(field),
+                "Host" => FieldValidator.ValidateHost(field),
+                "Port" => FieldValidator.ValidatePort(field),
+                "UsePortDiscovery" => FieldValidator.ValidateBoolean(field),
                 _ => CreateUnknownFieldError(field)
             };
         }
 
         /// <summary>
-        /// Creates a validation error for unknown fields.
+        /// Gets the configuration type name for error messages.
         /// </summary>
-        /// <param name="field">The unknown field</param>
-        /// <returns>FieldValidationIssue for the unknown field</returns>
-        private static FieldValidationIssue CreateUnknownFieldError(ConfigFieldState field)
+        /// <returns>The configuration type name</returns>
+        protected override string GetConfigTypeName()
         {
-            return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                $"Unknown field '{field.FieldName}' in VTubeStudioPCConfig",
-                field.Value?.ToString());
+            return "VTubeStudioPCConfig";
         }
     }
 }

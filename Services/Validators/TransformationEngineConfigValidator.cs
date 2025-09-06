@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 
@@ -9,94 +7,59 @@ namespace SharpBridge.Services.Validators
     /// <summary>
     /// Validator for TransformationEngineConfig configuration sections.
     /// </summary>
-    public class TransformationEngineConfigValidator : IConfigSectionValidator
+    public class TransformationEngineConfigValidator : BaseConfigSectionValidator
     {
-        private readonly IConfigFieldValidator _fieldValidator;
-
         /// <summary>
         /// Initializes a new instance of the TransformationEngineConfigValidator class.
         /// </summary>
         /// <param name="fieldValidator">The field validator for common validation operations</param>
         public TransformationEngineConfigValidator(IConfigFieldValidator fieldValidator)
+            : base(fieldValidator)
         {
-            _fieldValidator = fieldValidator ?? throw new ArgumentNullException(nameof(fieldValidator));
         }
 
         /// <summary>
-        /// Validates a TransformationEngineConfig section's fields and returns validation results.
+        /// Gets the list of field names that should be ignored during validation.
         /// </summary>
-        /// <param name="fieldsState">The raw state of all fields in the configuration section</param>
-        /// <returns>Validation result indicating if the section is valid and what fields need attention</returns>
-        public ConfigValidationResult ValidateSection(List<ConfigFieldState> fieldsState)
+        /// <returns>Array of field names to ignore (none for this config)</returns>
+        protected override string[] GetIgnoredFields()
         {
-            var issues = new List<FieldValidationIssue>();
-
-            foreach (var field in fieldsState)
-            {
-                var (isValid, issue) = ValidateSingleField(field);
-                if (!isValid && issue != null)
-                {
-                    issues.Add(issue);
-                }
-            }
-
-            return new ConfigValidationResult(issues);
+            return Array.Empty<string>();
         }
 
         /// <summary>
-        /// Validates a single field from the TransformationEngineConfig section.
+        /// Validates a specific field's value according to business rules.
         /// </summary>
         /// <param name="field">The field to validate</param>
-        /// <returns>A tuple indicating if the field is valid and any validation issue</returns>
-        public (bool IsValid, FieldValidationIssue? Issue) ValidateSingleField(ConfigFieldState field)
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        protected override FieldValidationIssue? ValidateFieldValue(ConfigFieldState field)
         {
-            // Check if field is present and has a value
-            if (!field.IsPresent || field.Value == null)
-            {
-                return (false, new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Required field '{field.Description}' is missing", null));
-            }
-
-            // Validate field based on its name
             return field.FieldName switch
             {
-                "ConfigPath" => ValidateConfigPath(field),
-                "MaxEvaluationIterations" => ValidateMaxEvaluationIterations(field),
-                _ => (false, CreateUnknownFieldError(field))
+                "ConfigPath" => FieldValidator.ValidateFilePath(field),
+                "MaxEvaluationIterations" => FieldValidator.ValidateIntegerRange(field, 1, 50),
+                _ => CreateUnknownFieldError(field)
             };
         }
 
         /// <summary>
-        /// Validates the ConfigPath field.
+        /// Gets the configuration type name for error messages.
         /// </summary>
-        /// <param name="field">The ConfigPath field to validate</param>
-        /// <returns>Validation result</returns>
-        private (bool IsValid, FieldValidationIssue? Issue) ValidateConfigPath(ConfigFieldState field)
+        /// <returns>The configuration type name</returns>
+        protected override string GetConfigTypeName()
         {
-            var issue = _fieldValidator.ValidateFilePath(field);
-            return (issue == null, issue);
+            return "TransformationEngineConfig";
         }
 
         /// <summary>
-        /// Validates the MaxEvaluationIterations field.
-        /// </summary>
-        /// <param name="field">The MaxEvaluationIterations field to validate</param>
-        /// <returns>Validation result</returns>
-        private (bool IsValid, FieldValidationIssue? Issue) ValidateMaxEvaluationIterations(ConfigFieldState field)
-        {
-            var issue = _fieldValidator.ValidateIntegerRange(field, 1, 50);
-            return (issue == null, issue);
-        }
-
-        /// <summary>
-        /// Creates an error for unknown fields.
+        /// Creates a validation error for unknown fields with custom formatting.
         /// </summary>
         /// <param name="field">The unknown field</param>
-        /// <returns>Validation issue for unknown field</returns>
-        private static FieldValidationIssue CreateUnknownFieldError(ConfigFieldState field)
+        /// <returns>FieldValidationIssue for the unknown field</returns>
+        protected override FieldValidationIssue CreateUnknownFieldError(ConfigFieldState field)
         {
             return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                $"Unknown field '{field.FieldName}' in TransformationEngineConfig", FormatForDisplay(field.Value));
+                $"Unknown field '{field.FieldName}' in {GetConfigTypeName()}", FormatForDisplay(field.Value));
         }
 
         /// <summary>
