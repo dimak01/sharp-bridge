@@ -200,7 +200,7 @@ namespace SharpBridge.Tests.Services
             isValid.Should().BeFalse();
             issue.Should().NotBeNull();
             issue!.FieldName.Should().Be("Host");
-            issue.Description.Should().Be("Host");
+            issue.Description.Should().Be("Required field 'Host' is missing");
             issue.ProvidedValueText.Should().BeNull();
         }
 
@@ -217,7 +217,7 @@ namespace SharpBridge.Tests.Services
             isValid.Should().BeFalse();
             issue.Should().NotBeNull();
             issue!.FieldName.Should().Be("Host");
-            issue.Description.Should().Be("Host");
+            issue.Description.Should().Be("Required field 'Host' is missing");
             issue.ProvidedValueText.Should().BeNull();
         }
 
@@ -442,7 +442,7 @@ namespace SharpBridge.Tests.Services
             issue.Should().NotBeNull();
             issue!.FieldName.Should().Be("UnknownField");
             issue.ExpectedType.Should().Be(typeof(string));
-            issue.Description.Should().Be("Unknown Field");
+            issue.Description.Should().Be("Required field 'Unknown Field' is missing");
             issue.ProvidedValueText.Should().BeNull();
         }
 
