@@ -1157,12 +1157,23 @@ namespace SharpBridge.Tests.Services
             // Cancel the token to trigger cancellation
             cancellationTokenSource.Cancel();
 
-            // Wait a bit for the cancellation to take effect
-            await Task.Delay(100);
+            // Wait for the task to complete with a reasonable timeout
+            // Use Task.WhenAny to wait for either completion or timeout
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+            var completedTask = await Task.WhenAny(task, timeoutTask);
 
             // Assert - The task should complete (either successfully or with cancellation)
             // Since we can't easily trigger the specific catch block, let's just verify it runs
-            task.IsCompleted.Should().BeTrue();
+            if (completedTask == timeoutTask)
+            {
+                // Task didn't complete in time - this indicates a problem
+                task.IsCompleted.Should().BeTrue("Task should have completed within 5 seconds after cancellation");
+            }
+            else
+            {
+                // Task completed normally
+                task.IsCompleted.Should().BeTrue();
+            }
         }
 
         #endregion
