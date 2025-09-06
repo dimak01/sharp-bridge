@@ -195,7 +195,7 @@ namespace SharpBridge.Services.Remediation
             {
                 "To find your iPhone's IP address:",
                 "1. Open VTube Studio app on your iPhone",
-                "2. Go to Settings (Gear Icon) → Scroll all the way down to \u001b[96m'3rd Party PC Clients'\u001b[0m",
+                "2. Go to \u001b[96m'Settings'\u001b[0m (Gear Icon) → Scroll all the way down to \u001b[96m'3rd Party PC Clients'\u001b[0m",
                 "3. Tap on \u001b[96m'Show IP List'\u001b[0m - this is what you need (pick the \u001b[96m'IPv4'\u001b[0m address where possible)",
                 "",
                 "Important: Ensure you use the iPhone IP address that matches the Wi-Fi network of your PC!"
@@ -204,7 +204,7 @@ namespace SharpBridge.Services.Remediation
             {
                 "To find your iPhone's port number:",
                 "1. Open VTube Studio app on your iPhone",
-                "2. Go to Settings (Gear Icon) → Scroll all the way down to \u001b[96m'3rd Party PC Clients'\u001b[0m",
+                "2. Go to \u001b[96m'Settings'\u001b[0m (Gear Icon) → Scroll all the way down to \u001b[96m'3rd Party PC Clients'\u001b[0m",
                 "3. Tap on \u001b[96m'Show IP List'\u001b[0m - this is what you need (look for the \u001b[96m'Port'\u001b[0m number)",
             },
             ["LocalPort"] = new[]
