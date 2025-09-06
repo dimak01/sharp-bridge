@@ -106,18 +106,13 @@ namespace SharpBridge.Services.Validators
         /// <returns>Formatted string for display</returns>
         private static string? FormatForDisplay(object? value)
         {
-            if (value == null)
-            {
-                return null;
-            }
-
             if (value is string s)
             {
                 const int max = 128;
                 return s.Length > max ? s.Substring(0, max - 3) + "..." : s;
             }
 
-            return value.ToString();
+            return value?.ToString();
         }
     }
 }
