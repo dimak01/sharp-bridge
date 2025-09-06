@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -21,15 +22,13 @@ namespace SharpBridge.Utilities
         {
             if (field.Value is not int port)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Port value must be an integer, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
+                return CreateValidationIssue(field, $"Port value must be an integer, got {field.Value?.GetType().Name ?? "null"}");
             }
 
             // Check if port is in valid range (1-65535)
             if (port < 1 || port > 65535)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Port {port} is out of valid range (1-65535)", port.ToString());
+                return CreateValidationIssue(field, $"Port {port} is out of valid range (1-65535)");
             }
 
             // Check for common reserved ports (optional, could be configurable)
@@ -52,15 +51,13 @@ namespace SharpBridge.Utilities
         {
             if (field.Value is not string ipAddress || string.IsNullOrWhiteSpace(ipAddress))
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    "IP address cannot be null or empty", FormatForDisplay(field.Value));
+                return CreateValidationIssue(field, "IP address cannot be null or empty");
             }
 
             // Check if it's a valid IP address
             if (!IPAddress.TryParse(ipAddress, out _))
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"'{ipAddress}' is not a valid IP address", ipAddress);
+                return CreateValidationIssue(field, $"'{ipAddress}' is not a valid IP address");
             }
 
             // Optional: Check if it's not localhost (127.0.0.1) for production use
@@ -83,15 +80,13 @@ namespace SharpBridge.Utilities
         {
             if (field.Value is not string host || string.IsNullOrWhiteSpace(host))
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    "Host address cannot be null or empty", FormatForDisplay(field.Value));
+                return CreateValidationIssue(field, "Host address cannot be null or empty");
             }
 
             // Check if it's a valid hostname or IP address
             if (!IsValidHost(host))
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"'{host}' is not a valid host address (must be a valid hostname or IP address)", host);
+                return CreateValidationIssue(field, $"'{host}' is not a valid host address (must be a valid hostname or IP address)");
             }
 
             return null; // Validation passed
@@ -106,8 +101,7 @@ namespace SharpBridge.Utilities
         {
             if (field.Value is not bool)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Boolean value must be true or false, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
+                return CreateValidationIssue(field, $"Boolean value must be true or false, got {field.Value?.GetType().Name ?? "null"}");
             }
 
             return null; // Validation passed
@@ -121,17 +115,18 @@ namespace SharpBridge.Utilities
         /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
         public FieldValidationIssue? ValidateString(ConfigFieldState field, bool allowEmpty = false)
         {
-            if (field.Value is not string str)
-            {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"String value expected, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
-            }
+            // Handle null values
+            if (field.Value == null)
+                return allowEmpty ? null : CreateValidationIssue(field, "String value cannot be null");
 
+            // Handle non-string types
+            if (field.ExpectedType != field.Value.GetType() ||
+                field.Value is not string str)
+                return CreateValidationIssue(field, $"{field.ExpectedType.Name} value expected, got {field.Value.GetType().Name}");
+
+            // Handle empty/whitespace strings
             if (!allowEmpty && string.IsNullOrWhiteSpace(str))
-            {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    "String value cannot be null or empty", FormatForDisplay(field.Value));
-            }
+                return CreateValidationIssue(field, "String value cannot be null or empty");
 
             return null; // Validation passed
         }
@@ -147,14 +142,12 @@ namespace SharpBridge.Utilities
         {
             if (field.Value is not int value)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Value must be an integer, got {field.Value?.GetType().Name ?? "null"}", FormatForDisplay(field.Value));
+                return CreateValidationIssue(field, $"Value must be an integer, got {field.Value?.GetType().Name ?? "null"}");
             }
 
             if (value < minValue || value > maxValue)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Value {value} is out of valid range ({minValue}-{maxValue})", value.ToString());
+                return CreateValidationIssue(field, $"Value {value} is out of valid range ({minValue}-{maxValue})");
             }
 
             return null; // Validation passed
@@ -169,8 +162,7 @@ namespace SharpBridge.Utilities
         {
             if (field.Value is not string path || string.IsNullOrWhiteSpace(path))
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    "File path cannot be null or empty", FormatForDisplay(field.Value));
+                return CreateValidationIssue(field, "File path cannot be null or empty");
             }
 
             try
@@ -180,24 +172,47 @@ namespace SharpBridge.Utilities
                 _ = Path.GetFullPath(path);
 
                 // Check for invalid characters in the path
-                var invalidChars = Path.GetInvalidPathChars();
-                if (path.IndexOfAny(invalidChars) >= 0)
+                var invalidChars = Path.GetInvalidPathChars()
+                    .Union(Path.GetInvalidFileNameChars())
+                    .Where(c => c != Path.DirectorySeparatorChar && c != Path.AltDirectorySeparatorChar)
+                    .ToArray();
+
+                // Check for invalid characters, but allow colon if it's used as drive separator
+                var hasInvalidChars = false;
+                var foundInvalidChars = new List<char>();
+
+                for (int i = 0; i < path.Length; i++)
                 {
-                    return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                        $"File path contains invalid characters: {string.Join(", ", invalidChars.Where(c => path.Contains(c)))}", path);
+                    if (invalidChars.Contains(path[i]))
+                    {
+                        // Special case: allow colon if it's followed by backslash (drive separator)
+                        if (path[i] == ':' && i + 1 < path.Length && path[i + 1] == '\\')
+                        {
+                            continue; // Skip this colon as it's a drive separator
+                        }
+
+                        hasInvalidChars = true;
+                        if (!foundInvalidChars.Contains(path[i]))
+                        {
+                            foundInvalidChars.Add(path[i]);
+                        }
+                    }
+                }
+
+                if (hasInvalidChars)
+                {
+                    return CreateValidationIssue(field, $"File path contains invalid characters: {string.Join(", ", foundInvalidChars)}");
                 }
 
                 return null; // Validation passed
             }
             catch (ArgumentException ex)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Invalid file path format: {ex.Message}", path);
+                return CreateValidationIssue(field, $"Invalid file path format: {ex.Message}");
             }
             catch (NotSupportedException ex)
             {
-                return new FieldValidationIssue(field.FieldName, field.ExpectedType,
-                    $"Unsupported file path: {ex.Message}", path);
+                return CreateValidationIssue(field, $"Unsupported file path: {ex.Message}");
             }
         }
 
@@ -208,9 +223,6 @@ namespace SharpBridge.Utilities
         /// <returns>True if valid, false otherwise</returns>
         private static bool IsValidHost(string host)
         {
-            if (string.IsNullOrWhiteSpace(host))
-                return false;
-
             // Check if it's a valid IP address first
             if (IPAddress.TryParse(host, out _))
                 return true;
@@ -218,6 +230,17 @@ namespace SharpBridge.Utilities
             // Use Uri.CheckHostName for hostname validation
             var hostNameType = Uri.CheckHostName(host);
             return hostNameType == UriHostNameType.Dns;
+        }
+
+        /// <summary>
+        /// Creates a validation issue with consistent formatting.
+        /// </summary>
+        /// <param name="field">The field being validated</param>
+        /// <param name="message">The validation error message</param>
+        /// <returns>A FieldValidationIssue with the provided message</returns>
+        private static FieldValidationIssue CreateValidationIssue(ConfigFieldState field, string message)
+        {
+            return new FieldValidationIssue(field.FieldName, field.ExpectedType, message, FormatForDisplay(field.Value));
         }
 
         /// <summary>

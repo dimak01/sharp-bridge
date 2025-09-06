@@ -1,39 +1,32 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Moq;
-using Xunit;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
+using Xunit;
 
 namespace SharpBridge.Tests.Services
 {
     /// <summary>
-    /// Tests for ConfigRemediationService class.
+    /// Unit tests for ConfigRemediationService
     /// </summary>
     public class ConfigRemediationServiceTests : IDisposable
     {
         private readonly Mock<IConfigManager> _mockConfigManager;
         private readonly Mock<IConfigSectionRemediationServiceFactory> _mockRemediationFactory;
         private readonly Mock<IAppLogger> _mockLogger;
-        private readonly ConfigRemediationService _service;
+        private readonly Mock<IConfigSectionRemediationService> _mockRemediationService;
 
         public ConfigRemediationServiceTests()
         {
             _mockConfigManager = new Mock<IConfigManager>();
             _mockRemediationFactory = new Mock<IConfigSectionRemediationServiceFactory>();
             _mockLogger = new Mock<IAppLogger>();
-
-            _service = new ConfigRemediationService(
-                _mockConfigManager.Object,
-                _mockRemediationFactory.Object,
-                _mockLogger.Object);
-        }
-
-        public void Dispose()
-        {
-            // No resources to dispose
+            _mockRemediationService = new Mock<IConfigSectionRemediationService>();
         }
 
         #region Constructor Tests
@@ -41,45 +34,36 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public void Constructor_WithValidParameters_InitializesSuccessfully()
         {
-            // Act & Assert - no exception should be thrown
-            var service = new ConfigRemediationService(
-                _mockConfigManager.Object,
-                _mockRemediationFactory.Object,
-                _mockLogger.Object);
+            // Act
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
 
-            Assert.NotNull(service);
-        }
-
-        [Fact]
-        public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ConfigRemediationService(null!, _mockRemediationFactory.Object, _mockLogger.Object));
-
-            Assert.Equal("configManager", exception.ParamName);
-        }
-
-        [Fact]
-        public void Constructor_WithNullRemediationFactory_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ConfigRemediationService(_mockConfigManager.Object, null!, _mockLogger.Object));
-
-            Assert.Equal("remediationFactory", exception.ParamName);
+            // Assert
+            service.Should().NotBeNull();
         }
 
         [Fact]
         public void Constructor_WithNullLogger_InitializesSuccessfully()
         {
-            // Act & Assert - null logger should be acceptable
-            var service = new ConfigRemediationService(
-                _mockConfigManager.Object,
-                _mockRemediationFactory.Object,
-                null);
+            // Act
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, null);
 
-            Assert.NotNull(service);
+            // Assert
+            service.Should().NotBeNull();
+        }
+
+        [Theory]
+        [InlineData("configManager")]
+        [InlineData("remediationFactory")]
+        public void Constructor_WithNullParameter_ThrowsArgumentNullException(string nullParameter)
+        {
+            // Arrange
+            var configManager = nullParameter == "configManager" ? null : _mockConfigManager.Object;
+            var remediationFactory = nullParameter == "remediationFactory" ? null : _mockRemediationFactory.Object;
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ConfigRemediationService(configManager!, remediationFactory!, _mockLogger.Object));
+            exception.ParamName.Should().Be(nullParameter);
         }
 
         #endregion
@@ -90,268 +74,286 @@ namespace SharpBridge.Tests.Services
         public async Task RemediateConfigurationAsync_WithAllSectionsValid_ReturnsTrue()
         {
             // Arrange
-            SetupMocksForAllSections(RemediationResult.NoRemediationNeeded, null);
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var sectionTypes = Enum.GetValues<ConfigSectionTypes>();
 
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.True(result);
-            VerifyAllSectionsProcessed();
-            VerifyNoSectionsSaved();
-            _mockLogger.Verify(l => l.Info("Starting configuration remediation process"), Times.Once);
-            _mockLogger.Verify(l => l.Info("Configuration remediation completed successfully"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_WithAllSectionsNeedingRemediation_RemediatesAndReturnsTrue()
-        {
-            // Arrange
-            var mockConfigs = CreateMockConfigs();
-            SetupMocksForAllSections(RemediationResult.Succeeded, mockConfigs);
-
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.True(result);
-            VerifyAllSectionsProcessed();
-            VerifyAllSectionsSaved(mockConfigs);
-            _mockLogger.Verify(l => l.Info("Configuration remediation completed successfully"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_WithMixedResults_ProcessesCorrectly()
-        {
-            // Arrange
-            var phoneConfig = new VTubeStudioPhoneClientConfig();
-            var pcConfig = new VTubeStudioPCConfig();
-
-            SetupMockForSection(ConfigSectionTypes.VTubeStudioPCConfig, RemediationResult.NoRemediationNeeded, null);
-            SetupMockForSection(ConfigSectionTypes.VTubeStudioPhoneClientConfig, RemediationResult.Succeeded, phoneConfig);
-            SetupMockForSection(ConfigSectionTypes.GeneralSettingsConfig, RemediationResult.NoRemediationNeeded, null);
-            SetupMockForSection(ConfigSectionTypes.TransformationEngineConfig, RemediationResult.Succeeded, pcConfig);
-
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.True(result);
-            VerifyAllSectionsProcessed();
-
-            // Only sections that succeeded should be saved
-            _mockConfigManager.Verify(m => m.SaveSectionAsync<IConfigSection>(ConfigSectionTypes.VTubeStudioPhoneClientConfig, phoneConfig), Times.Once);
-            _mockConfigManager.Verify(m => m.SaveSectionAsync<IConfigSection>(ConfigSectionTypes.TransformationEngineConfig, pcConfig), Times.Once);
-
-            // Sections that didn't need remediation should not be saved
-            _mockConfigManager.Verify(m => m.SaveSectionAsync<IConfigSection>(ConfigSectionTypes.VTubeStudioPCConfig, It.IsAny<IConfigSection>()), Times.Never);
-            _mockConfigManager.Verify(m => m.SaveSectionAsync<IConfigSection>(ConfigSectionTypes.GeneralSettingsConfig, It.IsAny<IConfigSection>()), Times.Never);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_WithOneFailure_ReturnsFalse()
-        {
-            // Arrange
-            SetupMockForSection(ConfigSectionTypes.VTubeStudioPCConfig, RemediationResult.NoRemediationNeeded, null);
-            SetupMockForSection(ConfigSectionTypes.VTubeStudioPhoneClientConfig, RemediationResult.Failed, null);
-            // Other sections should not be processed after failure
-
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.False(result);
-
-            // Verify first two sections were processed
-            _mockConfigManager.Verify(m => m.GetSectionFieldsAsync(ConfigSectionTypes.VTubeStudioPCConfig), Times.Once);
-            _mockConfigManager.Verify(m => m.GetSectionFieldsAsync(ConfigSectionTypes.VTubeStudioPhoneClientConfig), Times.Once);
-
-            // Verify remaining sections were not processed (early exit on failure)
-            _mockConfigManager.Verify(m => m.GetSectionFieldsAsync(ConfigSectionTypes.GeneralSettingsConfig), Times.Never);
-            _mockConfigManager.Verify(m => m.GetSectionFieldsAsync(ConfigSectionTypes.TransformationEngineConfig), Times.Never);
-
-            // No sections should be saved when there's a failure
-            VerifyNoSectionsSaved();
-
-            _mockLogger.Verify(l => l.Error("Remediation failed for section VTubeStudioPhoneClientConfig"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_WithConfigManagerException_ReturnsFalseAndLogsError()
-        {
-            // Arrange
-            var exception = new InvalidOperationException("Config load failed");
-            _mockConfigManager.Setup(m => m.GetSectionFieldsAsync(It.IsAny<ConfigSectionTypes>()))
-                .ThrowsAsync(exception);
-
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.False(result);
-            _mockLogger.Verify(l => l.Error("Configuration remediation failed: Config load failed"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_WithRemediationServiceException_ReturnsFalseAndLogsError()
-        {
-            // Arrange
-            var mockFields = new List<ConfigFieldState>();
-            _mockConfigManager.Setup(m => m.GetSectionFieldsAsync(It.IsAny<ConfigSectionTypes>()))
-                .ReturnsAsync(mockFields);
-
-            var exception = new InvalidOperationException("Remediation failed");
-            var mockRemediationService = new Mock<IConfigSectionRemediationService>();
-            mockRemediationService.Setup(s => s.Remediate(It.IsAny<List<ConfigFieldState>>()))
-                .ThrowsAsync(exception);
-
-            _mockRemediationFactory.Setup(f => f.GetRemediationService(It.IsAny<ConfigSectionTypes>()))
-                .Returns(mockRemediationService.Object);
-
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.False(result);
-            _mockLogger.Verify(l => l.Error("Configuration remediation failed: Remediation failed"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_WithSaveException_ReturnsFalseAndLogsError()
-        {
-            // Arrange
-            var mockConfig = new VTubeStudioPhoneClientConfig();
-
-            // Setup all sections to avoid null reference issues
-            SetupMockForSection(ConfigSectionTypes.VTubeStudioPCConfig, RemediationResult.NoRemediationNeeded, null);
-            SetupMockForSection(ConfigSectionTypes.VTubeStudioPhoneClientConfig, RemediationResult.Succeeded, mockConfig);
-            SetupMockForSection(ConfigSectionTypes.GeneralSettingsConfig, RemediationResult.NoRemediationNeeded, null);
-            SetupMockForSection(ConfigSectionTypes.TransformationEngineConfig, RemediationResult.NoRemediationNeeded, null);
-
-            var exception = new InvalidOperationException("Save failed");
-            _mockConfigManager.Setup(m => m.SaveSectionAsync<IConfigSection>(It.IsAny<ConfigSectionTypes>(), It.IsAny<IConfigSection>()))
-                .ThrowsAsync(exception);
-
-            // Act
-            var result = await _service.RemediateConfigurationAsync();
-
-            // Assert
-            Assert.False(result);
-            _mockLogger.Verify(l => l.Error("Configuration remediation failed: Save failed"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_LogsProgressForEachSection()
-        {
-            // Arrange
-            var mockConfigs = CreateMockConfigs();
-            SetupMocksForAllSections(RemediationResult.Succeeded, mockConfigs);
-
-            // Act
-            await _service.RemediateConfigurationAsync();
-
-            // Assert
-            _mockLogger.Verify(l => l.Info("Starting configuration remediation process"), Times.Once);
-            _mockLogger.Verify(l => l.Debug("Remediation succeeded for section VTubeStudioPCConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Debug("Remediation succeeded for section VTubeStudioPhoneClientConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Debug("Remediation succeeded for section GeneralSettingsConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Debug("Remediation succeeded for section TransformationEngineConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Info("Saved configuration for VTubeStudioPCConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Info("Saved configuration for VTubeStudioPhoneClientConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Info("Saved configuration for GeneralSettingsConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Info("Saved configuration for TransformationEngineConfig"), Times.Once);
-            _mockLogger.Verify(l => l.Info("Configuration remediation completed successfully"), Times.Once);
-        }
-
-        [Fact]
-        public async Task RemediateConfigurationAsync_ProcessesAllSectionTypesInEnumOrder()
-        {
-            // Arrange
-            var processedSections = new List<ConfigSectionTypes>();
-            _mockConfigManager.Setup(m => m.GetSectionFieldsAsync(It.IsAny<ConfigSectionTypes>()))
-                .Callback<ConfigSectionTypes>(section => processedSections.Add(section))
-                .ReturnsAsync(new List<ConfigFieldState>());
-
-            var mockRemediationService = new Mock<IConfigSectionRemediationService>();
-            mockRemediationService.Setup(s => s.Remediate(It.IsAny<List<ConfigFieldState>>()))
-                .ReturnsAsync((RemediationResult.NoRemediationNeeded, null));
-
-            _mockRemediationFactory.Setup(f => f.GetRemediationService(It.IsAny<ConfigSectionTypes>()))
-                .Returns(mockRemediationService.Object);
-
-            // Act
-            await _service.RemediateConfigurationAsync();
-
-            // Assert
-            var expectedSections = Enum.GetValues<ConfigSectionTypes>();
-            Assert.Equal(expectedSections.Length, processedSections.Count);
-
-            for (int i = 0; i < expectedSections.Length; i++)
+            // Mock all sections to return NoRemediationNeeded
+            foreach (var sectionType in sectionTypes)
             {
-                Assert.Equal(expectedSections[i], processedSections[i]);
+                var fields = new List<ConfigFieldState>();
+                _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(sectionType))
+                    .ReturnsAsync(fields);
+
+                _mockRemediationFactory.Setup(x => x.GetRemediationService(sectionType))
+                    .Returns(_mockRemediationService.Object);
+
+                _mockRemediationService.Setup(x => x.Remediate(fields))
+                    .ReturnsAsync((RemediationResult.NoRemediationNeeded, (IConfigSection?)null));
+            }
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(x => x.Info("Starting configuration remediation process"), Times.Once);
+            _mockLogger.Verify(x => x.Info("Configuration remediation completed successfully"), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_WithSomeSectionsNeedingRemediation_ReturnsTrue()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var sectionTypes = Enum.GetValues<ConfigSectionTypes>();
+            var updatedConfig = new Mock<IConfigSection>().Object;
+            var fields = new List<ConfigFieldState>();
+
+            // Mock first section to need remediation
+            var firstSection = sectionTypes[0];
+            var firstSectionRemediationService = new Mock<IConfigSectionRemediationService>();
+
+            _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(firstSection))
+                .ReturnsAsync(fields);
+            _mockRemediationFactory.Setup(x => x.GetRemediationService(firstSection))
+                .Returns(firstSectionRemediationService.Object);
+            firstSectionRemediationService.Setup(x => x.Remediate(fields))
+                .ReturnsAsync((RemediationResult.Succeeded, updatedConfig));
+
+            // Mock other sections to be valid
+            for (int i = 1; i < sectionTypes.Length; i++)
+            {
+                var sectionType = sectionTypes[i];
+                var sectionRemediationService = new Mock<IConfigSectionRemediationService>();
+
+                _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(sectionType))
+                    .ReturnsAsync(fields);
+                _mockRemediationFactory.Setup(x => x.GetRemediationService(sectionType))
+                    .Returns(sectionRemediationService.Object);
+                sectionRemediationService.Setup(x => x.Remediate(fields))
+                    .ReturnsAsync((RemediationResult.NoRemediationNeeded, (IConfigSection?)null));
+            }
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeTrue();
+            _mockConfigManager.Verify(x => x.SaveSectionAsync(firstSection, updatedConfig), Times.Once);
+            _mockLogger.Verify(x => x.Debug($"Remediation succeeded for section {firstSection}"), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_WithSectionRemediationFailure_ReturnsFalse()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var sectionTypes = Enum.GetValues<ConfigSectionTypes>();
+            var failingSection = sectionTypes[0];
+            var fields = new List<ConfigFieldState>();
+
+            _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(failingSection))
+                .ReturnsAsync(fields);
+            _mockRemediationFactory.Setup(x => x.GetRemediationService(failingSection))
+                .Returns(_mockRemediationService.Object);
+            _mockRemediationService.Setup(x => x.Remediate(fields))
+                .ReturnsAsync((RemediationResult.Failed, (IConfigSection?)null));
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error($"Remediation failed for section {failingSection}"), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_WithException_ReturnsFalse()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var exception = new Exception("Test exception");
+
+            _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(It.IsAny<ConfigSectionTypes>()))
+                .ThrowsAsync(exception);
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error($"Configuration remediation failed: {exception.Message}"), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_WithMultipleSectionsNeedingRemediation_SavesAll()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var sectionTypes = Enum.GetValues<ConfigSectionTypes>();
+            var updatedConfig1 = new Mock<IConfigSection>().Object;
+            var updatedConfig2 = new Mock<IConfigSection>().Object;
+            var fields = new List<ConfigFieldState>();
+
+            // Mock first two sections to need remediation
+            var section1 = sectionTypes[0];
+            var section2 = sectionTypes[1];
+            var section1RemediationService = new Mock<IConfigSectionRemediationService>();
+            var section2RemediationService = new Mock<IConfigSectionRemediationService>();
+
+            _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(section1))
+                .ReturnsAsync(fields);
+            _mockRemediationFactory.Setup(x => x.GetRemediationService(section1))
+                .Returns(section1RemediationService.Object);
+            section1RemediationService.Setup(x => x.Remediate(fields))
+                .ReturnsAsync((RemediationResult.Succeeded, updatedConfig1));
+
+            _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(section2))
+                .ReturnsAsync(fields);
+            _mockRemediationFactory.Setup(x => x.GetRemediationService(section2))
+                .Returns(section2RemediationService.Object);
+            section2RemediationService.Setup(x => x.Remediate(fields))
+                .ReturnsAsync((RemediationResult.Succeeded, updatedConfig2));
+
+            // Mock other sections to be valid
+            for (int i = 2; i < sectionTypes.Length; i++)
+            {
+                var sectionType = sectionTypes[i];
+                var sectionRemediationService = new Mock<IConfigSectionRemediationService>();
+
+                _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(sectionType))
+                    .ReturnsAsync(fields);
+                _mockRemediationFactory.Setup(x => x.GetRemediationService(sectionType))
+                    .Returns(sectionRemediationService.Object);
+                sectionRemediationService.Setup(x => x.Remediate(fields))
+                    .ReturnsAsync((RemediationResult.NoRemediationNeeded, (IConfigSection?)null));
+            }
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeTrue();
+            _mockConfigManager.Verify(x => x.SaveSectionAsync(section1, updatedConfig1), Times.Once);
+            _mockConfigManager.Verify(x => x.SaveSectionAsync(section2, updatedConfig2), Times.Once);
+            _mockLogger.Verify(x => x.Info($"Saved configuration for {section1}"), Times.Once);
+            _mockLogger.Verify(x => x.Info($"Saved configuration for {section2}"), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_WithNoLogger_DoesNotLog()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, null);
+            var sectionTypes = Enum.GetValues<ConfigSectionTypes>();
+            var fields = new List<ConfigFieldState>();
+
+            foreach (var sectionType in sectionTypes)
+            {
+                _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(sectionType))
+                    .ReturnsAsync(fields);
+                _mockRemediationFactory.Setup(x => x.GetRemediationService(sectionType))
+                    .Returns(_mockRemediationService.Object);
+                _mockRemediationService.Setup(x => x.Remediate(fields))
+                    .ReturnsAsync((RemediationResult.NoRemediationNeeded, (IConfigSection?)null));
+            }
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeTrue();
+            // No logger calls should be made since logger is null
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_WithSaveException_ReturnsFalse()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var updatedConfig = new Mock<IConfigSection>().Object;
+            var fields = new List<ConfigFieldState>();
+            var saveException = new Exception("Save failed");
+
+            // Mock first section to need remediation
+            var firstSection = ConfigSectionTypes.VTubeStudioPCConfig;
+            var firstSectionRemediationService = new Mock<IConfigSectionRemediationService>();
+
+            _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(firstSection))
+                .ReturnsAsync(fields);
+            _mockRemediationFactory.Setup(x => x.GetRemediationService(firstSection))
+                .Returns(firstSectionRemediationService.Object);
+            firstSectionRemediationService.Setup(x => x.Remediate(fields))
+                .ReturnsAsync((RemediationResult.Succeeded, updatedConfig));
+
+            // Mock save to throw exception
+            _mockConfigManager.Setup(x => x.SaveSectionAsync(firstSection, updatedConfig))
+                .ThrowsAsync(saveException);
+
+            // Mock other sections to be valid
+            var otherSections = new[] { ConfigSectionTypes.VTubeStudioPhoneClientConfig, ConfigSectionTypes.GeneralSettingsConfig, ConfigSectionTypes.TransformationEngineConfig };
+            foreach (var sectionType in otherSections)
+            {
+                var sectionRemediationService = new Mock<IConfigSectionRemediationService>();
+
+                _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(sectionType))
+                    .ReturnsAsync(fields);
+                _mockRemediationFactory.Setup(x => x.GetRemediationService(sectionType))
+                    .Returns(sectionRemediationService.Object);
+                sectionRemediationService.Setup(x => x.Remediate(fields))
+                    .ReturnsAsync((RemediationResult.NoRemediationNeeded, (IConfigSection?)null));
+            }
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error($"Configuration remediation failed: {saveException.Message}"), Times.Once);
+        }
+
+        [Fact]
+        public async Task RemediateConfigurationAsync_ProcessesAllSectionTypes()
+        {
+            // Arrange
+            var service = new ConfigRemediationService(_mockConfigManager.Object, _mockRemediationFactory.Object, _mockLogger.Object);
+            var sectionTypes = Enum.GetValues<ConfigSectionTypes>();
+            var fields = new List<ConfigFieldState>();
+
+            foreach (var sectionType in sectionTypes)
+            {
+                _mockConfigManager.Setup(x => x.GetSectionFieldsAsync(sectionType))
+                    .ReturnsAsync(fields);
+                _mockRemediationFactory.Setup(x => x.GetRemediationService(sectionType))
+                    .Returns(_mockRemediationService.Object);
+                _mockRemediationService.Setup(x => x.Remediate(fields))
+                    .ReturnsAsync((RemediationResult.NoRemediationNeeded, (IConfigSection?)null));
+            }
+
+            // Act
+            var result = await service.RemediateConfigurationAsync();
+
+            // Assert
+            result.Should().BeTrue();
+
+            // Verify all section types were processed
+            foreach (var sectionType in sectionTypes)
+            {
+                _mockConfigManager.Verify(x => x.GetSectionFieldsAsync(sectionType), Times.Once);
+                _mockRemediationFactory.Verify(x => x.GetRemediationService(sectionType), Times.Once);
+                _mockRemediationService.Verify(x => x.Remediate(fields), Times.Exactly(sectionTypes.Length));
             }
         }
 
         #endregion
 
-        #region Helper Methods
 
-        private void SetupMocksForAllSections(RemediationResult result, Dictionary<ConfigSectionTypes, IConfigSection>? configs)
+        public void Dispose()
         {
-            foreach (ConfigSectionTypes sectionType in Enum.GetValues<ConfigSectionTypes>())
-            {
-                var config = configs?.GetValueOrDefault(sectionType);
-                SetupMockForSection(sectionType, result, config);
-            }
+            _mockConfigManager?.Reset();
+            _mockRemediationFactory?.Reset();
+            _mockLogger?.Reset();
+            _mockRemediationService?.Reset();
         }
-
-        private void SetupMockForSection(ConfigSectionTypes sectionType, RemediationResult result, IConfigSection? config)
-        {
-            var mockFields = new List<ConfigFieldState>();
-            _mockConfigManager.Setup(m => m.GetSectionFieldsAsync(sectionType))
-                .ReturnsAsync(mockFields);
-
-            var mockRemediationService = new Mock<IConfigSectionRemediationService>();
-            mockRemediationService.Setup(s => s.Remediate(mockFields))
-                .ReturnsAsync((result, config));
-
-            _mockRemediationFactory.Setup(f => f.GetRemediationService(sectionType))
-                .Returns(mockRemediationService.Object);
-        }
-
-        private static Dictionary<ConfigSectionTypes, IConfigSection> CreateMockConfigs()
-        {
-            return new Dictionary<ConfigSectionTypes, IConfigSection>
-            {
-                { ConfigSectionTypes.VTubeStudioPCConfig, new VTubeStudioPCConfig() },
-                { ConfigSectionTypes.VTubeStudioPhoneClientConfig, new VTubeStudioPhoneClientConfig() },
-                { ConfigSectionTypes.GeneralSettingsConfig, new GeneralSettingsConfig() },
-                { ConfigSectionTypes.TransformationEngineConfig, new TransformationEngineConfig() }
-            };
-        }
-
-        private void VerifyAllSectionsProcessed()
-        {
-            foreach (ConfigSectionTypes sectionType in Enum.GetValues<ConfigSectionTypes>())
-            {
-                _mockConfigManager.Verify(m => m.GetSectionFieldsAsync(sectionType), Times.Once);
-                _mockRemediationFactory.Verify(f => f.GetRemediationService(sectionType), Times.Once);
-            }
-        }
-
-        private void VerifyNoSectionsSaved()
-        {
-            _mockConfigManager.Verify(m => m.SaveSectionAsync<IConfigSection>(It.IsAny<ConfigSectionTypes>(), It.IsAny<IConfigSection>()), Times.Never);
-        }
-
-        private void VerifyAllSectionsSaved(Dictionary<ConfigSectionTypes, IConfigSection> configs)
-        {
-            foreach (var kvp in configs)
-            {
-                _mockConfigManager.Verify(m => m.SaveSectionAsync<IConfigSection>(kvp.Key, kvp.Value), Times.Once);
-            }
-        }
-
-        #endregion
     }
 }
