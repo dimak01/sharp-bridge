@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Runtime.InteropServices;
 using FluentAssertions;
 using SharpBridge.Models;
 using SharpBridge.Utilities;
@@ -678,10 +680,7 @@ namespace SharpBridge.Tests.Utilities
         }
 
         [Theory]
-        [InlineData("file<invalid>.txt")]
-        [InlineData("file|invalid.txt")]
-        [InlineData("file\"invalid.txt")]
-        [InlineData("file*invalid.txt")]
+        [MemberData(nameof(GetPlatformSpecificInvalidFilePathData))]
         public void ValidateFilePath_WithInvalidCharacters_ReturnsValidationIssue(string path)
         {
             // Arrange
@@ -696,6 +695,27 @@ namespace SharpBridge.Tests.Utilities
             result.ExpectedType.Should().Be(typeof(string));
             result.Description.Should().Contain("File path contains invalid characters");
             result.ProvidedValueText.Should().Be(path);
+        }
+
+        public static IEnumerable<object[]> GetPlatformSpecificInvalidFilePathData()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                // Windows invalid characters: < > : " | ? * \ (except :\ for drive separator)
+                yield return new object[] { "file<invalid>.txt" };
+                yield return new object[] { "file|invalid.txt" };
+                yield return new object[] { "file\"invalid.txt" };
+                yield return new object[] { "file*invalid.txt" };
+                yield return new object[] { "file?invalid.txt" };
+                yield return new object[] { "file>invalid.txt" };
+            }
+            else
+            {
+                // Linux/Unix invalid characters: \0 (null character) and / in filenames
+                yield return new object[] { "file\0invalid.txt" }; // null character
+                yield return new object[] { "file//invalid.txt" };  // forward slash in filename
+                yield return new object[] { "file\x00invalid.txt" }; // null character (hex)
+            }
         }
 
         [Theory]
