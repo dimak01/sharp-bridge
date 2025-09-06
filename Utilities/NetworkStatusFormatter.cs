@@ -17,14 +17,17 @@ namespace SharpBridge.Utilities
         private const string AllowText = "Allow";
         private const string AllowLowerText = "allow";
         private readonly INetworkCommandProvider _commandProvider;
+        private readonly ITableFormatter _tableFormatter;
 
         /// <summary>
         /// Initializes a new instance of the NetworkStatusFormatter
         /// </summary>
         /// <param name="commandProvider">Provider for platform-specific commands</param>
-        public NetworkStatusFormatter(INetworkCommandProvider commandProvider)
+        /// <param name="tableFormatter">Table formatter for rendering firewall rules</param>
+        public NetworkStatusFormatter(INetworkCommandProvider commandProvider, ITableFormatter tableFormatter)
         {
             _commandProvider = commandProvider ?? throw new ArgumentNullException(nameof(commandProvider));
+            _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
         }
 
         /// <summary>
@@ -60,7 +63,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends iPhone connection status section
         /// </summary>
-        private static void AppendIPhoneConnectionStatus(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        private void AppendIPhoneConnectionStatus(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
         {
             sb.AppendLine("IPHONE CONNECTION");
             sb.AppendLine("───────────────────────────────────");
@@ -73,7 +76,7 @@ namespace SharpBridge.Utilities
                 var analysis = networkStatus.IPhone.InboundFirewallAnalysis;
                 sb.AppendLine($"  {ConsoleColors.Colorize($"Local UDP Port {phoneConfig.LocalPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
                 sb.AppendLine($"    - Default inbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, analysis, "    ");
+                this.AppendFirewallRules(sb, analysis);
             }
 
             // Outbound section
@@ -82,7 +85,7 @@ namespace SharpBridge.Utilities
                 var analysis = networkStatus.IPhone.OutboundFirewallAnalysis;
                 sb.AppendLine($"  {ConsoleColors.Colorize($"Outbound UDP to {phoneConfig.IphoneIpAddress}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
                 sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, analysis, "    ");
+                this.AppendFirewallRules(sb, analysis);
             }
 
             sb.AppendLine();
@@ -91,7 +94,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Appends PC connection status section
         /// </summary>
-        private static void AppendPCConnectionStatus(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
+        private void AppendPCConnectionStatus(StringBuilder sb, NetworkStatus networkStatus, ApplicationConfig applicationConfig)
         {
             sb.AppendLine("PC VTube Studio CONNECTION");
             sb.AppendLine("───────────────────────────────────");
@@ -104,7 +107,7 @@ namespace SharpBridge.Utilities
                 var analysis = networkStatus.PC.WebSocketFirewallAnalysis;
                 sb.AppendLine($"  {ConsoleColors.Colorize($"WebSocket TCP to {pcConfig.Host}:{pcConfig.Port}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
                 sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, analysis, "    ");
+                this.AppendFirewallRules(sb, analysis);
             }
 
             // Discovery section
@@ -114,7 +117,7 @@ namespace SharpBridge.Utilities
                 var discoveryPort = "47779"; // VTube Studio discovery port
                 sb.AppendLine($"  {ConsoleColors.Colorize($"Discovery UDP to {pcConfig.Host}:{discoveryPort}", ConsoleColors.ConfigPropertyName)}: {ConsoleColors.ColorizeBasicType(analysis.IsAllowed ? AllowedText : BlockedText)} {GetStatusIndicator(analysis.IsAllowed)}");
                 sb.AppendLine($"    - Default outbound action ({analysis.ProfileName}): {(analysis.DefaultActionAllowed ? AllowText : "Deny")} {GetStatusIndicator(analysis.DefaultActionAllowed)}");
-                AppendFirewallRules(sb, analysis, "    ");
+                this.AppendFirewallRules(sb, analysis);
             }
 
             sb.AppendLine();
@@ -205,95 +208,58 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Appends formatted firewall rules to the string builder
+        /// Appends formatted firewall rules to the string builder using table format
         /// </summary>
         /// <param name="sb">StringBuilder to append to</param>
         /// <param name="firewallAnalysis">Firewall analysis result</param>
         /// <param name="indent">Indentation prefix</param>
-        private static void AppendFirewallRules(StringBuilder sb, FirewallAnalysisResult firewallAnalysis, string indent)
+        private void AppendFirewallRules(StringBuilder sb, FirewallAnalysisResult firewallAnalysis, int indent = 4)
         {
             if (firewallAnalysis.RelevantRules.Count == 0)
             {
-                sb.AppendLine($"{indent}- No explicit rules found – default action applied");
+                sb.AppendLine($"{new string(' ', indent)}- No explicit rules found – default action applied");
                 return;
             }
 
             // Show matching rules header with count
             var ruleCount = firewallAnalysis.RelevantRules.Count;
-            var hasMoreRules = ruleCount > 5;
-            var rulesToShow = firewallAnalysis.RelevantRules.Take(5).ToList();
+            var hasMoreRules = ruleCount > 10;
+            var rulesToShow = firewallAnalysis.RelevantRules.Take(10).ToList();
 
+            string title;
             if (hasMoreRules)
             {
-                sb.AppendLine($"{indent}- Matching rules (top 5 of {ruleCount}):");
+                title = $"Matching rules (top 10 of {ruleCount}):";
             }
             else
             {
                 var ruleText = ruleCount == 1 ? "rule" : "rules";
-                sb.AppendLine($"{indent}- Matching {ruleText} ({ruleCount} found):");
+                title = $"Matching {ruleText} ({ruleCount} found):";
             }
 
-            foreach (var rule in rulesToShow)
-            {
-                var statusIndicator = rule.IsEnabled ? ConsoleColors.Colorize("[Enabled]", ConsoleColors.Success) : ConsoleColors.Colorize("[Disabled]", ConsoleColors.Disabled);
-                var actionColor = rule.Action.Equals(AllowLowerText, StringComparison.OrdinalIgnoreCase) ? ConsoleColors.Success : ConsoleColors.Error;
-                var actionText = ConsoleColors.Colorize(rule.Action, actionColor);
-                var ruleName = !string.IsNullOrEmpty(rule.Name) ? rule.Name : "Unnamed Rule";
+            // Create column formatters for the firewall rules table
+            var columnFormatters = FirewallRuleTableFormatters.CreateColumnFormatters();
 
-                // Build readable rule description
-                var ruleDescription = FormatRuleDescription(rule);
-                sb.AppendLine($"{indent}    {statusIndicator} {actionText} {ruleName} {rule.Protocol} {ruleDescription}");
-            }
+            // Render the table with indentation
+            _tableFormatter.AppendTable(
+                sb,
+                title,
+                rulesToShow,
+                columnFormatters,
+                targetColumnCount: 1,
+                consoleWidth: 120, // Use a reasonable default console width
+                singleColumnBarWidth: 20,
+                singleColumnMaxItems: null,
+                indent: indent
+            );
 
             if (hasMoreRules)
             {
-                var remainingCount = ruleCount - 5;
-                sb.AppendLine($"{indent}    {ConsoleColors.Colorize($"… and {remainingCount} more rules", ConsoleColors.Warning)}");
+                var remainingCount = ruleCount - 10;
+                sb.AppendLine($"{new string(' ', indent)}    {ConsoleColors.Colorize($"… and {remainingCount} more rules", ConsoleColors.Warning)}");
             }
         }
 
-        /// <summary>
-        /// Formats a firewall rule into a readable description
-        /// </summary>
-        private static string FormatRuleDescription(FirewallRule rule)
-        {
-            var parts = new List<string>();
-
-            // Add port info if available
-            if (!string.IsNullOrEmpty(rule.LocalPort) && rule.LocalPort != "*" && !string.Equals(rule.LocalPort, "any", StringComparison.OrdinalIgnoreCase))
-            {
-                parts.Add(rule.LocalPort);
-            }
-
-            // Add direction info with arrow
-            var direction = "";
-            if (!string.IsNullOrEmpty(rule.RemoteAddress) && rule.RemoteAddress != "*" && !string.Equals(rule.RemoteAddress, "any", StringComparison.OrdinalIgnoreCase))
-            {
-                var source = rule.RemoteAddress == "0.0.0.0" ? "Any" : rule.RemoteAddress;
-                direction = string.Equals(rule.Direction, "inbound", StringComparison.OrdinalIgnoreCase) ? $"({source} → ThisDevice)" : $"(ThisDevice → {source})";
-            }
-            else
-            {
-                direction = string.Equals(rule.Direction, "inbound", StringComparison.OrdinalIgnoreCase) ? "(Any → ThisDevice)" : "(ThisDevice → Any)";
-            }
-
-            if (!string.IsNullOrEmpty(direction))
-            {
-                parts.Add(direction);
-            }
-
-            // Add app info if available; show as-is for transparency (do not truncate path)
-            if (!string.IsNullOrEmpty(rule.ApplicationName))
-            {
-                parts.Add($"App: {rule.ApplicationName}");
-            }
-            else
-            {
-                parts.Add("Global");
-            }
-
-            return string.Join("  ", parts);
-        }
 
         private static string GetStatusIndicator(bool isGood)
         {
