@@ -238,10 +238,11 @@ namespace SharpBridge.Utilities
                 var statusIndicator = rule.IsEnabled ? ConsoleColors.Colorize("[Enabled]", ConsoleColors.Success) : ConsoleColors.Colorize("[Disabled]", ConsoleColors.Disabled);
                 var actionColor = rule.Action.Equals(AllowLowerText, StringComparison.OrdinalIgnoreCase) ? ConsoleColors.Success : ConsoleColors.Error;
                 var actionText = ConsoleColors.Colorize(rule.Action, actionColor);
+                var ruleName = !string.IsNullOrEmpty(rule.Name) ? rule.Name : "Unnamed Rule";
 
                 // Build readable rule description
                 var ruleDescription = FormatRuleDescription(rule);
-                sb.AppendLine($"{indent}    {statusIndicator} {actionText} {rule.Protocol} {ruleDescription}");
+                sb.AppendLine($"{indent}    {statusIndicator} {actionText} {ruleName} {rule.Protocol} {ruleDescription}");
             }
 
             if (hasMoreRules)

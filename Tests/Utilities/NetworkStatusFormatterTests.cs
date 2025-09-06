@@ -121,8 +121,8 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
 
             // Assert
-            Assert.Contains("\u001b[92m[Enabled]\u001b[0m \u001b[92mAllow\u001b[0m UDP 28964", result);
-            Assert.Contains("\u001b[90m[Disabled]\u001b[0m \u001b[91mBlock\u001b[0m TCP 8001", result);
+            Assert.Contains("\u001b[92m[Enabled]\u001b[0m \u001b[92mAllow\u001b[0m Allow UDP Rule UDP 28964", result);
+            Assert.Contains("\u001b[90m[Disabled]\u001b[0m \u001b[91mBlock\u001b[0m Block TCP Rule TCP 8001", result);
             Assert.Contains("App: C:\\Path\\To\\SharpBridge.exe", result);
             Assert.Contains("Global", result);
         }
@@ -532,5 +532,465 @@ namespace SharpBridge.Tests.Utilities
                 RelevantRules = rules
             };
         }
+
+        #region FormatRuleDescription Branch Coverage Tests
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithRemoteAddress_ShowsDirectionWithSource()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "28964",
+                    RemoteAddress = "192.168.1.100", // Specific remote address
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should show direction with specific source
+            Assert.Contains("(192.168.1.100 → ThisDevice)", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithZeroRemoteAddress_ShowsAnyAsSource()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Outbound",
+                    Action = "Allow",
+                    Protocol = "TCP",
+                    LocalPort = "8001",
+                    RemoteAddress = "0.0.0.0", // Zero address should show as "Any"
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should show direction with "Any" as source
+            Assert.Contains("(ThisDevice → Any)", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithSpecificRemoteAddress_ShowsOutboundDirection()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Outbound",
+                    Action = "Allow",
+                    Protocol = "TCP",
+                    LocalPort = "8001",
+                    RemoteAddress = "10.0.0.5", // Specific remote address
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should show outbound direction
+            Assert.Contains("(ThisDevice → 10.0.0.5)", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithRemoteAddressAny_ShowsAnyDirection()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "28964",
+                    RemoteAddress = "any", // "any" should be treated as wildcard
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should show Any direction (not specific source)
+            Assert.Contains("(Any → ThisDevice)", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithRemoteAddressStar_ShowsAnyDirection()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Outbound",
+                    Action = "Allow",
+                    Protocol = "TCP",
+                    LocalPort = "8001",
+                    RemoteAddress = "*", // "*" should be treated as wildcard
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = CreateBasicApplicationConfig();
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should show Any direction (not specific source)
+            Assert.Contains("(ThisDevice → Any)", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithNullHostInPCConfig_UsesLocalhost()
+        {
+            // Arrange
+            var networkStatus = CreateBasicNetworkStatus();
+            var appConfig = new ApplicationConfig
+            {
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = null!, // Null host should default to "localhost"
+                    Port = 8001
+                }
+            };
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should use "localhost" in the test connectivity command
+            Assert.Contains("Test-NetConnection -ComputerName localhost -Port 8001", result);
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithNullLocalPort_DoesNotShowPort()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = null, // Null port should not be shown
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = new ApplicationConfig
+            {
+                PhoneClient = new VTubeStudioPhoneClientConfig("127.0.0.1")
+                {
+                    IphonePort = 0 // Use port 0 to avoid showing in output
+                },
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 0 // Use port 0 to avoid showing in output
+                }
+            };
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should not contain port information from the rule in the rule description
+            // The rule description should not show the port when LocalPort is null
+            Assert.DoesNotContain("Test Rule.*8001", result); // Rule should not include port number
+            Assert.Contains("Test Rule", result); // Should contain the rule name
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithEmptyLocalPort_DoesNotShowPort()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "", // Empty port should not be shown
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = new ApplicationConfig
+            {
+                PhoneClient = new VTubeStudioPhoneClientConfig("127.0.0.1")
+                {
+                    IphonePort = 0 // Use port 0 to avoid showing in output
+                },
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 0 // Use port 0 to avoid showing in output
+                }
+            };
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should not contain port information from the rule in the rule description
+            // The rule description should not show the port when LocalPort is empty
+            Assert.DoesNotContain("Test Rule.*8001", result); // Rule should not include port number
+            Assert.Contains("Test Rule", result); // Should contain the rule name
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithStarLocalPort_DoesNotShowPort()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "*", // Star port should not be shown
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = new ApplicationConfig
+            {
+                PhoneClient = new VTubeStudioPhoneClientConfig("127.0.0.1")
+                {
+                    IphonePort = 0 // Use port 0 to avoid showing in output
+                },
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 0 // Use port 0 to avoid showing in output
+                }
+            };
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should not contain port information from the rule in the rule description
+            // The rule description should not show the port when LocalPort is "*"
+            Assert.DoesNotContain("Test Rule.*8001", result); // Rule should not include port number
+            Assert.Contains("Test Rule", result); // Should contain the rule name
+        }
+
+        [Fact]
+        public void RenderNetworkTroubleshooting_WithFirewallRuleWithAnyLocalPort_DoesNotShowPort()
+        {
+            // Arrange
+            var rules = new List<FirewallRule>
+            {
+                new FirewallRule
+                {
+                    Name = "Test Rule",
+                    Direction = "Inbound",
+                    Action = "Allow",
+                    Protocol = "UDP",
+                    LocalPort = "any", // "any" port should not be shown
+                    IsEnabled = true,
+                    ApplicationName = null
+                }
+            };
+
+            var networkStatus = new NetworkStatus
+            {
+                LastUpdated = DateTime.Now,
+                IPhone = new IPhoneConnectionStatus
+                {
+                    InboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, rules),
+                    OutboundFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>())
+                },
+                PC = new PCConnectionStatus
+                {
+                    WebSocketFirewallAnalysis = CreateFirewallAnalysisWithRules(true, new List<FirewallRule>()),
+                    DiscoveryAllowed = true
+                }
+            };
+
+            var appConfig = new ApplicationConfig
+            {
+                PhoneClient = new VTubeStudioPhoneClientConfig("127.0.0.1")
+                {
+                    IphonePort = 0 // Use port 0 to avoid showing in output
+                },
+                PCClient = new VTubeStudioPCConfig
+                {
+                    Host = "localhost",
+                    Port = 0 // Use port 0 to avoid showing in output
+                }
+            };
+
+            // Act
+            var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
+
+            // Assert - Should not contain port information from the rule in the rule description
+            // The rule description should not show the port when LocalPort is "any"
+            Assert.DoesNotContain("Test Rule.*8001", result); // Rule should not include port number
+            Assert.Contains("Test Rule", result); // Should contain the rule name
+        }
+
+        #endregion
     }
 }
