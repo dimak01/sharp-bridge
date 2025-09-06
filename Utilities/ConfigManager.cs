@@ -266,7 +266,7 @@ namespace SharpBridge.Utilities
             else if (typeof(T) == typeof(TransformationEngineConfig))
                 return (T)(object)appConfig.TransformationEngine;
             else
-                throw new ArgumentException($"Unknown section type: {typeof(T)}", nameof(T));
+                throw new ArgumentException($"Unknown section type: {typeof(T)}");
         }
 
         /// <summary>

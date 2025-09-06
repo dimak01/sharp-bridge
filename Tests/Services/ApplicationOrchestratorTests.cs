@@ -112,7 +112,6 @@ namespace SharpBridge.Tests.Services
                 _mockConsole.Object,
                 _mockConsoleWindowManager.Object,
                 _mockColorService.Object,
-                _mockExternalEditorService.Object,
                 _mockShortcutConfigurationManager.Object,
                 _applicationConfig,
                 _userPreferences,
@@ -581,24 +580,6 @@ namespace SharpBridge.Tests.Services
 
         [Fact]
         public void InitializeColorServiceIfNeeded_WithNullBlendShapes_DoesNotInitialize()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            var trackingData = new PhoneTrackingInfo
-            {
-                BlendShapes = new List<BlendShape>()
-            };
-
-            // Act
-            var method = orchestrator.GetType().GetMethod("InitializeColorServiceIfNeeded", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            method?.Invoke(orchestrator, new object[] { trackingData });
-
-            // Assert
-            _mockColorService.Verify(x => x.InitializeFromConfiguration(It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()), Times.Never);
-        }
-
-        [Fact]
-        public void InitializeColorServiceIfNeeded_WithEmptyBlendShapes_DoesNotInitialize()
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
@@ -1270,7 +1251,6 @@ namespace SharpBridge.Tests.Services
         [InlineData("recoveryPolicy")]
         [InlineData("consoleWindowManager")]
         [InlineData("colorService")]
-        [InlineData("externalEditorService")]
         [InlineData("shortcutConfigurationManager")]
         [InlineData("applicationConfig")]
         [InlineData("userPreferences")]
@@ -1291,7 +1271,6 @@ namespace SharpBridge.Tests.Services
             var validConsole = new Mock<IConsole>().Object;
             var validConsoleWindowManager = new Mock<IConsoleWindowManager>().Object;
             var validColorService = new Mock<IParameterColorService>().Object;
-            var validExternalEditorService = new Mock<IExternalEditorService>().Object;
             var validShortcutConfigurationManager = new Mock<IShortcutConfigurationManager>().Object;
             var validApplicationConfig = new ApplicationConfig();
             var validUserPreferences = new UserPreferences();
@@ -1314,7 +1293,6 @@ namespace SharpBridge.Tests.Services
                     nullParameter == "console" ? null! : validConsole,
                     nullParameter == "consoleWindowManager" ? null! : validConsoleWindowManager,
                     nullParameter == "colorService" ? null! : validColorService,
-                    nullParameter == "externalEditorService" ? null! : validExternalEditorService,
                     nullParameter == "shortcutConfigurationManager" ? null! : validShortcutConfigurationManager,
                     nullParameter == "applicationConfig" ? null! : validApplicationConfig,
                     nullParameter == "userPreferences" ? null! : validUserPreferences,

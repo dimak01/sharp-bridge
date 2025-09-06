@@ -26,7 +26,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
 
     private long _totalFramesReceived = 0;
     private long _failedFrames = 0;
-    private DateTime _startTime;
+    private readonly DateTime _startTime;
     private PhoneTrackingInfo _lastTrackingData = new PhoneTrackingInfo();
     private PhoneClientStatus _status = PhoneClientStatus.Initializing;
     private string _lastInitializationError = string.Empty;
@@ -64,7 +64,7 @@ public class VTubeStudioPhoneClient : IVTubeStudioPhoneClient, IServiceStatsProv
         _startTime = DateTime.UtcNow;
         _config = _configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>().GetAwaiter().GetResult();
         if (string.IsNullOrWhiteSpace(_config.IphoneIpAddress))
-            throw new ArgumentException("iPhone IP address must not be empty", "config");
+            throw new InvalidOperationException("iPhone IP address must not be empty in configuration");
         _logger.Debug("VTubeStudioPhoneClient initialized with iPhone IP: {0}, port: {1}", _config.IphoneIpAddress ?? "not configured", _config.IphonePort);
 
         // Subscribe to application config changes if watcher is provided

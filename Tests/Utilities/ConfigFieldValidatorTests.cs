@@ -10,6 +10,7 @@ using Xunit;
 
 namespace SharpBridge.Tests.Utilities
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarLint", "S4144", Justification = "Test methods with similar implementations are expected due to Theory/InlineData pattern")]
     public class ConfigFieldValidatorTests
     {
         private readonly ConfigFieldValidator _validator;
@@ -230,19 +231,6 @@ namespace SharpBridge.Tests.Utilities
             result.ProvidedValueText.Should().Be("12345");
         }
 
-        [Theory]
-        [InlineData("127.0.0.1")]
-        public void ValidateIpAddress_WithLocalhost_ReturnsNull(string ipAddress)
-        {
-            // Arrange - 127.0.0.1 should pass validation (warning is just a comment)
-            var field = new ConfigFieldState("IpAddress", ipAddress, true, typeof(string), "IP Address");
-
-            // Act
-            var result = _validator.ValidateIpAddress(field);
-
-            // Assert
-            result.Should().BeNull();
-        }
 
         [Fact]
         public void ValidateIpAddress_WithLocalhostString_ReturnsValidationIssue()
@@ -426,6 +414,7 @@ namespace SharpBridge.Tests.Utilities
         [InlineData("valid string")]
         [InlineData("another valid string")]
         [InlineData("string with numbers 123")]
+        [InlineData(null)]
         public void ValidateString_WithAllowEmptyTrue_ReturnsNull(string value)
         {
             // Arrange
@@ -493,18 +482,6 @@ namespace SharpBridge.Tests.Utilities
             result.ProvidedValueText.Should().BeNull();
         }
 
-        [Fact]
-        public void ValidateString_WithNullValueAndAllowEmptyTrue_ReturnsNull()
-        {
-            // Arrange
-            var field = new ConfigFieldState("Name", null, true, typeof(string), "Name field");
-
-            // Act
-            var result = _validator.ValidateString(field, allowEmpty: true);
-
-            // Assert
-            result.Should().BeNull();
-        }
 
         [Fact]
         public void ValidateString_WithNonStringValue_ReturnsValidationIssue()

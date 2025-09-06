@@ -324,9 +324,9 @@ namespace SharpBridge.Tests.Services
             var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "" };
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 CreateClient(mockUdpClient.Object, mockLogger.Object, config))
-                .ParamName.Should().Be("config");
+                .Message.Should().Be("iPhone IP address must not be empty in configuration");
         }
 
         [Fact]

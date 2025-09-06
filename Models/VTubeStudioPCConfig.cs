@@ -95,7 +95,7 @@ namespace SharpBridge.Models
                 ConnectionTimeoutMs = 5000;
             if (ReconnectionDelayMs == 0)
                 ReconnectionDelayMs = 2000;
-            if (RecoveryIntervalSeconds == 0)
+            if (Math.Abs(RecoveryIntervalSeconds) < double.Epsilon)
                 RecoveryIntervalSeconds = 2.0;
         }
     }
