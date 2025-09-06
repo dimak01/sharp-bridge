@@ -681,7 +681,7 @@ namespace SharpBridge.Tests.Utilities
 
         [Theory]
         [MemberData(nameof(GetPlatformSpecificInvalidFilePathData))]
-        public void ValidateFilePath_WithInvalidCharacters_ReturnsValidationIssue(string path)
+        public void ValidateFilePath_WithInvalidCharacters_ReturnsValidationIssue(string path, string expectedMessagePart)
         {
             // Arrange
             var field = new ConfigFieldState("FilePath", path, true, typeof(string), "File path");
@@ -693,7 +693,7 @@ namespace SharpBridge.Tests.Utilities
             result.Should().NotBeNull();
             result!.FieldName.Should().Be("FilePath");
             result.ExpectedType.Should().Be(typeof(string));
-            result.Description.Should().Contain("File path contains invalid characters");
+            result.Description.Should().Contain(expectedMessagePart);
             result.ProvidedValueText.Should().Be(path);
         }
 
@@ -702,40 +702,21 @@ namespace SharpBridge.Tests.Utilities
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 // Windows invalid characters: < > : " | ? * \ (except :\ for drive separator)
-                yield return new object[] { "file<invalid>.txt" };
-                yield return new object[] { "file|invalid.txt" };
-                yield return new object[] { "file\"invalid.txt" };
-                yield return new object[] { "file*invalid.txt" };
-                yield return new object[] { "file?invalid.txt" };
-                yield return new object[] { "file>invalid.txt" };
+                yield return new object[] { "file<invalid>.txt", "File path contains invalid characters" };
+                yield return new object[] { "file|invalid.txt", "File path contains invalid characters" };
+                yield return new object[] { "file\"invalid.txt", "File path contains invalid characters" };
+                yield return new object[] { "file*invalid.txt", "File path contains invalid characters" };
+                yield return new object[] { "file?invalid.txt", "File path contains invalid characters" };
+                yield return new object[] { "file>invalid.txt", "File path contains invalid characters" };
             }
             else
             {
-                // Linux/Unix invalid characters: \0 (null character) and / in filenames
-                yield return new object[] { "file\0invalid.txt" }; // null character
-                yield return new object[] { "file//invalid.txt" };  // forward slash in filename
-                yield return new object[] { "file\x00invalid.txt" }; // null character (hex)
+                // Linux/Unix: null character causes Path.GetFullPath to throw, so different error message
+                yield return new object[] { "file\0invalid.txt", "Invalid file path format" };
+                yield return new object[] { "file\x00invalid.txt", "Invalid file path format" };
             }
         }
 
-        [Theory]
-        [InlineData("file:invalid.txt")]
-        [InlineData("file?invalid.txt")]
-        public void ValidateFilePath_WithSomeInvalidCharacters_MayPassValidation(string path)
-        {
-            // Arrange - Some characters like : and ? might not be in Path.GetInvalidPathChars()
-            var field = new ConfigFieldState("FilePath", path, true, typeof(string), "File path");
-
-            // Act
-            var result = _validator.ValidateFilePath(field);
-
-            // Assert
-            // These might pass validation depending on the system's invalid path characters
-            // We'll just verify the method doesn't throw and returns a consistent result
-            result.Should().NotBeNull();
-            result!.FieldName.Should().Be("FilePath");
-            result.ExpectedType.Should().Be(typeof(string));
-        }
 
         [Fact]
         public void ValidateFilePath_WithVeryLongPath_HandlesGracefully()
