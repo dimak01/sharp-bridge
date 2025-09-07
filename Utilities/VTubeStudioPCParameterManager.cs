@@ -15,6 +15,7 @@ namespace SharpBridge.Utilities
     {
         private readonly IWebSocketWrapper _webSocket;
         private readonly IAppLogger _logger;
+        private readonly IVTSParameterAdapter _parameterAdapter;
 
         private static readonly HashSet<string> DefaultVTSParameters = new()
         {
@@ -47,10 +48,12 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="webSocket">WebSocket wrapper for communication with VTube Studio</param>
         /// <param name="logger">Application logger</param>
-        public VTubeStudioPCParameterManager(IWebSocketWrapper webSocket, IAppLogger logger)
+        /// <param name="parameterAdapter">Adapter for transforming parameters before sending to VTube Studio</param>
+        public VTubeStudioPCParameterManager(IWebSocketWrapper webSocket, IAppLogger logger, IVTSParameterAdapter parameterAdapter)
         {
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _parameterAdapter = parameterAdapter ?? throw new ArgumentNullException(nameof(parameterAdapter));
         }
 
         /// <summary>
@@ -101,7 +104,7 @@ namespace SharpBridge.Utilities
 
                 var response = await _webSocket.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
                     "ParameterCreationRequest", request, cancellationToken);
-                
+
                 return response.ParameterName == parameter.Name;
             }
             catch (Exception ex)
@@ -118,7 +121,7 @@ namespace SharpBridge.Utilities
         /// <param name="parameter">Parameter to create</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if parameter was created successfully</returns>
-        public async Task<bool> CreateParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
+        private async Task<bool> CreateParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
         {
             return await CreateOrUpdateParameterAsync(parameter, isUpdate: false, cancellationToken);
         }
@@ -129,7 +132,7 @@ namespace SharpBridge.Utilities
         /// <param name="parameter">Parameter to update</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if parameter was updated successfully</returns>
-        public async Task<bool> UpdateParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
+        private async Task<bool> UpdateParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
         {
             return await CreateOrUpdateParameterAsync(parameter, isUpdate: true, cancellationToken);
         }
@@ -144,6 +147,7 @@ namespace SharpBridge.Utilities
         {
             try
             {
+                parameterName = _parameterAdapter.AdaptParameterName(parameterName);
                 if (DefaultVTSParameters.Contains(parameterName))
                 {
                     _logger.Warning("Cannot delete default VTS parameter: {0}", parameterName);
@@ -157,7 +161,7 @@ namespace SharpBridge.Utilities
 
                 await _webSocket.SendRequestAsync<ParameterDeletionRequest, object>(
                     "ParameterDeletionRequest", request, cancellationToken);
-                
+
                 return true;
             }
             catch (Exception ex)
@@ -177,10 +181,13 @@ namespace SharpBridge.Utilities
         {
             try
             {
+                // Apply parameter adapter to get prefixed parameters for VTube Studio
+                var adaptedParameters = _parameterAdapter.AdaptParameters(desiredParameters);
+
                 var existingParameters = await GetParametersAsync(cancellationToken);
                 var existingParameterNames = new HashSet<string>(existingParameters.Select(p => p.Name));
 
-                foreach (var parameter in desiredParameters)
+                foreach (var parameter in adaptedParameters)
                 {
                     if (DefaultVTSParameters.Contains(parameter.Name))
                     {
@@ -216,4 +223,4 @@ namespace SharpBridge.Utilities
             }
         }
     }
-} 
+}

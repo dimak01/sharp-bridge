@@ -101,6 +101,13 @@ namespace SharpBridge
                 return configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
             });
 
+            // Register VTS parameter adapter
+            services.AddSingleton<IVTSParameterAdapter>(provider =>
+            {
+                var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
+                return new VTSParameterPrefixAdapter(pcConfig);
+            });
+
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
@@ -195,6 +202,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IWebSocketWrapper>(),
                     provider.GetRequiredService<IPortDiscoveryService>(),
+                    provider.GetRequiredService<IVTSParameterAdapter>(),
                     appConfigWatcher
                 );
             });
@@ -280,7 +288,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IParameterColorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<UserPreferences>(),
-                    provider.GetRequiredService<IParameterTableConfigurationManager>()
+                    provider.GetRequiredService<IParameterTableConfigurationManager>(),
+                    provider.GetRequiredService<VTubeStudioPCConfig>()
                 ));
             services.AddSingleton<TransformationEngineInfoFormatter>();
 

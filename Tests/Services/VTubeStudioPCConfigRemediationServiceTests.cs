@@ -703,6 +703,330 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
+        #region ParameterPrefix Tests
+
+        [Fact]
+        public async Task Remediate_WithMissingParameterPrefix_AppliesDefaultValue()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery")
+                // ParameterPrefix is missing - should cause validation issue
+            };
+
+            var issues = new List<FieldValidationIssue>
+            {
+                new("ParameterPrefix", typeof(string), "Parameter prefix is required", null)
+            };
+
+            var initialValidation = new ConfigValidationResult(issues);
+            var finalValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+
+            _mockValidator.SetupSequence(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation)
+                .Returns(finalValidation);
+
+            // Mock console interactions
+            _mockConsole.SetupSequence(x => x.ReadLine())
+                .Returns("") // Splash screen
+                .Returns("") // Empty input - should use default
+                .Returns("_SB_"); // Default value
+
+            // Mock single field validation
+            _mockValidator.SetupSequence(x => x.ValidateSingleField(It.IsAny<ConfigFieldState>()))
+                .Returns((false, new FieldValidationIssue("ParameterPrefix", typeof(string), "Parameter prefix is required", null)))
+                .Returns((true, (FieldValidationIssue?)null));
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.ParameterPrefix.Should().Be("_SB_"); // Default value
+        }
+
+        [Fact]
+        public async Task Remediate_WithValidParameterPrefix_KeepsValue()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", "MyPrefix_", true, typeof(string), "Parameter Prefix")
+            };
+
+            var initialValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+            _mockValidator.Setup(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation);
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.NoRemediationNeeded);
+            result.UpdatedConfig.Should().BeNull(); // No changes made
+        }
+
+        [Fact]
+        public async Task Remediate_WithOnlyParameterPrefixMissing_AppliesDefaultSilently()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", null, true, typeof(string), "ParameterPrefix")
+            };
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.Host.Should().Be("localhost");
+            config.Port.Should().Be(8001);
+            config.UsePortDiscovery.Should().BeTrue();
+            config.ParameterPrefix.Should().Be("_SB_"); // Default applied silently
+
+            // Verify no console interaction was needed
+            _mockConsole.Verify(x => x.ReadLine(), Times.Never);
+        }
+
+        [Fact]
+        public async Task Remediate_WithEmptyParameterPrefix_KeepsEmptyValue()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", "", true, typeof(string), "Parameter Prefix")
+            };
+
+            var initialValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+            _mockValidator.Setup(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation);
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.NoRemediationNeeded);
+            result.UpdatedConfig.Should().BeNull(); // No changes made
+        }
+
+        [Fact]
+        public async Task Remediate_WithInvalidParameterPrefix_PromptsForValidInput()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", "Invalid Prefix!", true, typeof(string), "Parameter Prefix")
+            };
+
+            var issues = new List<FieldValidationIssue>
+            {
+                new("ParameterPrefix", typeof(string), "Parameter prefix must contain only alphanumeric characters and underscores, no spaces", "Invalid Prefix!")
+            };
+
+            var initialValidation = new ConfigValidationResult(issues);
+            var finalValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+
+            _mockValidator.SetupSequence(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation)
+                .Returns(finalValidation);
+
+            // Mock console interactions
+            _mockConsole.SetupSequence(x => x.ReadLine())
+                .Returns("") // Splash screen
+                .Returns("") // Empty input - should use default
+                .Returns("ValidPrefix_"); // Valid input
+
+            // Mock single field validation
+            _mockValidator.SetupSequence(x => x.ValidateSingleField(It.IsAny<ConfigFieldState>()))
+                .Returns((false, new FieldValidationIssue("ParameterPrefix", typeof(string), "Parameter prefix must contain only alphanumeric characters and underscores, no spaces", "Invalid Prefix!")))
+                .Returns((true, (FieldValidationIssue?)null));
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.ParameterPrefix.Should().Be("ValidPrefix_");
+        }
+
+        [Fact]
+        public async Task Remediate_WithTooLongParameterPrefix_PromptsForValidInput()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", "ThisPrefixIsWayTooLong", true, typeof(string), "Parameter Prefix")
+            };
+
+            var issues = new List<FieldValidationIssue>
+            {
+                new("ParameterPrefix", typeof(string), "Parameter prefix cannot exceed 15 characters", "ThisPrefixIsWayTooLong")
+            };
+
+            var initialValidation = new ConfigValidationResult(issues);
+            var finalValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+
+            _mockValidator.SetupSequence(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation)
+                .Returns(finalValidation);
+
+            // Mock console interactions
+            _mockConsole.SetupSequence(x => x.ReadLine())
+                .Returns("") // Splash screen
+                .Returns("") // Empty input - should use default
+                .Returns("ShortPrefix"); // Valid input (under 15 chars)
+
+            // Mock single field validation
+            _mockValidator.SetupSequence(x => x.ValidateSingleField(It.IsAny<ConfigFieldState>()))
+                .Returns((false, new FieldValidationIssue("ParameterPrefix", typeof(string), "Parameter prefix cannot exceed 15 characters", "ThisPrefixIsWayTooLong")))
+                .Returns((true, (FieldValidationIssue?)null));
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.ParameterPrefix.Should().Be("ShortPrefix");
+        }
+
+        [Fact]
+        public async Task Remediate_WithNonStringParameterPrefix_PromptsForValidInput()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", 123, true, typeof(string), "Parameter Prefix") // Wrong type
+            };
+
+            var issues = new List<FieldValidationIssue>
+            {
+                new("ParameterPrefix", typeof(string), "Parameter prefix must be a string, got Int32", "123")
+            };
+
+            var initialValidation = new ConfigValidationResult(issues);
+            var finalValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+
+            _mockValidator.SetupSequence(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation)
+                .Returns(finalValidation);
+
+            // Mock console interactions
+            _mockConsole.SetupSequence(x => x.ReadLine())
+                .Returns("") // Splash screen
+                .Returns("") // Empty input - should use default
+                .Returns("ValidPrefix"); // Valid input
+
+            // Mock single field validation
+            _mockValidator.SetupSequence(x => x.ValidateSingleField(It.IsAny<ConfigFieldState>()))
+                .Returns((false, new FieldValidationIssue("ParameterPrefix", typeof(string), "Parameter prefix must be a string, got Int32", "123")))
+                .Returns((true, (FieldValidationIssue?)null));
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.ParameterPrefix.Should().Be("ValidPrefix");
+        }
+
+        [Fact]
+        public async Task Remediate_WithMultipleIssuesIncludingParameterPrefix_HandlesInCorrectOrder()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", "Invalid Prefix!", true, typeof(string), "Parameter Prefix")
+            };
+
+            var issues = new List<FieldValidationIssue>
+            {
+                new("Host", typeof(string), "Host cannot be empty", ""),
+                new("ParameterPrefix", typeof(string), "Parameter prefix must contain only alphanumeric characters and underscores, no spaces", "Invalid Prefix!")
+            };
+
+            var initialValidation = new ConfigValidationResult(issues);
+            var finalValidation = new ConfigValidationResult(new List<FieldValidationIssue>());
+
+            _mockValidator.SetupSequence(x => x.ValidateSection(It.IsAny<List<ConfigFieldState>>()))
+                .Returns(initialValidation)
+                .Returns(finalValidation);
+
+            // Mock console interactions - Host should be handled first, then ParameterPrefix
+            _mockConsole.SetupSequence(x => x.ReadLine())
+                .Returns("") // Splash screen
+                .Returns("localhost") // Fix Host
+                .Returns("") // Splash screen for ParameterPrefix
+                .Returns("ValidPrefix_"); // Fix ParameterPrefix (this will be used, not the default)
+
+            // Mock single field validation
+            _mockValidator.SetupSequence(x => x.ValidateSingleField(It.IsAny<ConfigFieldState>()))
+                .Returns((false, new FieldValidationIssue("Host", typeof(string), "Host cannot be empty", "")))
+                .Returns((true, (FieldValidationIssue?)null))
+                .Returns((false, new FieldValidationIssue("ParameterPrefix", typeof(string), "Parameter prefix must contain only alphanumeric characters and underscores, no spaces", "Invalid Prefix!")))
+                .Returns((true, (FieldValidationIssue?)null));
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.Host.Should().Be("localhost");
+            config.ParameterPrefix.Should().Be("_SB_"); // Default value used when user enters empty string
+        }
+
+        #endregion
+
 
         public void Dispose()
         {

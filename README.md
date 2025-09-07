@@ -33,7 +33,8 @@ The application will create default configuration files on first run.
 - **Parameter Table Customization** - Configure which columns to display in the PC parameter table
 - **Advanced Table Formatting** - Structured table display with indentation support and responsive layout
 - **Automatic Recovery** - Self-healing from network and service failures
-- **Parameter Synchronization** - Automatic VTube Studio parameter management
+- **Parameter Synchronization** - Automatic VTube Studio parameter management with configurable prefix support
+- **Parameter Prefix Support** - Configurable prefix to avoid naming conflicts with other plugins
 - **External Editor Integration** - Open configuration files in your preferred editor
 - **Health Monitoring** - Visual status indicators for all components
 - **Network Status Monitoring** - Real-time network interface status and troubleshooting
@@ -85,7 +86,8 @@ All settings are managed in a single configuration file:
   "PCClient": {
     "Host": "localhost",
     "Port": 8001,
-    "UsePortDiscovery": true
+    "UsePortDiscovery": true,
+    "ParameterPrefix": "_SB_"
   },
   "TransformationEngine": {
     "ConfigPath": "Configs/vts_transforms.json",
@@ -109,6 +111,8 @@ All settings are managed in a single configuration file:
 - `Host`: VTube Studio PC WebSocket host (default: localhost)
 - `Port`: VTube Studio PC WebSocket port (default: 8001)
 - `UsePortDiscovery`: Automatically discover VTube Studio port (recommended: true)
+- `ParameterPrefix`: Prefix added to parameter names in VTube Studio PC to avoid naming conflicts (default: "_SB_", 0-15 characters, alphanumeric only)
+  - **Note**: Changes to this setting require an application restart to take effect
 
 **TransformationEngine:**
 - `ConfigPath`: Path to transformation rules configuration file
@@ -432,6 +436,12 @@ For different network setups:
 - Use `F2` to access network status mode for detailed diagnostics with structured firewall rules display
 - Check firewall configuration and network interface status
 - Verify iPhone and PC are on the same network segment
+
+**"Parameter naming conflicts"**
+- VTube Studio requires unique parameter names across all plugins
+- Use `ParameterPrefix` in PCClient configuration to avoid conflicts (default: "_SB_")
+- Change prefix to something unique if conflicts occur
+- Delete conflicting parameters manually in VTube Studio if needed
 
 ### Recovery Features
 

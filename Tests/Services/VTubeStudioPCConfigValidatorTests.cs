@@ -69,7 +69,8 @@ namespace SharpBridge.Tests.Services
             {
                 new("Host", "localhost", true, typeof(string), "Host"),
                 new("Port", 8001, true, typeof(int), "Port"),
-                new("UsePortDiscovery", true, true, typeof(bool), "Use Port Discovery")
+                new("UsePortDiscovery", true, true, typeof(bool), "Use Port Discovery"),
+                new("ParameterPrefix", "_SB_", true, typeof(string), "Parameter Prefix")
             };
 
             _mockFieldValidator.Setup(x => x.ValidateHost(It.IsAny<ConfigFieldState>()))
@@ -77,6 +78,8 @@ namespace SharpBridge.Tests.Services
             _mockFieldValidator.Setup(x => x.ValidatePort(It.IsAny<ConfigFieldState>()))
                 .Returns((FieldValidationIssue?)null);
             _mockFieldValidator.Setup(x => x.ValidateBoolean(It.IsAny<ConfigFieldState>()))
+                .Returns((FieldValidationIssue?)null);
+            _mockFieldValidator.Setup(x => x.ValidateParameterPrefix(It.IsAny<ConfigFieldState>()))
                 .Returns((FieldValidationIssue?)null);
 
             // Act
@@ -276,6 +279,24 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
+        public void ValidateSingleField_WithValidParameterPrefix_ReturnsValid()
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", "_SB_", true, typeof(string), "Parameter Prefix");
+
+            _mockFieldValidator.Setup(x => x.ValidateParameterPrefix(field))
+                .Returns((FieldValidationIssue?)null);
+
+            // Act
+            var (isValid, issue) = _validator.ValidateSingleField(field);
+
+            // Assert
+            isValid.Should().BeTrue();
+            issue.Should().BeNull();
+            _mockFieldValidator.Verify(x => x.ValidateParameterPrefix(field), Times.Once);
+        }
+
+        [Fact]
         public void ValidateSingleField_WithUnknownField_ReturnsInvalid()
         {
             // Arrange
@@ -351,6 +372,25 @@ namespace SharpBridge.Tests.Services
             isValid.Should().BeFalse();
             issue.Should().Be(expectedIssue);
             _mockFieldValidator.Verify(x => x.ValidateBoolean(field), Times.Once);
+        }
+
+        [Fact]
+        public void ValidateFieldValue_WithParameterPrefixField_CallsValidateParameterPrefix()
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", "My Prefix", true, typeof(string), "Parameter Prefix");
+            var expectedIssue = new FieldValidationIssue("ParameterPrefix", typeof(string), "Invalid prefix", "My Prefix");
+
+            _mockFieldValidator.Setup(x => x.ValidateParameterPrefix(field))
+                .Returns(expectedIssue);
+
+            // Act
+            var (isValid, issue) = _validator.ValidateSingleField(field);
+
+            // Assert
+            isValid.Should().BeFalse();
+            issue.Should().Be(expectedIssue);
+            _mockFieldValidator.Verify(x => x.ValidateParameterPrefix(field), Times.Once);
         }
 
         [Fact]
