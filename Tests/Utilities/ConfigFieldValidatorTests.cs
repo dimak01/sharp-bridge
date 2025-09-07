@@ -862,7 +862,7 @@ namespace SharpBridge.Tests.Utilities
         [Theory]
         [InlineData("1234567890123456")] // 16 characters (exceeds max)
         [InlineData("ThisIsTooLongPrefix")] // 20 characters
-        [InlineData("A".PadRight(20, 'B'))] // 20 characters
+        [InlineData("ABBBBBBBBBBBBBBBBBB")] // 20 characters
         public void ValidateParameterPrefix_WithTooLongPrefixes_ReturnsValidationIssue(string prefix)
         {
             // Arrange
@@ -948,7 +948,6 @@ namespace SharpBridge.Tests.Utilities
         [InlineData(123)]
         [InlineData(true)]
         [InlineData(123.45)]
-        [InlineData(new object())]
         public void ValidateParameterPrefix_WithNonStringValue_ReturnsValidationIssue(object value)
         {
             // Arrange
@@ -986,7 +985,7 @@ namespace SharpBridge.Tests.Utilities
         public void ValidateParameterPrefix_WithMixedValidAndInvalidCharacters_ReturnsValidationIssue()
         {
             // Arrange
-            var field = new ConfigFieldState("ParameterPrefix", "Valid_123_Invalid!", true, typeof(string), "Parameter Prefix");
+            var field = new ConfigFieldState("ParameterPrefix", "Valid_123!", true, typeof(string), "Parameter Prefix");
 
             // Act
             var result = _validator.ValidateParameterPrefix(field);
@@ -996,7 +995,7 @@ namespace SharpBridge.Tests.Utilities
             result!.FieldName.Should().Be("ParameterPrefix");
             result.ExpectedType.Should().Be(typeof(string));
             result.Description.Should().Be("Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
-            result.ProvidedValueText.Should().Be("Valid_123_Invalid!");
+            result.ProvidedValueText.Should().Be("Valid_123!");
         }
 
         #endregion
