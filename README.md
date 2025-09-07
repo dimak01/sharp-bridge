@@ -112,6 +112,7 @@ All settings are managed in a single configuration file:
 - `Port`: VTube Studio PC WebSocket port (default: 8001)
 - `UsePortDiscovery`: Automatically discover VTube Studio port (recommended: true)
 - `ParameterPrefix`: Prefix added to parameter names in VTube Studio PC to avoid naming conflicts (default: "_SB_", 0-15 characters, alphanumeric only)
+  - **Note**: Changes to this setting require an application restart to take effect
 
 **TransformationEngine:**
 - `ConfigPath`: Path to transformation rules configuration file

@@ -236,7 +236,7 @@ The application includes **parameter synchronization** with VTube Studio:
 - **Automatic Creation** - VTube Studio parameters created based on transformation rules
 - **Synchronization** - Parameter definitions synchronized with VTube Studio
 - **Lifecycle Management** - Parameter creation and cleanup handled automatically
-- **Prefix Support** - Configurable prefix to avoid naming conflicts with other plugins
+- **Prefix Support** - Configurable prefix to avoid naming conflicts with other plugins (requires restart for changes)
 
 ## Implementation Status
 
