@@ -74,11 +74,20 @@ namespace SharpBridge.Services.Remediation
             }
         }
 
+        private static bool IsEligibleForPassThru(List<ConfigFieldState> workingFields, string activeFieldName)
+        {
+            return false;
+        }
+
         private async Task RemediateFieldUntilValidAsync(
             FieldValidationIssue initialIssue,
             List<ConfigFieldState> workingFields)
         {
             var activeFieldName = initialIssue.FieldName;
+
+            if (IsEligibleForPassThru(workingFields, activeFieldName))
+                return;
+
             var notes = GetFieldNotes(activeFieldName);
             string? lastError = null;
 

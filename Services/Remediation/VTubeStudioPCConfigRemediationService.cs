@@ -82,28 +82,8 @@ namespace SharpBridge.Services.Remediation
             List<ConfigFieldState> workingFields)
         {
             var activeFieldName = initialIssue.FieldName;
-
-            // Handle conditional field logic - skip Port field if UsePortDiscovery is enabled
-            if (activeFieldName == "Port")
-            {
-                var usePortDiscovery = workingFields.FirstOrDefault(f => f.FieldName == "UsePortDiscovery");
-                if (usePortDiscovery?.Value is bool discoveryEnabled && discoveryEnabled)
-                {
-                    // Skip Port field if discovery is enabled, set default port
-                    var defaultPort = new ConfigFieldState("Port", 8001, true, typeof(int), "VTube Studio PC API Port");
-                    var existing = workingFields.FirstOrDefault(f => f.FieldName == "Port");
-                    if (existing != null)
-                    {
-                        var idx = workingFields.IndexOf(existing);
-                        workingFields[idx] = defaultPort;
-                    }
-                    else
-                    {
-                        workingFields.Add(defaultPort);
-                    }
-                    return; // Skip user prompt for Port field
-                }
-            }
+            if (IsEligibleForPassThru(workingFields, activeFieldName))
+                return;
 
             var notes = GetFieldNotes(activeFieldName);
             string? lastError = null;
@@ -171,6 +151,33 @@ namespace SharpBridge.Services.Remediation
                 return;
             }
         }
+
+        private static bool IsEligibleForPassThru(List<ConfigFieldState> workingFields, string activeFieldName)
+        {
+            if (activeFieldName == "Port")
+            {
+                var usePortDiscovery = workingFields.FirstOrDefault(f => f.FieldName == "UsePortDiscovery");
+                if (usePortDiscovery?.Value is bool discoveryEnabled && discoveryEnabled)
+                {
+                    // Skip Port field if discovery is enabled, set default port
+                    var defaultPort = new ConfigFieldState("Port", 8001, true, typeof(int), "VTube Studio PC API Port");
+                    var existing = workingFields.FirstOrDefault(f => f.FieldName == "Port");
+                    if (existing != null)
+                    {
+                        var idx = workingFields.IndexOf(existing);
+                        workingFields[idx] = defaultPort;
+                    }
+                    else
+                    {
+                        workingFields.Add(defaultPort);
+                    }
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
 
         private static string[] BuildSplashLines(List<FieldValidationIssue> issues, bool isFirstTimeSetup)
         {
