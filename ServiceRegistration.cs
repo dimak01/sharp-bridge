@@ -202,6 +202,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IWebSocketWrapper>(),
                     provider.GetRequiredService<IPortDiscoveryService>(),
+                    provider.GetRequiredService<IVTSParameterAdapter>(),
                     appConfigWatcher
                 );
             });
@@ -287,7 +288,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IParameterColorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<UserPreferences>(),
-                    provider.GetRequiredService<IParameterTableConfigurationManager>()
+                    provider.GetRequiredService<IParameterTableConfigurationManager>(),
+                    provider.GetRequiredService<VTubeStudioPCConfig>()
                 ));
             services.AddSingleton<TransformationEngineInfoFormatter>();
 

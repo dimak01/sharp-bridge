@@ -25,6 +25,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
         private readonly Mock<IWebSocketWrapper> _mockWebSocket;
         private readonly Mock<IPortDiscoveryService> _mockPortDiscoveryService;
+        private readonly Mock<IVTSParameterAdapter> _mockParameterAdapter;
 
         public VTubeStudioPCClientTests()
         {
@@ -33,6 +34,7 @@ namespace SharpBridge.Tests.Services
             _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
             _mockWebSocket = new Mock<IWebSocketWrapper>();
             _mockPortDiscoveryService = new Mock<IPortDiscoveryService>();
+            _mockParameterAdapter = new Mock<IVTSParameterAdapter>();
 
             // Setup default WebSocket behavior
             _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.None);
@@ -44,9 +46,15 @@ namespace SharpBridge.Tests.Services
                 .Returns(Task.CompletedTask);
             _mockWebSocket.Setup(x => x.Dispose())
                 .Callback(() => _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed));
+
+            // Setup default parameter adapter behavior
+            _mockParameterAdapter.Setup(x => x.AdaptParameters(It.IsAny<IEnumerable<VTSParameter>>()))
+                .Returns<IEnumerable<VTSParameter>>(parameters => parameters);
+            _mockParameterAdapter.Setup(x => x.AdaptTrackingParameters(It.IsAny<IEnumerable<TrackingParam>>()))
+                .Returns<IEnumerable<TrackingParam>>(parameters => parameters);
         }
 
-        private VTubeStudioPCClient CreateClient(IAppLogger? logger = null, VTubeStudioPCConfig? config = null, IWebSocketWrapper? webSocket = null, IPortDiscoveryService? portDiscoveryService = null, bool setupMock = true)
+        private VTubeStudioPCClient CreateClient(IAppLogger? logger = null, VTubeStudioPCConfig? config = null, IWebSocketWrapper? webSocket = null, IPortDiscoveryService? portDiscoveryService = null, IVTSParameterAdapter? parameterAdapter = null, bool setupMock = true)
         {
             _config = config ??= new VTubeStudioPCConfig
             {
@@ -58,6 +66,7 @@ namespace SharpBridge.Tests.Services
             logger ??= _mockLogger.Object;
             webSocket ??= _mockWebSocket.Object;
             portDiscoveryService ??= _mockPortDiscoveryService.Object;
+            parameterAdapter ??= _mockParameterAdapter.Object;
 
             // Setup for constructor call (initial load) - only if not already set up
             if (setupMock)
@@ -66,7 +75,7 @@ namespace SharpBridge.Tests.Services
                     .ReturnsAsync(_config);
             }
 
-            return new VTubeStudioPCClient(logger, _mockConfigManager.Object, webSocket, portDiscoveryService, _mockAppConfigWatcher.Object);
+            return new VTubeStudioPCClient(logger, _mockConfigManager.Object, webSocket, portDiscoveryService, parameterAdapter, _mockAppConfigWatcher.Object);
         }
 
 
@@ -74,25 +83,31 @@ namespace SharpBridge.Tests.Services
         [Fact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(null!, _mockConfigManager.Object, _mockWebSocket.Object, _mockPortDiscoveryService.Object, _mockAppConfigWatcher.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(null!, _mockConfigManager.Object, _mockWebSocket.Object, _mockPortDiscoveryService.Object, _mockParameterAdapter.Object, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
         public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, null!, _mockWebSocket.Object, _mockPortDiscoveryService.Object, _mockAppConfigWatcher.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, null!, _mockWebSocket.Object, _mockPortDiscoveryService.Object, _mockParameterAdapter.Object, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
         public void Constructor_WithNullWebSocket_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, null!, _mockPortDiscoveryService.Object, _mockAppConfigWatcher.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, null!, _mockPortDiscoveryService.Object, _mockParameterAdapter.Object, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
         public void Constructor_WithNullPortDiscoveryService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, _mockWebSocket.Object, null!, _mockAppConfigWatcher.Object));
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, _mockWebSocket.Object, null!, _mockParameterAdapter.Object, _mockAppConfigWatcher.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullParameterAdapter_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new VTubeStudioPCClient(_mockLogger.Object, _mockConfigManager.Object, _mockWebSocket.Object, _mockPortDiscoveryService.Object, null!, _mockAppConfigWatcher.Object));
         }
 
         [Fact]
@@ -1427,6 +1442,7 @@ namespace SharpBridge.Tests.Services
                 _mockConfigManager.Object,
                 _mockWebSocket.Object,
                 _mockPortDiscoveryService.Object,
+                _mockParameterAdapter.Object,
                 null); // No app config watcher
 
             // Act & Assert
@@ -1449,6 +1465,7 @@ namespace SharpBridge.Tests.Services
                 _mockConfigManager.Object,
                 mockWebSocket.Object,
                 _mockPortDiscoveryService.Object,
+                _mockParameterAdapter.Object,
                 _mockAppConfigWatcher.Object);
 
             // Act & Assert
