@@ -43,6 +43,18 @@ namespace SharpBridge.Services.Remediation
                 "It is recommended to keep this setting enabled.",
                 "",
                 "Allowed values: \u001b[96mtrue\u001b[0m to enable, \u001b[96mfalse\u001b[0m to disable."
+            },
+            ["ParameterPrefix"] = new[]
+            {
+                "This prefix will be added to all parameter names when sending to VTube Studio PC.",
+                "Helps avoid naming conflicts with other plugins.",
+                "",
+                "Requirements:",
+                "- 0-15 characters long",
+                "- Alphanumeric characters only (no spaces)",
+                "- Empty prefix is allowed (no prefix will be added)",
+                "",
+                "Default: \u001b[96m_SB_\u001b[0m (puts parameters at top of VTS parameter list)"
             }
         };
 
@@ -53,7 +65,8 @@ namespace SharpBridge.Services.Remediation
         {
             ["Host"] = "localhost",
             ["Port"] = 8001,
-            ["UsePortDiscovery"] = true
+            ["UsePortDiscovery"] = true,
+            ["ParameterPrefix"] = "_SB_"
         };
 
 
@@ -122,6 +135,11 @@ namespace SharpBridge.Services.Remediation
         }
 
         /// <summary>
+        /// Builds the splash/header lines for the remediation process.
+        /// </summary>
+        /// <param name="issues">The issues to build the splash lines from</param>
+        /// <param name="isFirstTimeSetup">Whether this is first-time setup</param>
+        /// <returns>The built splash lines</returns>
         protected override string[] BuildSplashLines(List<FieldValidationIssue> issues, bool isFirstTimeSetup)
         {
             var lines = new List<string>
@@ -236,6 +254,9 @@ namespace SharpBridge.Services.Remediation
                         case "UsePortDiscovery" when field.Value is bool usePortDiscovery:
                             config.UsePortDiscovery = usePortDiscovery;
                             break;
+                        case "ParameterPrefix" when field.Value is string parameterPrefix:
+                            config.ParameterPrefix = parameterPrefix;
+                            break;
                     }
                 }
             }
@@ -251,7 +272,7 @@ namespace SharpBridge.Services.Remediation
         protected override List<FieldValidationIssue> SortIssuesByFieldOrder(List<FieldValidationIssue> issues)
         {
             // Define field order - dependencies must come before dependent fields
-            var fieldOrder = new[] { "Host", "UsePortDiscovery", "Port" };
+            var fieldOrder = new[] { "Host", "UsePortDiscovery", "Port", "ParameterPrefix" };
 
             return issues
                 .OrderBy(issue => GetFieldOrder(issue.FieldName, fieldOrder))
