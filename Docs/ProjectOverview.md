@@ -236,6 +236,7 @@ The application includes **parameter synchronization** with VTube Studio:
 - **Automatic Creation** - VTube Studio parameters created based on transformation rules
 - **Synchronization** - Parameter definitions synchronized with VTube Studio
 - **Lifecycle Management** - Parameter creation and cleanup handled automatically
+- **Prefix Support** - Configurable prefix to avoid naming conflicts with other plugins
 
 ## Implementation Status
 
@@ -251,7 +252,7 @@ All core architectural components are implemented:
 - **Network Status Monitoring** - Real-time network interface status and troubleshooting capabilities with structured firewall rules display
 - **Configuration Management** - Consolidated configuration with hot-reload capabilities
 - **File Change Watching** - Multi-watcher system for configuration monitoring
-- **Parameter Synchronization** - Automatic VTube Studio parameter management
+- **Parameter Synchronization** - Automatic VTube Studio parameter management with configurable prefix support
 - **External Editor Integration** - Configurable file opening capabilities
 - **System Help** - Dynamic help system with context awareness
 - **Parameter Table Customization** - User-configurable column display for parameter tables
