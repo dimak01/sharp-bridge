@@ -778,6 +778,36 @@ namespace SharpBridge.Tests.Services
         }
 
         [Fact]
+        public async Task Remediate_WithOnlyParameterPrefixMissing_AppliesDefaultSilently()
+        {
+            // Arrange
+            var service = new VTubeStudioPCConfigRemediationService(_mockValidatorsFactory.Object, _mockConsole.Object);
+            var fields = new List<ConfigFieldState>
+            {
+                new("Host", "localhost", true, typeof(string), "Host"),
+                new("Port", 8001, true, typeof(int), "Port"),
+                new("UsePortDiscovery", true, true, typeof(bool), "UsePortDiscovery"),
+                new("ParameterPrefix", null, true, typeof(string), "ParameterPrefix")
+            };
+
+            // Act
+            var result = await service.Remediate(fields);
+
+            // Assert
+            result.Result.Should().Be(RemediationResult.Succeeded);
+            result.UpdatedConfig.Should().NotBeNull();
+
+            var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
+            config.Host.Should().Be("localhost");
+            config.Port.Should().Be(8001);
+            config.UsePortDiscovery.Should().BeTrue();
+            config.ParameterPrefix.Should().Be("_SB_"); // Default applied silently
+
+            // Verify no console interaction was needed
+            _mockConsole.Verify(x => x.ReadLine(), Times.Never);
+        }
+
+        [Fact]
         public async Task Remediate_WithEmptyParameterPrefix_KeepsEmptyValue()
         {
             // Arrange

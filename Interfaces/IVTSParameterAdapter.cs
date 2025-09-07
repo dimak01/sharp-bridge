@@ -16,6 +16,13 @@ namespace SharpBridge.Interfaces
         IEnumerable<VTSParameter> AdaptParameters(IEnumerable<VTSParameter> parameters);
 
         /// <summary>
+        /// Adapts a collection of tracking parameters by applying transformations (like prefixing) to their IDs
+        /// </summary>
+        /// <param name="trackingParams">Original tracking parameters</param>
+        /// <returns>Adapted tracking parameters ready for VTube Studio PC</returns>
+        IEnumerable<TrackingParam> AdaptTrackingParameters(IEnumerable<TrackingParam> trackingParams);
+
+        /// <summary>
         /// Adapts a single VTS parameter by applying transformations (like prefixing)
         /// </summary>
         /// <param name="parameter">Original parameter</param>

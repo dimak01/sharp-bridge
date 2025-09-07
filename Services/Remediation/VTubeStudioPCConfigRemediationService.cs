@@ -89,7 +89,9 @@ namespace SharpBridge.Services.Remediation
         /// <returns>True if the configuration section should fall back to defaults</returns>
         protected override bool ShouldFallBackToDefaults(List<ConfigFieldState> fields)
         {
-            return false;
+            // Check if only ParameterPrefix is missing (it's optional with a default)
+            var missingFields = fields.Where(f => f.Value == null).Select(f => f.FieldName).ToList();
+            return missingFields.Count == 1 && missingFields.Contains("ParameterPrefix");
         }
 
         /// <summary>

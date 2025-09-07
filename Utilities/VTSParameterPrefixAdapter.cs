@@ -65,6 +65,33 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
+        /// Adapts a collection of tracking parameters by applying the configured prefix to their IDs.
+        /// Creates new TrackingParam instances to avoid mutating the originals.
+        /// </summary>
+        /// <param name="trackingParams">Original tracking parameters.</param>
+        /// <returns>Adapted tracking parameters with prefixed IDs, ready for VTube Studio PC.</returns>
+        public IEnumerable<TrackingParam> AdaptTrackingParameters(IEnumerable<TrackingParam> trackingParams)
+        {
+            if (trackingParams == null)
+            {
+                return Enumerable.Empty<TrackingParam>();
+            }
+
+            var prefix = _config.ParameterPrefix;
+            if (string.IsNullOrEmpty(prefix))
+            {
+                return trackingParams; // No prefix configured, return as-is
+            }
+
+            return trackingParams.Select(tp => new TrackingParam
+            {
+                Id = $"{prefix}{tp.Id}",
+                Value = tp.Value,
+                Weight = tp.Weight
+            }).ToList();
+        }
+
+        /// <summary>
         /// Adapts a parameter name by applying the configured prefix
         /// </summary>
         /// <param name="parameterName">Original parameter name</param>

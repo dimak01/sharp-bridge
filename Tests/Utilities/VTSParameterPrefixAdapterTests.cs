@@ -178,5 +178,126 @@ namespace SharpBridge.Tests.Utilities
         }
 
         #endregion
+
+        #region AdaptTrackingParameters Tests
+
+        [Fact]
+        public void AdaptTrackingParameters_WithNullInput_ReturnsEmptyCollection()
+        {
+            // Arrange
+            var config = new VTubeStudioPCConfig(parameterPrefix: "_SB_");
+            var adapter = new VTSParameterPrefixAdapter(config);
+
+            // Act
+            var result = adapter.AdaptTrackingParameters(null!);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void AdaptTrackingParameters_WithEmptyInput_ReturnsEmptyCollection()
+        {
+            // Arrange
+            var config = new VTubeStudioPCConfig(parameterPrefix: "_SB_");
+            var adapter = new VTSParameterPrefixAdapter(config);
+            var trackingParams = new List<TrackingParam>();
+
+            // Act
+            var result = adapter.AdaptTrackingParameters(trackingParams);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void AdaptTrackingParameters_WithValidInput_AppliesPrefixToIds()
+        {
+            // Arrange
+            var config = new VTubeStudioPCConfig(parameterPrefix: "_SB_");
+            var adapter = new VTSParameterPrefixAdapter(config);
+            var trackingParams = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5, Weight = 1.0 },
+                new TrackingParam { Id = "Param2", Value = 0.8, Weight = 0.5 }
+            };
+
+            // Act
+            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+
+            // Assert
+            result.Should().HaveCount(2);
+            result[0].Id.Should().Be("_SB_Param1");
+            result[0].Value.Should().Be(0.5);
+            result[0].Weight.Should().Be(1.0);
+            result[1].Id.Should().Be("_SB_Param2");
+            result[1].Value.Should().Be(0.8);
+            result[1].Weight.Should().Be(0.5);
+        }
+
+        [Fact]
+        public void AdaptTrackingParameters_WithEmptyPrefix_ReturnsOriginalParameters()
+        {
+            // Arrange
+            var config = new VTubeStudioPCConfig(parameterPrefix: "");
+            var adapter = new VTSParameterPrefixAdapter(config);
+            var trackingParams = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5, Weight = 1.0 }
+            };
+
+            // Act
+            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Id.Should().Be("Param1");
+            result[0].Value.Should().Be(0.5);
+            result[0].Weight.Should().Be(1.0);
+        }
+
+        [Fact]
+        public void AdaptTrackingParameters_WithNullPrefix_ReturnsOriginalParameters()
+        {
+            // Arrange
+            var config = new VTubeStudioPCConfig(parameterPrefix: null!);
+            var adapter = new VTSParameterPrefixAdapter(config);
+            var trackingParams = new List<TrackingParam>
+            {
+                new TrackingParam { Id = "Param1", Value = 0.5, Weight = 1.0 }
+            };
+
+            // Act
+            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Id.Should().Be("Param1");
+            result[0].Value.Should().Be(0.5);
+            result[0].Weight.Should().Be(1.0);
+        }
+
+        [Fact]
+        public void AdaptTrackingParameters_CreatesNewInstances()
+        {
+            // Arrange
+            var config = new VTubeStudioPCConfig(parameterPrefix: "_SB_");
+            var adapter = new VTSParameterPrefixAdapter(config);
+            var originalParam = new TrackingParam { Id = "TestParam", Value = 0.5, Weight = 1.0 };
+            var trackingParams = new List<TrackingParam> { originalParam };
+
+            // Act
+            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+
+            // Assert
+            result.Should().HaveCount(1);
+            var adaptedParam = result[0];
+            adaptedParam.Should().NotBeSameAs(originalParam);
+            adaptedParam.Id.Should().Be("_SB_TestParam");
+            adaptedParam.Value.Should().Be(originalParam.Value);
+            adaptedParam.Weight.Should().Be(originalParam.Weight);
+        }
+
+        #endregion
     }
 }
