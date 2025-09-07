@@ -19,7 +19,8 @@ namespace SharpBridge.Utilities
         /// <param name="config">VTube Studio PC configuration containing the parameter prefix</param>
         public VTSParameterPrefixAdapter(VTubeStudioPCConfig config)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            ArgumentNullException.ThrowIfNull(config);
+            _config = config;
         }
 
         /// <summary>
@@ -29,10 +30,7 @@ namespace SharpBridge.Utilities
         /// <returns>Adapted parameters with prefixed names ready for VTube Studio PC</returns>
         public IEnumerable<VTSParameter> AdaptParameters(IEnumerable<VTSParameter> parameters)
         {
-            if (parameters == null)
-            {
-                throw new ArgumentNullException(nameof(parameters));
-            }
+            ArgumentNullException.ThrowIfNull(parameters);
 
             // If no prefix is configured, return parameters unchanged
             if (string.IsNullOrEmpty(_config.ParameterPrefix))
@@ -50,10 +48,7 @@ namespace SharpBridge.Utilities
         /// <returns>Adapted parameter with prefixed name</returns>
         public VTSParameter AdaptParameter(VTSParameter parameter)
         {
-            if (parameter == null)
-            {
-                throw new ArgumentNullException(nameof(parameter));
-            }
+            ArgumentNullException.ThrowIfNull(parameter);
 
             // Create a new VTSParameter with the prefixed name, preserving all other properties
             return new VTSParameter(
@@ -74,7 +69,7 @@ namespace SharpBridge.Utilities
         {
             if (trackingParams == null)
             {
-                return Enumerable.Empty<TrackingParam>();
+                return [];
             }
 
             var prefix = _config.ParameterPrefix;
@@ -83,12 +78,12 @@ namespace SharpBridge.Utilities
                 return trackingParams; // No prefix configured, return as-is
             }
 
-            return trackingParams.Select(tp => new TrackingParam
+            return [.. trackingParams.Select(tp => new TrackingParam
             {
                 Id = $"{prefix}{tp.Id}",
                 Value = tp.Value,
                 Weight = tp.Weight
-            }).ToList();
+            })];
         }
 
         /// <summary>

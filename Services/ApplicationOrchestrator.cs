@@ -250,7 +250,7 @@ namespace SharpBridge.Services
 
             _modeManager.Clear();
 
-            // Send initial tracking request                
+            // Send initial tracking request                 
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
