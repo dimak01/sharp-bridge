@@ -21,6 +21,7 @@ namespace SharpBridge.Services
         private readonly IConfigManager _configManager;
         private readonly IWebSocketWrapper _webSocket;
         private readonly IPortDiscoveryService _portDiscoveryService;
+        private readonly IVTSParameterAdapter _parameterAdapter;
         private readonly IFileChangeWatcher? _appConfigWatcher;
         private bool _isDisposed;
         private readonly DateTime _startTime;
@@ -67,18 +68,21 @@ namespace SharpBridge.Services
         /// <param name="configManager">Configuration manager for loading configs</param>
         /// <param name="webSocket">WebSocket wrapper for communication</param>
         /// <param name="portDiscoveryService">Service for discovering VTube Studio's port</param>
+        /// <param name="parameterAdapter">Adapter for transforming VTS parameters</param>
         /// <param name="appConfigWatcher">Optional file watcher for application config changes</param>
         public VTubeStudioPCClient(
             IAppLogger logger,
             IConfigManager configManager,
             IWebSocketWrapper webSocket,
             IPortDiscoveryService portDiscoveryService,
+            IVTSParameterAdapter parameterAdapter,
             IFileChangeWatcher? appConfigWatcher = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
+            _parameterAdapter = parameterAdapter ?? throw new ArgumentNullException(nameof(parameterAdapter));
             _appConfigWatcher = appConfigWatcher;
             _startTime = DateTime.Now;
             _config = _configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
@@ -231,11 +235,12 @@ namespace SharpBridge.Services
             {
                 _status = PCClientStatus.SendingData;
 
+                var adaptedParameters = _parameterAdapter.AdaptTrackingParameters(trackingData.Parameters);
                 var request = new InjectParamsRequest
                 {
                     FaceFound = trackingData.FaceFound,
                     Mode = "set",
-                    ParameterValues = trackingData.Parameters
+                    ParameterValues = adaptedParameters
                 };
 
                 await _webSocket.SendRequestAsync<InjectParamsRequest, object>(

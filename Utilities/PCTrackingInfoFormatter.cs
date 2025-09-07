@@ -23,6 +23,7 @@ namespace SharpBridge.Utilities
         private readonly IParameterColorService _colorService;
         private readonly IShortcutConfigurationManager _shortcutManager;
         private readonly IParameterTableConfigurationManager _columnConfigManager;
+        private readonly VTubeStudioPCConfig _pcConfig;
 
         /// <summary>
         /// Initializes a new instance of the PCTrackingInfoFormatter
@@ -33,13 +34,15 @@ namespace SharpBridge.Utilities
         /// <param name="shortcutManager">Shortcut configuration manager for dynamic shortcuts</param>
         /// <param name="userPreferences">User preferences for initial verbosity level</param>
         /// <param name="columnConfigManager">Parameter table column configuration manager</param>
-        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences, IParameterTableConfigurationManager columnConfigManager)
+        /// <param name="pcConfig">VTube Studio PC configuration for displaying current prefix</param>
+        public PCTrackingInfoFormatter(IConsole console, ITableFormatter tableFormatter, IParameterColorService colorService, IShortcutConfigurationManager shortcutManager, UserPreferences userPreferences, IParameterTableConfigurationManager columnConfigManager, VTubeStudioPCConfig pcConfig)
         {
             _console = console ?? throw new ArgumentNullException(nameof(console));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
             _shortcutManager = shortcutManager ?? throw new ArgumentNullException(nameof(shortcutManager));
             _columnConfigManager = columnConfigManager ?? throw new ArgumentNullException(nameof(columnConfigManager));
+            _pcConfig = pcConfig ?? throw new ArgumentNullException(nameof(pcConfig));
             var preferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
 
             // Initialize verbosity from user preferences
@@ -85,6 +88,10 @@ namespace SharpBridge.Utilities
 
             // Header with service status
             builder.AppendLine(FormatServiceHeader(SERVICE_NAME, stats.Status, verbosityShortcut));
+
+            // Parameter prefix information
+            var prefixDisplay = string.IsNullOrEmpty(_pcConfig.ParameterPrefix) ? "None" : _pcConfig.ParameterPrefix;
+            builder.AppendLine($"Parameter Prefix in VTube Studio PC: {ConsoleColors.Colorize(prefixDisplay, ConsoleColors.StringValueColor)}");
 
             // Tracking data details
             if (stats.CurrentEntity is PCTrackingInfo pcTrackingInfo)
