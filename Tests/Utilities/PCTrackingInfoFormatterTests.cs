@@ -800,7 +800,7 @@ namespace SharpBridge.Tests.Utilities
         {
             // Act & Assert
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
-            Action act = () => new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            Action act = () => _ = new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -808,7 +808,7 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithNullColumnConfigManager_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, null!, _pcConfig);
+            Action act = () => _ = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, null!, _pcConfig);
             act.Should().Throw<ArgumentNullException>().WithParameterName("columnConfigManager");
         }
 
@@ -819,7 +819,7 @@ namespace SharpBridge.Tests.Utilities
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
             var userPreferences = new UserPreferences
             {
-                PCParameterTableColumns = new[] { ParameterTableColumn.Value, ParameterTableColumn.ProgressBar }
+                PCParameterTableColumns = [ParameterTableColumn.Value, ParameterTableColumn.ProgressBar]
             };
 
             // Act

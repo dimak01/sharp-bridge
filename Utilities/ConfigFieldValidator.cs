@@ -11,7 +11,7 @@ namespace SharpBridge.Utilities
     /// <summary>
     /// Implementation of IConfigFieldValidator providing reusable validation methods for common field types.
     /// </summary>
-    public class ConfigFieldValidator : IConfigFieldValidator
+    public partial class ConfigFieldValidator : IConfigFieldValidator
     {
         /// <summary>
         /// Validates that a field contains a valid port number (1-65535).
@@ -232,6 +232,10 @@ namespace SharpBridge.Utilities
             return hostNameType == UriHostNameType.Dns;
         }
 
+
+        [System.Text.RegularExpressions.GeneratedRegex(@"^[a-zA-Z0-9_]+$", System.Text.RegularExpressions.RegexOptions.None, 100)]
+        private static partial System.Text.RegularExpressions.Regex ParameterPrefixRegex();
+
         /// <summary>
         /// Validates that a field contains a valid parameter prefix for VTube Studio PC.
         /// </summary>
@@ -251,7 +255,7 @@ namespace SharpBridge.Utilities
             }
 
             // Check format (alphanumeric and underscores only, no spaces)
-            if (!string.IsNullOrEmpty(prefix) && !System.Text.RegularExpressions.Regex.IsMatch(prefix, @"^[a-zA-Z0-9_]+$"))
+            if (!string.IsNullOrEmpty(prefix) && !ParameterPrefixRegex().IsMatch(prefix))
             {
                 return CreateValidationIssue(field, "Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
             }
