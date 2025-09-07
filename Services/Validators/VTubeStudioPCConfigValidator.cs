@@ -39,6 +39,7 @@ namespace SharpBridge.Services.Validators
                 "Host" => FieldValidator.ValidateHost(field),
                 "Port" => FieldValidator.ValidatePort(field),
                 "UsePortDiscovery" => FieldValidator.ValidateBoolean(field),
+                "ParameterPrefix" => FieldValidator.ValidateParameterPrefix(field),
                 _ => CreateUnknownFieldError(field)
             };
         }

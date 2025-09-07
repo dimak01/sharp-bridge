@@ -233,6 +233,33 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
+        /// Validates that a field contains a valid parameter prefix for VTube Studio PC.
+        /// </summary>
+        /// <param name="field">The field to validate</param>
+        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
+        public FieldValidationIssue? ValidateParameterPrefix(ConfigFieldState field)
+        {
+            if (field.Value is not string prefix)
+            {
+                return CreateValidationIssue(field, $"Parameter prefix must be a string, got {field.Value?.GetType().Name ?? "null"}");
+            }
+
+            // Check length (0-15 characters, empty is allowed)
+            if (prefix.Length > 15)
+            {
+                return CreateValidationIssue(field, "Parameter prefix cannot exceed 15 characters");
+            }
+
+            // Check format (alphanumeric and underscores only, no spaces)
+            if (!string.IsNullOrEmpty(prefix) && !System.Text.RegularExpressions.Regex.IsMatch(prefix, @"^[a-zA-Z0-9_]+$"))
+            {
+                return CreateValidationIssue(field, "Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
+            }
+
+            return null; // Validation passed
+        }
+
+        /// <summary>
         /// Creates a validation issue with consistent formatting.
         /// </summary>
         /// <param name="field">The field being validated</param>

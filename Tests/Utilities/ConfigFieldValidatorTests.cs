@@ -830,5 +830,175 @@ namespace SharpBridge.Tests.Utilities
 
 
         #endregion
+
+        #region ValidateParameterPrefix Tests
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("_SB_")]
+        [InlineData("SB_")]
+        [InlineData("MyPrefix")]
+        [InlineData("123")]
+        [InlineData("_123_")]
+        [InlineData("A1B2C3")]
+        [InlineData("prefix_123")]
+        [InlineData("_")]
+        [InlineData("a")]
+        [InlineData("A")]
+        [InlineData("1")]
+        [InlineData("123456789012345")] // 15 characters (max length)
+        public void ValidateParameterPrefix_WithValidPrefixes_ReturnsNull(string prefix)
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", prefix, true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Theory]
+        [InlineData("1234567890123456")] // 16 characters (exceeds max)
+        [InlineData("ThisIsTooLongPrefix")] // 20 characters
+        [InlineData("A".PadRight(20, 'B'))] // 20 characters
+        public void ValidateParameterPrefix_WithTooLongPrefixes_ReturnsValidationIssue(string prefix)
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", prefix, true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.FieldName.Should().Be("ParameterPrefix");
+            result.ExpectedType.Should().Be(typeof(string));
+            result.Description.Should().Be("Parameter prefix cannot exceed 15 characters");
+            result.ProvidedValueText.Should().Be(prefix);
+        }
+
+        [Theory]
+        [InlineData("My Prefix")] // space
+        [InlineData("My-Prefix")] // hyphen
+        [InlineData("My.Prefix")] // dot
+        [InlineData("My/Prefix")] // slash
+        [InlineData("My\\Prefix")] // backslash
+        [InlineData("My@Prefix")] // at symbol
+        [InlineData("My#Prefix")] // hash
+        [InlineData("My$Prefix")] // dollar
+        [InlineData("My%Prefix")] // percent
+        [InlineData("My&Prefix")] // ampersand
+        [InlineData("My*Prefix")] // asterisk
+        [InlineData("My+Prefix")] // plus
+        [InlineData("My=Prefix")] // equals
+        [InlineData("My?Prefix")] // question mark
+        [InlineData("My!Prefix")] // exclamation
+        [InlineData("My[Prefix")] // bracket
+        [InlineData("My]Prefix")] // bracket
+        [InlineData("My{Prefix")] // brace
+        [InlineData("My}Prefix")] // brace
+        [InlineData("My(Prefix")] // parenthesis
+        [InlineData("My)Prefix")] // parenthesis
+        [InlineData("My<Prefix")] // angle bracket
+        [InlineData("My>Prefix")] // angle bracket
+        [InlineData("My|Prefix")] // pipe
+        [InlineData("My;Prefix")] // semicolon
+        [InlineData("My:Prefix")] // colon
+        [InlineData("My\"Prefix")] // quote
+        [InlineData("My'Prefix")] // apostrophe
+        [InlineData("My,Prefix")] // comma
+        [InlineData("My~Prefix")] // tilde
+        [InlineData("My`Prefix")] // backtick
+        public void ValidateParameterPrefix_WithInvalidCharacters_ReturnsValidationIssue(string prefix)
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", prefix, true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.FieldName.Should().Be("ParameterPrefix");
+            result.ExpectedType.Should().Be(typeof(string));
+            result.Description.Should().Be("Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
+            result.ProvidedValueText.Should().Be(prefix);
+        }
+
+        [Fact]
+        public void ValidateParameterPrefix_WithNullValue_ReturnsValidationIssue()
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", null, true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.FieldName.Should().Be("ParameterPrefix");
+            result.ExpectedType.Should().Be(typeof(string));
+            result.Description.Should().Be("Parameter prefix must be a string, got null");
+            result.ProvidedValueText.Should().BeNull();
+        }
+
+        [Theory]
+        [InlineData(123)]
+        [InlineData(true)]
+        [InlineData(123.45)]
+        [InlineData(new object())]
+        public void ValidateParameterPrefix_WithNonStringValue_ReturnsValidationIssue(object value)
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", value, true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.FieldName.Should().Be("ParameterPrefix");
+            result.ExpectedType.Should().Be(typeof(string));
+            result.Description.Should().Contain("Parameter prefix must be a string, got");
+            result.ProvidedValueText.Should().Be(value.ToString());
+        }
+
+        [Fact]
+        public void ValidateParameterPrefix_WithWhitespaceOnly_ReturnsValidationIssue()
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", "   ", true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.FieldName.Should().Be("ParameterPrefix");
+            result.ExpectedType.Should().Be(typeof(string));
+            result.Description.Should().Be("Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
+            result.ProvidedValueText.Should().Be("   ");
+        }
+
+        [Fact]
+        public void ValidateParameterPrefix_WithMixedValidAndInvalidCharacters_ReturnsValidationIssue()
+        {
+            // Arrange
+            var field = new ConfigFieldState("ParameterPrefix", "Valid_123_Invalid!", true, typeof(string), "Parameter Prefix");
+
+            // Act
+            var result = _validator.ValidateParameterPrefix(field);
+
+            // Assert
+            result.Should().NotBeNull();
+            result!.FieldName.Should().Be("ParameterPrefix");
+            result.ExpectedType.Should().Be(typeof(string));
+            result.Description.Should().Be("Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
+            result.ProvidedValueText.Should().Be("Valid_123_Invalid!");
+        }
+
+        #endregion
     }
 }
