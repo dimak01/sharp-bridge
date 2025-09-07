@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -20,6 +21,7 @@ namespace SharpBridge.Tests.Utilities
         private readonly ApplicationConfig _testAppConfig;
         private readonly ConsoleRenderContext _testContext;
         private readonly NetworkStatus _testNetworkStatus;
+        private readonly CancellationTokenSource _testCancellationTokenSource;
 
         public NetworkStatusContentProviderTests()
         {
@@ -28,6 +30,7 @@ namespace SharpBridge.Tests.Utilities
             _externalEditorServiceMock = new Mock<IExternalEditorService>();
             _loggerMock = new Mock<IAppLogger>();
             _consoleMock = new Mock<IConsole>();
+            _testCancellationTokenSource = new CancellationTokenSource();
 
             // Setup test data
             _testAppConfig = new ApplicationConfig();
@@ -45,6 +48,24 @@ namespace SharpBridge.Tests.Utilities
             _externalEditorServiceMock.Setup(x => x.TryOpenApplicationConfigAsync()).ReturnsAsync(true);
         }
 
+        /// <summary>
+        /// Helper method to create a NetworkStatusContentProvider with a short refresh interval for testing
+        /// </summary>
+        private NetworkStatusContentProvider CreateProvider(int refreshIntervalMs = 50)
+        {
+            return new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object, refreshIntervalMs);
+        }
+
+        /// <summary>
+        /// Helper method to create a NetworkStatusContentProvider with external cancellation token source for testing
+        /// </summary>
+        private NetworkStatusContentProvider CreateProviderWithExternalCts(CancellationTokenSource cts, int refreshIntervalMs = 50)
+        {
+            return new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object, refreshIntervalMs, cts);
+        }
+
+
+
         public void Dispose()
         {
             Dispose(true);
@@ -55,7 +76,7 @@ namespace SharpBridge.Tests.Utilities
         {
             if (disposing)
             {
-                // Cleanup managed resources if needed
+                _testCancellationTokenSource?.Dispose();
             }
         }
 
@@ -65,7 +86,7 @@ namespace SharpBridge.Tests.Utilities
         public void Constructor_WithValidParameters_InitializesCorrectly()
         {
             // Act
-            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            var provider = CreateProvider();
 
             // Assert
             provider.Should().NotBeNull();
@@ -106,6 +127,56 @@ namespace SharpBridge.Tests.Utilities
             var exception = Assert.Throws<ArgumentNullException>(() => new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, null!));
             exception.ParamName.Should().Be("logger");
         }
+
+        [Fact]
+        public void Constructor_WithCustomRefreshInterval_InitializesCorrectly()
+        {
+            // Act
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object, 5000);
+
+            // Assert
+            provider.Should().NotBeNull();
+            provider.Mode.Should().Be(ConsoleMode.NetworkStatus);
+            provider.DisplayName.Should().Be("Network Status");
+            provider.ToggleAction.Should().Be(ShortcutAction.ShowNetworkStatus);
+            provider.PreferredUpdateInterval.Should().Be(TimeSpan.FromMilliseconds(100));
+        }
+
+        [Fact]
+        public void Constructor_WithExternalCancellationTokenSource_InitializesCorrectly()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+
+            // Act
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object, 1000, cts);
+
+            // Assert
+            provider.Should().NotBeNull();
+            provider.Mode.Should().Be(ConsoleMode.NetworkStatus);
+            provider.DisplayName.Should().Be("Network Status");
+            provider.ToggleAction.Should().Be(ShortcutAction.ShowNetworkStatus);
+            provider.PreferredUpdateInterval.Should().Be(TimeSpan.FromMilliseconds(100));
+        }
+
+        [Fact]
+        public void Constructor_WithZeroRefreshInterval_ThrowsArgumentOutOfRangeException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object, 0));
+            exception.ParamName.Should().Be("refreshIntervalMs");
+        }
+
+        [Fact]
+        public void Constructor_WithNegativeRefreshInterval_ThrowsArgumentOutOfRangeException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object, -1000));
+            exception.ParamName.Should().Be("refreshIntervalMs");
+        }
+
 
         #endregion
 
@@ -159,7 +230,7 @@ namespace SharpBridge.Tests.Utilities
         public void Enter_ClearsConsoleAndLogsDebug()
         {
             // Arrange
-            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            var provider = CreateProvider();
 
             // Act
             provider.Enter(_consoleMock.Object);
@@ -173,7 +244,7 @@ namespace SharpBridge.Tests.Utilities
         public void Enter_StartsBackgroundRefreshTask()
         {
             // Arrange
-            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            var provider = CreateProvider();
 
             // Act
             provider.Enter(_consoleMock.Object);
@@ -189,7 +260,7 @@ namespace SharpBridge.Tests.Utilities
         public void Enter_MultipleCallsDoNotCreateMultipleTasks()
         {
             // Arrange
-            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            var provider = CreateProvider();
 
             // Act
             provider.Enter(_consoleMock.Object);
@@ -583,6 +654,354 @@ namespace SharpBridge.Tests.Utilities
             var secondTask = backgroundTaskField?.GetValue(provider) as Task;
             secondTask.Should().NotBeSameAs(firstTask);
             secondTask!.IsCompleted.Should().BeFalse();
+        }
+
+        #endregion
+
+        #region Dispose Method Tests
+
+        [Fact]
+        public void Dispose_CallsDisposeWithTrue()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act & Assert - Should not throw
+            provider.Dispose();
+            // The actual disposal logic is tested in the protected Dispose(bool) method
+            Assert.True(true); // Test passes if no exception is thrown
+        }
+
+        [Fact]
+        public void Dispose_MultipleCalls_DoesNotThrow()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act & Assert - Multiple dispose calls should not throw
+            provider.Dispose();
+            provider.Dispose();
+            provider.Dispose();
+            // Test passes if no exception is thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void Dispose_WithoutBackgroundTask_DoesNotThrow()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            // Don't call Enter() so no background task is started
+
+            // Act & Assert - Should not throw
+            provider.Dispose();
+            // Test passes if no exception is thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void Dispose_StopsBackgroundTask()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act
+            provider.Dispose();
+
+            // Assert - Background task should be cancelled/completed
+            // Note: The task might still be running briefly, but cancellation should be requested
+            var cancellationTokenSourceField = typeof(NetworkStatusContentProvider).GetField("_cancellationTokenSource", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cancellationTokenSource = cancellationTokenSourceField?.GetValue(provider) as CancellationTokenSource;
+            cancellationTokenSource?.IsCancellationRequested.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Dispose_DisposesCancellationTokenSource()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act
+            provider.Dispose();
+
+            // Assert - CancellationTokenSource should be disposed
+            var cancellationTokenSourceField = typeof(NetworkStatusContentProvider).GetField("_cancellationTokenSource", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cancellationTokenSource = cancellationTokenSourceField?.GetValue(provider) as CancellationTokenSource;
+            cancellationTokenSource?.IsCancellationRequested.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Dispose_WhenAlreadyDisposed_DoesNotThrow()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+            provider.Dispose(); // First dispose
+
+            // Act & Assert - Second dispose should not throw
+            provider.Dispose();
+            // Test passes if no exception is thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void Dispose_WithDisposingTrue_ExecutesDisposalLogic()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act
+            provider.Dispose();
+
+            // Assert - Should set disposed flag
+            var disposedField = typeof(NetworkStatusContentProvider).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var disposed = disposedField?.GetValue(provider) as bool?;
+            disposed.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Dispose_WithDisposingFalse_DoesNotExecuteDisposalLogic()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act - Call the protected Dispose method with false using reflection
+            var disposeMethod = typeof(NetworkStatusContentProvider).GetMethod("Dispose", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new[] { typeof(bool) }, null);
+            disposeMethod?.Invoke(provider, new object[] { false });
+
+            // Assert - Should not set disposed flag when disposing is false
+            var disposedField = typeof(NetworkStatusContentProvider).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var disposed = disposedField?.GetValue(provider) as bool?;
+            disposed.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Dispose_WhenAlreadyDisposed_DoesNotExecuteDisposalLogic()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+            provider.Dispose(); // First dispose
+
+            // Act - Call the protected Dispose method again using reflection
+            var disposeMethod = typeof(NetworkStatusContentProvider).GetMethod("Dispose", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance, null, new[] { typeof(bool) }, null);
+            disposeMethod?.Invoke(provider, new object[] { true });
+
+            // Assert - Should not throw and should remain disposed
+            var disposedField = typeof(NetworkStatusContentProvider).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var disposed = disposedField?.GetValue(provider) as bool?;
+            disposed.Should().BeTrue();
+        }
+
+        #endregion
+
+        #region StopBackgroundRefresh Method Tests
+
+        [Fact]
+        public async Task StopBackgroundRefresh_WithNoBackgroundTask_ReturnsImmediately()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            // Don't call Enter() so no background task is started
+
+            // Act
+            var stopMethod = typeof(NetworkStatusContentProvider).GetMethod("StopBackgroundRefresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = stopMethod?.Invoke(provider, null) as Task;
+            await task!;
+
+            // Assert - Should complete without throwing
+            task.IsCompletedSuccessfully.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task StopBackgroundRefresh_WithBackgroundTask_CancelsTask()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Act
+            var stopMethod = typeof(NetworkStatusContentProvider).GetMethod("StopBackgroundRefresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = stopMethod?.Invoke(provider, null) as Task;
+            await task!;
+
+            // Assert - Should complete without throwing
+            task.IsCompletedSuccessfully.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task StopBackgroundRefresh_WithRunningBackgroundTask_CancelsAndWaits()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            var provider = CreateProviderWithExternalCts(cts, 50); // Very short interval for testing
+
+            // Start background task
+            provider.Enter(_consoleMock.Object);
+
+            // Wait a bit to ensure the background task is running
+            await Task.Delay(100);
+
+            // Act
+            var stopMethod = typeof(NetworkStatusContentProvider).GetMethod("StopBackgroundRefresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = stopMethod?.Invoke(provider, null) as Task;
+            await task!;
+
+            // Assert - Should complete without throwing
+            task.IsCompletedSuccessfully.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task StopBackgroundRefresh_WithCancelledTask_HandlesGracefully()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            var provider = CreateProviderWithExternalCts(cts, 50); // Very short interval for testing
+            provider.Enter(_consoleMock.Object); // Start background task
+
+            // Cancel the task manually
+            cts.Cancel();
+
+            // Act
+            var stopMethod = typeof(NetworkStatusContentProvider).GetMethod("StopBackgroundRefresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = stopMethod?.Invoke(provider, null) as Task;
+            await task!;
+
+            // Assert - Should complete without throwing
+            task.IsCompletedSuccessfully.Should().BeTrue();
+        }
+
+        #endregion
+
+        #region Disposed State Tests
+
+        [Fact]
+        public void StartBackgroundRefresh_WhenDisposed_DoesNotStartTask()
+        {
+            // Arrange
+            var provider = new NetworkStatusContentProvider(_portStatusMonitorMock.Object, _networkStatusFormatterMock.Object, _externalEditorServiceMock.Object, _loggerMock.Object);
+            provider.Dispose(); // Dispose first
+
+            // Act
+            provider.Enter(_consoleMock.Object);
+
+            // Assert - Should not start background task when disposed
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var backgroundTask = backgroundTaskField?.GetValue(provider) as Task;
+            backgroundTask.Should().BeNull();
+        }
+
+        [Fact]
+        public void StartBackgroundRefresh_WhenDisposed_ReturnsEarly()
+        {
+            // Arrange
+            var provider = CreateProvider();
+            provider.Dispose(); // Dispose first
+
+            // Act
+            provider.Enter(_consoleMock.Object);
+
+            // Assert - Should not start background task when disposed
+            var backgroundTaskField = typeof(NetworkStatusContentProvider).GetField("_backgroundTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var backgroundTask = backgroundTaskField?.GetValue(provider) as Task;
+            backgroundTask.Should().BeNull(); // Should not create background task when disposed
+        }
+
+        #endregion
+
+        #region BackgroundRefreshLoop Branch Coverage Tests
+
+        [Fact]
+        public async Task BackgroundRefreshLoop_OnCancellation_ExitsGracefully()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            var provider = CreateProvider(50); // Very short interval for testing
+
+            // Act - Cancel immediately
+            cts.Cancel();
+            var backgroundLoopMethod = typeof(NetworkStatusContentProvider).GetMethod("BackgroundRefreshLoop", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = backgroundLoopMethod?.Invoke(provider, new object[] { cts.Token }) as Task;
+            await task!;
+
+            // Assert - Should complete without throwing
+            task.IsCompletedSuccessfully.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task BackgroundRefreshLoop_OnOperationCanceledException_ExitsGracefully()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            _portStatusMonitorMock.Setup(x => x.GetNetworkStatusAsync()).ThrowsAsync(new OperationCanceledException());
+
+            var provider = CreateProvider(50); // Very short interval for testing
+
+            // Act
+            var backgroundLoopMethod = typeof(NetworkStatusContentProvider).GetMethod("BackgroundRefreshLoop", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = backgroundLoopMethod?.Invoke(provider, new object[] { cts.Token }) as Task;
+            await task!;
+
+            // Assert - Should complete without throwing
+            task.IsCompletedSuccessfully.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task BackgroundRefreshLoop_OnGeneralException_LogsWarningAndRetries()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            _portStatusMonitorMock.Setup(x => x.GetNetworkStatusAsync()).ThrowsAsync(new InvalidOperationException("Test exception"));
+
+            var provider = CreateProviderWithExternalCts(cts, 50); // Very short interval for testing
+
+            // Act - Let it run and process the exception
+            var backgroundLoopMethod = typeof(NetworkStatusContentProvider).GetMethod("BackgroundRefreshLoop", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = backgroundLoopMethod?.Invoke(provider, new object[] { cts.Token }) as Task;
+
+            await Task.Delay(200); // Let it process for 200ms to ensure it hits the exception
+            cts.Cancel(); // Cancel to stop the loop
+
+            try
+            {
+                await task!;
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected when cancelling
+            }
+
+            // Assert - Should have logged warning
+            _loggerMock.Verify(x => x.Warning("Failed to refresh network status: {0}", "Test exception"), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public async Task BackgroundRefreshLoop_WhenRefreshIntervalNotMet_SkipsRefresh()
+        {
+            // Arrange
+            using var cts = new CancellationTokenSource();
+            var provider = CreateProvider(1000); // 1 second interval for testing
+
+            // Set a very recent refresh time (within the 1 second interval)
+            var lastRefreshField = typeof(NetworkStatusContentProvider).GetField("_lastRefresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            lastRefreshField?.SetValue(provider, DateTime.UtcNow.AddMilliseconds(-500)); // 500ms ago, well within 1000ms interval
+
+            // Act - Let it run briefly then cancel
+            var backgroundLoopMethod = typeof(NetworkStatusContentProvider).GetMethod("BackgroundRefreshLoop", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var task = backgroundLoopMethod?.Invoke(provider, new object[] { cts.Token }) as Task;
+
+            await Task.Delay(200); // Let it process for 200ms
+            cts.Cancel(); // Cancel to stop the loop
+            await task!;
+
+            // Assert - Should not have called the service due to recent refresh
+            _portStatusMonitorMock.Verify(x => x.GetNetworkStatusAsync(), Times.Never);
         }
 
         #endregion

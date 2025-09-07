@@ -26,6 +26,23 @@ namespace SharpBridge.Interfaces
             int singleColumnBarWidth = 20, int? singleColumnMaxItems = null);
 
         /// <summary>
+        /// Appends a formatted table using generic column definitions with indentation
+        /// </summary>
+        /// <typeparam name="T">The type of data being displayed</typeparam>
+        /// <param name="builder">StringBuilder to append to</param>
+        /// <param name="title">Table title/header</param>
+        /// <param name="rows">Table rows data</param>
+        /// <param name="columns">Column definitions</param>
+        /// <param name="targetColumnCount">Number of side-by-side table columns to create</param>
+        /// <param name="consoleWidth">Available console width</param>
+        /// <param name="singleColumnBarWidth">Progress bar width for single-column mode (default 20)</param>
+        /// <param name="singleColumnMaxItems">Maximum items to show in single-column mode (default: show all)</param>
+        /// <param name="indent">Number of spaces to indent the entire table</param>
+        void AppendTable<T>(StringBuilder builder, string title,
+            IEnumerable<T> rows, IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth,
+            int singleColumnBarWidth, int? singleColumnMaxItems, int indent);
+
+        /// <summary>
         /// Creates a progress bar visualization for a value between 0 and 1
         /// </summary>
         /// <param name="value">Value between 0 and 1</param>

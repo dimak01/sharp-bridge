@@ -15,12 +15,14 @@ namespace SharpBridge.Utilities
         private readonly INetworkStatusFormatter _networkStatusFormatter;
         private readonly IExternalEditorService _externalEditorService;
         private readonly IAppLogger _logger;
+        private readonly int _refreshIntervalMs;
+        private readonly bool _ownsCancellationTokenSource;
 
         private NetworkStatus? _lastSnapshot;
         private DateTime _lastRefresh = DateTime.MinValue;
         private readonly object _snapshotLock = new object();
         private Task? _backgroundTask;
-        private CancellationTokenSource _cancellationTokenSource = new();
+        private CancellationTokenSource _cancellationTokenSource;
         private readonly object _taskLock = new object();
         private bool _disposed = false;
 
@@ -51,12 +53,21 @@ namespace SharpBridge.Utilities
         /// <param name="networkStatusFormatter">Formatter for network troubleshooting display</param>
         /// <param name="externalEditorService">Service for opening configuration in external editor</param>
         /// <param name="logger">Application logger</param>
-        public NetworkStatusContentProvider(IPortStatusMonitorService portStatusMonitor, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService, IAppLogger logger)
+        /// <param name="refreshIntervalMs">Background refresh interval in milliseconds (must be positive)</param>
+        /// <param name="cancellationTokenSource">Optional external cancellation token source for controlling background tasks. If null, an internal one will be created.</param>
+        public NetworkStatusContentProvider(IPortStatusMonitorService portStatusMonitor, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService, IAppLogger logger, int refreshIntervalMs = 10000, CancellationTokenSource? cancellationTokenSource = null)
         {
             _portStatusMonitor = portStatusMonitor ?? throw new ArgumentNullException(nameof(portStatusMonitor));
             _networkStatusFormatter = networkStatusFormatter ?? throw new ArgumentNullException(nameof(networkStatusFormatter));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            if (refreshIntervalMs <= 0)
+                throw new ArgumentOutOfRangeException(nameof(refreshIntervalMs), "Refresh interval must be positive");
+
+            _refreshIntervalMs = refreshIntervalMs;
+            _cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
+            _ownsCancellationTokenSource = cancellationTokenSource == null;
         }
 
         /// <summary>
@@ -134,7 +145,11 @@ namespace SharpBridge.Utilities
 
                 if (_backgroundTask == null || _backgroundTask.IsCompleted)
                 {
-                    _cancellationTokenSource = new CancellationTokenSource();
+                    // Create a new CancellationTokenSource if the current one is cancelled
+                    if (_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        _cancellationTokenSource = new CancellationTokenSource();
+                    }
                     _backgroundTask = BackgroundRefreshLoop(_cancellationTokenSource.Token);
                 }
             }
@@ -166,18 +181,16 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Background loop to refresh network status every 10 seconds
+        /// Background loop to refresh network status at the configured interval
         /// </summary>
         private async Task BackgroundRefreshLoop(CancellationToken cancellationToken)
         {
-            const int refreshIntervalMs = 10000; // 10 seconds
-
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     // Check if we need to refresh (avoid over-refreshing)
-                    if (DateTime.UtcNow - _lastRefresh < TimeSpan.FromMilliseconds(refreshIntervalMs))
+                    if (DateTime.UtcNow - _lastRefresh < TimeSpan.FromMilliseconds(_refreshIntervalMs))
                     {
                         await Task.Delay(100, cancellationToken); // Short wait before checking again
                         continue;
@@ -194,7 +207,7 @@ namespace SharpBridge.Utilities
                     _logger.Debug("Network status refreshed successfully");
 
                     // Wait for the next refresh cycle
-                    await Task.Delay(refreshIntervalMs, cancellationToken);
+                    await Task.Delay(_refreshIntervalMs, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -205,7 +218,7 @@ namespace SharpBridge.Utilities
                     _logger.Warning("Failed to refresh network status: {0}", ex.Message);
 
                     // Wait a bit longer on error before retrying
-                    await Task.Delay(refreshIntervalMs * 2, cancellationToken);
+                    await Task.Delay(_refreshIntervalMs * 2, cancellationToken);
                 }
             }
         }
@@ -236,7 +249,13 @@ namespace SharpBridge.Utilities
                 {
                     // Expected when cancelling, ignore
                 }
-                _cancellationTokenSource.Dispose();
+
+                // Only dispose the CancellationTokenSource if we created it
+                // External ones should be managed by their creator
+                if (_ownsCancellationTokenSource)
+                {
+                    _cancellationTokenSource.Dispose();
+                }
             }
         }
     }

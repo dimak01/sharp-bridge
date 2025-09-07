@@ -42,5 +42,11 @@ namespace SharpBridge.Interfaces
         /// Gets or sets whether the cursor is visible
         /// </summary>
         bool CursorVisible { get; set; }
+
+        /// <summary>
+        /// Reads a line of input from the console
+        /// </summary>
+        /// <returns>The line read from the console</returns>
+        string? ReadLine();
     }
 }

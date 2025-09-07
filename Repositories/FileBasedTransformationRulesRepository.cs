@@ -81,8 +81,8 @@ namespace SharpBridge.Repositories
 
             try
             {
-                var appConfig = await _configManager.LoadApplicationConfigAsync();
-                var configPath = appConfig.TransformationEngine.ConfigPath;
+                var appConfig = await _configManager.LoadSectionAsync<TransformationEngineConfig>();
+                var configPath = appConfig.ConfigPath;
 
                 if (string.IsNullOrEmpty(configPath))
                 {
@@ -282,11 +282,25 @@ namespace SharpBridge.Repositories
         }
 
         /// <summary>
+        /// Compares two file paths for equality after normalizing them
+        /// </summary>
+        /// <param name="path1">First path to compare</param>
+        /// <param name="path2">Second path to compare</param>
+        /// <returns>True if the paths refer to the same file, false otherwise</returns>
+        private static bool ArePathsEqual(string path1, string path2)
+        {
+            if (string.IsNullOrEmpty(path1) || string.IsNullOrEmpty(path2))
+                return path1 == path2;
+
+            return Path.GetFullPath(path1).Equals(Path.GetFullPath(path2), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Handles file change events from the transformation rules file watcher
         /// </summary>
         private void OnFileChanged(object? sender, FileChangeEventArgs e)
         {
-            if (e.FilePath == _currentFilePath)
+            if (ArePathsEqual(e.FilePath, _currentFilePath))
             {
                 _isUpToDate = false;
                 _logger.Debug($"Rules file changed: {e.FilePath}");
@@ -304,8 +318,8 @@ namespace SharpBridge.Repositories
                 _logger.Debug("Application config changed, checking if transformation engine config path was affected");
 
                 // Load new app config and check if transformation engine config path changed
-                var newAppConfig = await _configManager.LoadApplicationConfigAsync();
-                var newConfigPath = newAppConfig.TransformationEngine.ConfigPath;
+                var newAppConfig = await _configManager.LoadSectionAsync<TransformationEngineConfig>();
+                var newConfigPath = newAppConfig.ConfigPath;
 
                 if (string.IsNullOrEmpty(newConfigPath))
                 {
@@ -313,7 +327,7 @@ namespace SharpBridge.Repositories
                     return;
                 }
 
-                if (newConfigPath != _currentFilePath)
+                if (!ArePathsEqual(newConfigPath, _currentFilePath))
                 {
                     _logger.Info($"Transformation engine config path changed from '{_currentFilePath}' to '{newConfigPath}', reloading rules");
                     _isUpToDate = false;

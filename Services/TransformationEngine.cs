@@ -114,7 +114,7 @@ namespace SharpBridge.Services
                 _logger.Debug("Application config changed, checking if transformation engine config was affected");
 
                 // Load new config and compare transformation engine section
-                var newConfig = await _configManager.LoadTransformationConfigAsync();
+                var newConfig = await _configManager.LoadSectionAsync<TransformationEngineConfig>();
                 if (!ConfigComparers.TransformationEngineConfigsEqual(_config, newConfig))
                 {
                     _logger.Info("Transformation engine configuration changed, updating internal config");
@@ -358,7 +358,7 @@ namespace SharpBridge.Services
                 // Scale the interpolated value back to the parameter range
                 return ScaleToRange(interpolatedValue, rule.Min, rule.Max);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log the error and fallback to linear interpolation
                 // Note: We can't use _logger here since this is a static method

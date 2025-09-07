@@ -498,8 +498,8 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             result.Should().Contain("Host Address");
-            result.Should().Contain("Port Number");
-            result.Should().Contain("Use Port Discovery"); // Display name from Description attribute
+            result.Should().Contain("VTube Studio PC API Port");
+            result.Should().Contain("Enable Automatic Port Discovery"); // Display name from Description attribute
 
             // These internal properties should NOT appear
             result.Should().NotContain("ConnectionTimeoutMs");
@@ -585,7 +585,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _renderer.RenderApplicationConfiguration(config);
 
             // Assert
-            result.Should().Contain("No");
+            result.Should().Contain("false");
         }
 
         [Fact]
@@ -604,7 +604,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _renderer.RenderApplicationConfiguration(config);
 
             // Assert
-            result.Should().Contain("Yes");
+            result.Should().Contain("true");
         }
 
         [Fact]
@@ -1022,8 +1022,8 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             var cleanResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
             cleanResult.Should().Contain("Host Address: localhost");
-            cleanResult.Should().Contain("Port Number: 8001");
-            cleanResult.Should().Contain("Use Port Discovery: Yes");
+            cleanResult.Should().Contain("VTube Studio PC API Port: 8001");
+            cleanResult.Should().Contain("Enable Automatic Port Discovery: true");
 
             // These should NOT appear due to JsonIgnore
             result.Should().NotContain("ConnectionTimeoutMs");
@@ -1693,7 +1693,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             var cleanResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
             cleanResult.Should().Contain("Host Address: localhost");
-            cleanResult.Should().Contain("Port Number: 8001");
+            cleanResult.Should().Contain("VTube Studio PC API Port: 8001");
             // Should not contain JsonIgnore properties
             result.Should().NotContain("ConnectionTimeoutMs");
         }

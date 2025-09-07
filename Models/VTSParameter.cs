@@ -18,32 +18,32 @@ namespace SharpBridge.Models
         /// Name of the plugin that added this parameter
         /// </summary>
         [JsonPropertyName("addedBy")]
-        public string AddedBy { get; set;  }
+        public string AddedBy { get; set; }
 
         /// <summary>
         /// Minimum allowed value for the parameter
         /// </summary>
         [JsonPropertyName("min")]
-        public double Min { get; set;  }
+        public double Min { get; set; }
 
         /// <summary>
         /// Maximum allowed value for the parameter
         /// </summary>
         [JsonPropertyName("max")]
-        public double Max { get; set;  }
+        public double Max { get; set; }
 
         /// <summary>
         /// Default value for the parameter
         /// </summary>
         [JsonPropertyName("defaultValue")]
-        public double DefaultValue { get; set;  }
+        public double DefaultValue { get; set; }
 
         /// <summary>
         /// Creates a new VTube Studio parameter definition
         /// </summary>
         public VTSParameter(string name, double min, double max, double defaultValue, string addedBy = "SharpBridge")
         {
-            Name = name; // ?? throw new ArgumentNullException(nameof(name));
+            Name = name ?? throw new ArgumentNullException(nameof(name));
             Min = min;
             Max = max;
             DefaultValue = defaultValue;
@@ -55,4 +55,4 @@ namespace SharpBridge.Models
             }
         }
     }
-} 
+}

@@ -2,7 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using SharpBridge.Interfaces;
 using SharpBridge.Models;
 using SharpBridge.Services;
+using SharpBridge.Services.Validators;
+using SharpBridge.Services.Remediation;
 using SharpBridge.Utilities;
+
 using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
@@ -31,28 +34,84 @@ namespace SharpBridge
             if (string.IsNullOrEmpty(configDirectory))
                 throw new ArgumentException("Config directory cannot be null or empty", nameof(configDirectory));
 
+            // Register logging services
+            services.AddSingleton(ConfigureSerilog());
+
+            // Register the Serilog logger as a singleton
+            services.AddSingleton<IAppLogger, SerilogAppLogger>();
+
+            // Register console abstraction
+            services.AddSingleton<IConsole, SystemConsole>();
+
+            // Register console window manager
+            services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
+
+            // Register field extractors
+            services.AddTransient<SharpBridge.Services.FieldExtractors.ConfigSectionFieldExtractor>();
+
+            // Register field extractors factory
+            services.AddSingleton<IConfigSectionFieldExtractorsFactory, ConfigSectionFieldExtractorsFactory>();
+
+            // Register field validator
+            services.AddSingleton<IConfigFieldValidator, ConfigFieldValidator>();
+
+            // Register shortcut parser (needed by remediation services)
+            services.AddSingleton<IShortcutParser, ShortcutParser>();
+
+            // Register validators and remediation services (needed by ConfigRemediationService)
+            services.AddTransient<VTubeStudioPCConfigValidator>();
+            services.AddTransient<VTubeStudioPhoneClientConfigValidator>();
+            services.AddTransient<GeneralSettingsConfigValidator>();
+            services.AddTransient<TransformationEngineConfigValidator>();
+
+            services.AddTransient<VTubeStudioPCConfigRemediationService>();
+            services.AddTransient<VTubeStudioPhoneClientConfigRemediationService>();
+            services.AddTransient<GeneralSettingsConfigRemediationService>();
+            services.AddTransient<TransformationEngineConfigRemediationService>();
+
+            services.AddSingleton<IConfigSectionValidatorsFactory, ConfigSectionValidatorsFactory>();
+            services.AddSingleton<IConfigSectionRemediationServiceFactory, ConfigSectionRemediationServiceFactory>();
+
+            services.AddSingleton<IConfigRemediationService, ConfigRemediationService>();
+
             // Register config manager
             services.AddSingleton<IConfigManager>(provider =>
-                new ConfigManager(configDirectory));
+                new ConfigManager(configDirectory,
+                    provider.GetRequiredService<IConfigSectionFieldExtractorsFactory>(),
+                    provider.GetRequiredService<IAppLogger>()));
+
+            // Build temporary container to get core services for immediate configuration remediation
+            var tempServiceProvider = services.BuildServiceProvider();
+
+            // Run configuration remediation immediately to ensure valid config before service initialization
+            var configRemediationService = tempServiceProvider.GetRequiredService<IConfigRemediationService>();
+            var remediationSuccess = configRemediationService.RemediateConfigurationAsync().GetAwaiter().GetResult();
+
+            if (!remediationSuccess)
+            {
+                throw new InvalidOperationException("Configuration remediation failed during startup");
+            }
+
+            tempServiceProvider.Dispose();
 
             // Register configurations
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
             });
 
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadPhoneConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<VTubeStudioPhoneClientConfig>().GetAwaiter().GetResult();
             });
 
             // Register GeneralSettingsConfig
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<GeneralSettingsConfig>().GetAwaiter().GetResult();
             });
 
             // Register ApplicationConfig (full consolidated config)
@@ -66,7 +125,7 @@ namespace SharpBridge
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
-                return configManager.LoadTransformationConfigAsync().GetAwaiter().GetResult();
+                return configManager.LoadSectionAsync<TransformationEngineConfig>().GetAwaiter().GetResult();
             });
 
             // Register UserPreferences
@@ -154,18 +213,6 @@ namespace SharpBridge
                 );
             });
 
-            // Register console abstraction
-            services.AddSingleton<IConsole, SystemConsole>();
-
-            // Register console window manager
-            services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
-
-            // Register logging services
-            services.AddSingleton(ConfigureSerilog());
-
-            // Register the Serilog logger as a singleton
-            services.AddSingleton<IAppLogger, SerilogAppLogger>();
-
             // Register keyboard input handler
             services.AddSingleton<IKeyboardInputHandler, KeyboardInputHandler>();
 
@@ -195,11 +242,14 @@ namespace SharpBridge
             services.AddSingleton<IFirewallEngine, WindowsFirewallEngine>();
             services.AddSingleton<IFirewallAnalyzer, WindowsFirewallAnalyzer>();
             services.AddSingleton<INetworkCommandProvider, WindowsNetworkCommandProvider>();
-            services.AddSingleton<INetworkStatusFormatter, NetworkStatusFormatter>();
+            services.AddSingleton<INetworkStatusFormatter>(provider =>
+                new NetworkStatusFormatter(
+                    provider.GetRequiredService<INetworkCommandProvider>(),
+                    provider.GetRequiredService<ITableFormatter>()
+                ));
             services.AddSingleton<IPortStatusMonitorService, PortStatusMonitorService>();
 
             // Register shortcut services
-            services.AddSingleton<IShortcutParser, ShortcutParser>();
             services.AddSingleton<IShortcutConfigurationManager>(provider =>
                 new ShortcutConfigurationManager(
                     provider.GetRequiredService<IShortcutParser>(),
@@ -240,7 +290,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<TransformationEngineInfoFormatter>(),
                     provider.GetRequiredService<PhoneTrackingInfoFormatter>(),
-                    provider.GetRequiredService<PCTrackingInfoFormatter>()
+                    provider.GetRequiredService<PCTrackingInfoFormatter>(),
+                    provider.GetRequiredService<IExternalEditorService>()
                 ));
             services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
 
@@ -290,7 +341,6 @@ namespace SharpBridge
                     provider.GetRequiredService<IConsole>(),
                     provider.GetRequiredService<IConsoleWindowManager>(),
                     provider.GetRequiredService<IParameterColorService>(),
-                    provider.GetRequiredService<IExternalEditorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<ApplicationConfig>(),
                     provider.GetRequiredService<UserPreferences>(),

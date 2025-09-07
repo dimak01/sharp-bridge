@@ -23,7 +23,7 @@ namespace SharpBridge.Services
         private readonly IPortDiscoveryService _portDiscoveryService;
         private readonly IFileChangeWatcher? _appConfigWatcher;
         private bool _isDisposed;
-        private DateTime _startTime;
+        private readonly DateTime _startTime;
         private int _messagesSent;
         private PCTrackingInfo _lastTrackingData = new PCTrackingInfo();
         private int _connectionAttempts;
@@ -81,7 +81,7 @@ namespace SharpBridge.Services
             _portDiscoveryService = portDiscoveryService ?? throw new ArgumentNullException(nameof(portDiscoveryService));
             _appConfigWatcher = appConfigWatcher;
             _startTime = DateTime.Now;
-            _config = _configManager.LoadPCConfigAsync().GetAwaiter().GetResult();
+            _config = _configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
 
             // Subscribe to application config changes if watcher is provided
             if (_appConfigWatcher != null)
@@ -101,11 +101,11 @@ namespace SharpBridge.Services
             }
 
             _connectionAttempts++;
-            _logger.Info("Connecting to VTube Studio at {0}:{1}", _config.Host, _config.Port);
+            _logger.Info("Connecting to VTube Studio at {0}:{1}", _config.Host ?? "localhost", _config.Port);
 
             try
             {
-                var uri = new Uri($"ws://{_config.Host}:{_config.Port}");
+                var uri = new Uri($"ws://{_config.Host ?? "localhost"}:{_config.Port}");
                 await _webSocket.ConnectAsync(uri, cancellationToken);
                 _logger.Info("Connected to VTube Studio");
             }
@@ -510,16 +510,16 @@ namespace SharpBridge.Services
             {
                 _logger.Debug("Application config changed, checking if PC client config was affected");
 
-                // Load new config and compare PC client section
-                var newConfig = await _configManager.LoadApplicationConfigAsync();
-                if (!ConfigComparers.PCClientConfigsEqual(_config, newConfig.PCClient))
+                // Load new PC client config and compare
+                var newPCConfig = await _configManager.LoadSectionAsync<VTubeStudioPCConfig>();
+                if (!ConfigComparers.PCClientConfigsEqual(_config, newPCConfig))
                 {
                     _logger.Info("PC client configuration changed, updating internal config");
-                    _config = newConfig.PCClient;
+                    _config = newPCConfig;
                     _configChanged = true;
 
                     _logger.Debug("PC client config updated - Host: {0}:{1}, Plugin: {2}",
-                        _config.Host, _config.Port, _config.PluginName);
+                        _config.Host ?? "localhost", _config.Port, _config.PluginName);
                 }
             }
             catch (Exception ex)

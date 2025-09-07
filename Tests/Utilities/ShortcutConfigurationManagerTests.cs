@@ -619,11 +619,6 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockWatcher = new Mock<IFileChangeWatcher>();
-            var defaultConfig = new GeneralSettingsConfig
-            {
-                EditorCommand = "notepad.exe \"%f\"",
-                Shortcuts = new Dictionary<string, string>()
-            };
             var newConfig = new ApplicationConfig
             {
                 GeneralSettings = new GeneralSettingsConfig
@@ -637,10 +632,15 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup mock to return different configs to trigger the change
-            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
-                .ReturnsAsync(defaultConfig);
-            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
-                .ReturnsAsync(newConfig);
+            var defaultConfig = new GeneralSettingsConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+
+            _mockConfigManager.SetupSequence(c => c.LoadSectionAsync<GeneralSettingsConfig>())
+                .ReturnsAsync(defaultConfig)  // Initial load in constructor
+                .ReturnsAsync(newConfig.GeneralSettings);  // Reload on config change
 
             new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
             var fileChangeArgs = new FileChangeEventArgs("config.json");
@@ -662,20 +662,10 @@ namespace SharpBridge.Tests.Utilities
                 EditorCommand = "notepad.exe \"%f\"",
                 Shortcuts = new Dictionary<string, string>()
             };
-            var newConfig = new ApplicationConfig
-            {
-                GeneralSettings = new GeneralSettingsConfig
-                {
-                    EditorCommand = "notepad.exe \"%f\"", // Same as default
-                    Shortcuts = new Dictionary<string, string>()
-                }
-            };
 
             // Setup mock to return the same config for both initial load and reload
-            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
+            _mockConfigManager.Setup(c => c.LoadSectionAsync<GeneralSettingsConfig>())
                 .ReturnsAsync(defaultConfig);
-            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
-                .ReturnsAsync(newConfig);
 
             new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
             var fileChangeArgs = new FileChangeEventArgs("config.json");
@@ -692,8 +682,15 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockWatcher = new Mock<IFileChangeWatcher>();
-            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
-                .ThrowsAsync(new Exception("Test exception"));
+            var defaultConfig = new GeneralSettingsConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+
+            _mockConfigManager.SetupSequence(c => c.LoadSectionAsync<GeneralSettingsConfig>())
+                .ReturnsAsync(defaultConfig)  // Initial load in constructor
+                .ThrowsAsync(new Exception("Test exception"));  // Reload on config change throws
 
             new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
             var fileChangeArgs = new FileChangeEventArgs("config.json");
@@ -714,11 +711,6 @@ namespace SharpBridge.Tests.Utilities
         {
             // Arrange
             var mockWatcher = new Mock<IFileChangeWatcher>();
-            var defaultConfig = new GeneralSettingsConfig
-            {
-                EditorCommand = "notepad.exe \"%f\"",
-                Shortcuts = new Dictionary<string, string>()
-            };
             var newGeneralSettings = new GeneralSettingsConfig
             {
                 EditorCommand = "new-editor.exe",
@@ -729,10 +721,15 @@ namespace SharpBridge.Tests.Utilities
             };
 
             // Setup mock to return different configs to trigger the change
-            _mockConfigManager.Setup(c => c.LoadGeneralSettingsConfigAsync())
-                .ReturnsAsync(defaultConfig);
-            _mockConfigManager.Setup(c => c.LoadApplicationConfigAsync())
-                .ReturnsAsync(new ApplicationConfig { GeneralSettings = newGeneralSettings });
+            var defaultConfig = new GeneralSettingsConfig
+            {
+                EditorCommand = "notepad.exe \"%f\"",
+                Shortcuts = new Dictionary<string, string>()
+            };
+
+            _mockConfigManager.SetupSequence(c => c.LoadSectionAsync<GeneralSettingsConfig>())
+                .ReturnsAsync(defaultConfig)  // Initial load in constructor
+                .ReturnsAsync(newGeneralSettings);  // Reload on config change
 
             new ShortcutConfigurationManager(_parserMock.Object, _loggerMock.Object, _mockConfigManager.Object, mockWatcher.Object);
 

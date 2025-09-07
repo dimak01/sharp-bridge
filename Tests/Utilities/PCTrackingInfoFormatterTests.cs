@@ -33,7 +33,6 @@ namespace SharpBridge.Tests.Utilities
 
     public class PCTrackingInfoFormatterTests
     {
-        private const int PARAM_DISPLAY_COUNT_NORMAL = 25;
 
         private readonly Mock<IConsole> _mockConsole;
         private readonly Mock<ITableFormatter> _mockTableFormatter;
@@ -75,25 +74,6 @@ namespace SharpBridge.Tests.Utilities
 
         #region Helper Methods
 
-        private static ServiceStats CreateMockServiceStats(string status, PCTrackingInfo currentEntity = null!,
-            bool isHealthy = true, DateTime lastSuccess = default, string lastError = null!)
-        {
-            var counters = new Dictionary<string, long>
-            {
-                ["MessagesSent"] = 1000,
-                ["ConnectionAttempts"] = 5,
-                ["UptimeSeconds"] = 3600
-            };
-
-            return new ServiceStats(
-                serviceName: "PC Client",
-                status: status,
-                currentEntity: currentEntity,
-                isHealthy: isHealthy,
-                lastSuccessfulOperation: lastSuccess,
-                lastError: lastError,
-                counters: counters);
-        }
 
         private static PCTrackingInfo CreatePCTrackingInfo(bool faceFound = true, List<TrackingParam> parameters = null!, Dictionary<string, IInterpolationDefinition> interpolations = null!)
         {
@@ -928,42 +908,6 @@ namespace SharpBridge.Tests.Utilities
 
 
 
-        private PCTrackingInfoFormatter CreateFormatterWithMocks(int windowWidth = 120, int tableRowsReturned = 10)
-        {
-            var mockConsole = new Mock<IConsole>();
-            mockConsole.Setup(c => c.WindowWidth).Returns(windowWidth);
-
-            var mockTableFormatter = new Mock<ITableFormatter>();
-            mockTableFormatter.Setup(t => t.AppendTable(
-                    It.IsAny<StringBuilder>(),
-                    It.IsAny<string>(),
-                    It.IsAny<IEnumerable<TrackingParam>>(),
-                    It.IsAny<IList<ITableColumnFormatter<TrackingParam>>>(),
-                    It.IsAny<int>(),
-                    It.IsAny<int>(),
-                    It.IsAny<int>(),
-                It.IsAny<int?>()));
-
-            var mockColorService = new Mock<IParameterColorService>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
-            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
-
-            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
-        }
-
-        private PCTrackingInfoFormatter CreateFormatterWithColorService(IParameterColorService colorService, int windowWidth = 120)
-        {
-            var mockConsole = new Mock<IConsole>();
-            mockConsole.Setup(c => c.WindowWidth).Returns(windowWidth);
-
-            var mockTableFormatter = new Mock<ITableFormatter>();
-            var mockShortcutManager = new Mock<IShortcutConfigurationManager>();
-            mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
-            var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
-
-            return new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, colorService, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
-        }
 
         #region Interpolation Tests
 

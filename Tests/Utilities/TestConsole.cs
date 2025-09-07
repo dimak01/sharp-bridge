@@ -136,5 +136,15 @@ namespace SharpBridge.Tests.Utilities
 
             return buffer;
         }
+
+        /// <summary>
+        /// Simulates reading a line of input from the console (returns empty string for testing)
+        /// </summary>
+        /// <returns>Empty string for testing purposes</returns>
+        public string? ReadLine()
+        {
+            // For testing, return empty string or could be made configurable
+            return string.Empty;
+        }
     }
 }

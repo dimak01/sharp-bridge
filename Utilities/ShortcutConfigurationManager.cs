@@ -25,7 +25,7 @@ namespace SharpBridge.Utilities
         private readonly HashSet<ShortcutAction> _explicitlyDisabled = new();
 
         // Legacy support
-        private GeneralSettingsConfig _config;
+        private readonly GeneralSettingsConfig _config;
 
         // Disposal tracking
         private bool _isDisposed;
@@ -48,7 +48,7 @@ namespace SharpBridge.Utilities
             InitializeWithDefaults();
 
             // Load initial config
-            _config = _configManager.LoadGeneralSettingsConfigAsync().GetAwaiter().GetResult();
+            _config = _configManager.LoadSectionAsync<GeneralSettingsConfig>().GetAwaiter().GetResult();
 
             // Subscribe to application config changes if watcher is provided
             if (_appConfigWatcher != null)
@@ -257,16 +257,7 @@ namespace SharpBridge.Utilities
         /// <returns>Dictionary mapping actions to their default shortcuts</returns>
         public Dictionary<ShortcutAction, Shortcut> GetDefaultShortcuts()
         {
-            return new Dictionary<ShortcutAction, Shortcut>
-            {
-                [ShortcutAction.CycleTransformationEngineVerbosity] = new Shortcut(ConsoleKey.T, ConsoleModifiers.Alt),
-                [ShortcutAction.CyclePCClientVerbosity] = new Shortcut(ConsoleKey.P, ConsoleModifiers.Alt),
-                [ShortcutAction.CyclePhoneClientVerbosity] = new Shortcut(ConsoleKey.O, ConsoleModifiers.Alt),
-                [ShortcutAction.ReloadTransformationConfig] = new Shortcut(ConsoleKey.K, ConsoleModifiers.Alt),
-                [ShortcutAction.OpenConfigInEditor] = new Shortcut(ConsoleKey.E, ConsoleModifiers.Control | ConsoleModifiers.Alt),
-                [ShortcutAction.ShowSystemHelp] = new Shortcut(ConsoleKey.F1, 0),
-                [ShortcutAction.ShowNetworkStatus] = new Shortcut(ConsoleKey.F2, 0)
-            };
+            return DefaultShortcutsProvider.GetDefaultShortcuts();
         }
 
         /// <summary>
@@ -281,12 +272,12 @@ namespace SharpBridge.Utilities
                 _logger.Debug("Application config changed, checking if general settings were affected");
 
                 // Load new config and compare general settings section
-                var newConfig = await _configManager.LoadApplicationConfigAsync();
-                if (!ConfigComparers.GeneralSettingsEqual(_config, newConfig.GeneralSettings))
+                var newConfig = await _configManager.LoadSectionAsync<GeneralSettingsConfig>();
+                if (!ConfigComparers.GeneralSettingsEqual(_config, newConfig))
                 {
                     _logger.Info("General settings changed, updating internal config and reloading shortcuts");
-                    UpdateConfig(newConfig.GeneralSettings);
-                    LoadFromConfiguration(newConfig.GeneralSettings);
+                    UpdateConfig(newConfig);
+                    LoadFromConfiguration(newConfig);
                 }
             }
             catch (Exception ex)
