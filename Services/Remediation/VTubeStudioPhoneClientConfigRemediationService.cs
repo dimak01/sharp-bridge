@@ -13,7 +13,9 @@ namespace SharpBridge.Services.Remediation
     /// </summary>
     public class VTubeStudioPhoneClientConfigRemediationService : BaseConfigSectionRemediationService
     {
-
+        /// <summary>
+        /// Field notes for the configuration section.
+        /// </summary>
         protected override Dictionary<string, string[]> FieldNotes { get; } = new()
         {
             ["IphoneIpAddress"] = new[]
@@ -51,6 +53,8 @@ namespace SharpBridge.Services.Remediation
         };
 
         /// <summary>
+        /// Field defaults for the configuration section.
+        /// </summary>
         protected override Dictionary<string, object> FieldDefaults { get; } = new()
         {
             ["LocalPort"] = 28964
@@ -81,6 +85,12 @@ namespace SharpBridge.Services.Remediation
             return false;
         }
 
+        /// <summary>
+        /// Builds the splash lines for the remediation process.
+        /// </summary>
+        /// <param name="issues">The issues to build the splash lines from</param>
+        /// <param name="isFirstTimeSetup">True if the configuration section is in first-time setup mode</param>
+        /// <returns>The built splash lines</returns>
         protected override string[] BuildSplashLines(List<FieldValidationIssue> issues, bool isFirstTimeSetup)
         {
             var lines = new List<string>
@@ -109,6 +119,9 @@ namespace SharpBridge.Services.Remediation
         }
 
         /// <summary>
+        /// Checks if the configuration section should fall back to defaults.
+        /// </summary>
+        /// <param name="fields">The fields to check</param>
         protected override bool ShouldFallBackToDefaults(List<ConfigFieldState> fields)
         {
             return false;
