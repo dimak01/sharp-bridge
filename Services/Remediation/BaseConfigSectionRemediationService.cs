@@ -52,8 +52,8 @@ namespace SharpBridge.Services.Remediation
         {
             var workingFields = new List<ConfigFieldState>(fieldsState);
 
-            // Check if all fields are missing - if so, silently fill with defaults and return
-            if (IsAllFieldsMissing(workingFields))
+            // Check if we sholuld fall back to defaults - if so, silently fill with defaults and return
+            if (ShouldFallBackToDefaults(workingFields))
             {
                 var defaultConfig = CreateConfigFromFieldStates(ApplyDefaultsToMissingFields(workingFields));
                 return (RemediationResult.Succeeded, defaultConfig);
@@ -67,8 +67,9 @@ namespace SharpBridge.Services.Remediation
                 return (RemediationResult.NoRemediationNeeded, null);
             }
 
+            var isFirstTimeSetup = IsFirstTimeSetup(workingFields);
             // Show splash screen and wait for user to start
-            var splash = BuildSplashLines(initialValidation.Issues);
+            var splash = BuildSplashLines(initialValidation.Issues, isFirstTimeSetup);
             _console.WriteLines(splash);
             _console.ReadLine();
 
@@ -96,6 +97,13 @@ namespace SharpBridge.Services.Remediation
                 return (RemediationResult.Failed, null);
             }
         }
+
+        /// <summary>
+        /// Checks if the configuration section is in first-time setup mode.
+        /// </summary>
+        /// <param name="fields">The fields to check</param>
+        /// <returns>True if the configuration section is in first-time setup mode</returns>
+        protected abstract bool IsFirstTimeSetup(List<ConfigFieldState> fields);
 
         /// <summary>
         /// Sorts validation issues by field order to ensure dependencies are handled correctly.
@@ -203,14 +211,14 @@ namespace SharpBridge.Services.Remediation
         /// </summary>
         /// <param name="issues">The issues to build the splash lines from</param>
         /// <returns>The built splash lines</returns>
-        protected abstract string[] BuildSplashLines(List<FieldValidationIssue> issues);
+        protected abstract string[] BuildSplashLines(List<FieldValidationIssue> issues, bool isFirstTimeSetup);
 
         /// <summary>
         /// Checks if all fields are missing.
         /// </summary>
         /// <param name="fields">The fields to check</param>
         /// <returns>True if all fields are missing</returns>
-        protected abstract bool IsAllFieldsMissing(List<ConfigFieldState> fields);
+        protected abstract bool ShouldFallBackToDefaults(List<ConfigFieldState> fields);
 
         /// <summary>
         /// Applies defaults to missing fields.
