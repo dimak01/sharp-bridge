@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using SharpBridge.Models;
 
@@ -25,28 +26,11 @@ namespace SharpBridge.Interfaces
         Task<ApplicationConfig> LoadApplicationConfigAsync();
 
         /// <summary>
-        /// Loads the PC configuration from the consolidated config
+        /// Saves the consolidated application configuration to file
         /// </summary>
-        /// <returns>The PC configuration</returns>
-        Task<VTubeStudioPCConfig> LoadPCConfigAsync();
-
-        /// <summary>
-        /// Loads the Phone configuration from the consolidated config
-        /// </summary>
-        /// <returns>The Phone configuration</returns>
-        Task<VTubeStudioPhoneClientConfig> LoadPhoneConfigAsync();
-
-        /// <summary>
-        /// Loads the GeneralSettings configuration from the consolidated config
-        /// </summary>
-        /// <returns>The GeneralSettings configuration</returns>
-        Task<GeneralSettingsConfig> LoadGeneralSettingsConfigAsync();
-
-        /// <summary>
-        /// Loads the TransformationEngine configuration from the consolidated config
-        /// </summary>
-        /// <returns>The TransformationEngine configuration</returns>
-        Task<TransformationEngineConfig> LoadTransformationConfigAsync();
+        /// <param name="config">The application configuration to save</param>
+        /// <returns>A task representing the asynchronous save operation</returns>
+        Task SaveApplicationConfigAsync(ApplicationConfig config);
 
         /// <summary>
         /// Loads user preferences from file or creates default ones if the file doesn't exist
@@ -68,31 +52,32 @@ namespace SharpBridge.Interfaces
         Task ResetUserPreferencesAsync();
 
         /// <summary>
-        /// Saves the PC configuration to file (for API symmetry - unused in production)
+        /// Loads a configuration section using the enum type identifier
         /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SavePCConfigAsync(VTubeStudioPCConfig config);
+        /// <typeparam name="T">The type of configuration section to load</typeparam>
+        /// <returns>The loaded configuration section</returns>
+        Task<T> LoadSectionAsync<T>() where T : IConfigSection;
 
         /// <summary>
-        /// Saves the Phone configuration to file (for API symmetry - unused in production)
+        /// Loads a configuration section using the enum type identifier
         /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SavePhoneConfigAsync(VTubeStudioPhoneClientConfig config);
+        /// <param name="sectionType">The type of configuration section to load</param>
+        /// <returns>The loaded configuration section</returns>
+        Task<IConfigSection> LoadSectionAsync(ConfigSectionTypes sectionType);
 
         /// <summary>
-        /// Saves the GeneralSettings configuration to file (for API symmetry - unused in production)
+        /// Saves a configuration section using the enum type identifier
         /// </summary>
-        /// <param name="config">The configuration to save</param>
+        /// <param name="sectionType">The type of configuration section to save</param>
+        /// <param name="config">The configuration section to save</param>
         /// <returns>A task representing the asynchronous save operation</returns>
-        Task SaveGeneralSettingsConfigAsync(GeneralSettingsConfig config);
+        Task SaveSectionAsync<T>(ConfigSectionTypes sectionType, T config) where T : IConfigSection;
 
         /// <summary>
-        /// Saves the TransformationEngine configuration to file (for API symmetry - unused in production)
+        /// Gets the raw field states for a configuration section using the enum type identifier
         /// </summary>
-        /// <param name="config">The configuration to save</param>
-        /// <returns>A task representing the asynchronous save operation</returns>
-        Task SaveTransformationConfigAsync(TransformationEngineConfig config);
+        /// <param name="sectionType">The type of configuration section</param>
+        /// <returns>List of field states for validation purposes</returns>
+        Task<List<ConfigFieldState>> GetSectionFieldsAsync(ConfigSectionTypes sectionType);
     }
 }

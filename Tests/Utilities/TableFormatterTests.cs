@@ -303,6 +303,206 @@ namespace Tests.Utilities
             result.Should().Contain("1.0");
         }
 
+        [Fact]
+        public void AppendTable_WithIndentParameter_AppliesIndentation()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Test", Value = 1.0 }
+            };
+            var columns = new List<ITableColumnFormatter<TestItem>>
+            {
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F1")
+            };
+
+            // Act
+            _tableFormatter.AppendTable(builder, "Indented Table", rows, columns, 1, 80, 20, singleColumnMaxItems: null, indent: 4);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Indented Table");
+            result.Should().Contain("    Test"); // Should be indented with 4 spaces
+            result.Should().Contain("Test   1.0"); // Data row should be indented
+        }
+
+        [Fact]
+        public void AppendTable_WithZeroIndent_NoIndentationApplied()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Test", Value = 1.0 }
+            };
+            var columns = new List<ITableColumnFormatter<TestItem>>
+            {
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F1")
+            };
+
+            // Act
+            _tableFormatter.AppendTable(builder, "No Indent Table", rows, columns, 1, 80, 20, singleColumnMaxItems: null, indent: 0);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("No Indent Table");
+            result.Should().Contain("Test"); // Should NOT be indented
+            result.Should().Contain("1.0"); // Should NOT be indented
+        }
+
+        [Fact]
+        public void CreateProgressBar_WithMinMaxValues_CreatesCorrectProgressBar()
+        {
+            // Arrange
+            var value = 75.0;
+            var min = 0.0;
+            var max = 100.0;
+            var width = 20;
+
+            // Act
+            var result = _tableFormatter.CreateProgressBar(value, min, max, width);
+
+            // Assert
+            result.Should().HaveLength(width);
+            result.Should().Contain("█"); // Should contain filled characters
+            result.Should().Contain("░"); // Should contain empty characters
+            // 75% of 20 = 15 filled, 5 empty
+            result.Should().Be("███████████████░░░░░");
+        }
+
+        [Fact]
+        public void CreateProgressBar_WithMinMaxValues_AtMinimum_ReturnsEmptyBar()
+        {
+            // Arrange
+            var value = 0.0;
+            var min = 0.0;
+            var max = 100.0;
+            var width = 10;
+
+            // Act
+            var result = _tableFormatter.CreateProgressBar(value, min, max, width);
+
+            // Assert
+            result.Should().HaveLength(width);
+            result.Should().Be("░░░░░░░░░░"); // All empty
+        }
+
+        [Fact]
+        public void CreateProgressBar_WithMinMaxValues_AtMaximum_ReturnsFullBar()
+        {
+            // Arrange
+            var value = 100.0;
+            var min = 0.0;
+            var max = 100.0;
+            var width = 10;
+
+            // Act
+            var result = _tableFormatter.CreateProgressBar(value, min, max, width);
+
+            // Assert
+            result.Should().HaveLength(width);
+            result.Should().Be("██████████"); // All filled
+        }
+
+        [Fact]
+        public void CreateProgressBar_WithMinMaxValues_InvalidRange_ReturnsEmptyBar()
+        {
+            // Arrange
+            var value = 50.0;
+            var min = 100.0; // min > max = invalid
+            var max = 0.0;
+            var width = 10;
+
+            // Act
+            var result = _tableFormatter.CreateProgressBar(value, min, max, width);
+
+            // Assert
+            result.Should().HaveLength(width);
+            result.Should().Be("░░░░░░░░░░"); // All empty due to invalid range
+        }
+
+        [Fact]
+        public void CreateProgressBar_WithMinMaxValues_EqualMinMax_ReturnsEmptyBar()
+        {
+            // Arrange
+            var value = 50.0;
+            var min = 100.0;
+            var max = 100.0; // min == max = invalid
+            var width = 10;
+
+            // Act
+            var result = _tableFormatter.CreateProgressBar(value, min, max, width);
+
+            // Assert
+            result.Should().HaveLength(width);
+            result.Should().Be("░░░░░░░░░░"); // All empty due to invalid range
+        }
+
+        [Fact]
+        public void AppendTable_WithInsufficientWidthForMultiColumn_FallsBackToSingleColumn()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Item1", Value = 1.0 },
+                new TestItem { Name = "Item2", Value = 2.0 },
+                new TestItem { Name = "Item3", Value = 3.0 }
+            };
+            var columns = new List<ITableColumnFormatter<TestItem>>
+            {
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F2")
+            };
+
+            // Act - Use very narrow width to force fallback
+            _tableFormatter.AppendTable(builder, "Fallback Test", rows, columns, 2, 20, 10);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Fallback Test");
+            result.Should().Contain("Item1");
+            result.Should().Contain("Item2");
+            result.Should().Contain("Item3");
+            // Should fall back to single column format
+        }
+
+        [Fact]
+        public void AppendTable_WithInsufficientWidthForMultiColumn_WithMaxItems_FallsBackToSingleColumnWithLimit()
+        {
+            // Arrange
+            var builder = new StringBuilder();
+            var rows = new List<TestItem>
+            {
+                new TestItem { Name = "Item1", Value = 1.0 },
+                new TestItem { Name = "Item2", Value = 2.0 },
+                new TestItem { Name = "Item3", Value = 3.0 },
+                new TestItem { Name = "Item4", Value = 4.0 },
+                new TestItem { Name = "Item5", Value = 5.0 }
+            };
+            var columns = new List<ITableColumnFormatter<TestItem>>
+            {
+                new TextColumnFormatter<TestItem>("Name", item => item.Name),
+                new NumericColumnFormatter<TestItem>("Value", item => item.Value, "F2")
+            };
+
+            // Act - Use very narrow width to force fallback, with max items limit
+            _tableFormatter.AppendTable(builder, "Fallback With Limit Test", rows, columns, 2, 20, 10, singleColumnMaxItems: 3);
+
+            // Assert
+            var result = builder.ToString();
+            result.Should().Contain("Fallback With Limit Test");
+            result.Should().Contain("Item1");
+            result.Should().Contain("Item2");
+            result.Should().Contain("Item3");
+            result.Should().NotContain("Item4");
+            result.Should().NotContain("Item5");
+            result.Should().Contain("... and 2 more");
+        }
+
         private class TestItem
         {
             public string Name { get; set; } = string.Empty;

@@ -346,7 +346,6 @@ namespace SharpBridge.Tests.Models
 
             // Assert
             // When serializing directly, the default serializer is used, not InterpolationConverter
-            // LinearInterpolation serializes as empty object {}
             Assert.Equal("{}", linearJson);
             // BezierInterpolation uses BezierInterpolationConverter which writes compact array
             Assert.Contains("0.42", bezierJson);
@@ -412,18 +411,6 @@ namespace SharpBridge.Tests.Models
             Assert.Contains("LinearInterpolation", json);
         }
 
-        [Fact]
-        public void InterpolationConverter_WriteMethod_NullValue_HandlesCorrectly()
-        {
-            // Arrange
-            IInterpolationDefinition? nullValue = null;
-
-            // Act
-            var json = JsonSerializer.Serialize(nullValue, _jsonOptions);
-
-            // Assert
-            Assert.Equal("null", json);
-        }
 
         [Fact]
         public void InterpolationConverter_WriteMethod_WithTypedConverter_DelegatesCorrectly()

@@ -96,7 +96,8 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object);
+                _mockPCFormatter.Object,
+                _mockExternalEditorService.Object);
 
             // Assert
             provider.Should().NotBeNull();
@@ -110,7 +111,8 @@ namespace SharpBridge.Tests.Utilities
                 null!,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object));
+                _mockPCFormatter.Object,
+                _mockExternalEditorService.Object));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -122,7 +124,8 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 null!,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object));
+                _mockPCFormatter.Object,
+                _mockExternalEditorService.Object));
             exception.ParamName.Should().Be("transformationFormatter");
         }
 
@@ -134,7 +137,8 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 null!,
-                _mockPCFormatter.Object));
+                _mockPCFormatter.Object,
+                _mockExternalEditorService.Object));
             exception.ParamName.Should().Be("phoneFormatter");
         }
 
@@ -146,7 +150,8 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                null!));
+                null!,
+                _mockExternalEditorService.Object));
             exception.ParamName.Should().Be("pcFormatter");
         }
 
@@ -502,18 +507,6 @@ namespace SharpBridge.Tests.Utilities
             result.Should().BeFalse();
         }
 
-        [Fact]
-        public async Task TryOpenInExternalEditorAsync_WithoutExternalEditorService_ReturnsFalse()
-        {
-            // Arrange
-            var provider = CreateProvider(); // No external editor service
-
-            // Act
-            var result = await provider.TryOpenInExternalEditorAsync();
-
-            // Assert
-            result.Should().BeFalse();
-        }
 
         [Fact]
         public async Task TryOpenInExternalEditorAsync_WhenExceptionOccurs_LogsErrorAndReturnsFalse()
@@ -985,7 +978,8 @@ namespace SharpBridge.Tests.Utilities
                 _mockLogger.Object,
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
-                _mockPCFormatter.Object);
+                _mockPCFormatter.Object,
+                _mockExternalEditorService.Object);
         }
 
         private MainStatusContentProvider CreateProviderWithExternalEditor()

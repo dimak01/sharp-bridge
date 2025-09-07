@@ -37,21 +37,20 @@ namespace SharpBridge.Utilities
         }
 
         /// <summary>
-        /// Writes text to the console without a line break (private - all output should go through WriteLines)
-        /// </summary>
-        private static void Write(string text)
-        {
-            Console.Write(text);
-        }
-
-        /// <summary>
-        /// Clears the console screen
+        /// Clears the console screen and resets the shadow buffer
         /// </summary>
         public void Clear()
         {
             if (!Console.IsOutputRedirected)
             {
                 Console.Clear();
+            }
+
+            // Reset shadow buffer to empty rectangle
+            _lastRenderedLines = new string[WindowHeight];
+            for (int i = 0; i < WindowHeight; i++)
+            {
+                _lastRenderedLines[i] = new string(' ', WindowWidth);
             }
         }
 
@@ -122,9 +121,13 @@ namespace SharpBridge.Utilities
                 var normalizedLines = NormalizeToRectangularBuffer(outputLines);
 
                 // Compare with shadow buffer and update only changed lines
-                for (int row = 0; row < normalizedLines.Length; row++)
+                // Also ensure we clear any lines that might have user input remnants
+                // +1 accounts for potential ReadLine() input that appears after rendered content
+                int maxRowsToCheck = Math.Max(normalizedLines.Length, _lastRenderedLines.Length);
+
+                for (int row = 0; row < maxRowsToCheck; row++)
                 {
-                    string newLine = normalizedLines[row];
+                    string newLine = row < normalizedLines.Length ? normalizedLines[row] : new string(' ', WindowWidth);
                     string oldLine = row < _lastRenderedLines.Length ? _lastRenderedLines[row] : "";
 
                     // Skip this line if it hasn't changed
@@ -133,7 +136,7 @@ namespace SharpBridge.Utilities
 
                     // Update the entire line (it's already normalized to WindowWidth)
                     SetCursorPosition(0, row);
-                    Write(newLine);
+                    Console.Write(newLine);
                 }
 
                 // Store normalized buffer as shadow buffer for next comparison
@@ -174,36 +177,44 @@ namespace SharpBridge.Utilities
 
             for (int row = 0; row < height; row++)
             {
-                if (row < inputLines.Length && !string.IsNullOrEmpty(inputLines[row]))
-                {
-                    string line = inputLines[row];
-                    int visualLength = ConsoleColors.GetVisualLength(line);
-
-                    // Handle visual length vs target width
-                    if (visualLength > width)
-                    {
-                        // Truncate while preserving color codes
-                        buffer[row] = TruncateVisually(line, width);
-                    }
-                    else if (visualLength < width)
-                    {
-                        // Pad to exact visual width (ANSI codes don't count toward padding)
-                        buffer[row] = line + new string(' ', width - visualLength);
-                    }
-                    else
-                    {
-                        // Perfect visual fit
-                        buffer[row] = line;
-                    }
-                }
-                else
-                {
-                    // Empty line - fill with spaces
-                    buffer[row] = new string(' ', width);
-                }
+                string line = (row < inputLines.Length) ? inputLines[row] : "";
+                buffer[row] = NormalizeToWidth(line, width);
             }
 
             return buffer;
+        }
+
+        /// <summary>
+        /// Normalizes a string to exactly the specified visual width
+        /// Truncates if too long, pads with spaces if too short
+        /// </summary>
+        /// <param name="text">Text that may contain ANSI escape sequences</param>
+        /// <param name="targetWidth">Target visual width (excluding ANSI codes)</param>
+        /// <returns>String normalized to exact target width</returns>
+        private static string NormalizeToWidth(string text, int targetWidth)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return new string(' ', targetWidth);
+            }
+
+            int visualLength = ConsoleColors.GetVisualLength(text);
+
+            if (visualLength > targetWidth)
+            {
+                // Truncate while preserving color codes
+                return TruncateVisually(text, targetWidth);
+            }
+            else if (visualLength < targetWidth)
+            {
+                // Pad to exact visual width (ANSI codes don't count toward padding)
+                return text + new string(' ', targetWidth - visualLength);
+            }
+            else
+            {
+                // Perfect visual fit
+                return text;
+            }
         }
 
         /// <summary>
@@ -245,6 +256,49 @@ namespace SharpBridge.Utilities
             }
 
             return result.ToString();
+        }
+
+        /// <summary>
+        /// Reads a line of input from the console
+        /// Updates the shadow buffer to reflect user input for consistent rendering
+        /// </summary>
+        /// <returns>The line read from the console</returns>
+        public string? ReadLine()
+        {
+            // Skip shadow buffer updates if output is redirected
+            if (Console.IsOutputRedirected)
+            {
+                return System.Console.ReadLine();
+            }
+
+            // Remember current cursor position
+            int inputRow = Console.CursorTop;
+            int inputCol = Console.CursorLeft;
+
+            // Read user input
+            string? userInput = System.Console.ReadLine();
+
+            // Update shadow buffer to reflect what user typed
+            if (userInput != null && inputRow < _lastRenderedLines.Length)
+            {
+                // Calculate what the line looks like after user input
+                string existingLineContent = inputRow < _lastRenderedLines.Length ? _lastRenderedLines[inputRow] : "";
+
+                // Take the existing content up to input column, add user input
+                string beforeInput = inputCol < existingLineContent.Length ?
+                    existingLineContent.Substring(0, inputCol) :
+                    existingLineContent.PadRight(inputCol);
+
+                string newLineContent = beforeInput + userInput;
+
+                // Normalize to window width using shared helper
+                newLineContent = NormalizeToWidth(newLineContent, WindowWidth);
+
+                // Update shadow buffer
+                _lastRenderedLines[inputRow] = newLineContent;
+            }
+
+            return userInput;
         }
     }
 }

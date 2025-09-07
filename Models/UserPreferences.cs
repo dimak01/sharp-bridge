@@ -8,6 +8,7 @@ namespace SharpBridge.Models
     /// </summary>
     public class UserPreferences
     {
+
         /// <summary>
         /// Verbosity level for the Phone Client display
         /// </summary>

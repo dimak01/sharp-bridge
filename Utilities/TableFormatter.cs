@@ -27,8 +27,28 @@ namespace SharpBridge.Utilities
             IEnumerable<T> rows, IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth,
             int singleColumnBarWidth = 20, int? singleColumnMaxItems = null)
         {
+            AppendTable(builder, title, rows, columns, targetColumnCount, consoleWidth, singleColumnBarWidth, singleColumnMaxItems, 0);
+        }
+
+        /// <summary>
+        /// Appends a formatted table using generic column definitions with indentation
+        /// </summary>
+        /// <typeparam name="T">The type of data being displayed</typeparam>
+        /// <param name="builder">StringBuilder to append to</param>
+        /// <param name="title">Table title/header</param>
+        /// <param name="rows">Table rows data</param>
+        /// <param name="columns">Column definitions</param>
+        /// <param name="targetColumnCount">Number of side-by-side table columns to create</param>
+        /// <param name="consoleWidth">Available console width</param>
+        /// <param name="singleColumnBarWidth">Progress bar width for single-column mode (default 20)</param>
+        /// <param name="singleColumnMaxItems">Maximum items to show in single-column mode (default: show all)</param>
+        /// <param name="indent">Number of spaces to indent the entire table</param>
+        public void AppendTable<T>(StringBuilder builder, string title,
+            IEnumerable<T> rows, IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth,
+            int singleColumnBarWidth, int? singleColumnMaxItems, int indent)
+        {
             // Add title first, regardless of whether we have rows
-            builder.AppendLine(title);
+            AppendIndentedLine(builder, title, indent);
 
             var rowList = rows?.ToList() ?? new List<T>();
             if (!rowList.Any()) return;
@@ -41,13 +61,13 @@ namespace SharpBridge.Utilities
                 var singleColumnRows = singleColumnMaxItems.HasValue
                     ? rowList.Take(singleColumnMaxItems.Value).ToList()
                     : rowList;
-                AppendSingleColumnTable(builder, singleColumnRows, columns, singleColumnBarWidth);
+                AppendSingleColumnTable(builder, singleColumnRows, columns, singleColumnBarWidth, indent);
                 itemsDisplayed = singleColumnRows.Count;
             }
             else
             {
                 // Try multi-column layout
-                if (TryAppendMultiColumnTable(builder, rowList, columns, targetColumnCount, consoleWidth))
+                if (TryAppendMultiColumnTable(builder, rowList, columns, targetColumnCount, consoleWidth, indent))
                 {
                     itemsDisplayed = rowList.Count; // Multi-column shows all items
                 }
@@ -57,7 +77,7 @@ namespace SharpBridge.Utilities
                     var fallbackRows = singleColumnMaxItems.HasValue
                         ? rowList.Take(singleColumnMaxItems.Value).ToList()
                         : rowList;
-                    AppendSingleColumnTable(builder, fallbackRows, columns, singleColumnBarWidth);
+                    AppendSingleColumnTable(builder, fallbackRows, columns, singleColumnBarWidth, indent);
                     itemsDisplayed = fallbackRows.Count;
                 }
             }
@@ -65,14 +85,29 @@ namespace SharpBridge.Utilities
             // Add "more items" message if items were truncated
             if (rowList.Count > itemsDisplayed)
             {
-                builder.AppendLine($"  ... and {rowList.Count - itemsDisplayed} more");
+                AppendIndentedLine(builder, $"  ... and {rowList.Count - itemsDisplayed} more", indent);
             }
+        }
+
+        /// <summary>
+        /// Appends a line with the specified indentation
+        /// </summary>
+        /// <param name="builder">StringBuilder to append to</param>
+        /// <param name="line">Line content to append</param>
+        /// <param name="indent">Number of spaces to indent</param>
+        private static void AppendIndentedLine(StringBuilder builder, string line, int indent)
+        {
+            if (indent > 0)
+            {
+                builder.Append(new string(' ', indent));
+            }
+            builder.AppendLine(line);
         }
 
         /// <summary>
         /// Appends a single-column table using strongly-typed column definitions
         /// </summary>
-        private static void AppendSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumnFormatter<T>> columns, int barWidth)
+        private static void AppendSingleColumnTable<T>(StringBuilder builder, List<T> rows, IList<ITableColumnFormatter<T>> columns, int barWidth, int indent = 0)
         {
             if (!rows.Any() || !columns.Any()) return;
 
@@ -98,17 +133,17 @@ namespace SharpBridge.Utilities
 
             // Add header row using column's FormatHeader method
             var headerParts = columns.Select((c, i) => c.FormatHeader(columnWidths[i]));
-            builder.AppendLine(string.Join(" ", headerParts));
+            AppendIndentedLine(builder, string.Join(" ", headerParts), indent);
 
             // Add separator line
             var separatorLength = columnWidths.Sum() + (columns.Count - 1);
-            builder.AppendLine(new string('-', separatorLength));
+            AppendIndentedLine(builder, new string('-', separatorLength), indent);
 
             // Add data rows using column's FormatCell method
             foreach (var row in rows)
             {
                 var cellParts = columns.Select((c, i) => c.FormatCell(row, columnWidths[i]));
-                builder.AppendLine(string.Join(" ", cellParts));
+                AppendIndentedLine(builder, string.Join(" ", cellParts), indent);
             }
         }
 
@@ -116,7 +151,7 @@ namespace SharpBridge.Utilities
         /// Attempts to append a multi-column table using generic column definitions
         /// </summary>
         private static bool TryAppendMultiColumnTable<T>(StringBuilder builder, List<T> rows,
-            IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth)
+            IList<ITableColumnFormatter<T>> columns, int targetColumnCount, int consoleWidth, int indent = 0)
         {
             if (!rows.Any() || !columns.Any()) return false;
 
@@ -160,7 +195,7 @@ namespace SharpBridge.Utilities
             }
 
             // Build headers using new FormatHeader method
-            AppendMultiColumnHeaders(builder, targetColumnCount, columns, columnWidths, columnPadding);
+            AppendMultiColumnHeaders(builder, targetColumnCount, columns, columnWidths, columnPadding, indent);
 
             // Split rows into table columns
             var rowsPerTableColumn = (int)Math.Ceiling((double)rows.Count / targetColumnCount);
@@ -179,7 +214,7 @@ namespace SharpBridge.Utilities
             for (int rowIndex = 0; rowIndex < maxRowsInAnyTableColumn; rowIndex++)
             {
                 AppendMultiColumnDataRow(builder, tableColumnData, rowIndex, targetColumnCount,
-                    columns, columnWidths, columnPadding);
+                    columns, columnWidths, columnPadding, indent);
             }
 
             return true; // Success
@@ -189,7 +224,7 @@ namespace SharpBridge.Utilities
         /// Appends the header rows for generic multi-column layout
         /// </summary>
         private static void AppendMultiColumnHeaders<T>(StringBuilder builder, int targetColumnCount,
-            IList<ITableColumnFormatter<T>> columns, int[] columnWidths, int columnPadding)
+            IList<ITableColumnFormatter<T>> columns, int[] columnWidths, int columnPadding, int indent = 0)
         {
             // Header row using column's FormatHeader method
             var headerBuilder = new StringBuilder();
@@ -201,7 +236,7 @@ namespace SharpBridge.Utilities
                 var headerParts = columns.Select((c, i) => c.FormatHeader(columnWidths[i]));
                 headerBuilder.Append(string.Join(" ", headerParts));
             }
-            builder.AppendLine(headerBuilder.ToString());
+            AppendIndentedLine(builder, headerBuilder.ToString(), indent);
 
             // Separator row
             var separatorBuilder = new StringBuilder();
@@ -212,7 +247,7 @@ namespace SharpBridge.Utilities
                 var separatorLength = columnWidths.Sum() + (columns.Count - 1);
                 separatorBuilder.Append(new string('-', separatorLength));
             }
-            builder.AppendLine(separatorBuilder.ToString());
+            AppendIndentedLine(builder, separatorBuilder.ToString(), indent);
         }
 
         /// <summary>
@@ -220,7 +255,7 @@ namespace SharpBridge.Utilities
         /// </summary>
         private static void AppendMultiColumnDataRow<T>(StringBuilder builder,
             List<List<T>> tableColumnData, int rowIndex, int targetColumnCount,
-            IList<ITableColumnFormatter<T>> columns, int[] columnWidths, int columnPadding)
+            IList<ITableColumnFormatter<T>> columns, int[] columnWidths, int columnPadding, int indent = 0)
         {
             var lineBuilder = new StringBuilder();
 
@@ -244,7 +279,7 @@ namespace SharpBridge.Utilities
                 }
             }
 
-            builder.AppendLine(lineBuilder.ToString());
+            AppendIndentedLine(builder, lineBuilder.ToString(), indent);
         }
 
         /// <summary>

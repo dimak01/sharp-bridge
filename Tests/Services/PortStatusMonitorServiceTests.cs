@@ -62,8 +62,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true };
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = false };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -113,8 +113,8 @@ namespace SharpBridge.Tests.Services
             var outboundAnalysis = new FirewallAnalysisResult { IsAllowed = true };
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -160,8 +160,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = false }; // Blocked
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = false }; // Blocked
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -206,8 +206,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true }; // Allowed
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = false }; // Blocked
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -252,8 +252,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true };
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = true };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("54321", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -285,7 +285,7 @@ namespace SharpBridge.Tests.Services
         public async Task GetNetworkStatusAsync_WithConfigManagerException_HandlesGracefully()
         {
             // Arrange
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync())
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>())
                 .ThrowsAsync(new InvalidOperationException("Config error"));
 
             // Act & Assert
@@ -310,8 +310,8 @@ namespace SharpBridge.Tests.Services
                 UsePortDiscovery = true
             };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Throws(new Exception("Firewall analysis error"));
@@ -324,8 +324,8 @@ namespace SharpBridge.Tests.Services
         public async Task GetNetworkStatusAsync_WithNullConfigs_HandlesGracefully()
         {
             // Arrange
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync((VTubeStudioPhoneClientConfig)null!);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync((VTubeStudioPCConfig)null!);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync((VTubeStudioPhoneClientConfig)null!);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync((VTubeStudioPCConfig)null!);
 
             // Act & Assert
             await Assert.ThrowsAsync<NullReferenceException>(() => _service.GetNetworkStatusAsync());
@@ -354,8 +354,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true };
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = true };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -400,8 +400,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true };
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = true };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);
@@ -448,8 +448,8 @@ namespace SharpBridge.Tests.Services
             var webSocketAnalysis = new FirewallAnalysisResult { IsAllowed = true };
             var discoveryAnalysis = new FirewallAnalysisResult { IsAllowed = true };
 
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(phoneConfig);
-            _mockConfigManager.Setup(x => x.LoadPCConfigAsync()).ReturnsAsync(pcConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(phoneConfig);
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPCConfig>()).ReturnsAsync(pcConfig);
 
             _mockFirewallAnalyzer.Setup(x => x.AnalyzeFirewallRules("28964", "0.0.0.0", "0", "UDP"))
                 .Returns(inboundAnalysis);

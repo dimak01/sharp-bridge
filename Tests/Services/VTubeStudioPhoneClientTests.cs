@@ -27,17 +27,19 @@ namespace SharpBridge.Tests.Services
             _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
         }
 
-        private VTubeStudioPhoneClient CreateClient(IUdpClientWrapper udpClient, IAppLogger logger, VTubeStudioPhoneClientConfig? config = null)
+        private VTubeStudioPhoneClient CreateClient(IUdpClientWrapper udpClient, IAppLogger logger, VTubeStudioPhoneClientConfig? config = null, IFileChangeWatcher? appConfigWatcher = null)
         {
-
             config ??= new VTubeStudioPhoneClientConfig
             {
                 IphoneIpAddress = "127.0.0.1"
             };
 
-            // Setup the config manager to return the provided config
-            _mockConfigManager.Setup(x => x.LoadPhoneConfigAsync()).ReturnsAsync(config);
-            return new VTubeStudioPhoneClient(udpClient, _mockConfigManager.Object, logger, _mockAppConfigWatcher.Object);
+            // Only setup the config manager if it hasn't been set up already
+            if (!_mockConfigManager.Setups.Any())
+            {
+                _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>()).ReturnsAsync(config);
+            }
+            return new VTubeStudioPhoneClient(udpClient, _mockConfigManager.Object, logger, appConfigWatcher ?? _mockAppConfigWatcher.Object);
         }
 
         // Test that we can create the phone client
@@ -324,9 +326,9 @@ namespace SharpBridge.Tests.Services
             var config = new VTubeStudioPhoneClientConfig { IphoneIpAddress = "" };
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 CreateClient(mockUdpClient.Object, mockLogger.Object, config))
-                .ParamName.Should().Be("config");
+                .Message.Should().Be("iPhone IP address must not be empty in configuration");
         }
 
         [Fact]
@@ -785,6 +787,215 @@ namespace SharpBridge.Tests.Services
             eventInvoked.Should().BeTrue("event should be invoked when subscribers exist");
             receivedData.Should().NotBeNull();
             receivedData.FaceFound.Should().BeTrue();
+        }
+
+        // ===== OnApplicationConfigChanged TESTS =====
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithNoConfigChanges_DoesNotUpdateConfig()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+
+            var originalConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21412,
+                LocalPort = 21413,
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            // Setup config manager to return the same config (no changes)
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>())
+                .ReturnsAsync(originalConfig);
+
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, originalConfig, _mockAppConfigWatcher.Object);
+
+            // Act - simulate config file change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null, client, new FileChangeEventArgs("config.json"));
+
+            // Give async method time to complete
+            await Task.Delay(100);
+
+            // Assert
+            client.ConfigChanged.Should().BeFalse("config should not be marked as changed when no actual changes detected");
+            mockLogger.Verify(l => l.Debug("Application config changed, checking if phone client config was affected"), Times.Once);
+            mockLogger.Verify(l => l.Info(It.IsAny<string>()), Times.Never, "no info log should be written when no changes detected");
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithConfigChanges_UpdatesConfigAndSetsChangedFlag()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+
+            var originalConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21412,
+                LocalPort = 21413,
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            var newConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.200", // Changed IP
+                IphonePort = 21412,
+                LocalPort = 21413,
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            // Setup config manager to return original config first, then new config
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>())
+                .ReturnsAsync(originalConfig)  // First call (constructor)
+                .ReturnsAsync(newConfig);      // Second call (event handler)
+
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, originalConfig, _mockAppConfigWatcher.Object);
+
+            // Act - simulate config file change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null, client, new FileChangeEventArgs("config.json"));
+
+            // Give async method time to complete
+            await Task.Delay(100);
+
+            // Assert
+            client.ConfigChanged.Should().BeTrue("config should be marked as changed when actual changes detected");
+            mockLogger.Verify(l => l.Debug("Application config changed, checking if phone client config was affected"), Times.Once);
+            mockLogger.Verify(l => l.Info("Phone client configuration changed, updating internal config"), Times.Once);
+            mockLogger.Verify(l => l.Debug("Phone client config updated - IP: {0}:{1}, LocalPort: {2}",
+                "192.168.1.200", 21412, 21413), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithException_LogsErrorAndContinues()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+
+            var originalConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21412,
+                LocalPort = 21413,
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            // Setup config manager to return original config first, then throw exception
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>())
+                .ReturnsAsync(originalConfig)  // First call (constructor)
+                .ThrowsAsync(new Exception("Config load failed"));  // Second call (event handler)
+
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, originalConfig, _mockAppConfigWatcher.Object);
+
+            // Act - simulate config file change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null, client, new FileChangeEventArgs("config.json"));
+
+            // Give async method time to complete
+            await Task.Delay(100);
+
+            // Assert
+            client.ConfigChanged.Should().BeFalse("config should not be marked as changed when exception occurs");
+            mockLogger.Verify(l => l.Debug("Application config changed, checking if phone client config was affected"), Times.Once);
+            mockLogger.Verify(l => l.Error("Error handling application config change: {0}", "Config load failed"), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithPortChanges_UpdatesConfig()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+
+            var originalConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21412,
+                LocalPort = 21413,
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            var newConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21414, // Changed port
+                LocalPort = 21415,  // Changed local port
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            // Setup config manager to return original config first, then new config
+            _mockConfigManager.SetupSequence(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>())
+                .ReturnsAsync(originalConfig)  // First call (constructor)
+                .ReturnsAsync(newConfig);      // Second call (event handler)
+
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, originalConfig, _mockAppConfigWatcher.Object);
+
+            // Act - simulate config file change event
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null, client, new FileChangeEventArgs("config.json"));
+
+            // Give async method time to complete
+            await Task.Delay(100);
+
+            // Assert
+            client.ConfigChanged.Should().BeTrue("config should be marked as changed when ports change");
+            mockLogger.Verify(l => l.Info("Phone client configuration changed, updating internal config"), Times.Once);
+            mockLogger.Verify(l => l.Debug("Phone client config updated - IP: {0}:{1}, LocalPort: {2}",
+                "192.168.1.100", 21414, 21415), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnApplicationConfigChanged_WithNullSender_HandlesGracefully()
+        {
+            // Arrange
+            var mockUdpClient = new Mock<IUdpClientWrapper>();
+            var mockLogger = new Mock<IAppLogger>();
+
+            var originalConfig = new VTubeStudioPhoneClientConfig
+            {
+                IphoneIpAddress = "192.168.1.100",
+                IphonePort = 21412,
+                LocalPort = 21413,
+                RequestIntervalSeconds = 1.0,
+                SendForSeconds = 10,
+                ReceiveTimeoutMs = 2000,
+                ErrorDelayMs = 1000
+            };
+
+            // Setup config manager to return same config (no changes)
+            _mockConfigManager.Setup(x => x.LoadSectionAsync<VTubeStudioPhoneClientConfig>())
+                .ReturnsAsync(originalConfig);
+
+            var client = CreateClient(mockUdpClient.Object, mockLogger.Object, originalConfig, _mockAppConfigWatcher.Object);
+
+            // Act - simulate config file change event with null sender
+            _mockAppConfigWatcher.Raise(x => x.FileChanged += null, null!, new FileChangeEventArgs("config.json"));
+
+            // Give async method time to complete
+            await Task.Delay(100);
+
+            // Assert
+            client.ConfigChanged.Should().BeFalse("config should not be marked as changed when no actual changes detected");
+            mockLogger.Verify(l => l.Debug("Application config changed, checking if phone client config was affected"), Times.Once);
         }
     }
 }
