@@ -78,7 +78,7 @@ namespace SharpBridge.Services.Remediation
         /// </summary>
         /// <param name="issues">The issues to build the splash lines from</param>
         /// <returns>The built splash lines</returns>
-        protected override string[] BuildSplashLines(List<FieldValidationIssue> issues)
+        protected override string[] BuildSplashLines(List<FieldValidationIssue> issues, bool isFirstTimeSetup)
         {
             var lines = new List<string>
             {
@@ -104,7 +104,7 @@ namespace SharpBridge.Services.Remediation
         /// </summary>
         /// <param name="fields">The fields to check</param>
         /// <returns>True if all fields are missing</returns>
-        protected override bool IsAllFieldsMissing(List<ConfigFieldState> fields)
+        protected override bool ShouldFallBackToDefaults(List<ConfigFieldState> fields)
         {
             // Check if all required fields are missing (not present or null)
             bool Missing(string name)
@@ -160,6 +160,17 @@ namespace SharpBridge.Services.Remediation
             }
 
             return result;
+        }
+
+
+        /// <summary>
+        /// Checks if the configuration section is in first-time setup mode.
+        /// </summary>
+        /// <param name="fields">The fields to check</param>
+        /// <returns>True if the configuration section is in first-time setup mode</returns>
+        protected override bool IsFirstTimeSetup(List<ConfigFieldState> fields)
+        {
+            return false;
         }
 
         private static string GetFieldDescription(string fieldName)
