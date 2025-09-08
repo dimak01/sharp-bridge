@@ -313,6 +313,13 @@ namespace SharpBridge
                     provider.GetRequiredService<IAppLogger>()
                 ));
 
+            // Register initialization content provider
+            services.AddSingleton<InitializationContentProvider>(provider =>
+                new InitializationContentProvider(
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<IExternalEditorService>()
+                ));
+
             // Register console mode manager
             services.AddSingleton<IConsoleModeManager>(provider =>
                 new ConsoleModeManager(
@@ -324,7 +331,8 @@ namespace SharpBridge
                     {
                         provider.GetRequiredService<MainStatusContentProvider>(),
                         provider.GetRequiredService<SystemHelpContentProvider>(),
-                        provider.GetRequiredService<NetworkStatusContentProvider>()
+                        provider.GetRequiredService<NetworkStatusContentProvider>(),
+                        provider.GetRequiredService<InitializationContentProvider>()
                     }
                 ));
 
@@ -354,7 +362,8 @@ namespace SharpBridge
                     provider.GetRequiredService<ApplicationConfig>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetRequiredService<InitializationContentProvider>()
                 ));
 
             return services;

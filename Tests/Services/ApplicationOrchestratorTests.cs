@@ -32,6 +32,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IShortcutConfigurationManager> _mockShortcutConfigurationManager;
         private readonly Mock<IConfigManager> _mockConfigManager;
         private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
+        private readonly Mock<InitializationContentProvider> _mockInitializationContentProvider;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly ApplicationConfig _applicationConfig;
         private readonly UserPreferences _userPreferences;
@@ -53,6 +54,7 @@ namespace SharpBridge.Tests.Services
             _mockShortcutConfigurationManager = new Mock<IShortcutConfigurationManager>();
             _mockConfigManager = new Mock<IConfigManager>();
             _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
+            _mockInitializationContentProvider = new Mock<InitializationContentProvider>(_mockLogger.Object, _mockExternalEditorService.Object);
 
             _phoneConfig = new VTubeStudioPhoneClientConfig
             {
@@ -116,7 +118,8 @@ namespace SharpBridge.Tests.Services
                 _applicationConfig,
                 _userPreferences,
                 _mockConfigManager.Object,
-                _mockAppConfigWatcher.Object);
+                _mockAppConfigWatcher.Object,
+                _mockInitializationContentProvider.Object);
         }
 
         #region Constructor Tests
@@ -224,6 +227,45 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             _mockLogger.Verify(x => x.ErrorWithException("Error setting up console window", It.IsAny<Exception>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_SetsInitializationModeAndSwitchesToMainMode()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var cancellationToken = CancellationToken.None;
+
+            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
+            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
+            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
+            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
+                .Returns(Task.FromResult(true));
+
+            // Act
+            await orchestrator.InitializeAsync(cancellationToken);
+
+            // Assert
+            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Initialization), Times.Once);
+            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Main), Times.Once);
+            _mockInitializationContentProvider.Verify(x => x.SetProgress(It.IsAny<InitializationProgress>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_WhenExceptionOccurs_SwitchesToMainMode()
+        {
+            // Arrange
+            var orchestrator = CreateOrchestrator();
+            var cancellationToken = CancellationToken.None;
+
+            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Throws(new Exception("Test exception"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => orchestrator.InitializeAsync(cancellationToken));
+
+            // Verify that it switches to main mode even when exception occurs
+            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Initialization), Times.Once);
+            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Main), Times.Once);
         }
 
         #endregion
@@ -1183,8 +1225,10 @@ namespace SharpBridge.Tests.Services
                 .ReturnsAsync(true);
 
             // Act
-            var task = (Task)method!.Invoke(orchestrator, new object[] { cancellationToken })!;
-            await task;
+            method!.Invoke(orchestrator, new object[] { cancellationToken });
+
+            // Wait a bit for the background task to complete
+            await Task.Delay(100);
 
             // Assert
             _mockLogger.Verify(x => x.Info("Recovery attempt completed"), Times.Once);
@@ -1256,6 +1300,7 @@ namespace SharpBridge.Tests.Services
         [InlineData("userPreferences")]
         [InlineData("configManager")]
         [InlineData("appConfigWatcher")]
+        [InlineData("initializationContentProvider")]
         public void Constructor_WithNullParameter_ThrowsArgumentNullException(string nullParameter)
         {
             // Arrange
@@ -1276,6 +1321,7 @@ namespace SharpBridge.Tests.Services
             var validUserPreferences = new UserPreferences();
             var validConfigManager = new Mock<IConfigManager>().Object;
             var validAppConfigWatcher = new Mock<IFileChangeWatcher>().Object;
+            var validInitializationContentProvider = new Mock<InitializationContentProvider>(Mock.Of<IAppLogger>(), Mock.Of<IExternalEditorService>()).Object;
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
@@ -1297,7 +1343,8 @@ namespace SharpBridge.Tests.Services
                     nullParameter == "applicationConfig" ? null! : validApplicationConfig,
                     nullParameter == "userPreferences" ? null! : validUserPreferences,
                     nullParameter == "configManager" ? null! : validConfigManager,
-                    nullParameter == "appConfigWatcher" ? null! : validAppConfigWatcher
+                    nullParameter == "appConfigWatcher" ? null! : validAppConfigWatcher,
+                    nullParameter == "initializationContentProvider" ? null! : validInitializationContentProvider
                 );
             });
 
@@ -1327,6 +1374,7 @@ namespace SharpBridge.Tests.Services
         public void Dispose()
         {
             // Cleanup if needed
+            GC.SuppressFinalize(this);
         }
     }
 }

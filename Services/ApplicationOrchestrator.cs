@@ -31,8 +31,10 @@ namespace SharpBridge.Services
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
         private readonly UserPreferences _userPreferences;
+        private readonly InitializationContentProvider _initializationContentProvider;
 
         private ApplicationConfig _applicationConfig;
+        private readonly InitializationProgress _initializationProgress;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -42,6 +44,7 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
+        private readonly SemaphoreSlim _recoverySemaphore = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -63,6 +66,7 @@ namespace SharpBridge.Services
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
+        /// <param name="initializationContentProvider">Content provider for initialization progress display</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -80,7 +84,8 @@ namespace SharpBridge.Services
             ApplicationConfig applicationConfig,
             UserPreferences userPreferences,
             IConfigManager configManager,
-            IFileChangeWatcher appConfigWatcher)
+            IFileChangeWatcher appConfigWatcher,
+            InitializationContentProvider initializationContentProvider)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -98,6 +103,10 @@ namespace SharpBridge.Services
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
+            _initializationContentProvider = initializationContentProvider ?? throw new ArgumentNullException(nameof(initializationContentProvider));
+
+            // Initialize progress tracking
+            _initializationProgress = new InitializationProgress();
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -110,42 +119,101 @@ namespace SharpBridge.Services
         /// <returns>A task that completes when initialization and connection are done</returns>
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
-            // Set preferred console window size
-            SetupConsoleWindow();
+            // Switch to initialization mode and set up progress tracking
+            _modeManager.SetMode(ConsoleMode.Initialization);
+            _initializationContentProvider.SetProgress(_initializationProgress);
 
-            // Start console size change tracking
-            _consoleWindowManager.StartSizeChangeTracking((width, height) =>
+            try
             {
-                // Update preferences and save asynchronously (fire-and-forget)
-                _ = UpdateUserPreferencesAsync(prefs =>
+                // Step 1: Console Setup
+                _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.InProgress);
+                SetupConsoleWindow();
+                _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.Completed);
+
+                // Start console size change tracking
+                _consoleWindowManager.StartSizeChangeTracking((width, height) =>
                 {
-                    prefs.PreferredConsoleWidth = width;
-                    prefs.PreferredConsoleHeight = height;
+                    // Update preferences and save asynchronously (fire-and-forget)
+                    _ = UpdateUserPreferencesAsync(prefs =>
+                    {
+                        prefs.PreferredConsoleWidth = width;
+                        prefs.PreferredConsoleHeight = height;
+                    });
                 });
-            });
 
-            await InitializeTransformationEngine();
+                // Step 2: Transformation Engine
+                _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.InProgress);
+                await InitializeTransformationEngine();
+                _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.Completed);
 
-            // Start watching application config file for hot reload
-            _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
-            _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
+                // Step 3: File Watchers
+                _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.InProgress);
+                _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
+                _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
+                _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.Completed);
 
-            // Initialize clients directly during startup
-            _logger.Info("Attempting initial client connections...");
-            await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
-            await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
+                // Step 4: PC Client
+                _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.InProgress);
+                _logger.Info("Attempting initial PC client connection...");
+                var pcClientSuccess = await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
+                if (pcClientSuccess)
+                {
+                    _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Completed);
+                }
+                else
+                {
+                    _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Failed, "PC client initialization failed");
+                }
 
-            // Register keyboard shortcuts
-            RegisterKeyboardShortcuts();
+                // Step 5: Phone Client
+                _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.InProgress);
+                _logger.Info("Attempting initial Phone client connection...");
+                var phoneClientSuccess = await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
+                if (phoneClientSuccess)
+                {
+                    _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Completed);
+                }
+                else
+                {
+                    _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Failed, "Phone client initialization failed");
+                }
 
-            // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
-            var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
-            if (!parameterSyncSuccess)
-            {
-                _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
+                // Step 6: Parameter Sync
+                _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.InProgress);
+                var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
+                if (parameterSyncSuccess)
+                {
+                    _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Completed);
+                }
+                else
+                {
+                    _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Failed, "Parameter synchronization failed");
+                    _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
+                }
+
+                // Step 7: Final Setup
+                _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.InProgress);
+                RegisterKeyboardShortcuts();
+                _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.Completed);
+
+                // Mark initialization as complete
+                _initializationProgress.MarkComplete();
+                _logger.Info("Application initialized successfully");
+
+                // Switch to main mode
+                _modeManager.SetMode(ConsoleMode.Main);
             }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error during initialization", ex);
 
-            _logger.Info("Application initialized successfully");
+                // Mark current step as failed
+                _initializationProgress.UpdateStep(_initializationProgress.CurrentStep, StepStatus.Failed, ex.Message);
+
+                // Switch to main mode even if initialization failed
+                _modeManager.SetMode(ConsoleMode.Main);
+                throw;
+            }
         }
 
         /// <summary>
@@ -255,7 +323,7 @@ namespace SharpBridge.Services
             {
                 try
                 {
-                    await ProcessRecoveryIfNeeded(cancellationToken);
+                    ProcessRecoveryIfNeeded(cancellationToken);
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     _keyboardInputHandler.CheckForKeyboardInput();
@@ -273,17 +341,42 @@ namespace SharpBridge.Services
         /// <summary>
         /// Processes recovery attempt if it's time to do so
         /// </summary>
-        private async Task ProcessRecoveryIfNeeded(CancellationToken cancellationToken)
+        private void ProcessRecoveryIfNeeded(CancellationToken cancellationToken)
         {
-            if (DateTime.UtcNow >= _nextRecoveryAttempt)
+            // Check if it's time for recovery
+            if (DateTime.UtcNow < _nextRecoveryAttempt)
             {
-                var recoveryAttempted = await AttemptRecoveryAsync(cancellationToken);
-                if (recoveryAttempted)
-                {
-                    _logger.Info("Recovery attempt completed");
-                }
-                _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+                return; // Not time yet
             }
+
+            // Try to acquire semaphore - if already running, skip
+            if (!_recoverySemaphore.Wait(0))
+            {
+                return; // Recovery already in progress
+            }
+
+            // Fire-and-forget: do recovery work in background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var recoveryAttempted = await AttemptRecoveryAsync(cancellationToken);
+                    if (recoveryAttempted)
+                    {
+                        _logger.Info("Recovery attempt completed");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.ErrorWithException("Error during background recovery", ex);
+                }
+                finally
+                {
+                    // Set next attempt time AFTER recovery completes (success or failure)
+                    _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+                    _recoverySemaphore.Release();
+                }
+            }, cancellationToken);
         }
 
         /// <summary>
@@ -725,6 +818,7 @@ namespace SharpBridge.Services
                     // which will automatically stop size tracking and restore window size
                     _vtubeStudioPCClient.Dispose();
                     _vtubeStudioPhoneClient.Dispose();
+                    _recoverySemaphore.Dispose();
                 }
 
                 _isDisposed = true;

@@ -298,7 +298,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
-                It.Is<string>(s => s == "=== Parameters ==="),
+                It.Is<string>(s => s == "=== Last Sent Parameters ==="),
                 It.Is<IEnumerable<TrackingParam>>(parameters => !parameters.Any()),
                 It.IsAny<List<ITableColumnFormatter<TrackingParam>>>(),
                 It.IsAny<int>(),
@@ -495,7 +495,7 @@ namespace SharpBridge.Tests.Utilities
             // Assert
             _mockTableFormatter.Verify(x => x.AppendTable(
                 It.IsAny<StringBuilder>(),
-                It.Is<string>(s => s == "=== Parameters ==="),
+                It.Is<string>(s => s == "=== Last Sent Parameters ==="),
                 It.IsAny<IEnumerable<TrackingParam>>(),
                 It.Is<IList<ITableColumnFormatter<TrackingParam>>>(cols =>
                     cols.Count == 7 &&
