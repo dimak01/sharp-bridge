@@ -371,7 +371,6 @@ namespace SharpBridge
                     provider.GetRequiredService<IKeyboardInputHandler>(),
                     provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
                     provider.GetRequiredService<IRecoveryPolicy>(),
-                    provider.GetRequiredService<IConsole>(),
                     provider.GetRequiredService<IConsoleWindowManager>(),
                     provider.GetRequiredService<IParameterColorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
