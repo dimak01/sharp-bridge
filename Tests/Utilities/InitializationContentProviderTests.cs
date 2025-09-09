@@ -10,7 +10,7 @@ using Xunit;
 
 namespace SharpBridge.Tests.Utilities
 {
-    public class InitializationContentProviderTests : IDisposable
+    public class InitializationContentProviderTests
     {
         private readonly Mock<IAppLogger> _mockLogger;
         private readonly Mock<IExternalEditorService> _mockExternalEditorService;
@@ -597,10 +597,6 @@ namespace SharpBridge.Tests.Utilities
 
         #endregion
 
-        public void Dispose()
-        {
-            // Cleanup if needed
-        }
     }
 
     /// <summary>

@@ -230,7 +230,7 @@ namespace SharpBridge.Services
             }
 
             // Try to acquire semaphore - if already running, skip
-            if (!_recoverySemaphore.Wait(0))
+            if (!_recoverySemaphore.Wait(0, cancellationToken))
             {
                 return; // Recovery already in progress
             }
