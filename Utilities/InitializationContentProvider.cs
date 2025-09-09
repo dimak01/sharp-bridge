@@ -85,7 +85,7 @@ namespace SharpBridge.Utilities
         {
             try
             {
-                return RenderInitializationDisplay(context);
+                return RenderInitializationDisplay();
             }
             catch (Exception ex)
             {
@@ -114,13 +114,11 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Renders the initialization progress display
         /// </summary>
-        /// <param name="context">The rendering context</param>
         /// <returns>Formatted initialization display lines</returns>
-        private string[] RenderInitializationDisplay(ConsoleRenderContext context)
+        private string[] RenderInitializationDisplay()
         {
             var lines = new List<string>();
 
-            // Header
             lines.Add("Initializing Sharp Bridge...");
             lines.Add($"Elapsed: {FormatElapsedTime(_progress.ElapsedTime)}");
             lines.Add("");
@@ -141,24 +139,11 @@ namespace SharpBridge.Utilities
             {
                 if (_progress.Steps.TryGetValue(step, out var stepInfo))
                 {
-                    var stepLine = RenderStepLine(step, stepInfo, context);
+                    var stepLine = RenderStepLine(step, stepInfo);
                     lines.Add(stepLine);
 
-                    // Add sub-status for PC and Phone clients if they're in progress
-                    if ((step == InitializationStep.PCClient || step == InitializationStep.PhoneClient) &&
-                        stepInfo.Status == StepStatus.InProgress)
-                    {
-                        var subStatus = GetSubStatus(step, context);
-                        if (!string.IsNullOrEmpty(subStatus))
-                        {
-                            lines.Add($"       └─ {subStatus}");
-                        }
-                    }
                 }
             }
-
-            lines.Add("");
-            lines.Add("Press Ctrl+C to cancel");
 
             return lines.ToArray();
         }
@@ -168,100 +153,46 @@ namespace SharpBridge.Utilities
         /// </summary>
         /// <param name="step">The initialization step</param>
         /// <param name="stepInfo">The step information</param>
-        /// <param name="context">The rendering context</param>
         /// <returns>Formatted step line</returns>
-        private static string RenderStepLine(InitializationStep step, StepInfo stepInfo, ConsoleRenderContext context)
+        private static string RenderStepLine(InitializationStep step, StepInfo stepInfo)
         {
             var stepName = AttributeHelper.GetDescription(step);
-            var statusIndicator = GetStatusIndicator(stepInfo.Status);
-            var duration = stepInfo.Duration?.TotalSeconds.ToString("F1") ?? "pending";
-            var durationText = stepInfo.Status == StepStatus.Pending ? "pending" : $"{duration}s";
 
-            return $"{statusIndicator} {stepName,-30} ({durationText})";
+            var statusIndicator = GetStatusIndicator(stepInfo.Status);
+
+            // Fix the duration text logic
+            string durationText;
+            if (stepInfo.Duration.HasValue)
+            {
+                durationText = $"{stepInfo.Duration.Value.TotalSeconds:F1}s";
+            }
+            else
+            {
+                durationText = AttributeHelper.GetDescription(stepInfo.Status); ;
+            }
+
+            // Concatenate status and step name first, then pad as a single unit
+            var statusAndStep = $"{statusIndicator} {stepName}";
+            return $"{statusAndStep,-45} ({durationText})";
         }
 
         /// <summary>
-        /// Gets the status indicator for a step status
+        /// Gets the status indicator for a step status with color coding
         /// </summary>
         /// <param name="status">The step status</param>
-        /// <returns>ASCII status indicator</returns>
+        /// <returns>Colored ASCII status indicator</returns>
         private static string GetStatusIndicator(StepStatus status)
         {
             return status switch
             {
-                StepStatus.Completed => "[OK]",
-                StepStatus.InProgress => "[RUN]",
-                StepStatus.Pending => "[PEND]",
-                StepStatus.Failed => "[FAIL]",
-                _ => "[UNK]"
+                StepStatus.Completed => $"[{ConsoleColors.Colorize("OK", ConsoleColors.Success)}]",
+                StepStatus.InProgress => $"[{ConsoleColors.Colorize("RUN", ConsoleColors.Warning)}]",
+                StepStatus.Pending => $"[{ConsoleColors.Colorize("PEND", ConsoleColors.Disabled)}]",
+                StepStatus.Failed => $"[{ConsoleColors.Colorize("FAIL", ConsoleColors.Error)}]",
+                _ => $"[{ConsoleColors.Colorize("UNK", ConsoleColors.Disabled)}]"
             };
         }
 
-        /// <summary>
-        /// Gets the sub-status for PC or Phone client steps
-        /// </summary>
-        /// <param name="step">The initialization step</param>
-        /// <param name="context">The rendering context</param>
-        /// <returns>Sub-status description or empty string</returns>
-        private string GetSubStatus(InitializationStep step, ConsoleRenderContext context)
-        {
-            if (context?.ServiceStats == null)
-                return string.Empty;
-
-            var stats = context.ServiceStats.ToList();
-
-            if (step == InitializationStep.PCClient)
-            {
-                var pcStats = stats.FirstOrDefault(s => s.ServiceName.Contains("PC"));
-                if (pcStats != null)
-                {
-                    return GetStatusDescription(pcStats);
-                }
-            }
-            else if (step == InitializationStep.PhoneClient)
-            {
-                var phoneStats = stats.FirstOrDefault(s => s.ServiceName.Contains("Phone"));
-                if (phoneStats != null)
-                {
-                    return GetStatusDescription(phoneStats);
-                }
-            }
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// Gets a user-friendly status description from service stats
-        /// </summary>
-        /// <param name="stats">The service statistics</param>
-        /// <returns>User-friendly status description</returns>
-        private string GetStatusDescription(IServiceStats stats)
-        {
-            try
-            {
-                if (stats.CurrentEntity is PCTrackingInfo)
-                {
-                    if (Enum.TryParse<PCClientStatus>(stats.Status, out var pcStatus))
-                    {
-                        return AttributeHelper.GetDescription(pcStatus);
-                    }
-                }
-                else if (stats.CurrentEntity is PhoneTrackingInfo)
-                {
-                    if (Enum.TryParse<PhoneClientStatus>(stats.Status, out var phoneStatus))
-                    {
-                        return AttributeHelper.GetDescription(phoneStatus);
-                    }
-                }
-
-                return stats.Status; // Fallback to raw status
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException($"Error getting status description for {stats.ServiceName}", ex);
-                return stats.Status;
-            }
-        }
 
         /// <summary>
         /// Formats elapsed time as MM:SS.f

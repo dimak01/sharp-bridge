@@ -461,7 +461,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             capturedOutput.Should().NotBeNull();
-            capturedOutput!.Should().Contain("=== MAIN STATUS ==="); // Header
+            capturedOutput!.Should().Contain("=== APPLICATION STATUS ==="); // Header
             capturedOutput.Should().Contain("Original Content"); // Original content
             capturedOutput.Should().Contain(line => line.Contains("F1: System Help")); // Footer
             capturedOutput.Should().Contain(line => line.Contains("Ctrl+C: Exit")); // Footer
@@ -814,7 +814,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             capturedOutput.Should().NotBeNull();
-            capturedOutput!.Should().Contain("=== MAIN STATUS ==="); // Header
+            capturedOutput!.Should().Contain("=== APPLICATION STATUS ==="); // Header
             capturedOutput!.Should().Contain(line => line.Contains("Ctrl+C: Exit")); // Footer
             capturedOutput!.Length.Should().BeGreaterThan(2); // At least header + separator + footer
         }
@@ -836,7 +836,7 @@ namespace SharpBridge.Tests.Services
 
             // Assert
             capturedOutput.Should().NotBeNull();
-            capturedOutput!.Should().Contain("=== MAIN STATUS ==="); // Header
+            capturedOutput!.Should().Contain("=== APPLICATION STATUS ==="); // Header
             capturedOutput.Should().Contain("Line 1"); // Original content preserved
             capturedOutput.Should().Contain("Line 2");
             capturedOutput.Should().Contain("Line 3");
