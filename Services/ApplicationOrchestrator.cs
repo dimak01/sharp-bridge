@@ -114,9 +114,11 @@ namespace SharpBridge.Services
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
             // Delegate initialization to the dedicated initialization service
+            // Pass console size change tracking as a pre-action
+            var preActions = new List<Action> { StartConsoleSizeChangeTracking };
             // Pass RegisterKeyboardShortcuts as a final setup action
             var finalSetupActions = new List<Action> { RegisterKeyboardShortcuts };
-            await _initializationService.InitializeAsync(cancellationToken, finalSetupActions);
+            await _initializationService.InitializeAsync(cancellationToken, preActions, finalSetupActions);
         }
 
 
@@ -552,6 +554,46 @@ namespace SharpBridge.Services
                 _logger.Warning("Invalid shortcut configurations detected: {0}", string.Join(", ", invalidActions));
             }
         }
+
+        /// <summary>
+        /// Sets up console window and starts console size change tracking
+        /// </summary>
+        private void StartConsoleSizeChangeTracking()
+        {
+            // First, set up the console window with preferred dimensions
+            try
+            {
+                var currentSize = _consoleWindowManager.GetCurrentSize();
+                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
+
+                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
+                if (success)
+                {
+                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
+                }
+                else
+                {
+                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}",
+                        currentSize.width, currentSize.height);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error setting up console window", ex);
+            }
+
+            // Then start tracking size changes
+            _consoleWindowManager.StartSizeChangeTracking((width, height) =>
+            {
+                // Update preferences and save asynchronously (fire-and-forget)
+                _ = UpdateUserPreferencesAsync(prefs =>
+                {
+                    prefs.PreferredConsoleWidth = width;
+                    prefs.PreferredConsoleHeight = height;
+                });
+            });
+        }
+
 
         /// <summary>
         /// Gets the action method for a specific shortcut action

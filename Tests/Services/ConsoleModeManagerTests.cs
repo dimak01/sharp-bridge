@@ -20,6 +20,7 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IConsoleModeContentProvider> _mainRendererMock;
         private readonly Mock<IConsoleModeContentProvider> _helpRendererMock;
         private readonly Mock<IConsoleModeContentProvider> _networkRendererMock;
+        private readonly Mock<IConsoleModeContentProvider> _initializationRendererMock;
         private readonly ApplicationConfig _testAppConfig;
         private readonly UserPreferences _testUserPreferences;
         private readonly List<IServiceStats> _testStats;
@@ -34,6 +35,7 @@ namespace SharpBridge.Tests.Services
             _mainRendererMock = new Mock<IConsoleModeContentProvider>();
             _helpRendererMock = new Mock<IConsoleModeContentProvider>();
             _networkRendererMock = new Mock<IConsoleModeContentProvider>();
+            _initializationRendererMock = new Mock<IConsoleModeContentProvider>();
 
             // Setup test data
             _testAppConfig = new ApplicationConfig();
@@ -41,9 +43,10 @@ namespace SharpBridge.Tests.Services
             _testStats = new List<IServiceStats>();
 
             // Setup renderer mocks
-            SetupRendererMock(_mainRendererMock, ConsoleMode.Main, "Main Status", TimeSpan.FromMilliseconds(100));
+            SetupRendererMock(_mainRendererMock, ConsoleMode.Main, "Application Status", TimeSpan.FromMilliseconds(100));
             SetupRendererMock(_helpRendererMock, ConsoleMode.SystemHelp, "System Help", TimeSpan.FromMilliseconds(200));
             SetupRendererMock(_networkRendererMock, ConsoleMode.NetworkStatus, "Network Status", TimeSpan.FromMilliseconds(150));
+            SetupRendererMock(_initializationRendererMock, ConsoleMode.Initialization, "Initialization", TimeSpan.FromMilliseconds(50));
 
             // Make main renderer implement IMainStatusRenderer for compatibility
             _mainRendererMock.As<IMainStatusRenderer>();
@@ -52,7 +55,8 @@ namespace SharpBridge.Tests.Services
             {
                 _mainRendererMock.Object,
                 _helpRendererMock.Object,
-                _networkRendererMock.Object
+                _networkRendererMock.Object,
+                _initializationRendererMock.Object
             };
 
             // Setup config manager
@@ -103,7 +107,7 @@ namespace SharpBridge.Tests.Services
             manager.Should().NotBeNull();
             manager.CurrentMode.Should().Be(ConsoleMode.Main);
             manager.MainStatusRenderer.Should().NotBeNull();
-            _loggerMock.Verify(x => x.Debug("ConsoleModeManager initialized with {0} renderers. Current mode: {1}", 3, ConsoleMode.Main), Times.Once);
+            _loggerMock.Verify(x => x.Debug("ConsoleModeManager initialized with {0} renderers. Current mode: {1}", 4, ConsoleMode.Main), Times.Once);
             _loggerMock.Verify(x => x.Debug("All required console mode renderers are available: {0}", It.IsAny<string>()), Times.Once);
         }
 

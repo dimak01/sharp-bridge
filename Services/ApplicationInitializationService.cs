@@ -21,12 +21,10 @@ namespace SharpBridge.Services
         private readonly IVTubeStudioPCParameterManager _parameterManager;
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
-        private readonly IConsoleWindowManager _consoleWindowManager;
         private readonly IConsoleModeManager _modeManager;
         private readonly IAppLogger _logger;
 
         // Configuration objects
-        private readonly UserPreferences _userPreferences;
 
         // Progress tracking (will be moved from ApplicationOrchestrator)
         private readonly InitializationProgress _initializationProgress;
@@ -41,9 +39,7 @@ namespace SharpBridge.Services
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
-        /// <param name="consoleWindowManager">Console window manager for size management and tracking</param>
         /// <param name="modeManager">Console mode manager for UI mode switching</param>
-        /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="logger">Application logger</param>
         /// <param name="initializationContentProvider">Content provider for initialization progress display</param>
         public ApplicationInitializationService(
@@ -53,9 +49,7 @@ namespace SharpBridge.Services
             IVTubeStudioPCParameterManager parameterManager,
             IConfigManager configManager,
             IFileChangeWatcher appConfigWatcher,
-            IConsoleWindowManager consoleWindowManager,
             IConsoleModeManager modeManager,
-            UserPreferences userPreferences,
             IAppLogger logger,
             InitializationContentProvider initializationContentProvider)
         {
@@ -65,9 +59,7 @@ namespace SharpBridge.Services
             _parameterManager = parameterManager ?? throw new ArgumentNullException(nameof(parameterManager));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
-            _consoleWindowManager = consoleWindowManager ?? throw new ArgumentNullException(nameof(consoleWindowManager));
             _modeManager = modeManager ?? throw new ArgumentNullException(nameof(modeManager));
-            _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _initializationContentProvider = initializationContentProvider ?? throw new ArgumentNullException(nameof(initializationContentProvider));
 
@@ -79,31 +71,37 @@ namespace SharpBridge.Services
         /// Initializes the application by setting up all required components
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <param name="finalSetupActions">Optional list of actions to execute during final setup phase</param>
+        /// <param name="preActions">List of actions to execute after console setup (defaults to empty list)</param>
+        /// <param name="postActions">List of actions to execute during final setup phase (defaults to empty list)</param>
         /// <returns>A task that completes when initialization is done</returns>
-        public async Task InitializeAsync(CancellationToken cancellationToken, List<Action>? finalSetupActions = null)
+        public async Task InitializeAsync(CancellationToken cancellationToken,
+                                          List<Action>? preActions = null,
+                                          List<Action>? postActions = null)
         {
+            // Handle null parameters with empty list defaults
+            preActions ??= new List<Action>();
+            postActions ??= new List<Action>();
+
             // Switch to initialization mode and set up progress tracking
             _modeManager.SetMode(ConsoleMode.Initialization);
             _initializationContentProvider.SetProgress(_initializationProgress);
 
             try
             {
-                // Step 1: Console Setup
-                SetupConsoleWindow();
-                _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.Completed);
-                RenderInitializationProgress();
+                //SetupConsoleWindow(); //TODO: Move to pre-actions (place it before subbing to window size changes)                 
 
-                // Start console size change tracking
-                _consoleWindowManager.StartSizeChangeTracking((width, height) =>
+                // Execute pre-actions (e.g., console size change tracking)
+                foreach (var action in preActions)
                 {
-                    // Update preferences and save asynchronously (fire-and-forget)
-                    _ = UpdateUserPreferencesAsync(prefs =>
+                    try
                     {
-                        prefs.PreferredConsoleWidth = width;
-                        prefs.PreferredConsoleHeight = height;
-                    });
-                });
+                        action();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warning("Pre-action failed during initialization: {0}", ex.Message);
+                    }
+                }
 
                 // Step 2: Transformation Engine
                 _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.InProgress);
@@ -169,19 +167,16 @@ namespace SharpBridge.Services
                 _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.InProgress);
                 RenderInitializationProgress();
 
-                // Execute external final setup actions if provided
-                if (finalSetupActions != null)
+                // Execute external final setup actions
+                foreach (var action in postActions)
                 {
-                    foreach (var action in finalSetupActions)
+                    try
                     {
-                        try
-                        {
-                            action();
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.ErrorWithException("Error executing final setup action", ex);
-                        }
+                        action();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.ErrorWithException("Error executing final setup action", ex);
                     }
                 }
 
@@ -211,32 +206,6 @@ namespace SharpBridge.Services
             }
         }
 
-        /// <summary>
-        /// Sets up the console window with preferred dimensions
-        /// </summary>
-        private void SetupConsoleWindow()
-        {
-            try
-            {
-                var currentSize = _consoleWindowManager.GetCurrentSize();
-                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
-
-                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
-                if (success)
-                {
-                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
-                }
-                else
-                {
-                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}",
-                        currentSize.width, currentSize.height);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error setting up console window", ex);
-            }
-        }
 
         /// <summary>
         /// Initializes the transformation engine by loading rules
@@ -289,27 +258,6 @@ namespace SharpBridge.Services
             }
         }
 
-        /// <summary>
-        /// Updates user preferences and saves them asynchronously.
-        /// Fire-and-forget operation with error logging.
-        /// </summary>
-        private async Task UpdateUserPreferencesAsync(Action<UserPreferences> updateAction)
-        {
-            try
-            {
-                // Apply the update directly to the DI instance
-                updateAction(_userPreferences);
-
-                // Save to file (fire-and-forget)
-                await _configManager.SaveUserPreferencesAsync(_userPreferences);
-
-                _logger.Debug("User preferences updated and saved successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Failed to update user preferences", ex);
-            }
-        }
 
     }
 }
