@@ -352,9 +352,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
-                    provider.GetRequiredService<IConsoleWindowManager>(),
                     provider.GetRequiredService<IConsoleModeManager>(),
-                    provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<InitializationContentProvider>()
                 ));

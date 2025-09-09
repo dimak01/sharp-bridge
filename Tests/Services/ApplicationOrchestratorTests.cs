@@ -25,14 +25,13 @@ namespace SharpBridge.Tests.Services
         private readonly Mock<IKeyboardInputHandler> _mockKeyboardInputHandler;
         private readonly Mock<IVTubeStudioPCParameterManager> _mockParameterManager;
         private readonly Mock<IRecoveryPolicy> _mockRecoveryPolicy;
-        private readonly Mock<IConsole> _mockConsole;
+        private readonly Mock<IApplicationInitializationService> _mockInitializationService;
         private readonly Mock<IConsoleWindowManager> _mockConsoleWindowManager;
         private readonly Mock<IParameterColorService> _mockColorService;
         private readonly Mock<IExternalEditorService> _mockExternalEditorService;
         private readonly Mock<IShortcutConfigurationManager> _mockShortcutConfigurationManager;
         private readonly Mock<IConfigManager> _mockConfigManager;
         private readonly Mock<IFileChangeWatcher> _mockAppConfigWatcher;
-        private readonly Mock<InitializationContentProvider> _mockInitializationContentProvider;
         private readonly VTubeStudioPhoneClientConfig _phoneConfig;
         private readonly ApplicationConfig _applicationConfig;
         private readonly UserPreferences _userPreferences;
@@ -47,14 +46,13 @@ namespace SharpBridge.Tests.Services
             _mockKeyboardInputHandler = new Mock<IKeyboardInputHandler>();
             _mockParameterManager = new Mock<IVTubeStudioPCParameterManager>();
             _mockRecoveryPolicy = new Mock<IRecoveryPolicy>();
-            _mockConsole = new Mock<IConsole>();
+            _mockInitializationService = new Mock<IApplicationInitializationService>();
             _mockConsoleWindowManager = new Mock<IConsoleWindowManager>();
             _mockColorService = new Mock<IParameterColorService>();
             _mockExternalEditorService = new Mock<IExternalEditorService>();
             _mockShortcutConfigurationManager = new Mock<IShortcutConfigurationManager>();
             _mockConfigManager = new Mock<IConfigManager>();
             _mockAppConfigWatcher = new Mock<IFileChangeWatcher>();
-            _mockInitializationContentProvider = new Mock<InitializationContentProvider>(_mockLogger.Object, _mockExternalEditorService.Object);
 
             _phoneConfig = new VTubeStudioPhoneClientConfig
             {
@@ -111,7 +109,6 @@ namespace SharpBridge.Tests.Services
                 _mockKeyboardInputHandler.Object,
                 _mockParameterManager.Object,
                 _mockRecoveryPolicy.Object,
-                _mockConsole.Object,
                 _mockConsoleWindowManager.Object,
                 _mockColorService.Object,
                 _mockShortcutConfigurationManager.Object,
@@ -119,7 +116,7 @@ namespace SharpBridge.Tests.Services
                 _userPreferences,
                 _mockConfigManager.Object,
                 _mockAppConfigWatcher.Object,
-                _mockInitializationContentProvider.Object);
+                _mockInitializationService.Object);
         }
 
         #region Constructor Tests
@@ -141,131 +138,36 @@ namespace SharpBridge.Tests.Services
         #region InitializeAsync Tests
 
         [Fact]
-        public async Task InitializeAsync_WithValidParameters_InitializesSuccessfully()
+        public async Task InitializeAsync_DelegatesToInitializationService()
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
             var cancellationToken = CancellationToken.None;
 
-            // Setup mocks
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
+            _mockInitializationService.Setup(x => x.InitializeAsync(cancellationToken, It.IsAny<List<Action>>(), It.IsAny<List<Action>>()))
+                .Returns(Task.CompletedTask);
 
             // Act
             await orchestrator.InitializeAsync(cancellationToken);
 
             // Assert
-            _mockTransformationEngine.Verify(x => x.LoadRulesAsync(), Times.Once);
-            _mockAppConfigWatcher.Verify(x => x.StartWatching("test-config.json"), Times.Once);
-            _mockPCClient.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
-            _mockPhoneClient.Verify(x => x.TryInitializeAsync(cancellationToken), Times.Once);
-            _mockParameterManager.Verify(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken), Times.Once);
-            _mockShortcutConfigurationManager.Verify(x => x.LoadFromConfiguration(_applicationConfig.GeneralSettings), Times.Once);
-            _mockLogger.Verify(x => x.Info("Application initialized successfully"), Times.Once);
+            _mockInitializationService.Verify(x => x.InitializeAsync(cancellationToken, It.IsAny<List<Action>>(), It.IsAny<List<Action>>()), Times.Once);
         }
 
         [Fact]
-        public async Task InitializeAsync_WhenParameterSyncFails_LogsWarning()
+        public async Task InitializeAsync_WhenInitializationServiceThrows_PropagatesException()
         {
             // Arrange
             var orchestrator = CreateOrchestrator();
             var cancellationToken = CancellationToken.None;
+            var expectedException = new Exception("Initialization failed");
 
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(false));
-
-            // Act
-            await orchestrator.InitializeAsync(cancellationToken);
-
-            // Assert
-            _mockLogger.Verify(x => x.Warning("Parameter synchronization failed during initialization, will retry during recovery"), Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenConsoleResizeFails_LogsWarning()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            var cancellationToken = CancellationToken.None;
-
-            _mockConsoleWindowManager.Setup(x => x.SetConsoleSize(It.IsAny<int>(), It.IsAny<int>())).Returns(false);
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
-
-            // Act
-            await orchestrator.InitializeAsync(cancellationToken);
-
-            // Assert
-            _mockLogger.Verify(x => x.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}", 120, 30), Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenConsoleSetupThrows_LogsError()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            var cancellationToken = CancellationToken.None;
-
-            _mockConsoleWindowManager.Setup(x => x.GetCurrentSize()).Throws(new Exception("Console error"));
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
-
-            // Act
-            await orchestrator.InitializeAsync(cancellationToken);
-
-            // Assert
-            _mockLogger.Verify(x => x.ErrorWithException("Error setting up console window", It.IsAny<Exception>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_SetsInitializationModeAndSwitchesToMainMode()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            var cancellationToken = CancellationToken.None;
-
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
-
-            // Act
-            await orchestrator.InitializeAsync(cancellationToken);
-
-            // Assert
-            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Initialization), Times.Once);
-            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Main), Times.Once);
-            _mockInitializationContentProvider.Verify(x => x.SetProgress(It.IsAny<InitializationProgress>()), Times.Once);
-        }
-
-        [Fact]
-        public async Task InitializeAsync_WhenExceptionOccurs_SwitchesToMainMode()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            var cancellationToken = CancellationToken.None;
-
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Throws(new Exception("Test exception"));
+            _mockInitializationService.Setup(x => x.InitializeAsync(cancellationToken, It.IsAny<List<Action>>(), It.IsAny<List<Action>>()))
+                .ThrowsAsync(expectedException);
 
             // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() => orchestrator.InitializeAsync(cancellationToken));
-
-            // Verify that it switches to main mode even when exception occurs
-            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Initialization), Times.Once);
-            _mockModeManager.Verify(x => x.SetMode(ConsoleMode.Main), Times.Once);
+            var exception = await Assert.ThrowsAsync<Exception>(() => orchestrator.InitializeAsync(cancellationToken));
+            exception.Should().Be(expectedException);
         }
 
         #endregion
@@ -280,12 +182,9 @@ namespace SharpBridge.Tests.Services
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
 
-            // Setup mocks for the main loop
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
+            // Setup mocks for initialization
+            _mockInitializationService.Setup(x => x.InitializeAsync(cancellationToken, It.IsAny<List<Action>>(), It.IsAny<List<Action>>()))
+                .Returns(Task.CompletedTask);
 
             // Setup mocks for the main loop
             _mockPhoneClient.Setup(x => x.GetServiceStats()).Returns(new ServiceStats("PhoneClient", "VTube Studio Phone Client", null, true, DateTime.UtcNow, null, null));
@@ -314,12 +213,9 @@ namespace SharpBridge.Tests.Services
             var cancellationTokenSource = new CancellationTokenSource();
             var cancellationToken = cancellationTokenSource.Token;
 
-            // Setup mocks
-            _mockTransformationEngine.Setup(x => x.LoadRulesAsync()).Returns(Task.CompletedTask);
-            _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockPhoneClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
+            // Setup mocks for initialization
+            _mockInitializationService.Setup(x => x.InitializeAsync(cancellationToken, It.IsAny<List<Action>>(), It.IsAny<List<Action>>()))
+                .Returns(Task.CompletedTask);
 
             // Setup mocks to throw exception in main loop
             _mockPhoneClient.Setup(x => x.GetServiceStats()).Throws(new Exception("Test exception"));
@@ -464,8 +360,6 @@ namespace SharpBridge.Tests.Services
             _mockPCClient.Setup(x => x.GetServiceStats()).Returns(new ServiceStats("PCClient", "VTube Studio PC Client", null, false, DateTime.UtcNow, null, null));
             _mockPCClient.Setup(x => x.TryInitializeAsync(cancellationToken)).Returns(Task.FromResult(true));
             _mockPhoneClient.Setup(x => x.GetServiceStats()).Returns(new ServiceStats("PhoneClient", "VTube Studio Phone Client", null, true, DateTime.UtcNow, null, null));
-            _mockParameterManager.Setup(x => x.TrySynchronizeParametersAsync(It.IsAny<IEnumerable<VTSParameter>>(), cancellationToken))
-                .Returns(Task.FromResult(true));
 
             // Act
             var method = orchestrator.GetType().GetMethod("AttemptRecoveryAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -1125,41 +1019,6 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
-        #region InitializeAsync Console Window Tracking Tests
-
-        [Fact]
-        public async Task InitializeAsync_WhenConsoleWindowSizeChanges_UpdatesUserPreferences()
-        {
-            // Arrange
-            var orchestrator = CreateOrchestrator();
-            Action<int, int>? capturedCallback = null;
-
-            // Capture the callback when StartSizeChangeTracking is called
-            _mockConsoleWindowManager.Setup(x => x.StartSizeChangeTracking(It.IsAny<Action<int, int>>()))
-                .Callback<Action<int, int>>(callback => capturedCallback = callback);
-
-            // Act
-            await orchestrator.InitializeAsync(CancellationToken.None);
-
-            // Assert - Verify that console window size change tracking is set up
-            _mockConsoleWindowManager.Verify(x => x.StartSizeChangeTracking(It.IsAny<Action<int, int>>()), Times.Once);
-
-            // Verify the callback was captured and can be invoked
-            capturedCallback.Should().NotBeNull();
-
-            // Test the callback execution
-            var newWidth = 150;
-            var newHeight = 40;
-
-            // This should not throw and should update user preferences
-            capturedCallback!(newWidth, newHeight);
-
-            // Verify that UpdateUserPreferencesAsync was called (fire-and-forget)
-            // We can't easily verify the async call, but we can verify the callback works
-            capturedCallback.Should().NotBeNull();
-        }
-
-        #endregion
 
         #region RunAsync Exception Handling Tests
 
@@ -1300,7 +1159,7 @@ namespace SharpBridge.Tests.Services
         [InlineData("userPreferences")]
         [InlineData("configManager")]
         [InlineData("appConfigWatcher")]
-        [InlineData("initializationContentProvider")]
+        [InlineData("initializationService")]
         public void Constructor_WithNullParameter_ThrowsArgumentNullException(string nullParameter)
         {
             // Arrange
@@ -1313,7 +1172,6 @@ namespace SharpBridge.Tests.Services
             var validKeyboardInputHandler = new Mock<IKeyboardInputHandler>().Object;
             var validParameterManager = new Mock<IVTubeStudioPCParameterManager>().Object;
             var validRecoveryPolicy = new Mock<IRecoveryPolicy>().Object;
-            var validConsole = new Mock<IConsole>().Object;
             var validConsoleWindowManager = new Mock<IConsoleWindowManager>().Object;
             var validColorService = new Mock<IParameterColorService>().Object;
             var validShortcutConfigurationManager = new Mock<IShortcutConfigurationManager>().Object;
@@ -1321,7 +1179,7 @@ namespace SharpBridge.Tests.Services
             var validUserPreferences = new UserPreferences();
             var validConfigManager = new Mock<IConfigManager>().Object;
             var validAppConfigWatcher = new Mock<IFileChangeWatcher>().Object;
-            var validInitializationContentProvider = new Mock<InitializationContentProvider>(Mock.Of<IAppLogger>(), Mock.Of<IExternalEditorService>()).Object;
+            var validInitializationService = new Mock<IApplicationInitializationService>().Object;
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
@@ -1336,7 +1194,6 @@ namespace SharpBridge.Tests.Services
                     nullParameter == "keyboardInputHandler" ? null! : validKeyboardInputHandler,
                     nullParameter == "parameterManager" ? null! : validParameterManager,
                     nullParameter == "recoveryPolicy" ? null! : validRecoveryPolicy,
-                    nullParameter == "console" ? null! : validConsole,
                     nullParameter == "consoleWindowManager" ? null! : validConsoleWindowManager,
                     nullParameter == "colorService" ? null! : validColorService,
                     nullParameter == "shortcutConfigurationManager" ? null! : validShortcutConfigurationManager,
@@ -1344,7 +1201,7 @@ namespace SharpBridge.Tests.Services
                     nullParameter == "userPreferences" ? null! : validUserPreferences,
                     nullParameter == "configManager" ? null! : validConfigManager,
                     nullParameter == "appConfigWatcher" ? null! : validAppConfigWatcher,
-                    nullParameter == "initializationContentProvider" ? null! : validInitializationContentProvider
+                    nullParameter == "initializationService" ? null! : validInitializationService
                 );
             });
 
