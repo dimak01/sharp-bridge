@@ -101,6 +101,118 @@ namespace SharpBridge.Tests.Services
                 _mockInitializationContentProvider.Object));
         }
 
+        [Fact]
+        public void Constructor_WithNullTransformationEngine_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                null!,
+                _mockParameterManager.Object,
+                _mockConfigManager.Object,
+                _mockAppConfigWatcher.Object,
+                _mockModeManager.Object,
+                _mockLogger.Object,
+                _mockInitializationContentProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullParameterManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                _mockTransformationEngine.Object,
+                null!,
+                _mockConfigManager.Object,
+                _mockAppConfigWatcher.Object,
+                _mockModeManager.Object,
+                _mockLogger.Object,
+                _mockInitializationContentProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullConfigManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                _mockTransformationEngine.Object,
+                _mockParameterManager.Object,
+                null!,
+                _mockAppConfigWatcher.Object,
+                _mockModeManager.Object,
+                _mockLogger.Object,
+                _mockInitializationContentProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullAppConfigWatcher_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                _mockTransformationEngine.Object,
+                _mockParameterManager.Object,
+                _mockConfigManager.Object,
+                null!,
+                _mockModeManager.Object,
+                _mockLogger.Object,
+                _mockInitializationContentProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullModeManager_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                _mockTransformationEngine.Object,
+                _mockParameterManager.Object,
+                _mockConfigManager.Object,
+                _mockAppConfigWatcher.Object,
+                null!,
+                _mockLogger.Object,
+                _mockInitializationContentProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                _mockTransformationEngine.Object,
+                _mockParameterManager.Object,
+                _mockConfigManager.Object,
+                _mockAppConfigWatcher.Object,
+                _mockModeManager.Object,
+                null!,
+                _mockInitializationContentProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullInitializationContentProvider_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new ApplicationInitializationService(
+                _mockPCClient.Object,
+                _mockPhoneClient.Object,
+                _mockTransformationEngine.Object,
+                _mockParameterManager.Object,
+                _mockConfigManager.Object,
+                _mockAppConfigWatcher.Object,
+                _mockModeManager.Object,
+                _mockLogger.Object,
+                null!));
+        }
+
         #endregion
 
         #region InitializeAsync Tests

@@ -88,100 +88,16 @@ namespace SharpBridge.Services
 
             try
             {
-                //SetupConsoleWindow(); //TODO: Move to pre-actions (place it before subbing to window size changes)                 
-
                 // Execute pre-actions (e.g., console size change tracking)
-                foreach (var action in preActions)
-                {
-                    try
-                    {
-                        action();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Warning("Pre-action failed during initialization: {0}", ex.Message);
-                    }
-                }
+                ExecuteActionsSafely(preActions, "Pre-action");
 
-                // Step 2: Transformation Engine
-                _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.InProgress);
-                RenderInitializationProgress();
-                await InitializeTransformationEngine();
-                _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.Completed);
-                RenderInitializationProgress();
-
-                // Step 3: File Watchers
-                _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.InProgress);
-                RenderInitializationProgress();
-                _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
-                _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
-                _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.Completed);
-                RenderInitializationProgress();
-
-                // Step 4: PC Client
-                _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.InProgress);
-                RenderInitializationProgress();
-                _logger.Info("Attempting initial PC client connection...");
-                var pcClientSuccess = await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
-                if (pcClientSuccess)
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Completed);
-                }
-                else
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Failed, "PC client initialization failed");
-                }
-                RenderInitializationProgress();
-
-                // Step 5: Phone Client
-                _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.InProgress);
-                RenderInitializationProgress();
-                _logger.Info("Attempting initial Phone client connection...");
-                var phoneClientSuccess = await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
-                if (phoneClientSuccess)
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Completed);
-                }
-                else
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Failed, "Phone client initialization failed");
-                }
-                RenderInitializationProgress();
-
-                // Step 6: Parameter Sync
-                _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.InProgress);
-                RenderInitializationProgress();
-                var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
-                if (parameterSyncSuccess)
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Completed);
-                }
-                else
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Failed, "Parameter synchronization failed");
-                    _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
-                }
-                RenderInitializationProgress();
-
-                // Step 7: Final Setup
-                _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.InProgress);
-                RenderInitializationProgress();
-
-                // Execute external final setup actions
-                foreach (var action in postActions)
-                {
-                    try
-                    {
-                        action();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.ErrorWithException("Error executing final setup action", ex);
-                    }
-                }
-
-                _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.Completed);
-                RenderInitializationProgress();
+                // Execute initialization steps in order
+                await ExecuteTransformationEngineStepAsync();
+                await ExecuteFileWatchersStepAsync();
+                await ExecutePCClientStepAsync(cancellationToken);
+                await ExecutePhoneClientStepAsync(cancellationToken);
+                await ExecuteParameterSyncStepAsync(cancellationToken);
+                await ExecuteFinalSetupStepAsync(postActions);
 
                 // Mark initialization as complete
                 _initializationProgress.MarkComplete();
@@ -213,6 +129,108 @@ namespace SharpBridge.Services
         private async Task InitializeTransformationEngine()
         {
             await _transformationEngine.LoadRulesAsync();
+        }
+
+        /// <summary>
+        /// Executes the transformation engine initialization step
+        /// </summary>
+        private async Task ExecuteTransformationEngineStepAsync()
+        {
+            _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.InProgress);
+            RenderInitializationProgress();
+            await InitializeTransformationEngine();
+            _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.Completed);
+            RenderInitializationProgress();
+        }
+
+        /// <summary>
+        /// Executes the file watchers setup step
+        /// </summary>
+        private Task ExecuteFileWatchersStepAsync()
+        {
+            _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.InProgress);
+            RenderInitializationProgress();
+            _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
+            _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
+            _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.Completed);
+            RenderInitializationProgress();
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Executes the PC client initialization step
+        /// </summary>
+        private async Task ExecutePCClientStepAsync(CancellationToken cancellationToken)
+        {
+            _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.InProgress);
+            RenderInitializationProgress();
+            _logger.Info("Attempting initial PC client connection...");
+            var pcClientSuccess = await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
+            if (pcClientSuccess)
+            {
+                _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Completed);
+            }
+            else
+            {
+                _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Failed, "PC client initialization failed");
+            }
+            RenderInitializationProgress();
+        }
+
+        /// <summary>
+        /// Executes the phone client initialization step
+        /// </summary>
+        private async Task ExecutePhoneClientStepAsync(CancellationToken cancellationToken)
+        {
+            _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.InProgress);
+            RenderInitializationProgress();
+            _logger.Info("Attempting initial Phone client connection...");
+            var phoneClientSuccess = await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
+            if (phoneClientSuccess)
+            {
+                _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Completed);
+            }
+            else
+            {
+                _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Failed, "Phone client initialization failed");
+            }
+            RenderInitializationProgress();
+        }
+
+        /// <summary>
+        /// Executes the parameter synchronization step
+        /// </summary>
+        private async Task ExecuteParameterSyncStepAsync(CancellationToken cancellationToken)
+        {
+            _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.InProgress);
+            RenderInitializationProgress();
+            var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
+            if (parameterSyncSuccess)
+            {
+                _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Completed);
+            }
+            else
+            {
+                _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Failed, "Parameter synchronization failed");
+                _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
+            }
+            RenderInitializationProgress();
+        }
+
+        /// <summary>
+        /// Executes the final setup step including post-actions
+        /// </summary>
+        private Task ExecuteFinalSetupStepAsync(List<Action> postActions)
+        {
+            _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.InProgress);
+            RenderInitializationProgress();
+
+            // Execute external final setup actions
+            ExecuteActionsSafely(postActions, "Final setup action");
+
+            _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.Completed);
+            RenderInitializationProgress();
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -258,6 +276,25 @@ namespace SharpBridge.Services
             }
         }
 
+        /// <summary>
+        /// Executes a list of actions safely, catching and logging any exceptions
+        /// </summary>
+        /// <param name="actions">The list of actions to execute</param>
+        /// <param name="actionType">The type of actions being executed (for logging purposes)</param>
+        private void ExecuteActionsSafely(List<Action> actions, string actionType)
+        {
+            foreach (var action in actions)
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    _logger.ErrorWithException($"Error executing {actionType.ToLower()}", ex);
+                }
+            }
+        }
 
     }
 }

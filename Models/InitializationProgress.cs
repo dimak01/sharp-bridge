@@ -90,28 +90,6 @@ namespace SharpBridge.Models
         }
 
         /// <summary>
-        /// Gets the next pending step
-        /// </summary>
-        /// <returns>The next step that needs to be executed, or null if all steps are complete</returns>
-        public InitializationStep? GetNextPendingStep()
-        {
-            var stepOrder = new[]
-            {
-                InitializationStep.ConsoleSetup,
-                InitializationStep.TransformationEngine,
-                InitializationStep.FileWatchers,
-                InitializationStep.PCClient,
-                InitializationStep.PhoneClient,
-                InitializationStep.ParameterSync,
-                InitializationStep.FinalSetup
-            };
-
-            return stepOrder.FirstOrDefault(step =>
-                Steps.TryGetValue(step, out var stepInfo) &&
-                stepInfo.Status == StepStatus.Pending);
-        }
-
-        /// <summary>
         /// Marks initialization as complete
         /// </summary>
         public void MarkComplete()

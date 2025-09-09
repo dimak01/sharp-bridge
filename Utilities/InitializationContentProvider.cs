@@ -115,7 +115,7 @@ namespace SharpBridge.Utilities
         /// Renders the initialization progress display
         /// </summary>
         /// <returns>Formatted initialization display lines</returns>
-        private string[] RenderInitializationDisplay()
+        protected virtual string[] RenderInitializationDisplay()
         {
             var lines = new List<string>();
 
