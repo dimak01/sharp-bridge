@@ -57,7 +57,6 @@ namespace SharpBridge.Services
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
-        /// <param name="console">Console abstraction for window management</param>
         /// <param name="consoleWindowManager">Console window manager for size management and tracking</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
@@ -76,7 +75,6 @@ namespace SharpBridge.Services
             IKeyboardInputHandler keyboardInputHandler,
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
-            IConsole console,
             IConsoleWindowManager consoleWindowManager,
             IParameterColorService colorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
@@ -121,32 +119,6 @@ namespace SharpBridge.Services
             await _initializationService.InitializeAsync(cancellationToken, finalSetupActions);
         }
 
-        /// <summary>
-        /// Sets up the console window with preferred dimensions
-        /// </summary>
-        private void SetupConsoleWindow()
-        {
-            try
-            {
-                var currentSize = _consoleWindowManager.GetCurrentSize();
-                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
-
-                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
-                if (success)
-                {
-                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
-                }
-                else
-                {
-                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}",
-                        currentSize.width, currentSize.height);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error setting up console window", ex);
-            }
-        }
 
         /// <summary>
         /// Starts the data flow between components and runs until cancelled
@@ -243,25 +215,6 @@ namespace SharpBridge.Services
             }
         }
 
-        /// <summary>
-        /// Manually renders the initialization progress to the console
-        /// </summary>
-        private void RenderInitializationProgress()
-        {
-            try
-            {
-                // Get empty stats since we're in initialization mode
-                var emptyStats = Enumerable.Empty<IServiceStats>();
-
-                // Force an immediate update of the console
-                _modeManager.Update(emptyStats);
-            }
-            catch (Exception ex)
-            {
-                // Don't let rendering errors break initialization
-                _logger.Warning("Failed to render initialization progress: {0}", ex.Message);
-            }
-        }
 
         /// <summary>
         /// Processes recovery attempt if it's time to do so
