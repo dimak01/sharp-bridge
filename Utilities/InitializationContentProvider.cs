@@ -141,7 +141,6 @@ namespace SharpBridge.Utilities
                 {
                     var stepLine = RenderStepLine(step, stepInfo);
                     lines.Add(stepLine);
-
                 }
             }
 
@@ -192,7 +191,6 @@ namespace SharpBridge.Utilities
                 _ => $"[{ConsoleColors.Colorize("UNK", ConsoleColors.Disabled)}]"
             };
         }
-
 
         /// <summary>
         /// Formats elapsed time as MM:SS.f
