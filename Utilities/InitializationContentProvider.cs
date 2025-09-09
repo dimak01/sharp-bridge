@@ -168,7 +168,7 @@ namespace SharpBridge.Utilities
             }
             else
             {
-                durationText = AttributeHelper.GetDescription(stepInfo.Status); ;
+                durationText = AttributeHelper.GetDescription(stepInfo.Status);
             }
 
             // Concatenate status and step name first, then pad as a single unit

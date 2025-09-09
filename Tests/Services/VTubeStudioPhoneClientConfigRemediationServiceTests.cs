@@ -12,7 +12,7 @@ namespace SharpBridge.Tests.Services
     /// <summary>
     /// Tests for VTubeStudioPhoneClientConfigRemediationService class.
     /// </summary>
-    public class VTubeStudioPhoneClientConfigRemediationServiceTests : IDisposable
+    public class VTubeStudioPhoneClientConfigRemediationServiceTests
     {
         private readonly Mock<IConfigSectionValidatorsFactory> _mockValidatorsFactory;
         private readonly Mock<IConfigSectionValidator> _mockValidator;
@@ -33,10 +33,6 @@ namespace SharpBridge.Tests.Services
                 _mockConsole.Object);
         }
 
-        public void Dispose()
-        {
-            // No resources to dispose
-        }
 
         #region Constructor Tests
 

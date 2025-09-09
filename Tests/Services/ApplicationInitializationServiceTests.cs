@@ -13,7 +13,7 @@ using Xunit;
 
 namespace SharpBridge.Tests.Services
 {
-    public class ApplicationInitializationServiceTests : IDisposable
+    public class ApplicationInitializationServiceTests
     {
         private readonly Mock<IVTubeStudioPCClient> _mockPCClient;
         private readonly Mock<IVTubeStudioPhoneClient> _mockPhoneClient;
@@ -466,9 +466,5 @@ namespace SharpBridge.Tests.Services
 
         #endregion
 
-        public void Dispose()
-        {
-            // Cleanup if needed
-        }
     }
 }
