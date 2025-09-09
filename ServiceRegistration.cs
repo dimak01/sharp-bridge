@@ -20,6 +20,11 @@ namespace SharpBridge
     /// </summary>
     public static class ServiceRegistration
     {
+        private const string APPLICATION_CONFIG_KEY = "ApplicationConfig";
+        private const string TRANSFORMATION_ENGINE_CONFIG_KEY = "TransformationRules";
+
+
+
         /// <summary>
         /// Registers all application services with the DI container with consolidated configuration
         /// </summary>
@@ -152,7 +157,7 @@ namespace SharpBridge
             services.AddSingleton<IVTubeStudioPhoneClient>(provider =>
             {
                 var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
-                var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
+                var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY);
                 return new VTubeStudioPhoneClient(
                     factory.CreateForPhoneClient(),
                     provider.GetRequiredService<IConfigManager>(),
@@ -165,12 +170,12 @@ namespace SharpBridge
             services.AddSingleton<IFileSystemWatcherFactory, FileSystemWatcherFactory>();
 
             // Register file change watchers - multiple instances for different config files
-            services.AddKeyedSingleton<IFileChangeWatcher>("TransformationRules", (provider, key) =>
+            services.AddKeyedSingleton<IFileChangeWatcher>(TRANSFORMATION_ENGINE_CONFIG_KEY, (provider, key) =>
                 new SharpBridge.Utilities.FileSystemChangeWatcher(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IFileSystemWatcherFactory>()));
 
-            services.AddKeyedSingleton<IFileChangeWatcher>("ApplicationConfig", (provider, key) =>
+            services.AddKeyedSingleton<IFileChangeWatcher>(APPLICATION_CONFIG_KEY, (provider, key) =>
                 new SharpBridge.Utilities.FileSystemChangeWatcher(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IFileSystemWatcherFactory>()));
@@ -179,8 +184,8 @@ namespace SharpBridge
             services.AddSingleton<ITransformationRulesRepository>(provider =>
                 new SharpBridge.Repositories.FileBasedTransformationRulesRepository(
                     provider.GetRequiredService<IAppLogger>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("TransformationRules")!,
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetKeyedService<IFileChangeWatcher>(TRANSFORMATION_ENGINE_CONFIG_KEY)!,
+                    provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)!,
                     provider.GetRequiredService<IConfigManager>()));
 
 
@@ -190,13 +195,13 @@ namespace SharpBridge
                     provider.GetRequiredService<ITransformationRulesRepository>(),
                     provider.GetRequiredService<TransformationEngineConfig>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                    provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)!
                 ));
 
             // Register VTubeStudioPCClient as a singleton
             services.AddSingleton<VTubeStudioPCClient>(provider =>
             {
-                var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
+                var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY);
                 return new VTubeStudioPCClient(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IConfigManager>(),
@@ -239,7 +244,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IProcessLauncher>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!
+                    provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)!
                 ));
 
             // Register Windows-specific dependencies for firewall engine (unified facade only)
@@ -263,7 +268,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IShortcutParser>(),
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")
+                    provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)
                 ));
             // Register SystemHelpRenderer both as interface and concrete class
             services.AddSingleton<SystemHelpContentProvider>(provider =>
@@ -351,7 +356,7 @@ namespace SharpBridge
                     provider.GetRequiredService<ITransformationEngine>(),
                     provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)!,
                     provider.GetRequiredService<IConsoleModeManager>(),
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<InitializationContentProvider>()
@@ -375,7 +380,7 @@ namespace SharpBridge
                     provider.GetRequiredService<ApplicationConfig>(),
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
-                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)!,
                     provider.GetRequiredService<IApplicationInitializationService>()
                 ));
 

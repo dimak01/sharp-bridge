@@ -49,7 +49,7 @@ namespace SharpBridge
                 // Ignore errors - ANSI colors will just not work
             }
 
-            Console.WriteLine("Peparing to start Sharp Bridge...");
+            Console.WriteLine("Preparing to start Sharp Bridge...");
 
             // Setup DI container
             var services = new ServiceCollection();
