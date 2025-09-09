@@ -74,7 +74,7 @@ public class VTubeStudioPhoneClientConfig : IConfigSection
         // Set internal defaults
         RequestIntervalSeconds = 3;
         SendForSeconds = 4;
-        ReceiveTimeoutMs = 100;
+        ReceiveTimeoutMs = 250;
         ErrorDelayMs = 1000;
     }
 }

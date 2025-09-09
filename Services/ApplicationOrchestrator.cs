@@ -31,6 +31,7 @@ namespace SharpBridge.Services
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
         private readonly UserPreferences _userPreferences;
+        private readonly IApplicationInitializationService _initializationService;
 
         private ApplicationConfig _applicationConfig;
 
@@ -42,6 +43,7 @@ namespace SharpBridge.Services
         private bool _isDisposed;
         private DateTime _nextRecoveryAttempt = DateTime.UtcNow;
         private bool _colorServiceInitialized = false; // Track if color service has been initialized
+        private readonly SemaphoreSlim _recoverySemaphore = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Creates a new instance of the ApplicationOrchestrator
@@ -55,7 +57,6 @@ namespace SharpBridge.Services
         /// <param name="keyboardInputHandler">Keyboard input handler</param>
         /// <param name="parameterManager">VTube Studio PC parameter manager</param>
         /// <param name="recoveryPolicy">Policy for determining recovery attempt timing</param>
-        /// <param name="console">Console abstraction for window management</param>
         /// <param name="consoleWindowManager">Console window manager for size management and tracking</param>
         /// <param name="colorService">Parameter color service for colored console output</param>
         /// <param name="shortcutConfigurationManager">Manager for keyboard shortcut configurations</param>
@@ -63,6 +64,7 @@ namespace SharpBridge.Services
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
+        /// <param name="initializationService">Service for handling application initialization</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -73,14 +75,14 @@ namespace SharpBridge.Services
             IKeyboardInputHandler keyboardInputHandler,
             IVTubeStudioPCParameterManager parameterManager,
             IRecoveryPolicy recoveryPolicy,
-            IConsole console,
             IConsoleWindowManager consoleWindowManager,
             IParameterColorService colorService,
             IShortcutConfigurationManager shortcutConfigurationManager,
             ApplicationConfig applicationConfig,
             UserPreferences userPreferences,
             IConfigManager configManager,
-            IFileChangeWatcher appConfigWatcher)
+            IFileChangeWatcher appConfigWatcher,
+            IApplicationInitializationService initializationService)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -98,6 +100,7 @@ namespace SharpBridge.Services
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
+            _initializationService = initializationService ?? throw new ArgumentNullException(nameof(initializationService));
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -110,70 +113,14 @@ namespace SharpBridge.Services
         /// <returns>A task that completes when initialization and connection are done</returns>
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
-            // Set preferred console window size
-            SetupConsoleWindow();
-
-            // Start console size change tracking
-            _consoleWindowManager.StartSizeChangeTracking((width, height) =>
-            {
-                // Update preferences and save asynchronously (fire-and-forget)
-                _ = UpdateUserPreferencesAsync(prefs =>
-                {
-                    prefs.PreferredConsoleWidth = width;
-                    prefs.PreferredConsoleHeight = height;
-                });
-            });
-
-            await InitializeTransformationEngine();
-
-            // Start watching application config file for hot reload
-            _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
-            _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
-
-            // Initialize clients directly during startup
-            _logger.Info("Attempting initial client connections...");
-            await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
-            await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
-
-            // Register keyboard shortcuts
-            RegisterKeyboardShortcuts();
-
-            // Attempt to synchronize VTube Studio parameters (non-fatal if it fails)
-            var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
-            if (!parameterSyncSuccess)
-            {
-                _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
-            }
-
-            _logger.Info("Application initialized successfully");
+            // Delegate initialization to the dedicated initialization service
+            // Pass console size change tracking as a pre-action
+            var preActions = new List<Action> { StartConsoleSizeChangeTracking };
+            // Pass RegisterKeyboardShortcuts as a final setup action
+            var finalSetupActions = new List<Action> { RegisterKeyboardShortcuts };
+            await _initializationService.InitializeAsync(cancellationToken, preActions, finalSetupActions);
         }
 
-        /// <summary>
-        /// Sets up the console window with preferred dimensions
-        /// </summary>
-        private void SetupConsoleWindow()
-        {
-            try
-            {
-                var currentSize = _consoleWindowManager.GetCurrentSize();
-                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
-
-                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
-                if (success)
-                {
-                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
-                }
-                else
-                {
-                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}",
-                        currentSize.width, currentSize.height);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error setting up console window", ex);
-            }
-        }
 
         /// <summary>
         /// Starts the data flow between components and runs until cancelled
@@ -255,7 +202,7 @@ namespace SharpBridge.Services
             {
                 try
                 {
-                    await ProcessRecoveryIfNeeded(cancellationToken);
+                    ProcessRecoveryIfNeeded(cancellationToken);
                     nextRequestTime = await ProcessTrackingRequestIfNeeded(nextRequestTime);
                     var dataReceived = await ProcessDataReceiving(cancellationToken);
                     _keyboardInputHandler.CheckForKeyboardInput();
@@ -270,20 +217,46 @@ namespace SharpBridge.Services
             }
         }
 
+
         /// <summary>
         /// Processes recovery attempt if it's time to do so
         /// </summary>
-        private async Task ProcessRecoveryIfNeeded(CancellationToken cancellationToken)
+        private void ProcessRecoveryIfNeeded(CancellationToken cancellationToken)
         {
-            if (DateTime.UtcNow >= _nextRecoveryAttempt)
+            // Check if it's time for recovery
+            if (DateTime.UtcNow < _nextRecoveryAttempt)
             {
-                var recoveryAttempted = await AttemptRecoveryAsync(cancellationToken);
-                if (recoveryAttempted)
-                {
-                    _logger.Info("Recovery attempt completed");
-                }
-                _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+                return; // Not time yet
             }
+
+            // Try to acquire semaphore - if already running, skip
+            if (!_recoverySemaphore.Wait(0, cancellationToken))
+            {
+                return; // Recovery already in progress
+            }
+
+            // Fire-and-forget: do recovery work in background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var recoveryAttempted = await AttemptRecoveryAsync(cancellationToken);
+                    if (recoveryAttempted)
+                    {
+                        _logger.Info("Recovery attempt completed");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.ErrorWithException("Error during background recovery", ex);
+                }
+                finally
+                {
+                    // Set next attempt time AFTER recovery completes (success or failure)
+                    _nextRecoveryAttempt = DateTime.UtcNow.Add(_recoveryPolicy.GetNextDelay());
+                    _recoverySemaphore.Release();
+                }
+            }, cancellationToken);
         }
 
         /// <summary>
@@ -583,6 +556,46 @@ namespace SharpBridge.Services
         }
 
         /// <summary>
+        /// Sets up console window and starts console size change tracking
+        /// </summary>
+        private void StartConsoleSizeChangeTracking()
+        {
+            // First, set up the console window with preferred dimensions
+            try
+            {
+                var currentSize = _consoleWindowManager.GetCurrentSize();
+                _logger.Info("Current console size: {0}x{1}", currentSize.width, currentSize.height);
+
+                bool success = _consoleWindowManager.SetConsoleSize(_userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
+                if (success)
+                {
+                    _logger.Info("Console window resized to preferred size: {0}x{1}", _userPreferences.PreferredConsoleWidth, _userPreferences.PreferredConsoleHeight);
+                }
+                else
+                {
+                    _logger.Warning("Failed to resize console window to preferred size. Using current size: {0}x{1}",
+                        currentSize.width, currentSize.height);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.ErrorWithException("Error setting up console window", ex);
+            }
+
+            // Then start tracking size changes
+            _consoleWindowManager.StartSizeChangeTracking((width, height) =>
+            {
+                // Update preferences and save asynchronously (fire-and-forget)
+                _ = UpdateUserPreferencesAsync(prefs =>
+                {
+                    prefs.PreferredConsoleWidth = width;
+                    prefs.PreferredConsoleHeight = height;
+                });
+            });
+        }
+
+
+        /// <summary>
         /// Gets the action method for a specific shortcut action
         /// </summary>
         private Action? GetActionMethod(ShortcutAction action)
@@ -725,6 +738,7 @@ namespace SharpBridge.Services
                     // which will automatically stop size tracking and restore window size
                     _vtubeStudioPCClient.Dispose();
                     _vtubeStudioPhoneClient.Dispose();
+                    _recoverySemaphore.Dispose();
                 }
 
                 _isDisposed = true;

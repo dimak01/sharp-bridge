@@ -206,7 +206,7 @@ namespace SharpBridge.Tests.Utilities
             var provider = CreateProvider();
 
             // Act & Assert
-            provider.DisplayName.Should().Be("Main Status");
+            provider.DisplayName.Should().Be("Application Status");
         }
 
         [Fact]

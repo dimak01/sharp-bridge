@@ -70,7 +70,7 @@ namespace SharpBridge.Utilities
         /// <summary>
         /// Gets the display name for this content provider
         /// </summary>
-        public string DisplayName => "Main Status";
+        public string DisplayName => "Application Status";
 
         /// <summary>
         /// Gets the toggle action for this content provider

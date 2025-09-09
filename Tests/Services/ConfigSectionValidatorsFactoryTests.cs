@@ -12,7 +12,7 @@ namespace SharpBridge.Tests.Services
     /// Tests for ConfigSectionValidatorsFactory class.
     /// Focuses on core factory behavior rather than complex DI mocking scenarios.
     /// </summary>
-    public class ConfigSectionValidatorsFactoryTests : IDisposable
+    public class ConfigSectionValidatorsFactoryTests
     {
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly ConfigSectionValidatorsFactory _factory;
@@ -23,10 +23,6 @@ namespace SharpBridge.Tests.Services
             _factory = new ConfigSectionValidatorsFactory(_mockServiceProvider.Object);
         }
 
-        public void Dispose()
-        {
-            // No resources to dispose
-        }
 
         #region Constructor Tests
 

@@ -230,7 +230,7 @@ namespace SharpBridge.Services
         /// </summary>
         private void ValidateRequiredRenderers()
         {
-            var requiredModes = new[] { ConsoleMode.Main, ConsoleMode.SystemHelp, ConsoleMode.NetworkStatus };
+            var requiredModes = new[] { ConsoleMode.Main, ConsoleMode.SystemHelp, ConsoleMode.NetworkStatus, ConsoleMode.Initialization };
             var missingModes = requiredModes.Where(mode => !_renderers.ContainsKey(mode)).ToArray();
 
             if (missingModes.Any())

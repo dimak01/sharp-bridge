@@ -20,7 +20,12 @@ namespace SharpBridge.Models
         /// <summary>
         /// Network status and troubleshooting mode.
         /// </summary>
-        NetworkStatus = 2
+        NetworkStatus = 2,
+
+        /// <summary>
+        /// Application initialization progress display.
+        /// </summary>
+        Initialization = 3
     }
 }
 
