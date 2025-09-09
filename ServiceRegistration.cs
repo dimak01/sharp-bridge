@@ -149,7 +149,7 @@ namespace SharpBridge
             services.AddSingleton<IUdpClientWrapperFactory, UdpClientWrapperFactory>();
 
             // Register core services
-            services.AddTransient<IVTubeStudioPhoneClient>(provider =>
+            services.AddSingleton<IVTubeStudioPhoneClient>(provider =>
             {
                 var factory = provider.GetRequiredService<IUdpClientWrapperFactory>();
                 var appConfigWatcher = provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig");
@@ -184,7 +184,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>()));
 
 
-            services.AddTransient<ITransformationEngine>(provider =>
+            services.AddSingleton<ITransformationEngine>(provider =>
                 new TransformationEngine(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<ITransformationRulesRepository>(),
@@ -343,6 +343,22 @@ namespace SharpBridge
                 return new SimpleRecoveryPolicy(TimeSpan.FromSeconds(pcConfig.RecoveryIntervalSeconds));
             });
 
+            // Register application initialization service
+            services.AddScoped<IApplicationInitializationService>(provider =>
+                new ApplicationInitializationService(
+                    provider.GetRequiredService<IVTubeStudioPCClient>(),
+                    provider.GetRequiredService<IVTubeStudioPhoneClient>(),
+                    provider.GetRequiredService<ITransformationEngine>(),
+                    provider.GetRequiredService<IVTubeStudioPCParameterManager>(),
+                    provider.GetRequiredService<IConfigManager>(),
+                    provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
+                    provider.GetRequiredService<IConsoleWindowManager>(),
+                    provider.GetRequiredService<IConsoleModeManager>(),
+                    provider.GetRequiredService<UserPreferences>(),
+                    provider.GetRequiredService<IAppLogger>(),
+                    provider.GetRequiredService<InitializationContentProvider>()
+                ));
+
             // Register the orchestrator - scoped to ensure one instance per execution context
             services.AddScoped<IApplicationOrchestrator>(provider =>
                 new ApplicationOrchestrator(
@@ -363,7 +379,7 @@ namespace SharpBridge
                     provider.GetRequiredService<UserPreferences>(),
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetKeyedService<IFileChangeWatcher>("ApplicationConfig")!,
-                    provider.GetRequiredService<InitializationContentProvider>()
+                    provider.GetRequiredService<IApplicationInitializationService>()
                 ));
 
             return services;

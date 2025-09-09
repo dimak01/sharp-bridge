@@ -31,10 +31,9 @@ namespace SharpBridge.Services
         private readonly IConfigManager _configManager;
         private readonly IFileChangeWatcher _appConfigWatcher;
         private readonly UserPreferences _userPreferences;
-        private readonly InitializationContentProvider _initializationContentProvider;
+        private readonly IApplicationInitializationService _initializationService;
 
         private ApplicationConfig _applicationConfig;
-        private readonly InitializationProgress _initializationProgress;
 
         /// <summary>
         /// Gets or sets the interval in seconds between console status updates
@@ -66,7 +65,7 @@ namespace SharpBridge.Services
         /// <param name="userPreferences">User preferences for console dimensions and verbosity levels</param>
         /// <param name="configManager">Configuration manager for saving user preferences</param>
         /// <param name="appConfigWatcher">File change watcher for application configuration</param>
-        /// <param name="initializationContentProvider">Content provider for initialization progress display</param>
+        /// <param name="initializationService">Service for handling application initialization</param>
         public ApplicationOrchestrator(
             IVTubeStudioPCClient vtubeStudioPCClient,
             IVTubeStudioPhoneClient vtubeStudioPhoneClient,
@@ -85,7 +84,7 @@ namespace SharpBridge.Services
             UserPreferences userPreferences,
             IConfigManager configManager,
             IFileChangeWatcher appConfigWatcher,
-            InitializationContentProvider initializationContentProvider)
+            IApplicationInitializationService initializationService)
         {
             _vtubeStudioPCClient = vtubeStudioPCClient ?? throw new ArgumentNullException(nameof(vtubeStudioPCClient));
             _vtubeStudioPhoneClient = vtubeStudioPhoneClient ?? throw new ArgumentNullException(nameof(vtubeStudioPhoneClient));
@@ -103,10 +102,7 @@ namespace SharpBridge.Services
             _userPreferences = userPreferences ?? throw new ArgumentNullException(nameof(userPreferences));
             _configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
             _appConfigWatcher = appConfigWatcher ?? throw new ArgumentNullException(nameof(appConfigWatcher));
-            _initializationContentProvider = initializationContentProvider ?? throw new ArgumentNullException(nameof(initializationContentProvider));
-
-            // Initialize progress tracking
-            _initializationProgress = new InitializationProgress();
+            _initializationService = initializationService ?? throw new ArgumentNullException(nameof(initializationService));
 
             // Load shortcut configuration
             _shortcutConfigurationManager.LoadFromConfiguration(_applicationConfig.GeneralSettings);
@@ -119,116 +115,10 @@ namespace SharpBridge.Services
         /// <returns>A task that completes when initialization and connection are done</returns>
         public async Task InitializeAsync(CancellationToken cancellationToken)
         {
-            // Switch to initialization mode and set up progress tracking
-            _modeManager.SetMode(ConsoleMode.Initialization);
-            _initializationContentProvider.SetProgress(_initializationProgress);
-
-            try
-            {
-                // Step 1: Console Setup
-                SetupConsoleWindow();
-                _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.Completed);
-                RenderInitializationProgress();
-
-                // Start console size change tracking
-                _consoleWindowManager.StartSizeChangeTracking((width, height) =>
-                {
-                    // Update preferences and save asynchronously (fire-and-forget)
-                    _ = UpdateUserPreferencesAsync(prefs =>
-                    {
-                        prefs.PreferredConsoleWidth = width;
-                        prefs.PreferredConsoleHeight = height;
-                    });
-                });
-
-                // Step 2: Transformation Engine
-                _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.InProgress);
-                RenderInitializationProgress();
-                await InitializeTransformationEngine();
-                _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.Completed);
-                RenderInitializationProgress();
-
-                // Step 3: File Watchers
-                _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.InProgress);
-                RenderInitializationProgress();
-                _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
-                _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
-                _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.Completed);
-                RenderInitializationProgress();
-
-                // Step 4: PC Client
-                _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.InProgress);
-                RenderInitializationProgress();
-                _logger.Info("Attempting initial PC client connection...");
-                var pcClientSuccess = await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
-                if (pcClientSuccess)
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Completed);
-                }
-                else
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Failed, "PC client initialization failed");
-                }
-                RenderInitializationProgress();
-
-                // Step 5: Phone Client
-                _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.InProgress);
-                RenderInitializationProgress();
-                _logger.Info("Attempting initial Phone client connection...");
-                var phoneClientSuccess = await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
-                if (phoneClientSuccess)
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Completed);
-                }
-                else
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Failed, "Phone client initialization failed");
-                }
-                RenderInitializationProgress();
-
-                // Step 6: Parameter Sync
-                _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.InProgress);
-                RenderInitializationProgress();
-                var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
-                if (parameterSyncSuccess)
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Completed);
-                }
-                else
-                {
-                    _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Failed, "Parameter synchronization failed");
-                    _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
-                }
-                RenderInitializationProgress();
-
-                // Step 7: Final Setup
-                _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.InProgress);
-                RenderInitializationProgress();
-                RegisterKeyboardShortcuts();
-                _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.Completed);
-                RenderInitializationProgress();
-
-                // Mark initialization as complete
-                _initializationProgress.MarkComplete();
-                RenderInitializationProgress();
-                _logger.Info("Application initialized successfully");
-
-                // Switch to main mode
-                _modeManager.SetMode(ConsoleMode.Main);
-            }
-            catch (Exception ex)
-            {
-                _logger.ErrorWithException("Error during initialization", ex);
-
-                // Mark current step as failed
-                _initializationProgress.UpdateStep(_initializationProgress.CurrentStep, StepStatus.Failed, ex.Message);
-                RenderInitializationProgress();
-
-                // Switch to main mode even if initialization failed
-                _modeManager.SetMode(ConsoleMode.Main);
-
-                throw;
-            }
+            // Delegate initialization to the dedicated initialization service
+            // Pass RegisterKeyboardShortcuts as a final setup action
+            var finalSetupActions = new List<Action> { RegisterKeyboardShortcuts };
+            await _initializationService.InitializeAsync(cancellationToken, finalSetupActions);
         }
 
         /// <summary>
