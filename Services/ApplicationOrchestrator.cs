@@ -126,9 +126,9 @@ namespace SharpBridge.Services
             try
             {
                 // Step 1: Console Setup
-                _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.InProgress);
                 SetupConsoleWindow();
                 _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.Completed);
+                RenderInitializationProgress();
 
                 // Start console size change tracking
                 _consoleWindowManager.StartSizeChangeTracking((width, height) =>
@@ -143,17 +143,22 @@ namespace SharpBridge.Services
 
                 // Step 2: Transformation Engine
                 _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.InProgress);
+                RenderInitializationProgress();
                 await InitializeTransformationEngine();
                 _initializationProgress.UpdateStep(InitializationStep.TransformationEngine, StepStatus.Completed);
+                RenderInitializationProgress();
 
                 // Step 3: File Watchers
                 _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.InProgress);
+                RenderInitializationProgress();
                 _appConfigWatcher.StartWatching(_configManager.ApplicationConfigPath);
                 _logger.Info("Started watching application config file for hot reload: {0}", _configManager.ApplicationConfigPath);
                 _initializationProgress.UpdateStep(InitializationStep.FileWatchers, StepStatus.Completed);
+                RenderInitializationProgress();
 
                 // Step 4: PC Client
                 _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.InProgress);
+                RenderInitializationProgress();
                 _logger.Info("Attempting initial PC client connection...");
                 var pcClientSuccess = await _vtubeStudioPCClient.TryInitializeAsync(cancellationToken);
                 if (pcClientSuccess)
@@ -164,9 +169,11 @@ namespace SharpBridge.Services
                 {
                     _initializationProgress.UpdateStep(InitializationStep.PCClient, StepStatus.Failed, "PC client initialization failed");
                 }
+                RenderInitializationProgress();
 
                 // Step 5: Phone Client
                 _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.InProgress);
+                RenderInitializationProgress();
                 _logger.Info("Attempting initial Phone client connection...");
                 var phoneClientSuccess = await _vtubeStudioPhoneClient.TryInitializeAsync(cancellationToken);
                 if (phoneClientSuccess)
@@ -177,9 +184,11 @@ namespace SharpBridge.Services
                 {
                     _initializationProgress.UpdateStep(InitializationStep.PhoneClient, StepStatus.Failed, "Phone client initialization failed");
                 }
+                RenderInitializationProgress();
 
                 // Step 6: Parameter Sync
                 _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.InProgress);
+                RenderInitializationProgress();
                 var parameterSyncSuccess = await TrySynchronizeParametersAsync(cancellationToken);
                 if (parameterSyncSuccess)
                 {
@@ -190,14 +199,18 @@ namespace SharpBridge.Services
                     _initializationProgress.UpdateStep(InitializationStep.ParameterSync, StepStatus.Failed, "Parameter synchronization failed");
                     _logger.Warning("Parameter synchronization failed during initialization, will retry during recovery");
                 }
+                RenderInitializationProgress();
 
                 // Step 7: Final Setup
                 _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.InProgress);
+                RenderInitializationProgress();
                 RegisterKeyboardShortcuts();
                 _initializationProgress.UpdateStep(InitializationStep.FinalSetup, StepStatus.Completed);
+                RenderInitializationProgress();
 
                 // Mark initialization as complete
                 _initializationProgress.MarkComplete();
+                RenderInitializationProgress();
                 _logger.Info("Application initialized successfully");
 
                 // Switch to main mode
@@ -209,9 +222,11 @@ namespace SharpBridge.Services
 
                 // Mark current step as failed
                 _initializationProgress.UpdateStep(_initializationProgress.CurrentStep, StepStatus.Failed, ex.Message);
+                RenderInitializationProgress();
 
                 // Switch to main mode even if initialization failed
                 _modeManager.SetMode(ConsoleMode.Main);
+
                 throw;
             }
         }
@@ -335,6 +350,26 @@ namespace SharpBridge.Services
                 {
                     await HandleMainLoopError(ex, cancellationToken);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Manually renders the initialization progress to the console
+        /// </summary>
+        private void RenderInitializationProgress()
+        {
+            try
+            {
+                // Get empty stats since we're in initialization mode
+                var emptyStats = Enumerable.Empty<IServiceStats>();
+
+                // Force an immediate update of the console
+                _modeManager.Update(emptyStats);
+            }
+            catch (Exception ex)
+            {
+                // Don't let rendering errors break initialization
+                _logger.Warning("Failed to render initialization progress: {0}", ex.Message);
             }
         }
 
