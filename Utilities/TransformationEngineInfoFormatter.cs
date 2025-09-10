@@ -148,8 +148,8 @@ namespace SharpBridge.Utilities
                 var uptimeText = GetUptimeText(serviceStats.Counters);
 
                 builder.AppendLine(
-                    $"Rules Loaded - Total: {totalRules}, Valid: {validRules}, " +
-                    $"Invalid: {invalidRules}{uptimeText}");
+                    $"Rules Loaded - Total: {ConsoleColors.ColorizeBasicType(totalRules)}, Valid: {ConsoleColors.ColorizeBasicType(validRules)}, " +
+                    $"Invalid: {ConsoleColors.ColorizeBasicType(invalidRules)}{uptimeText}");
             }
         }
 
@@ -172,7 +172,9 @@ namespace SharpBridge.Utilities
                     ? ConsoleColors.Colorize(upToDateStatus, ConsoleColors.Success)
                     : ConsoleColors.Colorize(upToDateStatus, ConsoleColors.Warning);
 
-                builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]}, Successful: {serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]}");
+                var loadAttempts = ConsoleColors.ColorizeBasicType(serviceStats.Counters[HOT_RELOAD_ATTEMPTS_KEY]);
+                var successfulAttempts = ConsoleColors.ColorizeBasicType(serviceStats.Counters[HOT_RELOAD_SUCCESSES_KEY]);
+                builder.AppendLine($"Up to Date: {colorizedStatus} | Load Attempts: {ConsoleColors.ColorizeBasicType(loadAttempts)}, Successful: {successfulAttempts}");
             }
         }
 
@@ -220,7 +222,7 @@ namespace SharpBridge.Utilities
         private static string GetUptimeText(IReadOnlyDictionary<string, long> counters)
         {
             var uptimeSeconds = GetCounterValue(counters, UPTIME_SINCE_RULES_LOADED_KEY);
-            return uptimeSeconds > 0 ? $", Uptime: {FormatUptime(uptimeSeconds)}" : string.Empty;
+            return uptimeSeconds > 0 ? $", Uptime: {ConsoleColors.ColorizeBasicType(FormatUptime(uptimeSeconds))}" : string.Empty;
         }
 
         /// <summary>
@@ -245,7 +247,7 @@ namespace SharpBridge.Utilities
                 VerbosityLevel.Detailed => "[DEBUG]",
                 _ => "[INFO]"
             };
-            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut} to cycle verbosity]";
         }
 
         private static string GetStatusColor(string status)

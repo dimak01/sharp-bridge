@@ -112,7 +112,7 @@ namespace SharpBridge.Tests.Utilities
                 VerbosityLevel.Detailed => "[DEBUG]",
                 _ => "[INFO]"
             };
-            return $"=== {verbosityTag} Transformation Engine ({colorizedStatus}) === [Alt+T]";
+            return $"=== {verbosityTag} Transformation Engine ({colorizedStatus}) === [Alt+T to cycle verbosity]";
         }
 
         #endregion
@@ -292,7 +292,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Rules Loaded - Total: 18, Valid: 15, Invalid: 3");
+            result.Should().Contain($"Rules Loaded - Total: {ConsoleColors.ColorizeBasicType(18)}, Valid: {ConsoleColors.ColorizeBasicType(15)}, Invalid: {ConsoleColors.ColorizeBasicType(3)}");
         }
 
         [Fact]
@@ -307,7 +307,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Uptime: 2:02:05");
+            result.Should().Contain("Uptime: " + ConsoleColors.ColorizeBasicType("2:02:05"));
         }
 
         [Fact]

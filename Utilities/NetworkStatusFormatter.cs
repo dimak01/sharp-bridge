@@ -55,8 +55,8 @@ namespace SharpBridge.Utilities
         {
             sb.AppendLine("NETWORK TROUBLESHOOTING:");
             sb.AppendLine("─────────────────────────");
-            sb.AppendLine($"  Platform: {_commandProvider.GetPlatformName()}");
-            sb.AppendLine($"  Last Updated: {networkStatus.LastUpdated:HH:mm:ss}");
+            sb.AppendLine($"  Platform: {ConsoleColors.ColorizeBasicType(_commandProvider.GetPlatformName())}");
+            sb.AppendLine($"  Last Updated: " + ConsoleColors.ColorizeBasicType($"{networkStatus.LastUpdated:HH:mm:ss}"));
             sb.AppendLine();
         }
 

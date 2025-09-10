@@ -589,7 +589,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Act & Assert - Test different elapsed times
             var content1 = provider.GetContent(_mockContext.Object);
-            content1[1].Should().StartWith("Elapsed: 00:00.0");
+            content1[1].Should().StartWith("Elapsed: " + ConsoleColors.ColorizeBasicType("00:00.0"));
 
             // Note: We can't easily test different elapsed times without modifying the progress object
             // The elapsed time is set when the progress object is created, not when GetContent is called

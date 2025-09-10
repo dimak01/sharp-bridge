@@ -199,7 +199,8 @@ namespace SharpBridge.Utilities
         /// <returns>Formatted time string</returns>
         private static string FormatElapsedTime(TimeSpan elapsed)
         {
-            return $"{elapsed.Minutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds / 100:D1}";
+            var formattedTime = $"{elapsed.Minutes:D2}:{elapsed.Seconds:D2}.{elapsed.Milliseconds / 100:D1}";
+            return ConsoleColors.ColorizeBasicType(formattedTime);
         }
     }
 }

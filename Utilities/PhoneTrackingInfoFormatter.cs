@@ -155,7 +155,7 @@ namespace SharpBridge.Utilities
         {
             if (rotation != null)
             {
-                builder.AppendLine($"Head Rotation (X,Y,Z): " +
+                builder.AppendLine(ConsoleColors.ColorizeHeadParameter("Head Rotation") + " (X,Y,Z): " +
                     $"{rotation.X:F1}°, " +
                     $"{rotation.Y:F1}°, " +
                     $"{rotation.Z:F1}°");
@@ -169,10 +169,10 @@ namespace SharpBridge.Utilities
         {
             if (position != null)
             {
-                builder.AppendLine($"Head Position (X,Y,Z): " +
-                    $"{position.X:F1}, " +
-                    $"{position.Y:F1}, " +
-                    $"{position.Z:F1}");
+                builder.AppendLine(ConsoleColors.ColorizeHeadParameter("Head Position") + " (X,Y,Z): " +
+                    $"{position.X:F1}°, " +
+                    $"{position.Y:F1}°, " +
+                    $"{position.Z:F1}°");
             }
         }
 
@@ -269,7 +269,7 @@ namespace SharpBridge.Utilities
             };
             var statusColor = ConsoleColors.GetStatusColor(status);
             var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
-            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut} to cycle verbosity]";
         }
     }
 }

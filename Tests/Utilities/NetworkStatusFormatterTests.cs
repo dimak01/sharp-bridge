@@ -79,7 +79,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Assert
             Assert.Contains("NETWORK TROUBLESHOOTING:", result);
-            Assert.Contains("Platform: Windows", result);
+            Assert.Contains("Platform: " + ConsoleColors.ColorizeBasicType("Windows"), result);
             Assert.Contains("IPHONE CONNECTION", result);
             Assert.Contains("PC VTube Studio CONNECTION", result);
             Assert.Contains("TROUBLESHOOTING COMMANDS:", result);
@@ -98,7 +98,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.RenderNetworkTroubleshooting(networkStatus, appConfig);
 
             // Assert
-            Assert.Contains("Last Updated: 14:30:45", result);
+            Assert.Contains("Last Updated: " + ConsoleColors.ColorizeBasicType("14:30:45"), result);
         }
 
         [Fact]

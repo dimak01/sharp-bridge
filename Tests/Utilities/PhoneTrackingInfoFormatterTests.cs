@@ -19,7 +19,7 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== [INFO] Phone Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O]";
+            return $"=== [INFO] Phone Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+O to cycle verbosity]";
         }
 
 
@@ -35,10 +35,10 @@ namespace SharpBridge.Tests.Utilities
 
 
         public static string FormatHeadRotation(float x, float y, float z) =>
-            $"Head Rotation (X,Y,Z): {x:F1}°, {y:F1}°, {z:F1}°";
+            ConsoleColors.ColorizeHeadParameter("Head Rotation") + $" (X,Y,Z): {x:F1}°, {y:F1}°, {z:F1}°";
 
         public static string FormatHeadPosition(float x, float y, float z) =>
-            $"Head Position (X,Y,Z): {x:F1}, {y:F1}, {z:F1}";
+            ConsoleColors.ColorizeHeadParameter("Head Position") + $" (X,Y,Z): {x:F1}°, {y:F1}°, {z:F1}°";
 
         public static string FormatBlendShapes(object blendShapes)
         {
@@ -286,7 +286,7 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain($"=== [DEBUG] Phone Client ({ConsoleColors.Colorize("Running", ConsoleColors.GetStatusColor("Running"))}) === [Alt+O]");
+            result.Should().Contain($"=== [DEBUG] Phone Client ({ConsoleColors.Colorize("Running", ConsoleColors.GetStatusColor("Running"))}) === [Alt+O to cycle verbosity]");
         }
 
         #endregion
@@ -336,7 +336,8 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Head Rotation (X,Y,Z): 10.5°, -5.2°, 2.1°");
+            result.Should().Contain(ConsoleColors.ColorizeHeadParameter("Head Rotation") +
+                                    " (X,Y,Z): 10.5°, -5.2°, 2.1°");
         }
 
         [Fact]
@@ -352,7 +353,8 @@ namespace SharpBridge.Tests.Utilities
             var result = _formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Head Position (X,Y,Z): 1.2, 3.4, -0.8");
+            result.Should().Contain(ConsoleColors.ColorizeHeadParameter("Head Position") +
+                                    " (X,Y,Z): 1.2°, 3.4°, -0.8°");
         }
 
         [Fact]

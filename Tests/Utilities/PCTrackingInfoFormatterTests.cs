@@ -19,7 +19,7 @@ namespace SharpBridge.Tests.Utilities
         public static string FormatServiceHeader(string status)
         {
             var statusColor = ConsoleColors.GetStatusColor(status);
-            return $"=== [INFO] PC Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+P]";
+            return $"=== [INFO] PC Client ({statusColor}{status}{ConsoleColors.Reset}) === [Alt+P to cycle verbosity]";
         }
 
         public static string FormatFaceStatus(bool faceFound)

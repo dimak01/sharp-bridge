@@ -290,7 +290,7 @@ namespace SharpBridge.Utilities
             };
             var statusColor = ConsoleColors.GetStatusColor(status);
             var colorizedStatus = ConsoleColors.Colorize(status, statusColor);
-            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut}]";
+            return $"=== {verbosity} {serviceName} ({colorizedStatus}) === [{shortcut} to cycle verbosity]";
         }
     }
 }

@@ -92,6 +92,7 @@ namespace SharpBridge.Services
                 ExecuteActionsSafely(preActions, "Pre-action");
 
                 // Execute initialization steps in order
+                await ExecuteConsoleSetupStepAsync();
                 await ExecuteTransformationEngineStepAsync();
                 await ExecuteFileWatchersStepAsync();
                 await ExecutePCClientStepAsync(cancellationToken);
@@ -122,6 +123,21 @@ namespace SharpBridge.Services
             }
         }
 
+
+        /// <summary>
+        /// Executes the file watchers setup step
+        /// </summary>
+        private Task ExecuteConsoleSetupStepAsync()
+        {
+            _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.InProgress);
+            RenderInitializationProgress();
+            Thread.Sleep(50);
+            //The actual setup is done in pre-Actions, but it is worth displaying so we fake it here
+            _logger.Info("Informed the user that console setup has completed");
+            _initializationProgress.UpdateStep(InitializationStep.ConsoleSetup, StepStatus.Completed);
+            RenderInitializationProgress();
+            return Task.CompletedTask;
+        }
 
         /// <summary>
         /// Initializes the transformation engine by loading rules
@@ -156,6 +172,7 @@ namespace SharpBridge.Services
             RenderInitializationProgress();
             return Task.CompletedTask;
         }
+
 
         /// <summary>
         /// Executes the PC client initialization step
