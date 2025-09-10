@@ -835,7 +835,7 @@ namespace SharpBridge.Tests.Utilities
 
         [Theory]
         [InlineData("")]
-        [InlineData("_SB_")]
+        [InlineData("SB_")]
         [InlineData("SB_")]
         [InlineData("MyPrefix")]
         [InlineData("123")]

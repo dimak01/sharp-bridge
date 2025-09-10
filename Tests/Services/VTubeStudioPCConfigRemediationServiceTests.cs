@@ -734,7 +734,7 @@ namespace SharpBridge.Tests.Services
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Splash screen
                 .Returns("") // Empty input - should use default
-                .Returns("_SB_"); // Default value
+                .Returns("SB_"); // Default value
 
             // Mock single field validation
             _mockValidator.SetupSequence(x => x.ValidateSingleField(It.IsAny<ConfigFieldState>()))
@@ -749,7 +749,7 @@ namespace SharpBridge.Tests.Services
             result.UpdatedConfig.Should().NotBeNull();
 
             var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
-            config.ParameterPrefix.Should().Be("_SB_"); // Default value
+            config.ParameterPrefix.Should().Be("SB_"); // Default value
         }
 
         [Fact]
@@ -801,7 +801,7 @@ namespace SharpBridge.Tests.Services
             config.Host.Should().Be("localhost");
             config.Port.Should().Be(8001);
             config.UsePortDiscovery.Should().BeTrue();
-            config.ParameterPrefix.Should().Be("_SB_"); // Default applied silently
+            config.ParameterPrefix.Should().Be("SB_"); // Default applied silently
 
             // Verify no console interaction was needed
             _mockConsole.Verify(x => x.ReadLine(), Times.Never);
@@ -1022,7 +1022,7 @@ namespace SharpBridge.Tests.Services
 
             var config = (VTubeStudioPCConfig)result.UpdatedConfig!;
             config.Host.Should().Be("localhost");
-            config.ParameterPrefix.Should().Be("_SB_"); // Default value used when user enters empty string
+            config.ParameterPrefix.Should().Be("SB_"); // Default value used when user enters empty string
         }
 
         #endregion

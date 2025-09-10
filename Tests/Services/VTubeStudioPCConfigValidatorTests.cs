@@ -70,7 +70,7 @@ namespace SharpBridge.Tests.Services
                 new("Host", "localhost", true, typeof(string), "Host"),
                 new("Port", 8001, true, typeof(int), "Port"),
                 new("UsePortDiscovery", true, true, typeof(bool), "Use Port Discovery"),
-                new("ParameterPrefix", "_SB_", true, typeof(string), "Parameter Prefix")
+                new("ParameterPrefix", "SB_", true, typeof(string), "Parameter Prefix")
             };
 
             _mockFieldValidator.Setup(x => x.ValidateHost(It.IsAny<ConfigFieldState>()))
@@ -282,7 +282,7 @@ namespace SharpBridge.Tests.Services
         public void ValidateSingleField_WithValidParameterPrefix_ReturnsValid()
         {
             // Arrange
-            var field = new ConfigFieldState("ParameterPrefix", "_SB_", true, typeof(string), "Parameter Prefix");
+            var field = new ConfigFieldState("ParameterPrefix", "SB_", true, typeof(string), "Parameter Prefix");
 
             _mockFieldValidator.Setup(x => x.ValidateParameterPrefix(field))
                 .Returns((FieldValidationIssue?)null);

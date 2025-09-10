@@ -54,7 +54,7 @@ namespace SharpBridge.Services.Remediation
                 "- Alphanumeric characters only (no spaces)",
                 "- Empty prefix is allowed (no prefix will be added)",
                 "",
-                "Default: \u001b[96m_SB_\u001b[0m (puts parameters at top of VTS parameter list)"
+                "Default: \u001b[96mSB_\u001b[0m"
             }
         };
 
@@ -66,7 +66,7 @@ namespace SharpBridge.Services.Remediation
             ["Host"] = "localhost",
             ["Port"] = 8001,
             ["UsePortDiscovery"] = true,
-            ["ParameterPrefix"] = "_SB_"
+            ["ParameterPrefix"] = "SB_"
         };
 
 

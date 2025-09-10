@@ -86,8 +86,8 @@ namespace SharpBridge.Models
         /// <param name="host">Host address for VTube Studio (default: "localhost")</param>
         /// <param name="port">Port number for VTube Studio API (default: 8001)</param>
         /// <param name="usePortDiscovery">Enable port discovery (default: true)</param>
-        /// <param name="parameterPrefix">Prefix for parameter names in VTube Studio PC (default: "_SB_")</param>
-        public VTubeStudioPCConfig(string host = "localhost", int port = 8001, bool usePortDiscovery = true, string parameterPrefix = "_SB_")
+        /// <param name="parameterPrefix">Prefix for parameter names in VTube Studio PC (default: "SB_")</param>
+        public VTubeStudioPCConfig(string host = "localhost", int port = 8001, bool usePortDiscovery = true, string parameterPrefix = "SB_")
         {
             Host = host;
             Port = port;

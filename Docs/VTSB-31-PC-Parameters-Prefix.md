@@ -10,7 +10,7 @@ VTube Studio requires parameter uniqueness across all plugins, not just within a
 
 1. **Parameter Prefix Configuration**
    - Add configurable prefix to `VTubeStudioPCConfig`
-   - Default prefix: `"_SB_"` (puts parameters at top of VTS parameter list)
+   - Default prefix: `"SB_"` (to avoid name conflicts with parameters from other plugins)
    - Allow empty prefix (0 characters)
    - Maximum prefix length: 15 characters
    - Prefix must be alphanumeric only, no spaces
@@ -45,7 +45,7 @@ VTube Studio requires parameter uniqueness across all plugins, not just within a
 
 ### Phase 1: Configuration
 1. **Add ParameterPrefix to VTubeStudioPCConfig**
-   - Property: `string ParameterPrefix { get; set; } = "_SB_"`
+   - Property: `string ParameterPrefix { get; set; } = "SB_"`
    - Add XML documentation
    - Add Description attribute for configuration UI
 
@@ -90,7 +90,7 @@ VTube Studio requires parameter uniqueness across all plugins, not just within a
     "Host": "localhost",
     "Port": 8001,
     "UsePortDiscovery": true,
-    "ParameterPrefix": "_SB_"
+    "ParameterPrefix": "SB_"
   }
 }
 ```
@@ -104,7 +104,7 @@ TransformationEngine
 PCTrackingInfo
     ↓ (unchanged names)
 VTubeStudioPCParameterManager (apply prefix)
-    ↓ (prefixed names: "_SB_FaceAngleY", "_SB_MouthOpen")
+    ↓ (prefixed names: "SB_FaceAngleY", "SB_MouthOpen")
 VTube Studio PC
 ```
 
@@ -128,7 +128,7 @@ VTube Studio PC
 
 ### Manual Testing
 - Verify parameters appear with correct prefixes in VTube Studio
-- Verify parameters are grouped at top of list (with "_SB_" prefix)
+- Verify parameters are grouped at top of list (with "SB_" prefix)
 - Test with empty prefix (no prefix applied)
 - Test with maximum length prefix
 
@@ -148,7 +148,7 @@ VTube Studio PC
 
 ## Acceptance Criteria
 
-- [ ] ParameterPrefix property added to VTubeStudioPCConfig with default "_SB_"
+- [ ] ParameterPrefix property added to VTubeStudioPCConfig with default "SB_"
 - [ ] Configuration validation prevents invalid prefixes (length, format)
 - [ ] Parameters are created in VTube Studio with correct prefixes
 - [ ] Parameter data is sent to VTube Studio with prefixed names
@@ -162,7 +162,7 @@ VTube Studio PC
 ## Risks and Mitigation
 
 ### Risk: Parameter Name Conflicts
-- **Mitigation**: Use distinctive default prefix ("_SB_") and validate prefix format
+- **Mitigation**: Use distinctive default prefix ("SB_") and validate prefix format
 
 ### Risk: VTS API Rejection
 - **Mitigation**: Follow VTS naming requirements strictly, keep current error handling

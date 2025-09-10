@@ -87,7 +87,7 @@ All settings are managed in a single configuration file:
     "Host": "localhost",
     "Port": 8001,
     "UsePortDiscovery": true,
-    "ParameterPrefix": "_SB_"
+    "ParameterPrefix": "SB_"
   },
   "TransformationEngine": {
     "ConfigPath": "Configs/vts_transforms.json",
@@ -111,7 +111,7 @@ All settings are managed in a single configuration file:
 - `Host`: VTube Studio PC WebSocket host (default: localhost)
 - `Port`: VTube Studio PC WebSocket port (default: 8001)
 - `UsePortDiscovery`: Automatically discover VTube Studio port (recommended: true)
-- `ParameterPrefix`: Prefix added to parameter names in VTube Studio PC to avoid naming conflicts (default: "_SB_", 0-15 characters, alphanumeric only)
+- `ParameterPrefix`: Prefix added to parameter names in VTube Studio PC to avoid naming conflicts (default: "SB_", 0-15 characters, alphanumeric only)
   - **Note**: Changes to this setting require an application restart to take effect
 
 **TransformationEngine:**
@@ -439,7 +439,7 @@ For different network setups:
 
 **"Parameter naming conflicts"**
 - VTube Studio requires unique parameter names across all plugins
-- Use `ParameterPrefix` in PCClient configuration to avoid conflicts (default: "_SB_")
+- Use `ParameterPrefix` in PCClient configuration to avoid conflicts (default: "SB_")
 - Change prefix to something unique if conflicts occur
 - Delete conflicting parameters manually in VTube Studio if needed
 

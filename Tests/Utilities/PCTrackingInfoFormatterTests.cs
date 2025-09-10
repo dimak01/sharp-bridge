@@ -66,7 +66,7 @@ namespace SharpBridge.Tests.Utilities
 
             _userPreferences = new UserPreferences { PCClientVerbosity = VerbosityLevel.Normal };
 
-            _pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "_SB_");
+            _pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "SB_");
 
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
             mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression, ParameterTableColumn.Interpolation });
@@ -790,7 +790,7 @@ namespace SharpBridge.Tests.Utilities
 
             // Act & Assert
             var mockUserPreferences = new Mock<UserPreferences>();
-            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "_SB_");
+            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "SB_");
             var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object, mockColumnConfigManager.Object, pcConfig);
             formatter.Should().NotBeNull();
         }
@@ -898,7 +898,7 @@ namespace SharpBridge.Tests.Utilities
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
-            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "_SB_");
+            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "SB_");
             var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, pcConfig);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
@@ -910,7 +910,7 @@ namespace SharpBridge.Tests.Utilities
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("Alt+P"); // Should contain the shortcut
             result.Should().Contain("Parameter Prefix in VTube Studio PC:"); // Should contain the prefix label
-            result.Should().Contain("_SB_"); // Should contain the prefix value
+            result.Should().Contain("SB_"); // Should contain the prefix value
         }
 
         [Fact]
