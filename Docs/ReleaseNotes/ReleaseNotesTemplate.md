@@ -21,7 +21,7 @@
 Download the appropriate file for your platform and extract to your desired location.
 
 ## Configuration
-The application will create default configuration files in the `Configs` directory on first run.
+The application will create default configuration files in the `configs` directory on first run.
 
 ## Downloads
 - **Windows x64**: `SharpBridge-v{VERSION}-win-x64.zip`

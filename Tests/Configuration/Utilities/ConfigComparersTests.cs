@@ -737,13 +737,13 @@ namespace SharpBridge.Tests.Configuration.Utilities
             // Arrange
             var config1 = new TransformationEngineConfig
             {
-                ConfigPath = "Configs/vts_transforms.json",
+                ConfigPath = "configs/vts_transforms.json",
                 MaxEvaluationIterations = 10
             };
 
             var config2 = new TransformationEngineConfig
             {
-                ConfigPath = "Configs/vts_transforms.json",
+                ConfigPath = "configs/vts_transforms.json",
                 MaxEvaluationIterations = 10
             };
 
@@ -758,8 +758,8 @@ namespace SharpBridge.Tests.Configuration.Utilities
         public void TransformationEngineConfigsEqual_WithDifferentConfigPath_ReturnsFalse()
         {
             // Arrange
-            var config1 = new TransformationEngineConfig { ConfigPath = "Configs/vts_transforms.json" };
-            var config2 = new TransformationEngineConfig { ConfigPath = "Configs/other_transforms.json" };
+            var config1 = new TransformationEngineConfig { ConfigPath = "configs/vts_transforms.json" };
+            var config2 = new TransformationEngineConfig { ConfigPath = "configs/other_transforms.json" };
 
             // Act
             var result = ConfigComparers.TransformationEngineConfigsEqual(config1, config2);

@@ -35,7 +35,7 @@
 	</ItemGroup>
 
   <ItemGroup>
-    <Content Include="Configs\**\*.json">
+    <Content Include="configs\**\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -71,7 +71,7 @@ namespace SharpBridge.Tests.UI.Formatters
         }
 
         private static TransformationEngineInfo CreateTransformationEngineInfo(
-            string configFilePath = "Configs/test_rules.json",
+            string configFilePath = "configs/test_rules.json",
             int validRulesCount = 10,
             List<RuleInfo> invalidRules = null!,
             bool isConfigUpToDate = true)
@@ -333,7 +333,7 @@ namespace SharpBridge.Tests.UI.Formatters
         public void Format_WithConfigFileInfo_ShowsConfigPath()
         {
             // Arrange
-            var engineInfo = CreateTransformationEngineInfo("Configs/custom_rules.json");
+            var engineInfo = CreateTransformationEngineInfo("configs/custom_rules.json");
             var serviceStats = CreateMockServiceStats("AllRulesActive", engineInfo);
 
             // Act
@@ -341,7 +341,7 @@ namespace SharpBridge.Tests.UI.Formatters
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit, Alt+K to reload): Configs/custom_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit, Alt+K to reload): configs/custom_rules.json");
         }
 
         [Fact]
@@ -689,7 +689,7 @@ namespace SharpBridge.Tests.UI.Formatters
             var plainResult = ConsoleColors.RemoveAnsiEscapeCodes(result);
 
             // Assert
-            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit, Alt+K to reload): Configs/test_rules.json");
+            plainResult.Should().Contain("Config File Path (Ctrl+Alt+E to edit, Alt+K to reload): configs/test_rules.json");
             plainResult.Should().Contain($"Up to Date: {(isConfigUpToDate ? "Yes" : "No")}");
         }
 

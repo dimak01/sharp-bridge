@@ -52,7 +52,7 @@ namespace SharpBridge
 
             // Setup DI container
             var services = new ServiceCollection();
-            services.AddSharpBridgeServices("./Configs");
+            services.AddSharpBridgeServices("./configs");
 
             using var serviceProvider = services.BuildServiceProvider();
 

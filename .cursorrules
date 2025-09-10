@@ -44,7 +44,7 @@ Sharp Bridge is a .NET/C# application that bridges iPhone's VTube Studio to VTub
 - **Services/** - Core business logic implementations
 - **Utilities/** - Helper classes and utilities
 - **Tests/** - Unit tests organized by component
-- **Configs/** - Configuration files and templates
+- **configs/** - Configuration files and templates
 
 ### Configuration System
 - Single but modular `ApplicationConfig.json` file for all settings

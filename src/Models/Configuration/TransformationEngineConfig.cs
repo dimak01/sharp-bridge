@@ -18,7 +18,7 @@ namespace SharpBridge.Models.Configuration
         /// Path to the transformation rules JSON file
         /// </summary>
         [Description("Path to Transformation Rules JSON File")]
-        public string ConfigPath { get; set; } = "Configs/vts_transforms.json";
+        public string ConfigPath { get; set; } = "configs/vts_transforms.json";
 
         /// <summary>
         /// Maximum number of evaluation iterations for parameter dependencies

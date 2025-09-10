@@ -54,13 +54,13 @@ Download the latest release from the [Releases](https://github.com/dimak01/sharp
    - This opens the UDP port needed for iPhone communication
    - If you need to remove the firewall rules later, run `tools\cleanup-firewall.bat`
 3. Run `SharpBridge.exe` for the first time
-4. The application will create default configuration files in the `Configs` directory
+4. The application will create default configuration files in the `configs` directory
 
 ## Configuration
 
 SharpBridge uses a consolidated configuration system with automatic hot-reload capabilities.
 
-### Application Configuration (`Configs/ApplicationConfig.json`)
+### Application Configuration (`configs/ApplicationConfig.json`)
 
 All settings are managed in a single configuration file:
 
@@ -90,7 +90,7 @@ All settings are managed in a single configuration file:
     "ParameterPrefix": "SB_"
   },
   "TransformationEngine": {
-    "ConfigPath": "Configs/vts_transforms.json",
+    "ConfigPath": "configs/vts_transforms.json",
     "MaxEvaluationIterations": 10
   }
 }
@@ -118,7 +118,7 @@ All settings are managed in a single configuration file:
 - `ConfigPath`: Path to transformation rules configuration file
 - `MaxEvaluationIterations`: Maximum iterations for complex parameter dependencies calculation (default: 10)
 
-### User Preferences (`Configs/UserPreferences.json`)
+### User Preferences (`configs/UserPreferences.json`)
 
 User-specific display preferences and customization options:
 
@@ -153,7 +153,7 @@ User-specific display preferences and customization options:
   - `Expression`: Transformation expression
   - `Interpolation`: Interpolation method information (e.g., "Linear", "Bezier (3 pts)")
 
-### Transformation Rules (`Configs/vts_transforms.json`)
+### Transformation Rules (`configs/vts_transforms.json`)
 
 Define how iPhone tracking data maps to PC VTube Studio parameters:
 

@@ -68,7 +68,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             result.UpdatedConfig.Should().BeOfType<TransformationEngineConfig>();
 
             var config = (TransformationEngineConfig)result.UpdatedConfig!;
-            config.ConfigPath.Should().Be("Configs/vts_transforms.json");
+            config.ConfigPath.Should().Be("configs/vts_transforms.json");
             config.MaxEvaluationIterations.Should().Be(10);
 
             // Verify no console interaction occurred
@@ -82,7 +82,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             // Arrange
             var fields = new List<ConfigFieldState>
             {
-                new("ConfigPath", "Configs/custom_transforms.json", true, typeof(string), "Path to Transformation Rules JSON File"),
+                new("ConfigPath", "configs/custom_transforms.json", true, typeof(string), "Path to Transformation Rules JSON File"),
                 new("MaxEvaluationIterations", 15, true, typeof(int), "Maximum Evaluation Iterations for Parameter Dependencies")
             };
 
@@ -129,7 +129,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/new_transforms.json")
+                .Returns("configs/new_transforms.json")
                 .Returns("20");
 
             // Act
@@ -181,7 +181,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
                 .Returns("invalid")
-                .Returns("Configs/valid_transforms.json");
+                .Returns("configs/valid_transforms.json");
 
             // Act
             var result = await _service.Remediate(fields);
@@ -235,12 +235,12 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             result.UpdatedConfig.Should().NotBeNull();
 
             var config = (TransformationEngineConfig)result.UpdatedConfig!;
-            config.ConfigPath.Should().Be("Configs/vts_transforms.json"); // Default value
+            config.ConfigPath.Should().Be("configs/vts_transforms.json"); // Default value
 
             // Verify default value was shown in prompt
             _mockConsole.Verify(x => x.WriteLines(It.Is<string[]>(lines =>
                 lines.Any(line => line.Contains("Enter new value (or press Enter for default value of")) &&
-                lines.Any(line => line.Contains("Configs/vts_transforms.json"))
+                lines.Any(line => line.Contains("configs/vts_transforms.json"))
             )), Times.Once);
         }
 
@@ -362,7 +362,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/valid_transforms.json");
+                .Returns("configs/valid_transforms.json");
 
             // Act
             var result = await _service.Remediate(fields);
@@ -398,7 +398,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/valid_transforms.json");
+                .Returns("configs/valid_transforms.json");
 
             // Act
             var result = await _service.Remediate(fields);
@@ -411,7 +411,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
                 lines.Any(line => line.Contains("This is the path to the JSON file containing transformation rules.")) &&
                 lines.Any(line => line.Contains("The transformation rules file defines how tracking parameters")) &&
                 lines.Any(line => line.Contains("Default location:")) &&
-                lines.Any(line => line.Contains("Configs/vts_transforms.json"))
+                lines.Any(line => line.Contains("configs/vts_transforms.json"))
             )), Times.Once);
         }
 
@@ -484,7 +484,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/valid_transforms.json");
+                .Returns("configs/valid_transforms.json");
 
             // Act
             var result = await _service.Remediate(fields);
@@ -502,7 +502,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             // Arrange
             var fields = new List<ConfigFieldState>
             {
-                new("ConfigPath", "Configs/existing.json", true, typeof(string), "Path to Transformation Rules JSON File"),
+                new("ConfigPath", "configs/existing.json", true, typeof(string), "Path to Transformation Rules JSON File"),
                 new("MaxEvaluationIterations", null, false, typeof(int), "Maximum Evaluation Iterations for Parameter Dependencies")
             };
 
@@ -533,7 +533,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             result.UpdatedConfig.Should().NotBeNull();
 
             var config = (TransformationEngineConfig)result.UpdatedConfig!;
-            config.ConfigPath.Should().Be("Configs/existing.json"); // Original value preserved
+            config.ConfigPath.Should().Be("configs/existing.json"); // Original value preserved
             config.MaxEvaluationIterations.Should().Be(15); // User input
 
             // Verify interactive remediation occurred
@@ -630,7 +630,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
                 .ToList();
 
             var combinedOutput = string.Join(" ", allWriteLinesCalls);
-            combinedOutput.Should().Contain("Configs/vts_transforms.json");
+            combinedOutput.Should().Contain("configs/vts_transforms.json");
         }
 
         [Fact]
@@ -701,7 +701,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/valid_transforms.json");
+                .Returns("configs/valid_transforms.json");
 
             // Act
             var result = await _service.Remediate(fields);
@@ -837,7 +837,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/valid_transforms.json")
+                .Returns("configs/valid_transforms.json")
                 .Returns("15")
                 .Returns("valid_value");
 
@@ -896,7 +896,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             // Verify that the field was remediated successfully
             var updatedConfig = (TransformationEngineConfig)result.UpdatedConfig!;
-            updatedConfig.ConfigPath.Should().Be("Configs/vts_transforms.json"); // Service used default value
+            updatedConfig.ConfigPath.Should().Be("configs/vts_transforms.json"); // Service used default value
         }
 
         [Fact]
@@ -1007,7 +1007,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             _mockConsole.SetupSequence(x => x.ReadLine())
                 .Returns("") // Press Enter to start
-                .Returns("Configs/valid.json") // For ConfigPath
+                .Returns("configs/valid.json") // For ConfigPath
                 .Returns("20"); // For MaxEvaluationIterations
 
             // Act
@@ -1018,7 +1018,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             result.UpdatedConfig.Should().NotBeNull();
 
             var config = (TransformationEngineConfig)result.UpdatedConfig!;
-            config.ConfigPath.Should().Be("Configs/valid.json");
+            config.ConfigPath.Should().Be("configs/valid.json");
             config.MaxEvaluationIterations.Should().Be(20);
 
             // Verify all fields were processed
