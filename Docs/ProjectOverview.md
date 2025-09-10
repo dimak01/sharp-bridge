@@ -394,13 +394,6 @@ The application is organized into several key areas:
 **Formatter** - Formats data for display with verbosity levels
 **Wrapper** - Abstracts external dependencies for testability
 
-**Key Rules:**
-- Clients = external communication, Services = business logic
-- Managers = domain coordination, Orchestrators = app-wide coordination  
-- Providers = data supply, Services = functionality
-- Formatters = data formatting, ContentProviders = complete display
-- Engines = complex processing, Services = specific functionality
-
 ## Data Structure Types (Models Directory)
 
 **Config** - Application configuration sections and settings (mutable)
