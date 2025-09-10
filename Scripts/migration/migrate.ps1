@@ -1,4 +1,4 @@
-# Sharp Bridge Code Migration Script
+    # Sharp Bridge Code Migration Script
 # Migrates codebase to new layer-based organization structure
 
 param(
