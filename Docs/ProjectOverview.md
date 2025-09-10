@@ -379,6 +379,38 @@ The application is organized into several key areas:
 4. **Utilities** - Helper classes for formatting, console rendering, WebSocket management, etc.
 5. **Repositories** - Data access layer for transformation rules and configuration
 
+## Entity Type Naming Conventions
+
+**Client** - External system communication (UDP/WebSocket) with auth & recovery
+**Engine** - Core processing logic with complex algorithms and state management
+**Manager** - Coordinates components/resources, manages lifecycle and configuration
+**Orchestrator** - High-level application flow coordination and recovery
+**Service** - Specific business functionality implementation
+  - **RemediationService** - Configuration issue fixing
+  - **ValidatorService** - Configuration/data validation
+**Provider** - Supplies data/content to other components
+  - **ContentProvider** - Console UI content supply
+**Factory** - Creates instances based on type/configuration
+**Formatter** - Formats data for display with verbosity levels
+**Wrapper** - Abstracts external dependencies for testability
+
+**Key Rules:**
+- Clients = external communication, Services = business logic
+- Managers = domain coordination, Orchestrators = app-wide coordination  
+- Providers = data supply, Services = functionality
+- Formatters = data formatting, ContentProviders = complete display
+- Engines = complex processing, Services = specific functionality
+
+## Data Structure Types (Models Directory)
+
+**Config** - Application configuration sections and settings (mutable)
+**Status** - Discrete states and modes (enum-based)
+**DTO** - Data transfer objects for API communication (mutable, serializable)
+**Model** - Core business entities and domain concepts (varies)
+**Result** - Operation results and responses (often immutable)
+**Event** - Event data and context information
+**Utility** - Supporting data structures and helpers
+
 ## Code Structure
 
 The code follows clean architecture principles with resiliency built-in:
