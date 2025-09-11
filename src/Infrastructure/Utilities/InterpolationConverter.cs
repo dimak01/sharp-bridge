@@ -20,10 +20,10 @@ namespace SharpBridge.Infrastructure.Utilities
         /// </summary>
         static InterpolationConverter()
         {
-            // Get all types in SharpBridge.Models namespace that implement IInterpolationDefinition
+            // Get all types in SharpBridge.Models.Domain namespace that implement IInterpolationDefinition
             var modelsAssembly = typeof(IInterpolationDefinition).Assembly;
             _availableTypes = modelsAssembly.GetTypes()
-                .Where(t => t.Namespace == "SharpBridge.Models" &&
+                .Where(t => t.Namespace == "SharpBridge.Models.Domain" &&
                            typeof(IInterpolationDefinition).IsAssignableFrom(t) &&
                            !t.IsInterface &&
                            !t.IsAbstract)
