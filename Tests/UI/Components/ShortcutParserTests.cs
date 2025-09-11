@@ -4,6 +4,8 @@ using SharpBridge.Models;
 using SharpBridge.Utilities;
 using Xunit;
 using System.Linq;
+using SharpBridge.UI.Components;
+using SharpBridge.Models.Domain;
 
 namespace SharpBridge.Tests.UI.Components
 {

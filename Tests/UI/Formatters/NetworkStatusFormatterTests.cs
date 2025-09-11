@@ -3,7 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 using Moq;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Infrastructure.Providers;
+using SharpBridge.Interfaces.UI.Formatters;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Infrastructure;
+using SharpBridge.UI.Formatters;
+using SharpBridge.UI.Utilities;
 using SharpBridge.Utilities;
 using Xunit;
 

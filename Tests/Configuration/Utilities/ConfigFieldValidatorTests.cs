@@ -4,7 +4,9 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using FluentAssertions;
+using SharpBridge.Configuration.Utilities;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
 using SharpBridge.Utilities;
 using Xunit;
 

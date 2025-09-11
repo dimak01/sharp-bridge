@@ -1,6 +1,7 @@
 using System;
 using Xunit;
 using SharpBridge.Utilities;
+using SharpBridge.UI.Utilities;
 
 namespace SharpBridge.Tests.UI.Utilities;
 
@@ -26,4 +27,4 @@ public class DisplayFormattingTests
         // Assert
         Assert.Equal(expected, result);
     }
-} 
+}

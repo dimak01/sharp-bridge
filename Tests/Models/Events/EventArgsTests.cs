@@ -3,6 +3,9 @@ using FluentAssertions;
 using SharpBridge.Models;
 using SharpBridge.Interfaces;
 using Xunit;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Models.Events;
+using SharpBridge.Models.Infrastructure;
 
 namespace SharpBridge.Tests.Models.Events
 {

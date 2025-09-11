@@ -3,6 +3,8 @@ using SharpBridge.Interfaces;
 using Xunit;
 using System;
 using System.Runtime.InteropServices;
+using SharpBridge.Infrastructure.Services;
+using SharpBridge.Interfaces.Infrastructure.Services;
 
 namespace SharpBridge.Tests.Infrastructure.Services
 {

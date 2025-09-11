@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using SharpBridge.Configuration.Utilities;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
 using SharpBridge.Utilities;
 using Xunit;
 

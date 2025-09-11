@@ -2,6 +2,8 @@ using System;
 using FluentAssertions;
 using Moq;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.UI.Components;
 using SharpBridge.Utilities;
 using Xunit;
 

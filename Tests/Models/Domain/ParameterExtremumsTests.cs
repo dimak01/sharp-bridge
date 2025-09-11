@@ -1,6 +1,7 @@
 using System;
 using FluentAssertions;
 using SharpBridge.Models;
+using SharpBridge.Models.Domain;
 using Xunit;
 
 namespace SharpBridge.Tests.Models.Domain

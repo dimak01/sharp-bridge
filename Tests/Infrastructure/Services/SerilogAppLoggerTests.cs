@@ -2,6 +2,7 @@ using System;
 using FluentAssertions;
 using Moq;
 using Serilog;
+using SharpBridge.Infrastructure.Services;
 using SharpBridge.Utilities;
 using Xunit;
 

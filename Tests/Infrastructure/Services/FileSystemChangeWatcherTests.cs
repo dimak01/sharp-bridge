@@ -6,7 +6,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
+using SharpBridge.Infrastructure.Services;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Interfaces.Infrastructure.Factories;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
 using SharpBridge.Utilities;
 using Xunit;
 

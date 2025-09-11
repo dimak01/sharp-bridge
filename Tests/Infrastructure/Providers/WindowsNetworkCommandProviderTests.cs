@@ -1,3 +1,4 @@
+using SharpBridge.Infrastructure.Providers;
 using SharpBridge.Interfaces;
 using SharpBridge.Utilities;
 using Xunit;

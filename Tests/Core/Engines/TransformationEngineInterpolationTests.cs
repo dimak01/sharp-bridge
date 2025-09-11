@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NCalc;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Infrastructure.Factories;
+using SharpBridge.Models.Domain;
 using Xunit;
 
 namespace SharpBridge.Tests.Core.Engines

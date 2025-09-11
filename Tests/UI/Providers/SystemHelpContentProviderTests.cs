@@ -11,6 +11,17 @@ using SharpBridge.Models;
 using SharpBridge.Utilities;
 using Xunit;
 using System.Threading.Tasks;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.UI.Formatters;
+using SharpBridge.Interfaces.Core.Services;
+using SharpBridge.UI.Providers;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.Infrastructure;
+using SharpBridge.UI.Utilities;
+using SharpBridge.UI.Formatters;
+using SharpBridge.Models.UI;
+using SharpBridge.Interfaces.UI.Components;
 
 namespace SharpBridge.Tests.UI.Providers
 {

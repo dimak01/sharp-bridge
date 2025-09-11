@@ -1,8 +1,12 @@
 using System;
 using System.Linq;
 using Moq;
+using SharpBridge.Configuration.Managers;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.UI;
 using SharpBridge.Utilities;
 using Xunit;
 

@@ -3,8 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using Moq;
+using SharpBridge.Configuration.Managers;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.UI.Components;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.Infrastructure;
+using SharpBridge.UI.Utilities;
 using SharpBridge.Utilities;
 using Xunit;
 

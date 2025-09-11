@@ -9,6 +9,12 @@ using SharpBridge.Models;
 using SharpBridge.Utilities;
 using Xunit;
 using FluentAssertions;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
+using SharpBridge.Interfaces.Core.Adapters;
+using SharpBridge.Core.Managers;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.Api;
 
 namespace SharpBridge.Tests.Core.Managers
 {

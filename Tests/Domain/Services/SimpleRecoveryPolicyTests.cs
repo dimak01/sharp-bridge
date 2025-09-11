@@ -1,7 +1,8 @@
-using SharpBridge.Services;
-using SharpBridge.Interfaces;
+
 using Xunit;
 using System;
+using SharpBridge.Domain.Services;
+using SharpBridge.Interfaces.Core.Services;
 
 namespace SharpBridge.Tests.Domain.Services
 {

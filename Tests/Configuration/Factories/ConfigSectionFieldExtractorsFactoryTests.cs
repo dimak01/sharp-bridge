@@ -1,8 +1,8 @@
 using System;
 using Xunit;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Configuration.Factories;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Interfaces.Configuration.Extractors;
 
 namespace SharpBridge.Tests.Configuration.Factories
 {

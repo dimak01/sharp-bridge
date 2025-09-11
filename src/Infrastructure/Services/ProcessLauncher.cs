@@ -37,12 +37,12 @@ namespace SharpBridge.Infrastructure.Services
         /// <summary>
         /// Gets the list of spawned processes (for testing purposes)
         /// </summary>
-        internal IReadOnlyList<Process> SpawnedProcesses => _spawnedProcesses.AsReadOnly();
+        public IReadOnlyList<Process> SpawnedProcesses => _spawnedProcesses.AsReadOnly();
 
         /// <summary>
         /// Gets the last started process (for testing purposes)
         /// </summary>
-        internal Process? LastStartedProcess { get; private set; }
+        public Process? LastStartedProcess { get; private set; }
 
         /// <summary>
         /// Attempts to start a process with the specified executable and arguments

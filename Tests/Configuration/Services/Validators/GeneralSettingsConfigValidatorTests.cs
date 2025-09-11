@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using FluentAssertions;
 using Moq;
+using SharpBridge.Configuration.Services.Validators;
 using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services.Validators;
+using SharpBridge.Interfaces.Configuration.Services.Validators;
+using SharpBridge.Models.Configuration;
 using Xunit;
 
 namespace SharpBridge.Tests.Configuration.Services.Validators

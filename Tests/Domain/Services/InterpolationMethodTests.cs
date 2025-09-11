@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Domain.Services;
+using SharpBridge.Infrastructure.Factories;
+using SharpBridge.Models.Domain;
 using Xunit;
 
 namespace SharpBridge.Tests.Domain.Services

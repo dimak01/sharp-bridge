@@ -5,10 +5,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
-using SharpBridge.Utilities;
+using SharpBridge.Core.Services;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Core.Clients;
+using SharpBridge.Interfaces.Core.Engines;
+using SharpBridge.Interfaces.Core.Managers;
+using SharpBridge.Interfaces.Core.Services;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.UI.Managers;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.UI;
+using SharpBridge.UI.Providers;
 using Xunit;
 
 namespace SharpBridge.Tests.Core.Services

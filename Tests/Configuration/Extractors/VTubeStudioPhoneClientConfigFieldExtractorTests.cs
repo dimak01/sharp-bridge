@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using SharpBridge.Configuration.Extractors;
+using SharpBridge.Models.Configuration;
 using Xunit;
-using SharpBridge.Models;
-using SharpBridge.Services.FieldExtractors;
 
 namespace SharpBridge.Tests.Configuration.Extractors
 {

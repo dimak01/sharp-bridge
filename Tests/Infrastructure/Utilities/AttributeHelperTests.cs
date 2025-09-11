@@ -1,7 +1,10 @@
 using System;
 using System.ComponentModel;
 using FluentAssertions;
+using SharpBridge.Infrastructure.Utilities;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
 using SharpBridge.Utilities;
 using Xunit;
 

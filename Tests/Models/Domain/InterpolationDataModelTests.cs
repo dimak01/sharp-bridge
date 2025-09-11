@@ -5,7 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SharpBridge.Infrastructure.Utilities;
 using SharpBridge.Models;
+using SharpBridge.Models.Domain;
 using SharpBridge.Utilities;
 using Xunit;
 

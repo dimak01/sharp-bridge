@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using FluentAssertions;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.UI.Formatters;
+using SharpBridge.UI.Formatters;
 using SharpBridge.Utilities;
 using Xunit;
 

@@ -1,6 +1,9 @@
 using System;
 using Moq;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.UI.Managers;
 using SharpBridge.Utilities;
 using Xunit;
 

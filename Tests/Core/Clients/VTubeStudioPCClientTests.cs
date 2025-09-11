@@ -3,9 +3,6 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
 using Xunit;
 using FluentAssertions;
 using System.Threading.Tasks;
@@ -13,6 +10,16 @@ using System.Text;
 using System.Text.Json;
 using System.IO;
 using System.Collections.Generic;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
+using SharpBridge.Interfaces.Core.Services;
+using SharpBridge.Interfaces.Core.Adapters;
+using SharpBridge.Models.Domain;
+using SharpBridge.Core.Clients;
+using SharpBridge.Models.Api;
 // Removed unused directive
 
 namespace SharpBridge.Tests.Core.Clients

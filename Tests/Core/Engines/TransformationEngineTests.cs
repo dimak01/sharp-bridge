@@ -5,9 +5,15 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NCalc;
+using SharpBridge.Core.Engines;
 using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Domain;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.Events;
 using Xunit;
 
 namespace SharpBridge.Tests.Core.Engines

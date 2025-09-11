@@ -5,7 +5,13 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.Events;
 using SharpBridge.Repositories;
 using Xunit;
 

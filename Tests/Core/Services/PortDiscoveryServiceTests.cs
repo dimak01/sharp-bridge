@@ -6,11 +6,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
 using Xunit;
 using FluentAssertions;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
+using SharpBridge.Core.Services;
+using SharpBridge.Models.Api;
 
 namespace SharpBridge.Tests.Core.Services
 {

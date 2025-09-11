@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Moq;
 using Xunit;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services.Remediation;
+using SharpBridge.Interfaces.Configuration.Factories;
+using SharpBridge.Interfaces.Configuration.Services.Validators;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.Configuration.Services.Remediation;
+using SharpBridge.Models.Configuration;
 
 namespace SharpBridge.Tests.Configuration.Services.Remediation
 {

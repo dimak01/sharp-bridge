@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using SharpBridge.Infrastructure.Utilities;
 using SharpBridge.Models;
+using SharpBridge.Models.Domain;
 using SharpBridge.Utilities;
 using Xunit;
 

@@ -3,7 +3,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using SharpBridge.Infrastructure.Factories;
+using SharpBridge.Infrastructure.Wrappers;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
 using SharpBridge.Utilities;
 using Xunit;
 
@@ -31,7 +34,7 @@ namespace SharpBridge.Tests.Infrastructure.Wrappers
         public void Dispose()
         {
             _wrapper?.Dispose();
-            
+
             if (Directory.Exists(_tempDirectory))
             {
                 try
@@ -60,7 +63,7 @@ namespace SharpBridge.Tests.Infrastructure.Wrappers
             // Assert
             wrapper.Should().NotBeNull();
             wrapper.Should().BeOfType<FileSystemWatcherWrapper>();
-            
+
             // Cleanup
             wrapper.Dispose();
         }
@@ -371,7 +374,7 @@ namespace SharpBridge.Tests.Infrastructure.Wrappers
 
             // Assert - Should not throw and should be in disposed state
             exception.Should().BeNull("Dispose should not throw any exceptions");
-            
+
             // Verify multiple dispose calls don't throw
             var secondDisposeException = Record.Exception(() => _wrapper.Dispose());
             secondDisposeException.Should().BeNull("Multiple dispose calls should not throw exceptions");
@@ -387,7 +390,7 @@ namespace SharpBridge.Tests.Infrastructure.Wrappers
             var firstException = Record.Exception(() => _wrapper.Dispose());
             var secondException = Record.Exception(() => _wrapper.Dispose());
             var thirdException = Record.Exception(() => _wrapper.Dispose());
-            
+
             // Assert
             firstException.Should().BeNull("First dispose should not throw");
             secondException.Should().BeNull("Second dispose should not throw");
@@ -416,4 +419,4 @@ namespace SharpBridge.Tests.Infrastructure.Wrappers
 
         #endregion
     }
-} 
+}

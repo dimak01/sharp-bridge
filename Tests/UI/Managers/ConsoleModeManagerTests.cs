@@ -4,9 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.Interfaces.UI.Providers;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.UI;
+using SharpBridge.UI.Managers;
 using Xunit;
 
 namespace SharpBridge.Tests.UI.Managers

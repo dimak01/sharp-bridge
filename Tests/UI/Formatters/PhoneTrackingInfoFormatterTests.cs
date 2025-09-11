@@ -5,7 +5,15 @@ using System.Text;
 using FluentAssertions;
 using Moq;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.Interfaces.UI.Formatters;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
+using SharpBridge.Models.Infrastructure;
+using SharpBridge.UI.Formatters;
+using SharpBridge.UI.Utilities;
 using SharpBridge.Utilities;
 using Xunit;
 

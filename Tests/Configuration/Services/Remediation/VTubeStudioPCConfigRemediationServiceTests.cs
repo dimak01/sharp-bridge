@@ -4,10 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services.Remediation;
-using SharpBridge.Utilities;
+using SharpBridge.Configuration.Services.Remediation;
+using SharpBridge.Interfaces.Configuration.Factories;
+using SharpBridge.Interfaces.Configuration.Services.Validators;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.Models.Configuration;
 using Xunit;
 
 namespace SharpBridge.Tests.Configuration.Services.Remediation

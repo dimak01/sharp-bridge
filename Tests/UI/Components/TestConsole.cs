@@ -1,6 +1,8 @@
 using System;
 using System.Text;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.UI.Utilities;
 
 namespace SharpBridge.Tests.UI.Components
 {
@@ -108,7 +110,7 @@ namespace SharpBridge.Tests.UI.Components
                 if (row < inputLines.Length && !string.IsNullOrEmpty(inputLines[row]))
                 {
                     string line = inputLines[row];
-                    int visualLength = SharpBridge.Utilities.ConsoleColors.GetVisualLength(line);
+                    int visualLength = ConsoleColors.GetVisualLength(line);
 
                     // Handle visual length vs target width
                     if (visualLength > width)

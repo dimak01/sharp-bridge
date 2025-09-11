@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using SharpBridge.Core.Adapters;
 using SharpBridge.Models;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Domain;
 using SharpBridge.Utilities;
 using Xunit;
 

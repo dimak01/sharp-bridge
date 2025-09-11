@@ -4,9 +4,11 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Core.Engines;
+using SharpBridge.Interfaces.Core.Services;
+using SharpBridge.Interfaces.Infrastructure.Interop;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Models.Infrastructure;
 using SharpBridge.Utilities.ComInterop;
 using Xunit;
 

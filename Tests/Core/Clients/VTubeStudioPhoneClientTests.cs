@@ -6,13 +6,17 @@ using System.Threading.Tasks;
 using System.Net.Sockets;
 using FluentAssertions;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
-using SharpBridge.Utilities;
 using Xunit;
 using System.Collections.Generic;
 using System.Linq;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Core.Clients;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Interfaces.Core.Clients;
+using SharpBridge.Models.Domain;
 
 namespace SharpBridge.Tests.Core.Clients
 {

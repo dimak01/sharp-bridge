@@ -1,10 +1,9 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using SharpBridge.Configuration.Factories;
+using SharpBridge.Models.Configuration;
 using Xunit;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
 
 namespace SharpBridge.Tests.Configuration.Factories
 {

@@ -1,9 +1,11 @@
 using System;
 using System.Threading.Tasks;
 using Moq;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
+using SharpBridge.Core.Services;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Models.Infrastructure;
 using Xunit;
 
 namespace SharpBridge.Tests.Core.Services
