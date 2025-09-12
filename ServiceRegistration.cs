@@ -440,7 +440,7 @@ namespace SharpBridge
 
             // Configure Serilog with file-only output to avoid interfering with console GUI
             return new LoggerConfiguration()
-                .MinimumLevel.Warning()
+                .MinimumLevel.Information()
                 .WriteTo.File(
                     path: Path.Combine(logDirectory, "sharp-bridge-.log"),
                     rollingInterval: RollingInterval.Day,
