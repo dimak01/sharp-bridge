@@ -8,7 +8,7 @@ using System.Net.WebSockets;
 using System.Threading.Tasks;
 using Serilog;
 using System.IO;
-using SharpBridge.Repositories;
+using SharpBridge.Infrastructure.Repositories;
 using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Infrastructure.Services;
 using SharpBridge.Infrastructure.Wrappers;

@@ -13,7 +13,7 @@ using SharpBridge.Models.Configuration;
 using SharpBridge.Models.Domain;
 using SharpBridge.Models.Events;
 
-namespace SharpBridge.Repositories
+namespace SharpBridge.Infrastructure.Repositories
 {
     /// <summary>
     /// File-based implementation of transformation rules repository with caching and graceful error handling

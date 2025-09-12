@@ -3,7 +3,7 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces.Infrastructure.Services;
-using SharpBridge.Interfaces.UI;
+using SharpBridge.Interfaces.Infrastructure;
 using SharpBridge.Models.Domain;
 
 namespace SharpBridge.Interfaces.Core.Clients

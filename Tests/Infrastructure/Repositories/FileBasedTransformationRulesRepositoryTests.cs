@@ -12,10 +12,10 @@ using SharpBridge.Models;
 using SharpBridge.Models.Configuration;
 using SharpBridge.Models.Domain;
 using SharpBridge.Models.Events;
-using SharpBridge.Repositories;
+using SharpBridge.Infrastructure.Repositories;
 using Xunit;
 
-namespace SharpBridge.Tests.Domain
+namespace SharpBridge.Tests.Infrastructure.Repositories
 {
     public class FileBasedTransformationRulesRepositoryTests : IDisposable
     {
