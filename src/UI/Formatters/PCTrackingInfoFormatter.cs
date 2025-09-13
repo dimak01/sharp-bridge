@@ -151,7 +151,7 @@ namespace SharpBridge.UI.Formatters
                 [ParameterTableColumn.Range] = new TextColumnFormatter<TrackingParam>("Range", param => FormatDefinitionRange(param, trackingInfo), minWidth: 12, maxWidth: 25),
                 [ParameterTableColumn.Expression] = new TextColumnFormatter<TrackingParam>("Expression", param => _colorService.GetColoredExpression(FormatExpression(param, trackingInfo)), minWidth: 15, maxWidth: 90),
                 [ParameterTableColumn.MinMax] = new TextColumnFormatter<TrackingParam>("Min/Max", param => FormatExtremumRange(param, trackingInfo), minWidth: 12, maxWidth: 20),
-                [ParameterTableColumn.Interpolation] = new TextColumnFormatter<TrackingParam>("Interpolation", param => FormatInterpolationInfo(param, trackingInfo), minWidth: 12, maxWidth: 25)
+                [ParameterTableColumn.Interpolation] = new TextColumnFormatter<TrackingParam>("Interpolation", param => FormatInterpolationInfo(param, trackingInfo), minWidth: 12, maxWidth: 45)
             };
 
             // Filter columns based on configuration

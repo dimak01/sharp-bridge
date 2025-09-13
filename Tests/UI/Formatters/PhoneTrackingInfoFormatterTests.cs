@@ -46,7 +46,7 @@ namespace SharpBridge.Tests.UI.Formatters
             ConsoleColors.ColorizeHeadParameter("Head Rotation") + $" (X,Y,Z): {x:F1}°, {y:F1}°, {z:F1}°";
 
         public static string FormatHeadPosition(float x, float y, float z) =>
-            ConsoleColors.ColorizeHeadParameter("Head Position") + $" (X,Y,Z): {x:F1}°, {y:F1}°, {z:F1}°";
+            ConsoleColors.ColorizeHeadParameter("Head Position") + $" (X,Y,Z): {x:F1}, {y:F1}, {z:F1}";
 
         public static string FormatBlendShapes(object blendShapes)
         {
@@ -362,7 +362,7 @@ namespace SharpBridge.Tests.UI.Formatters
 
             // Assert
             result.Should().Contain(ConsoleColors.ColorizeHeadParameter("Head Position") +
-                                    " (X,Y,Z): 1.2°, 3.4°, -0.8°");
+                                    " (X,Y,Z): 1.2, 3.4, -0.8");
         }
 
         [Fact]

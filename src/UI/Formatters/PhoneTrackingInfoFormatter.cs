@@ -173,9 +173,9 @@ namespace SharpBridge.UI.Formatters
             if (position != null)
             {
                 builder.AppendLine(ConsoleColors.ColorizeHeadParameter("Head Position") + " (X,Y,Z): " +
-                    $"{position.X:F1}°, " +
-                    $"{position.Y:F1}°, " +
-                    $"{position.Z:F1}°");
+                    $"{position.X:F1}, " +
+                    $"{position.Y:F1}, " +
+                    $"{position.Z:F1}");
             }
         }
 
