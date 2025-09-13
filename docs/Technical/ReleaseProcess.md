@@ -123,7 +123,7 @@ All executables are:
 We use a **file-based release notes system** with the following structure:
 
 ```
-Docs/
+docs/
 ├── ReleaseNotes/
 │   ├── ReleaseNotesTemplate.md    # Template for new releases
 │   ├── v1.2.0.md                 # Release notes for v1.2.0
@@ -135,12 +135,12 @@ Docs/
 
 1. **Copy the template** for your new release:
    ```bash
-   cp Docs/ReleaseNotes/ReleaseNotesTemplate.md Docs/ReleaseNotes/v1.2.0.md
+   cp docs/ReleaseNotes/ReleaseNotesTemplate.md docs/ReleaseNotes/v1.2.0.md
    ```
 
 2. **Edit the release notes** file:
    ```bash
-   nano Docs/ReleaseNotes/v1.2.0.md
+   nano docs/ReleaseNotes/v1.2.0.md
    ```
 
 3. **Fill in the details**:
@@ -152,7 +152,7 @@ Docs/
 
 4. **Commit the release notes**:
    ```bash
-   git add Docs/ReleaseNotes/v1.2.0.md
+   git add docs/ReleaseNotes/v1.2.0.md
    git commit -m "Add release notes for v1.2.0"
    git push origin main
    ```
@@ -174,7 +174,7 @@ Each release notes file should include:
 ### Automated Release Notes
 
 The workflow automatically:
-1. **Looks for** `Docs/ReleaseNotes/v{version}.md`
+1. **Looks for** `docs/ReleaseNotes/v{version}.md`
 2. **Fails the release** if no release notes file is found
 3. **Creates GitHub release** with the notes
 
