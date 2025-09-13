@@ -15,7 +15,7 @@ namespace SharpBridge.Tests.Models.Domain
     public class BezierInterpolationSerializationTests
     {
         [Fact]
-        public void Serialize_BezierInterpolation_WritesCompactArray()
+        public void Serialize_BezierInterpolation_WritesAllControlPoints()
         {
             // Arrange
             var bezier = new BezierInterpolation
@@ -37,7 +37,7 @@ namespace SharpBridge.Tests.Models.Domain
             var json = JsonSerializer.Serialize(bezier, options);
 
             // Assert
-            Assert.Equal("[0.42,0]", json);
+            Assert.Equal("[0,0,0.42,0,1,1]", json);
         }
 
         [Fact]
@@ -57,17 +57,13 @@ namespace SharpBridge.Tests.Models.Domain
             Assert.NotNull(result);
             Assert.IsType<BezierInterpolation>(result);
             var bezier = (BezierInterpolation)result;
-            Assert.Equal(5, bezier.ControlPoints.Count);
+            Assert.Equal(3, bezier.ControlPoints.Count);
             Assert.Equal(0.0, bezier.ControlPoints[0].X);
             Assert.Equal(0.0, bezier.ControlPoints[0].Y);
-            Assert.Equal(0.0, bezier.ControlPoints[1].X);
+            Assert.Equal(0.42, bezier.ControlPoints[1].X);
             Assert.Equal(0.0, bezier.ControlPoints[1].Y);
-            Assert.Equal(0.42, bezier.ControlPoints[2].X);
-            Assert.Equal(0.0, bezier.ControlPoints[2].Y);
-            Assert.Equal(1.0, bezier.ControlPoints[3].X);
-            Assert.Equal(1.0, bezier.ControlPoints[3].Y);
-            Assert.Equal(1.0, bezier.ControlPoints[4].X);
-            Assert.Equal(1.0, bezier.ControlPoints[4].Y);
+            Assert.Equal(1.0, bezier.ControlPoints[2].X);
+            Assert.Equal(1.0, bezier.ControlPoints[2].Y);
         }
 
 
@@ -76,7 +72,7 @@ namespace SharpBridge.Tests.Models.Domain
         public void Deserialize_ObjectFormat_FlatArrayControlPoints_ReadsBezierInterpolation()
         {
             // Arrange - This matches the actual JSON format from the user's example
-            var json = "{\"type\":\"BezierInterpolation\",\"controlPoints\":[0.42,0,1,1]}";
+            var json = "{\"type\":\"BezierInterpolation\",\"controlPoints\":[0,0,0.42,0,1,1]}";
             var options = new JsonSerializerOptions
             {
                 Converters = { new InterpolationConverter(), new BezierInterpolationConverter() }
@@ -89,19 +85,15 @@ namespace SharpBridge.Tests.Models.Domain
             Assert.NotNull(result);
             Assert.IsType<BezierInterpolation>(result);
             var bezier = (BezierInterpolation)result;
-            Assert.Equal(4, bezier.ControlPoints.Count); // 2 original + 2 implicit points
+            Assert.Equal(3, bezier.ControlPoints.Count); // All control points specified
 
-            // Verify the middle control points (the ones from the JSON)
+            // Verify all control points
+            Assert.Equal(0.0, bezier.ControlPoints[0].X);
+            Assert.Equal(0.0, bezier.ControlPoints[0].Y);
             Assert.Equal(0.42, bezier.ControlPoints[1].X);
             Assert.Equal(0.0, bezier.ControlPoints[1].Y);
             Assert.Equal(1.0, bezier.ControlPoints[2].X);
             Assert.Equal(1.0, bezier.ControlPoints[2].Y);
-
-            // Verify implicit start and end points
-            Assert.Equal(0.0, bezier.ControlPoints[0].X);
-            Assert.Equal(0.0, bezier.ControlPoints[0].Y);
-            Assert.Equal(1.0, bezier.ControlPoints[3].X);
-            Assert.Equal(1.0, bezier.ControlPoints[3].Y);
         }
 
         [Fact]
@@ -137,7 +129,7 @@ namespace SharpBridge.Tests.Models.Domain
         }
 
         [Fact]
-        public void Serialize_ComplexBezierCurve_WritesCompactArray()
+        public void Serialize_ComplexBezierCurve_WritesAllControlPoints()
         {
             // Arrange
             var bezier = new BezierInterpolation
@@ -163,7 +155,7 @@ namespace SharpBridge.Tests.Models.Domain
             var json = JsonSerializer.Serialize(bezier, options);
 
             // Assert
-            Assert.Equal("[0.1,0.9,0.3,0.1,0.5,0.8,0.7,0.2,0.9,0.1]", json);
+            Assert.Equal("[0,0,0.1,0.9,0.3,0.1,0.5,0.8,0.7,0.2,0.9,0.1,1,1]", json);
         }
 
         [Fact]
@@ -183,13 +175,13 @@ namespace SharpBridge.Tests.Models.Domain
             Assert.NotNull(result);
             Assert.IsType<BezierInterpolation>(result);
             var bezier = (BezierInterpolation)result;
-            Assert.Equal(9, bezier.ControlPoints.Count);
+            Assert.Equal(7, bezier.ControlPoints.Count);
 
             // Verify first and last points
             Assert.Equal(0.0, bezier.ControlPoints[0].X);
             Assert.Equal(0.0, bezier.ControlPoints[0].Y);
-            Assert.Equal(1.0, bezier.ControlPoints[8].X);
-            Assert.Equal(1.0, bezier.ControlPoints[8].Y);
+            Assert.Equal(1.0, bezier.ControlPoints[6].X);
+            Assert.Equal(1.0, bezier.ControlPoints[6].Y);
         }
     }
 }

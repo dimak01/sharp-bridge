@@ -1040,7 +1040,7 @@ namespace SharpBridge.Tests.UI.Formatters
             capturedColumns.Should().NotBeNull();
             var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
             interpolationColumn.Should().NotBeNull();
-            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(0.42, 0)");
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(0, 0, 0.42, 0, 1, 1)");
         }
 
         [Fact]
@@ -1141,7 +1141,7 @@ namespace SharpBridge.Tests.UI.Formatters
             capturedColumns.Should().NotBeNull();
             var interpolationColumn = capturedColumns!.SingleOrDefault(c => c.Header == "Interpolation");
             interpolationColumn.Should().NotBeNull();
-            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(linear)");
+            interpolationColumn!.ValueFormatter(parameters[0]).Should().Be("Bezier(0, 0, 1, 1)");
         }
 
         [Fact]

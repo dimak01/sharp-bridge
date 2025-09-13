@@ -237,7 +237,7 @@ namespace SharpBridge.Tests.Models.Domain
             Assert.IsType<BezierInterpolation>(rule.Interpolation);
 
             var bezier = (BezierInterpolation)rule.Interpolation!;
-            Assert.Equal(4, bezier.ControlPoints.Count); // 2 original + 2 implicit points
+            Assert.Equal(2, bezier.ControlPoints.Count); // 2 control points as specified
         }
 
         [Fact]

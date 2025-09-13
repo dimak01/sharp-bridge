@@ -35,11 +35,11 @@ namespace SharpBridge.Infrastructure.Utilities
         /// <inheritdoc />
         public override void Write(Utf8JsonWriter writer, BezierInterpolation value, JsonSerializerOptions options)
         {
-            // Write in flat array format for compactness (only middle control points)
+            // Write in flat array format for compactness (all control points)
             writer.WriteStartArray();
 
-            // Skip the first point (implicit start) and last point (implicit end)
-            for (int i = 1; i < value.ControlPoints.Count - 1; i++)
+            // Write all control points
+            for (int i = 0; i < value.ControlPoints.Count; i++)
             {
                 var point = value.ControlPoints[i];
                 writer.WriteNumberValue(point.X);
@@ -76,10 +76,7 @@ namespace SharpBridge.Infrastructure.Utilities
                 throw new JsonException($"Bezier control points array must have an even number of values (pairs of x,y coordinates), got {values.Count}");
             }
 
-            // Add implicit start point (0, 0)
-            controlPoints.Add(new Point { X = 0, Y = 0 });
-
-            // Convert middle control points to Point objects
+            // Convert all control points to Point objects
             for (int i = 0; i < values.Count; i += 2)
             {
                 controlPoints.Add(new Point
@@ -88,9 +85,6 @@ namespace SharpBridge.Infrastructure.Utilities
                     Y = values[i + 1]
                 });
             }
-
-            // Add implicit end point (1, 1)
-            controlPoints.Add(new Point { X = 1, Y = 1 });
 
             return new BezierInterpolation { ControlPoints = controlPoints };
         }
@@ -129,10 +123,7 @@ namespace SharpBridge.Infrastructure.Utilities
                     throw new JsonException($"controlPoints array must have an even number of values (pairs of x,y coordinates), got {values.Count}");
                 }
 
-                // Add implicit start point (0, 0)
-                controlPoints.Add(new Point { X = 0, Y = 0 });
-
-                // Convert middle control points to Point objects
+                // Convert all control points to Point objects
                 for (int i = 0; i < values.Count; i += 2)
                 {
                     controlPoints.Add(new Point
@@ -141,9 +132,6 @@ namespace SharpBridge.Infrastructure.Utilities
                         Y = values[i + 1]
                     });
                 }
-
-                // Add implicit end point (1, 1)
-                controlPoints.Add(new Point { X = 1, Y = 1 });
             }
             else
             {

@@ -349,14 +349,14 @@ namespace SharpBridge.Tests.Domain.Services
         }
 
         [Fact]
-        public void InterpolationMethodFactory_ValidateDefinition_BezierWithInvalidFirstPoint()
+        public void InterpolationMethodFactory_ValidateDefinition_BezierWithCustomFirstPoint()
         {
             // Arrange
             var definition = new BezierInterpolation
             {
                 ControlPoints = new List<Point>
                 {
-                    new Point { X = 0.1, Y = 0.0 }, // Not (0,0)
+                    new Point { X = 0.1, Y = 0.0 }, // Custom start point
                     new Point { X = 1.0, Y = 1.0 }
                 }
             };
@@ -365,11 +365,11 @@ namespace SharpBridge.Tests.Domain.Services
             var isValid = InterpolationMethodFactory.ValidateDefinition(definition);
 
             // Assert
-            Assert.False(isValid);
+            Assert.True(isValid); // Custom start points are now allowed
         }
 
         [Fact]
-        public void InterpolationMethodFactory_ValidateDefinition_BezierWithInvalidLastPoint()
+        public void InterpolationMethodFactory_ValidateDefinition_BezierWithCustomLastPoint()
         {
             // Arrange
             var definition = new BezierInterpolation
@@ -377,7 +377,7 @@ namespace SharpBridge.Tests.Domain.Services
                 ControlPoints = new List<Point>
                 {
                     new Point { X = 0.0, Y = 0.0 },
-                    new Point { X = 0.9, Y = 1.0 } // Not (1,1)
+                    new Point { X = 0.9, Y = 1.0 } // Custom end point
                 }
             };
 
@@ -385,7 +385,7 @@ namespace SharpBridge.Tests.Domain.Services
             var isValid = InterpolationMethodFactory.ValidateDefinition(definition);
 
             // Assert
-            Assert.False(isValid);
+            Assert.True(isValid); // Custom end points are now allowed
         }
 
         // Test helper class for unsupported interpolation types

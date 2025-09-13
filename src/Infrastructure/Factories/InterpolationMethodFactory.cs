@@ -78,18 +78,6 @@ namespace SharpBridge.Infrastructure.Factories
                     return false;
             }
 
-            // Validate that first point is (0,0) and last point is (1,1)
-            if (bezier.ControlPoints.Count > 0)
-            {
-                var first = bezier.ControlPoints[0];
-                var last = bezier.ControlPoints[^1];
-
-                if (Math.Abs(first.X) > 1e-6 || Math.Abs(first.Y) > 1e-6)
-                    return false;
-
-                if (Math.Abs(last.X - 1.0) > 1e-6 || Math.Abs(last.Y - 1.0) > 1e-6)
-                    return false;
-            }
 
             return true;
         }

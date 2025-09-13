@@ -261,20 +261,14 @@ namespace SharpBridge.UI.Formatters
         }
 
         /// <summary>
-        /// Formats Bezier control points for display (omitting implicit start/end points)
+        /// Formats Bezier control points for display (all control points)
         /// </summary>
         private static string FormatBezierControlPoints(BezierInterpolation bezier)
         {
             if (bezier.ControlPoints.Count < 2)
                 return "Bezier(invalid)";
 
-            // Skip the first point (implicit start) and last point (implicit end)
-            var middlePoints = bezier.ControlPoints.Skip(1).Take(bezier.ControlPoints.Count - 2).ToList();
-
-            if (middlePoints.Count == 0)
-                return "Bezier(linear)";
-
-            var controlPointStrings = middlePoints.Select(p => $"{p.X:0.##}, {p.Y:0.##}");
+            var controlPointStrings = bezier.ControlPoints.Select(p => $"{p.X:0.##}, {p.Y:0.##}");
             return $"Bezier({string.Join(", ", controlPointStrings)})";
         }
 
