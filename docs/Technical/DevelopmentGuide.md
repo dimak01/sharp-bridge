@@ -196,7 +196,7 @@ All services are registered in `ServiceRegistration.cs`. This file contains the 
 ### Configuration Files
 - **ApplicationConfig.json** - Main application settings
 - **UserPreferences.json** - User-specific settings
-- **vts_transforms.json** - Transformation rules
+- **Parameter Transformations Config JSON** - Transformation rules
 
 ### Hot Reload
 Configuration changes are automatically detected and reloaded:

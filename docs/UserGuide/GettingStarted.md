@@ -16,6 +16,8 @@
 5. **Wait for initialization to complete** (watch the progress display)
 6. **Watch the Main Status mode** for connection confirmations
 
+<img src="../Resources/first-time-setup.gif" alt="First-time Setup Process" width="100%">
+
 ### Basic Operation
 
 Once running, Sharp Bridge will:
@@ -44,6 +46,8 @@ After successful startup, you'll see the **Main Status mode** showing:
 - Real-time parameter values
 - Transformation engine status
 - Any errors or warnings
+
+    <img src="../Resources/main-status-live.gif" alt="Main Status Mode with Live Data" width="100%">
 
 From here, you can:
 - **Navigate between modes** using F1 (System Help) and F2 (Network Status)

@@ -13,6 +13,8 @@ Sharp Bridge provides three distinct console modes, each optimized for different
 - **Face Detection**: Real-time face detection status from both devices
 - **Error/Warning Messages**: Any issues that need attention
 
+    <img src="../Resources/main-status-live.gif" alt="Main Status Mode with Live Data" width="100%">
+
 ### Key Information Displayed
 - **Transformation Engine**: Number of valid/invalid rules, config file path, up-to-date status
 - **Phone Client**: Face detection status, position/rotation data, blend shapes
@@ -33,6 +35,8 @@ Sharp Bridge provides three distinct console modes, each optimized for different
 - **Configuration Sections**: Current settings for all application components
 - **Keyboard Shortcuts**: Table of all available shortcuts with status
 - **Parameter Table Columns**: PC parameter table column configuration
+
+    <img src="../Resources/system-help-mode.png" alt="System Help Mode" width="50%">
 
 ### Key Information Displayed
 - **General Settings**: Editor command and other general configuration
@@ -57,6 +61,8 @@ Sharp Bridge provides three distinct console modes, each optimized for different
 - **iPhone Connection Status**: UDP port firewall analysis and rules
 - **PC VTube Studio Connection Status**: WebSocket and discovery port firewall analysis
 - **Troubleshooting Commands**: Copy-paste firewall configuration commands
+
+    <img src="../Resources/network-status-mode.png" alt="Network Status Mode" width="100%">
 
 ### Key Information Displayed
 - **iPhone UDP Port**: Local port status and firewall rules

@@ -12,7 +12,7 @@ Sharp Bridge integrates with external text editors to provide a seamless configu
 5. **Hot reload** applies changes automatically
 
 ### Mode-Specific Behavior
-- **Main Status Mode (default)**: Opens `vts_transforms.json` (transformation rules)
+- **Main Status Mode (default)**: Opens `Parameter Transformations Config JSON` (transformation rules)
 - **System Help Mode (F1)**: Opens `ApplicationConfig.json` (main settings)
 - **Network Status Mode (F2)**: Opens `ApplicationConfig.json` (main settings)
 
@@ -73,7 +73,7 @@ The editor command is configured in `ApplicationConfig.json`:
 ### Supported Files
 - **ApplicationConfig.json** - Main application settings
 - **UserPreferences.json** - User display preferences
-- **vts_transforms.json** - Transformation rules (requires Alt+K to reload)
+- **Parameter Transformations Config JSON** - Transformation rules (requires Alt+K to reload)
 
 ### Hot Reload Behavior
 - **Application config** - Applied immediately upon save

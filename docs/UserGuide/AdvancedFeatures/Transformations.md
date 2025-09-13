@@ -73,6 +73,8 @@ To see what BlendShape variables are available:
 - **Normal**: Face status + position/rotation + limited BlendShapes table
 - **Debug**: All above + complete BlendShapes table with all available variables
 
+<img src="../../Resources/verbosity-cycling.gif" alt="Verbosity Cycling" width="100%">
+
 ## Mathematical Expressions
 
 ### Basic Operations
@@ -438,13 +440,13 @@ Create discrete step functions using nested conditional logic:
 
 ### Using External Editor
 1. **Open Main Status Mode** (default mode)
-2. **Press `Ctrl+Alt+E`** to open vts_transforms.json
+2. **Press `Ctrl+Alt+E`** to open Parameter Transformations Config JSON
 3. **Edit transformation rules** as needed
 4. **Save the file**
 5. **Press `Alt+K`** to reload transformations
 
 ### Manual Editing
-1. **Open vts_transforms.json** in your preferred editor
+1. **Open Parameter Transformations Config JSON** in your preferred editor
 2. **Edit the transformation rules**
 3. **Save the file**
 4. **Press `Alt+K`** in the application to reload

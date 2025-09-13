@@ -22,7 +22,7 @@ Sharp Bridge provides keyboard shortcuts for efficient navigation and control. A
 
 ### Ctrl+Alt+E (Open Configuration)
 The configuration file opened depends on the current console mode:
-- **Main Status Mode (default)**: Opens `vts_transforms.json` (transformation rules)
+- **Main Status Mode (default)**: Opens `Parameter Transformations Config JSON` (transformation rules)
 - **System Help Mode (F1)**: Opens `ApplicationConfig.json` (main settings)
 - **Network Status Mode (F2)**: Opens `ApplicationConfig.json` (main settings)
 

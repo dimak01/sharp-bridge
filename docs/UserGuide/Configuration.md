@@ -17,7 +17,7 @@ User-specific display preferences:
 - **Display Settings** - Console dimensions, parameter display options
 - **UI Preferences** - Color schemes, formatting options
 
-### vts_transforms.json
+### Parameter Transformations Config JSON
 Transformation rules for parameter mapping:
 - **Parameter Definitions** - Name, function, min/max values, defaults
 - **Mathematical Expressions** - How iPhone tracking data maps to VTube Studio parameters
@@ -27,9 +27,11 @@ Transformation rules for parameter mapping:
 
 ### Using External Editor
 - **Press `Ctrl+Alt+E`** to open the relevant configuration file in your external editor
-  - **Main Status Mode**: Opens `vts_transforms.json` (transformation rules)
+  - **Main Status Mode**: Opens `Parameter Transformations Config JSON` (transformation rules)
   - **System Help Mode**: Opens `ApplicationConfig.json` (main application settings)
   - **Network Status Mode**: Opens `ApplicationConfig.json` (main application settings)
+
+<img src="../Resources/editor-workflow.gif" alt="External Editor Workflow" width="100%">
 
 ### Manual Editing
 - **Edit configuration files directly** in your preferred text editor
@@ -74,7 +76,7 @@ The application monitors configuration files using file watchers:
 
 ### Modifying Transformation Rules
 1. **Open Main Status Mode** (default mode)
-2. **Press `Ctrl+Alt+E`** to edit vts_transforms.json
+2. **Press `Ctrl+Alt+E`** to edit Parameter Transformations Config JSON
 3. **Edit parameter definitions** as needed
 4. **Press `Alt+K`** to reload transformations
 

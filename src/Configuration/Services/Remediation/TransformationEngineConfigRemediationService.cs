@@ -30,7 +30,7 @@ namespace SharpBridge.Configuration.Services.Remediation
                 "The transformation rules file defines how tracking parameters from your iPhone",
                 "are mapped and transformed before being sent to VTube Studio on PC.",
                 "",
-                "Default location: \u001b[96m'configs/vts_transforms.json'\u001b[0m",
+                "Default location: \u001b[96m'configs/showcase-transforms.json'\u001b[0m",
                 "You can place this file anywhere, but keep it in the \u001b[96m'configs'\u001b[0m folder for organization."
             },
             ["MaxEvaluationIterations"] = new[]
@@ -51,7 +51,7 @@ namespace SharpBridge.Configuration.Services.Remediation
         /// </summary>
         protected override Dictionary<string, object> FieldDefaults { get; } = new()
         {
-            ["ConfigPath"] = "configs/vts_transforms.json",
+            ["ConfigPath"] = "configs/showcase-transforms.json",
             ["MaxEvaluationIterations"] = 10
         };
 
@@ -136,7 +136,7 @@ namespace SharpBridge.Configuration.Services.Remediation
             // Apply defaults for missing fields
             var defaults = new Dictionary<string, object>
             {
-                ["ConfigPath"] = "configs/vts_transforms.json",
+                ["ConfigPath"] = "configs/showcase-transforms.json",
                 ["MaxEvaluationIterations"] = 10
             };
 

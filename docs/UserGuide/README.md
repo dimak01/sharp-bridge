@@ -10,6 +10,10 @@ Welcome to the Sharp Bridge User Guide! This guide will help you get started wit
 4. **Follow setup prompts** if this is your first time
 5. **Watch the progress** during initialization
 6. **Monitor connections** in Main Status mode
+7. **Explore different modes** - Press F1 for System Help or F2 for Network Status
+8. **Review settings** - Use Ctrl+Alt+E to edit configurations as needed  
+
+  <img src="../Resources/basic-operation.gif" alt="Basic Operation" width="100%">
 
 ## Quick Navigation
 

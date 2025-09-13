@@ -70,7 +70,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             result.UpdatedConfig.Should().BeOfType<TransformationEngineConfig>();
 
             var config = (TransformationEngineConfig)result.UpdatedConfig!;
-            config.ConfigPath.Should().Be("configs/vts_transforms.json");
+            config.ConfigPath.Should().Be("configs/showcase-transforms.json");
             config.MaxEvaluationIterations.Should().Be(10);
 
             // Verify no console interaction occurred
@@ -237,7 +237,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             result.UpdatedConfig.Should().NotBeNull();
 
             var config = (TransformationEngineConfig)result.UpdatedConfig!;
-            config.ConfigPath.Should().Be("configs/vts_transforms.json"); // Default value
+            config.ConfigPath.Should().Be("configs/showcase-transforms.json"); // Default value
 
             // Verify default value was shown in prompt
             _mockConsole.Verify(x => x.WriteLines(It.Is<string[]>(lines =>
@@ -413,7 +413,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
                 lines.Any(line => line.Contains("This is the path to the JSON file containing transformation rules.")) &&
                 lines.Any(line => line.Contains("The transformation rules file defines how tracking parameters")) &&
                 lines.Any(line => line.Contains("Default location:")) &&
-                lines.Any(line => line.Contains("configs/vts_transforms.json"))
+                lines.Any(line => line.Contains("configs/showcase-transforms.json"))
             )), Times.Once);
         }
 
@@ -632,7 +632,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
                 .ToList();
 
             var combinedOutput = string.Join(" ", allWriteLinesCalls);
-            combinedOutput.Should().Contain("configs/vts_transforms.json");
+            combinedOutput.Should().Contain("configs/showcase-transforms.json");
         }
 
         [Fact]
@@ -898,7 +898,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
 
             // Verify that the field was remediated successfully
             var updatedConfig = (TransformationEngineConfig)result.UpdatedConfig!;
-            updatedConfig.ConfigPath.Should().Be("configs/vts_transforms.json"); // Service used default value
+            updatedConfig.ConfigPath.Should().Be("configs/showcase-transforms.json"); // Service used default value
         }
 
         [Fact]
