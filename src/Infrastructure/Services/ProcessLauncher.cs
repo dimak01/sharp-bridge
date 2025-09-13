@@ -17,13 +17,6 @@ namespace SharpBridge.Infrastructure.Services
         private bool _disposed = false;
 
         /// <summary>
-        /// Creates a new ProcessLauncher with default settings (visible windows, shell execute)
-        /// </summary>
-        public ProcessLauncher() : this(useShellExecute: true, createNoWindow: false)
-        {
-        }
-
-        /// <summary>
         /// Creates a new ProcessLauncher with custom settings
         /// </summary>
         /// <param name="useShellExecute">Whether to use shell execute (default: true)</param>
