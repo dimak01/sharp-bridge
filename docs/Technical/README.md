@@ -54,4 +54,4 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 - **User Documentation**: [User Guide](../UserGuide/README.md)
 - **Project Overview**: [ProjectOverview](../ProjectOverview.md) (legacy reference)
 - **Source Code**: `src/` directory
-- **Tests**: `tests/` directory
+- **tests**: `tests/` directory

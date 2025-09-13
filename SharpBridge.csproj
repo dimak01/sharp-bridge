@@ -30,8 +30,8 @@
     <PackageReference Include="System.Text.Json" Version="9.0.4" />
   </ItemGroup>
 	<ItemGroup>
-		<Compile Remove="Tests\**\*.cs" />
-		<None Remove="Tests\**\*" />
+		<Compile Remove="tests\**\*.cs" />
+		<None Remove="tests\**\*" />
 	</ItemGroup>
 
   <ItemGroup>
