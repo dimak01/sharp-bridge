@@ -14,11 +14,11 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 - **Interfaces** - Key contracts between components
 - **Design decisions** - Why architectural choices were made
 
-### [Code Organization](CodeOrganization.md)
-- **Module structure** - How code is organized across layers
-- **Design patterns** - Key patterns used throughout
-- **Dependency management** - How modules depend on each other
-- **Extension points** - Where new features can be added
+### [Development Guide](DevelopmentGuide.md)
+- **Development workflow** - How to work with the codebase effectively
+- **Testing strategy** - Writing and running tests
+- **Code organization** - Module structure and design patterns
+- **Quality standards** - Code quality and review guidelines
 
 ### [Release Process](ReleaseProcess.md)
 - **Release workflow** - GitHub Actions automation
@@ -45,7 +45,7 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 ## Getting Started
 
 1. **Understand the architecture** - Start with [Architecture](Architecture.md)
-2. **Explore the code** - Review [Code Organization](CodeOrganization.md)
+2. **Learn to work with the code** - Follow [Development Guide](DevelopmentGuide.md)
 3. **Learn the release process** - Check [Release Process](ReleaseProcess.md) for workflows
 4. **Read the code** - The implementation is the source of truth
 
