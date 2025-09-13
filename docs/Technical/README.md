@@ -4,7 +4,7 @@ This section contains technical documentation for developers working on Sharp Br
 
 ## Overview
 
-Sharp Bridge is a real-time bridge application that connects iPhone's VTube Studio to VTube Studio on PC. It follows an **orchestrated pipeline architecture** with resilient design, configuration-driven behavior, and a console-based user interface.
+Sharp Bridge is a real-time bridge application in the form of VTube Studio Plugin that connects iPhone's VTube Studio to VTube Studio on PC. It follows an **orchestrated pipeline architecture** with resilient design, configuration-driven behavior, and a console-based user interface.
 
 ## Documentation Structure
 
