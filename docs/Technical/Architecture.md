@@ -38,171 +38,57 @@ The application follows a **resilient, orchestrated data flow architecture** wit
                                          └───────────────────────┘
 ```
 
-## Core Components
+## The Data Pipeline Story
 
-### ApplicationOrchestrator
-The **central coordinator** that manages the entire application lifecycle and component interactions.
+### How Data Flows Through the System
 
-**Key Responsibilities:**
-- Coordinates data flow between all components
-- Manages component lifecycle and recovery
-- Handles keyboard input and console management
-- Processes tracking data events
-- Manages configuration hot-reload
+**1. Data Ingestion**
+The journey begins when the iPhone's VTube Studio captures face tracking data. This data is sent via UDP to our [`VTubeStudioPhoneClient`](../../src/Core/Clients/VTubeStudioPhoneClient.cs), which acts as the system's "ears" - constantly listening for tracking updates and periodically requesting fresh data.
 
-**Key Dependencies:**
-- `IVTubeStudioPCClient` - PC communication
-- `IVTubeStudioPhoneClient` - iPhone communication  
-- `ITransformationEngine` - Data transformation
-- `IConsoleModeManager` - UI management
-- `IConfigManager` - Configuration management
-- `IVTubeStudioPCParameterManager` - VTube Studio parameter synchronization
-- `IApplicationInitializationService` - Application startup and initialization
-- `IRecoveryPolicy` - Recovery timing and behavior
-- `IAppLogger` - Application logging
-- `IFileChangeWatcher` - Configuration change monitoring
-- `IConsoleWindowManager` - Console window management
-- `IShortcutConfigurationManager` - Keyboard shortcut management
-- `IParameterColorService` - Console color coding
+**2. Data Transformation**
+Once received, the raw tracking data flows into our [`TransformationEngine`](../../src/Core/Engines/TransformationEngine.cs) - the system's "brain." Here, mathematical expressions and interpolation rules transform the data according to user-defined configurations. This is where the magic happens: head rotations become smooth curves, eye movements get enhanced, and complex parameter dependencies are resolved through multi-pass evaluation.
 
-### VTubeStudioPhoneClient
-**UDP client** that receives tracking data from iPhone VTube Studio.
+**3. Data Delivery**
+The transformed data then flows to our [`VTubeStudioPCClient`](../../src/Core/Clients/VTubeStudioPCClient.cs) - the system's "voice." This component establishes a WebSocket connection to the PC's VTube Studio, handles authentication, and delivers the processed tracking data in real-time.
 
-**Key Responsibilities:**
-- Establishes UDP connection to iPhone
-- Sends tracking requests periodically
-- Receives and parses tracking data
-- Raises `TrackingDataReceived` events
-- Monitors connection health
+**4. Orchestration and Monitoring**
+Throughout this entire pipeline, the [`ApplicationOrchestrator`](../../src/Core/Orchestrators/ApplicationOrchestrator.cs) acts as the "conductor" - coordinating the flow, monitoring health, and ensuring everything stays in sync. It's the orchestrator that makes this feel like a cohesive system rather than disconnected components.
 
-**Key Dependencies:**
-- `IUdpClientWrapper` - UDP communication abstraction
-- `IConfigManager` - Configuration management
-- `IFileChangeWatcher` - Configuration change monitoring
+### Why This Architecture?
 
-### TransformationEngine
-**Mathematical expression evaluator** that transforms tracking data according to user-defined rules.
+**Event-Driven Design**: The system uses events ([`TrackingDataReceived`](../../src/Models/Events/TrackingDataReceivedEventArgs.cs)) to maintain loose coupling between components. This allows each piece to focus on its core responsibility while remaining responsive to changes.
 
-**Key Responsibilities:**
-- Loads transformation rules from configuration
-- Evaluates mathematical expressions using NCalc
-- Applies interpolation methods (Linear, Bezier)
-- Handles parameter dependencies and multi-pass evaluation
-- Tracks runtime min/max values
+**Resilient Pipeline**: Every component has built-in health monitoring and recovery capabilities. If the PC connection drops, the system automatically attempts to reconnect. If the transformation engine fails, it gracefully degrades rather than crashing.
 
-**Key Dependencies:**
-- `ITransformationRulesRepository` - Rule persistence
-- `IConfigManager` - Configuration management
-- `IFileChangeWatcher` - Configuration change monitoring
+**Real-Time Performance**: The data pipeline processes face tracking data at the rates iPhone sends them, i.e. 30-60 FPS (with 60 FPS being the default), while the console UI updates at 10 FPS for responsive user interaction. The system is designed to process each frame under 10ms to maintain real-time performance.
 
-### VTubeStudioPCClient
-**WebSocket client** that sends transformed data to PC VTube Studio.
+**Built-in Recovery**: Every component has health monitoring and automatic recovery capabilities. If the PC connection drops, the system automatically attempts to reconnect. If the transformation engine fails, it gracefully degrades rather than crashing, ensuring the application continues operating with reduced functionality.
 
-**Key Responsibilities:**
-- Establishes WebSocket connection to VTube Studio
-- Handles authentication with token persistence
-- Discovers VTube Studio port automatically
-- Sends tracking data via WebSocket
-- Monitors connection health
+## The Console UI Story
 
-**Key Dependencies:**
-- `IWebSocketWrapper` - WebSocket communication abstraction
-- `IPortDiscoveryService` - Port discovery
-- `IVTSParameterAdapter` - Parameter adaptation
-- `IConfigManager` - Configuration management
+### Why Console-Based UI?
 
-### VTubeStudioPCParameterManager
-**Parameter synchronization manager** that handles VTube Studio parameter creation and management.
+For a real-time bridge application, console UI provides several key advantages:
 
-**Key Responsibilities:**
-- Synchronizes parameter definitions with VTube Studio
-- Creates missing parameters automatically
-- Manages parameter lifecycle and cleanup
-- Handles parameter prefix configuration
+**Low Overhead**: Unlike GUI applications, console UI doesn't compete with VTube Studio or your streaming software for system resources.
 
-**Key Dependencies:**
-- `IVTubeStudioPCClient` - PC communication for parameter operations
-- `IConfigManager` - Configuration management
+**Developer-Friendly**: The console interface serves both end users and developers, providing detailed diagnostics and configuration access without requiring separate tools.
 
-### ApplicationInitializationService
-**Initialization coordinator** that handles application startup and component initialization.
+**Rapid Development**: Console UI was chosen for faster initial development with limited resources. While a lightweight GUI remains a possibility for the future, console UI allowed us to focus on core functionality and get the application working quickly.
 
-**Key Responsibilities:**
-- Coordinates component initialization sequence
-- Handles graceful startup with partial failures
-- Manages initialization progress display
-- Ensures proper component startup order
+### How the UI System Works
 
-**Key Dependencies:**
-- `IVTubeStudioPCClient` - PC client initialization
-- `IVTubeStudioPhoneClient` - Phone client initialization
-- `ITransformationEngine` - Transformation engine initialization
-- `IConfigManager` - Configuration loading
+**Multi-Mode Design**: The console operates in different modes (Main Status, System Help, Network Status, Initialization), each optimized for specific tasks. Users can switch between modes using keyboard shortcuts, making the interface both powerful and accessible.
 
-### RecoveryPolicy
-**Recovery timing manager** that defines when and how often recovery attempts should be made.
+**Real-Time Updates**: The UI updates at 10 FPS, providing smooth, live feedback about system state. Parameter values, connection status, and transformation results are displayed with color coding and progress indicators.
 
-**Key Responsibilities:**
-- Determines recovery attempt intervals
-- Manages exponential backoff strategies
-- Prevents excessive recovery attempts
-- Configures recovery timing based on component type
+**Dynamic Configuration**: The UI adapts to user preferences - verbosity levels, parameter table customization, and display options can all be configured on-the-fly without restarting the application.
 
-**Key Dependencies:**
-- `VTubeStudioPCConfig` - Recovery interval configuration
+**Interactive Controls**: Keyboard shortcuts provide quick access to common functions - mode switching, configuration editing, verbosity cycling, and hot reload capabilities.
 
-### Infrastructure Services
+### Console UI System Architecture
 
-#### IAppLogger
-**Application logging service** that provides structured logging throughout the application.
-
-**Key Responsibilities:**
-- Structured logging with Serilog
-- File rotation and retention management
-- Log level configuration
-- Error and performance tracking
-
-#### IFileChangeWatcher
-**File change monitoring service** that detects configuration file changes for hot-reload.
-
-**Key Responsibilities:**
-- Monitors configuration files for changes
-- Raises change events for hot-reload
-- Supports multiple file watchers
-- Handles file system events
-
-#### IConsoleWindowManager
-**Console window management service** that handles console sizing and user preferences.
-
-**Key Responsibilities:**
-- Console window size management
-- User preference persistence
-- Size change tracking
-- Window restoration
-
-### UI Services
-
-#### IShortcutConfigurationManager
-**Keyboard shortcut management service** that handles shortcut configuration and registration.
-
-**Key Responsibilities:**
-- Loads shortcut configurations
-- Registers keyboard shortcuts
-- Manages shortcut descriptions
-- Handles shortcut validation
-
-#### IParameterColorService
-**Console color coding service** that provides color coding for parameter display.
-
-**Key Responsibilities:**
-- Parameter value color coding
-- Status-based color assignment
-- Console color management
-- Visual indicator generation
-
-## Console UI System
-
-The application features a **console-based user interface** with dynamic configuration and user preferences:
+The console UI follows a layered architecture with clear separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
@@ -236,111 +122,109 @@ The application features a **console-based user interface** with dynamic configu
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Console UI Components
+This architecture enables:
+- **Modular UI components** that can be easily extended or modified
+- **Consistent formatting** across different display modes
+- **Dynamic user interaction** through configurable keyboard shortcuts
+- **Responsive design** that adapts to different console sizes and user preferences
 
-#### Core Interfaces
-- **`IConsole`** - Abstraction over console operations (cursor, writing, sizing)
-- **`IConsoleModeManager`** - Central mode coordinator with content provider management
-- **`IConsoleModeContentProvider`** - Interface for console mode content providers
-- **`IFormatter`** - Pluggable formatters for different data types with verbosity support
-- **`IKeyboardInputHandler`** - Keyboard shortcut registration and processing
+### How the Console UI System Works
 
-#### Console Modes
-- **Main Status** - Real-time monitoring and parameter display (default)
-- **System Help** - Configuration management and system information (F1)
-- **Network Status** - Network diagnostics and troubleshooting (F2)
-- **Initialization** - Application startup progress and status
+**1. Data Flow Visualization**
+The console UI acts as a real-time window into the data pipeline, serving two distinct audiences. For **streamers** who just want to run the app, it displays connection status and basic health information. For **Live2D model riggers** who need to configure parameters and transformation rules, it provides extensive technical details about data flow and transformations.
 
-#### Key Features
-- **Real-time Status Display** - Live service health monitoring with color-coded indicators
-- **Dynamic Interactive Controls** - Configurable shortcuts, verbosity cycling, hot reload
-- **User Preferences System** - Persistent settings for verbosity, console dimensions, UI customization
-- **Adaptive Formatting System** - Three verbosity levels, multi-column layout, progress visualization
+**2. Dual-Purpose Data Display**
+The UI system uses specialized formatters like [`PhoneTrackingInfoFormatter`](../../src/UI/Formatters/PhoneTrackingInfoFormatter.cs) and [`PCTrackingInfoFormatter`](../../src/UI/Formatters/PCTrackingInfoFormatter.cs) to serve both audiences. The phone formatter shows raw blend shapes and face tracking data for riggers to understand what data is available. The PC formatter displays parameter values, transformation expressions, interpolation rules, and min/max ranges - essentially the complete transformation pipeline that riggers need to configure and debug.
 
-## Configuration Architecture
+**3. Mode-Based Information Architecture**
+The [`ConsoleModeManager`](../../src/UI/Managers/ConsoleModeManager.cs) organizes different types of information into focused modes - Main Status for real-time monitoring, System Help for configuration, Network Status for diagnostics. This component acts as the system's "librarian" - ensuring users can find the right information at the right time.
 
-The application uses a **consolidated configuration system** with hot-reload capabilities:
+**4. Interactive Controls and User Preferences**
+When users do interact with the system, the [`KeyboardInputHandler`](../../src/UI/Components/KeyboardInputHandler.cs) captures input and maps it to actions. The [`ConsoleWindowManager`](../../src/UI/Managers/ConsoleWindowManager.cs) handles window sizing and user preferences, while the [`ParameterColorService`](../../src/UI/Services/ParameterColorService.cs) provides color coding for enhanced readability.
 
-### Configuration Structure
-- **ApplicationConfig.json** - Single configuration file containing all settings
-  - `GeneralSettings` - Editor commands and keyboard shortcuts
-  - `PhoneClient` - iPhone connection settings
-  - `PCClient` - VTube Studio PC connection settings
-  - `TransformationEngine` - Transformation rules path and settings
+### Why This UI Architecture?
 
-### Configuration Management
-- **Application Config Hot Reload** - File watchers monitor `ApplicationConfig.json` for automatic reload
-- **Transformation Rules Change Detection** - File watchers detect transformation rule changes and notify user (manual reload required)
-- **Dynamic Shortcuts** - Keyboard shortcuts configurable via JSON
-- **User Preferences** - Persistent user settings (verbosity, console dimensions, parameter table customization)
-- **Validation** - Configuration change detection and validation
+**Event-Driven Updates**: The UI system responds to data changes through events and the orchestrator's update cycle, ensuring real-time information display without blocking the data pipeline.
 
+**Modular Design**: Each UI component has a single responsibility - input handling, mode management, content generation, or formatting. This makes the system easy to extend and maintain.
 
-## Resiliency & Recovery Architecture
+**User-Centric Configuration**: The system adapts to user preferences through [`UserPreferences`](../../configs/UserPreferences.json) and dynamic shortcut configuration, making it both powerful and personalized.
 
-The application implements a **resiliency system** with configuration-aware health monitoring:
+## The Resilient System Story
 
-### Core Resiliency Features
-1. **Graceful Initialization** - Application starts successfully even if services are initially unavailable
-2. **Automatic Recovery** - Failed services are automatically detected and recovery is attempted
-3. **Health Monitoring** - Real-time health status tracking for all components
-4. **Connection Recreation** - WebSocket and UDP connections can be cleanly recreated
-5. **Token Management** - Authentication tokens are properly loaded, cached, and reused
-6. **Configuration Awareness** - Health status considers both operational state and configuration changes
+Sharp Bridge is designed to be resilient from the moment it starts up through its entire runtime. The system handles failures gracefully, provides clear feedback to users, and can recover from many common issues automatically.
 
-### Recovery Mechanisms
-- **Service Health Detection** - Each service reports its health status via `IServiceStats`
-- **Automatic Recovery Attempts** - Unhealthy services are automatically reinitialized based on recovery policy
-- **Connection State Management** - WebSocket connections can be recreated when in closed/aborted states
-- **Token Persistence** - Authentication tokens are loaded from disk to avoid unnecessary re-authentication
-- **Configuration Change Handling** - Services detect and handle configuration changes gracefully
+### Startup Resilience: The Initialization Journey
 
-## Key Design Patterns
+The application startup is a carefully orchestrated sequence of steps, each with built-in error handling and recovery:
 
-### 1. Orchestrator Pattern
-**ApplicationOrchestrator** coordinates all components and manages the application lifecycle.
+```
+Console Setup → Transformation Engine → File Watchers → PC Client → Phone Client → Parameter Sync → Final Setup
+```
 
-### 2. Repository Pattern
-**ITransformationRulesRepository** abstracts rule persistence with file-based implementation.
+Each step is tracked by the [`InitializationContentProvider`](../../src/UI/Providers/InitializationContentProvider.cs), which displays real-time progress with color-coded status indicators:
+- **`[OK]`** - Step completed successfully
+- **`[RUN]`** - Step currently in progress  
+- **`[PEND]`** - Step waiting to start
+- **`[FAIL]`** - Step failed (logged for later review)
 
-### 3. Factory Pattern
-Multiple factories create clients, validators, and extractors based on configuration.
+If any step fails, the system logs the error details and can usually continue with degraded functionality rather than crashing entirely. Once the main screen loads, any ongoing issues are displayed through the status and health UI controls.
 
-### 4. Observer Pattern
-Event-driven communication between components (e.g., `TrackingDataReceived` event).
+### Configuration Resilience: First-Time Setup and Remediation
 
-### 5. Strategy Pattern
-Different interpolation methods, verbosity levels, and formatting strategies.
+Sharp Bridge handles configuration issues through a remediation system. When the application starts, the [`ConfigRemediationService`](../../src/Configuration/Services/ConfigRemediationService.cs) automatically:
 
-### 6. Dependency Injection
-Extensive use of DI container for loose coupling and testability.
+1. **Validates each configuration section** (General Settings, PC Client, Phone Client, Transformation Engine)
+2. **Attempts automatic remediation** for common issues (missing values, invalid formats, etc.)
+3. **Falls back to sensible defaults** when possible
+4. **Saves corrected configurations** automatically
 
-## Quality Attributes
+This means users can start without any configuration file (first-time setup) or with a configuration file that has issues (remediation), and Sharp Bridge will guide them through setup with helpful defaults and validation.
 
-### Performance
-- **Real-time processing** - < 100ms latency for data transformation
-- **Efficient networking** - UDP for iPhone, WebSocket for PC
-- **Optimized rendering** - Console updates at 10 FPS with minimal CPU usage
+### Runtime Monitoring: Health Tracking and Network Status
 
-### Reliability
-- **Automatic recovery** - Failed services are automatically reinitialized
-- **Health monitoring** - Real-time health status tracking with graceful degradation
-- **Resilient design** - Application continues operating with reduced functionality
+Once running, the system provides two types of monitoring:
 
-### Maintainability
-- **Modular design** - Clear separation of concerns across architectural layers
-- **Interface-based** - Components depend on abstractions for loose coupling
-- **Configuration-driven** - Behavior controlled by configuration with hot-reload
-- **Comprehensive logging** - Structured logging with Serilog for debugging
+**Health Tracking** is handled by the tracking info formatters ([`PhoneTrackingInfoFormatter`](../../src/UI/Formatters/PhoneTrackingInfoFormatter.cs), [`PCTrackingInfoFormatter`](../../src/UI/Formatters/PCTrackingInfoFormatter.cs), and [`TransformationEngineInfoFormatter`](../../src/UI/Formatters/TransformationEngineInfoFormatter.cs)):
 
-### Usability
-- **Console UI** - Real-time status display with interactive controls and multiple modes
-- **Hot-reload** - Configuration changes without restart
-- **User preferences** - Persistent settings for UI customization and verbosity levels
-- **Built-in diagnostics** - Help system and network troubleshooting capabilities
+- **Service Status**: Real-time status of Phone, PC, and Transformation Engine clients with color-coded indicators
+- **Face Detection**: Shows whether face tracking is working (√ Detected / X Not Found)
+- **Data Flow**: Displays tracking data quality and parameter transformation results
+- **Rule Validation**: Shows transformation rule health - valid/invalid rules, failed rule details with error messages
+- **Configuration Health**: Displays config file status, hot-reload attempts, and uptime since rules loaded
+- **Verbosity Levels**: Users can cycle through Basic/Normal/Detailed views for different detail levels
+
+**Network Status** is handled by the [`NetworkStatusContentProvider`](../../src/UI/Providers/NetworkStatusContentProvider.cs):
+
+- **Port Status Monitoring**: Checks if required ports are available and accessible
+- **Firewall Configuration**: Shows firewall rules and port accessibility
+- **Background Refresh**: Updates network status every 10 seconds without blocking the UI
+- **Troubleshooting Information**: Provides specific guidance when network issues are detected
+
+### Graceful Degradation and Auto-Recovery
+
+When components fail, Sharp Bridge doesn't crash. Instead, it:
+- **Stays running** and continuously attempts to reconnect when services come back online
+- **Displays clear error states** in the console UI so users know what's broken
+- **Auto-recovers** as soon as the underlying service becomes available again
+- **Provides recovery options** (retry connections, open configuration editor, reload configs)
+
+**Real-world examples:**
+- **iPhone VTS minimized**: App stops receiving data but keeps running; immediately resumes when VTS is reopened
+- **PC VTS disconnected**: App continues receiving iPhone data and displays PC connection status; automatically reconnects when PC VTS comes back online
+- **Broken transformation rules**: App loads with partial rule set, displays failed rules with error details, and hot-reloads when rules are fixed
+
+### Why This Resilience Matters
+
+**For Streamers**: The application "just works" even when things go wrong. No mysterious crashes or silent failures.
+
+**For Riggers**: Clear error messages and troubleshooting information make it easy to diagnose and fix configuration issues.
+
+**For Developers**: The modular design means failures are isolated and don't cascade through the system.
 
 ## Next Steps
 
-- **Code Organization** - See [CodeOrganization.md](CodeOrganization.md) for module structure
-- **Deployment** - See [Deployment.md](Deployment.md) for system requirements
+- **Development Guide** - See [DevelopmentGuide.md](DevelopmentGuide.md) for code organization and development practices
+- **Release Process** - See [ReleaseProcess.md](ReleaseProcess.md) for deployment and release management
 - **User Guide** - See [User Guide](../UserGuide/README.md) for user documentation
+- **Service Registration** - See [`ServiceRegistration.cs`](../../ServiceRegistration.cs) for dependency injection configuration

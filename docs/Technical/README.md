@@ -9,10 +9,11 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 ## Documentation Structure
 
 ### [Architecture](Architecture.md)
-- **Component relationships** - How the main components interact
-- **Data flow** - Real-time pipeline from iPhone to PC
-- **Interfaces** - Key contracts between components
-- **Design decisions** - Why architectural choices were made
+- **Data Pipeline Story** - How data flows from iPhone to PC through the transformation engine
+- **Console UI Story** - Why console-based UI and how the multi-mode interface works
+- **Resilient System Story** - Startup resilience, configuration remediation, and auto-recovery
+- **Component relationships** - How the main components interact and coordinate
+- **Design decisions** - Why architectural choices were made (console UI, event-driven, self-contained)
 
 ### [Development Guide](DevelopmentGuide.md)
 - **Development workflow** - How to work with the codebase effectively
@@ -28,11 +29,11 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 
 ## Key Architectural Principles
 
-1. **Resilient Design** - Built-in recovery mechanisms for all components
-2. **Configuration-Driven** - Hot-reload capabilities and user customization
-3. **Event-Driven** - Reactive data processing with real-time updates
-4. **Dependency Injection** - Loose coupling through interface-based design
-5. **Console UI** - Real-time status display with interactive controls
+1. **Orchestrated Pipeline** - Centralized coordination with automatic recovery and health monitoring
+2. **Resilient Design** - Graceful degradation, auto-recovery, and comprehensive error handling
+3. **Configuration-Driven** - Hot-reload capabilities, remediation, and first-time setup automation
+4. **Event-Driven Architecture** - Loose coupling through events and reactive data processing
+5. **Console UI System** - Multi-mode interface with real-time monitoring and user customization
 
 ## Quick Reference
 
