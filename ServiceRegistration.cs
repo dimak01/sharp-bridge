@@ -1,11 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Utilities;
+using SharpBridge.Core.Services;
 
 using System;
-using System.Net.WebSockets;
-using System.Threading.Tasks;
 using Serilog;
 using System.IO;
 using SharpBridge.Infrastructure.Repositories;
@@ -42,7 +38,6 @@ using SharpBridge.Core.Engines;
 using SharpBridge.Interfaces.Core.Services;
 using SharpBridge.Interfaces.Core.Managers;
 using SharpBridge.Core.Managers;
-using SharpBridge.Core.Services;
 using SharpBridge.Interfaces.UI.Formatters;
 using SharpBridge.UI.Formatters;
 using SharpBridge.Interfaces.Infrastructure.Interop;
@@ -196,6 +191,9 @@ namespace SharpBridge
             // Register UDP client factory
             services.AddSingleton<IUdpClientWrapperFactory, UdpClientWrapperFactory>();
 
+            // Register version service
+            services.AddSingleton<IVersionService, VersionService>();
+
             // Register core services
             services.AddSingleton<IVTubeStudioPhoneClient>(provider =>
             {
@@ -320,7 +318,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
                     provider.GetRequiredService<ITableFormatter>(),
                     provider.GetRequiredService<INetworkStatusFormatter>(),
-                    provider.GetRequiredService<IExternalEditorService>()
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IVersionService>()
                 ));
             services.AddSingleton<ISystemHelpRenderer>(provider => provider.GetRequiredService<SystemHelpContentProvider>());
 
@@ -348,7 +347,8 @@ namespace SharpBridge
                     provider.GetRequiredService<TransformationEngineInfoFormatter>(),
                     provider.GetRequiredService<PhoneTrackingInfoFormatter>(),
                     provider.GetRequiredService<PCTrackingInfoFormatter>(),
-                    provider.GetRequiredService<IExternalEditorService>()
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IVersionService>()
                 ));
             services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
 

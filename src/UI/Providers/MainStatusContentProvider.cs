@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Core;
 using SharpBridge.Interfaces.Core.Services;
 using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Interfaces.UI.Components;
@@ -23,6 +24,7 @@ namespace SharpBridge.UI.Providers
         private readonly Dictionary<Type, IFormatter> _formatters = new Dictionary<Type, IFormatter>();
         private readonly IAppLogger _logger;
         private readonly IExternalEditorService _externalEditorService;
+        private readonly IVersionService _versionService;
 
         /// <summary>
         /// Initializes a new instance of the MainStatusRenderer class
@@ -32,10 +34,12 @@ namespace SharpBridge.UI.Providers
         /// <param name="phoneFormatter">The phone tracking info formatter</param>
         /// <param name="pcFormatter">The PC tracking info formatter</param>
         /// <param name="externalEditorService">The external editor service for opening configuration files</param>
-        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IExternalEditorService externalEditorService)
+        /// <param name="versionService">The version service for displaying application version</param>
+        public MainStatusContentProvider(IAppLogger logger, IFormatter transformationFormatter, IFormatter phoneFormatter, IFormatter pcFormatter, IExternalEditorService externalEditorService, IVersionService versionService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
+            _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
 
             // Register formatters for known types - order determines display order
             RegisterFormatter<TransformationEngineInfo>(transformationFormatter ?? throw new ArgumentNullException(nameof(transformationFormatter)));
@@ -148,6 +152,10 @@ namespace SharpBridge.UI.Providers
         private string[] BuildDisplayLines(IEnumerable<IServiceStats> stats)
         {
             var lines = new List<string>();
+
+            // Add version header
+            lines.Add(_versionService.GetDisplayVersion());
+            lines.Add(string.Empty);
 
             AddServiceLines(lines, stats);
 

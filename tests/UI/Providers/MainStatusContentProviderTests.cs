@@ -22,12 +22,15 @@ namespace SharpBridge.Tests.UI.Providers
 {
     public class MainStatusContentProviderTests : IDisposable
     {
+        private const string APP_NAME_AND_VERSION = "Sharp Bridge v0.5.0-dev";
+
         private readonly Mock<IAppLogger> _mockLogger;
         private readonly Mock<IFormatter> _mockTransformationFormatter;
         private readonly Mock<IFormatter> _mockPhoneFormatter;
         private readonly Mock<IFormatter> _mockPCFormatter;
 
         private readonly Mock<IExternalEditorService> _mockExternalEditorService;
+        private readonly Mock<IVersionService> _mockVersionService;
         private readonly UserPreferences _userPreferences;
 
         // Test entities for formatter testing
@@ -41,6 +44,8 @@ namespace SharpBridge.Tests.UI.Providers
             _mockLogger = new Mock<IAppLogger>();
 
             _mockExternalEditorService = new Mock<IExternalEditorService>();
+            _mockVersionService = new Mock<IVersionService>();
+            _mockVersionService.Setup(x => x.GetDisplayVersion()).Returns(APP_NAME_AND_VERSION);
             _userPreferences = new UserPreferences();
 
             // Setup formatter mocks
@@ -106,7 +111,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object);
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object);
 
             // Assert
             provider.Should().NotBeNull();
@@ -121,7 +127,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object));
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object));
             exception.ParamName.Should().Be("logger");
         }
 
@@ -134,7 +141,8 @@ namespace SharpBridge.Tests.UI.Providers
                 null!,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object));
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object));
             exception.ParamName.Should().Be("transformationFormatter");
         }
 
@@ -147,7 +155,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 null!,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object));
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object));
             exception.ParamName.Should().Be("phoneFormatter");
         }
 
@@ -160,7 +169,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 null!,
-                _mockExternalEditorService.Object));
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object));
             exception.ParamName.Should().Be("pcFormatter");
         }
 
@@ -175,7 +185,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object);
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object);
 
             // Assert
             provider.Should().NotBeNull();
@@ -190,8 +201,23 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                null!));
+                null!,
+                _mockVersionService.Object));
             exception.ParamName.Should().Be("externalEditorService");
+        }
+
+        [Fact]
+        public void Constructor_WithNullVersionService_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() => new MainStatusContentProvider(
+                _mockLogger.Object,
+                _mockTransformationFormatter.Object,
+                _mockPhoneFormatter.Object,
+                _mockPCFormatter.Object,
+                _mockExternalEditorService.Object,
+                null!));
+            exception.ParamName.Should().Be("versionService");
         }
 
         #endregion
@@ -253,7 +279,9 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().BeEmpty();
+            result.Should().HaveCount(2); // Version header + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
         }
 
         [Fact]
@@ -268,7 +296,9 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().BeEmpty();
+            result.Should().HaveCount(2); // Version header + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
         }
 
         [Fact]
@@ -283,7 +313,9 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().BeEmpty();
+            result.Should().HaveCount(2); // Version header + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
         }
 
         [Fact]
@@ -299,9 +331,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Service content + empty line
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(4); // Version header + empty line + service content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("Transformation Engine Status");
+            result[3].Should().BeEmpty();
         }
 
         [Fact]
@@ -318,11 +352,13 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(4); // 2 services + 2 empty lines
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(6); // Version header + empty line + 2 services + 2 empty lines
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
-            result[2].Should().Be("Phone Tracking Status");
+            result[2].Should().Be("Transformation Engine Status");
             result[3].Should().BeEmpty();
+            result[4].Should().Be("Phone Tracking Status");
+            result[5].Should().BeEmpty();
         }
 
         [Fact]
@@ -338,9 +374,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Only valid service + empty line
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(4); // Version header + empty line + only valid service + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("Transformation Engine Status");
+            result[3].Should().BeEmpty();
         }
 
         [Fact]
@@ -356,9 +394,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Formatter output + empty line
-            result[0].Should().Be("Phone Tracking Status");
+            result.Should().HaveCount(4); // Version header + empty line + formatter output + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("Phone Tracking Status");
+            result[3].Should().BeEmpty();
         }
 
         [Fact]
@@ -374,10 +414,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("=== UnknownService (Running) ===");
-            result[1].Should().Contain("[No formatter registered for TestEntity]");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== UnknownService (Running) ===");
+            result[3].Should().Contain("[No formatter registered for TestEntity]");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -393,9 +435,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Formatter output + empty line
-            result[0].Should().Be("Phone Tracking Status");
+            result.Should().HaveCount(4); // Formatter output + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("Phone Tracking Status");
+            result[3].Should().BeEmpty();
             _mockPhoneFormatter.Verify(f => f.Format(stats), Times.Once); // Should be called for Phone service
         }
 
@@ -412,9 +456,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Formatter output + empty line
-            result[0].Should().Be("PC Tracking Status");
+            result.Should().HaveCount(4); // Formatter output + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("PC Tracking Status");
+            result[3].Should().BeEmpty();
             _mockPCFormatter.Verify(f => f.Format(stats), Times.Once); // Should be called for PC service
         }
 
@@ -431,10 +477,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("=== UnknownService (Running) ===");
-            result[1].Should().Contain("No current data available");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== UnknownService (Running) ===");
+            result[3].Should().Contain("No current data available");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -452,13 +500,15 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(6); // 3 services + 3 empty lines
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(8); // Header + 3 services + 3 empty lines
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
-            result[2].Should().Be("Phone Tracking Status");
+            result[2].Should().Be("Transformation Engine Status");
             result[3].Should().BeEmpty();
-            result[4].Should().Be("PC Tracking Status");
+            result[4].Should().Be("Phone Tracking Status");
             result[5].Should().BeEmpty();
+            result[6].Should().Be("PC Tracking Status");
+            result[7].Should().BeEmpty();
         }
 
         [Fact]
@@ -477,11 +527,13 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(4); // 3 lines + empty line
-            result[0].Should().Be("Line 1");
-            result[1].Should().Be("Line 2");
-            result[2].Should().Be("Line 3");
-            result[3].Should().BeEmpty();
+            result.Should().HaveCount(6); // Version header + empty line + 3 lines + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Be("Line 1");
+            result[3].Should().Be("Line 2");
+            result[4].Should().Be("Line 3");
+            result[5].Should().BeEmpty();
         }
 
         #endregion
@@ -620,7 +672,9 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().BeEmpty(); // All services are null, so empty result
+            result.Should().HaveCount(2);
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
         }
 
         [Fact]
@@ -639,10 +693,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("=== TestService (Running) ===");
-            result[1].Should().Contain("[No formatter registered for TransformationEngineInfo]");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== TestService (Running) ===");
+            result[3].Should().Contain("[No formatter registered for TransformationEngineInfo]");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -659,10 +715,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("=== TestService (Running) ===");
-            result[1].Should().Contain("[No formatter registered for TestEntity]");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== TestService (Running) ===");
+            result[3].Should().Contain("[No formatter registered for TestEntity]");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -679,10 +737,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("=== TestService (Running) ===");
-            result[1].Should().Contain("[No formatter registered for TestEntity]");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== TestService (Running) ===");
+            result[3].Should().Contain("[No formatter registered for TestEntity]");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -698,10 +758,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("===  (Running) ===");
-            result[1].Should().Contain("No current data available");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("===  (Running) ===");
+            result[3].Should().Contain("No current data available");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -717,10 +779,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain("=== TestService () ===");
-            result[1].Should().Contain("No current data available");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== TestService () ===");
+            result[3].Should().Contain("No current data available");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -737,10 +801,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain($"=== {longName} (Running) ===");
-            result[1].Should().Contain("No current data available");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain($"=== {longName} (Running) ===");
+            result[3].Should().Contain("No current data available");
+            result[4].Should().BeEmpty();
         }
 
         [Fact]
@@ -757,10 +823,12 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(3); // Header + content + empty line
-            result[0].Should().Contain($"=== {specialName} (Running) ===");
-            result[1].Should().Contain("No current data available");
-            result[2].Should().BeEmpty();
+            result.Should().HaveCount(5); // Version header + empty line + header + content + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain($"=== {specialName} (Running) ===");
+            result[3].Should().Contain("No current data available");
+            result[4].Should().BeEmpty();
         }
 
         #endregion
@@ -824,8 +892,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2);
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(4);
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Be("Transformation Engine Status");
+            result[1].Should().BeEmpty();
             _mockTransformationFormatter.Verify(f => f.Format(stats), Times.Once);
         }
 
@@ -842,9 +913,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Formatter output + empty line
-            result[0].Should().Be("Phone Tracking Status");
+            result.Should().HaveCount(4); // Version header + empty line + formatter output + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("Phone Tracking Status");
+            result[3].Should().BeEmpty();
             _mockPhoneFormatter.Verify(f => f.Format(stats), Times.Once);
         }
 
@@ -861,9 +934,11 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(2); // Formatter output + empty line
-            result[0].Should().Be("PC Tracking Status");
+            result.Should().HaveCount(4); // Version header + empty line + formatter output + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
+            result[2].Should().Be("PC Tracking Status");
+            result[3].Should().BeEmpty();
             _mockPCFormatter.Verify(f => f.Format(stats), Times.Once);
         }
 
@@ -889,13 +964,15 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(6); // 3 services + 3 empty lines
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(8); // 3 services + 3 empty lines
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
-            result[2].Should().Be("Phone Tracking Status");
+            result[2].Should().Be("Transformation Engine Status");
             result[3].Should().BeEmpty();
-            result[4].Should().Be("PC Tracking Status");
+            result[4].Should().Be("Phone Tracking Status");
             result[5].Should().BeEmpty();
+            result[6].Should().Be("PC Tracking Status");
+            result[7].Should().BeEmpty();
         }
 
         [Fact]
@@ -915,13 +992,15 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(6); // 2 services + 2 empty lines + 2 extra lines for headers
-            result[0].Should().Contain("=== UnknownService1 (Running) ===");
-            result[1].Should().Contain("[No formatter registered for TestEntity]");
-            result[2].Should().BeEmpty();
-            result[3].Should().Contain("=== UnknownService2 (Running) ===");
-            result[4].Should().Contain("[No formatter registered for TestEntity]");
-            result[5].Should().BeEmpty();
+            result.Should().HaveCount(8); // Version header + empty line + 2 services + 2 empty lines + 2 extra lines for headers
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            result[2].Should().Contain("=== UnknownService1 (Running) ===");
+            result[3].Should().Contain("[No formatter registered for TestEntity]");
+            result[4].Should().BeEmpty();
+            result[5].Should().Contain("=== UnknownService2 (Running) ===");
+            result[6].Should().Contain("[No formatter registered for TestEntity]");
+            result[7].Should().BeEmpty();
         }
 
         [Fact]
@@ -942,14 +1021,16 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(7); // 3 services + 3 empty lines + 1 extra line for header
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(9); // Version header + empty line + 3 services + 3 empty lines + 1 extra line for header
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
-            result[2].Should().Be("Phone Tracking Status");
+            result[2].Should().Be("Transformation Engine Status");
             result[3].Should().BeEmpty();
-            result[4].Should().Contain("=== UnknownService (Error) ===");
-            result[5].Should().Contain("[No formatter registered for TestEntity]");
-            result[6].Should().BeEmpty();
+            result[4].Should().Be("Phone Tracking Status");
+            result[5].Should().BeEmpty();
+            result[6].Should().Contain("=== UnknownService (Error) ===");
+            result[7].Should().Contain("[No formatter registered for TestEntity]");
+            result[8].Should().BeEmpty();
         }
 
         [Fact]
@@ -970,11 +1051,32 @@ namespace SharpBridge.Tests.UI.Providers
 
             // Assert
             result.Should().NotBeNull();
-            result.Should().HaveCount(4); // 2 valid services + 2 empty lines
-            result[0].Should().Be("Transformation Engine Status");
+            result.Should().HaveCount(6); // Header + 2 valid services + 2 empty lines
+            result[0].Should().Be(APP_NAME_AND_VERSION);
             result[1].Should().BeEmpty();
-            result[2].Should().Be("Phone Tracking Status");
+            result[2].Should().Be("Transformation Engine Status");
             result[3].Should().BeEmpty();
+            result[4].Should().Be("Phone Tracking Status");
+            result[5].Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetContent_DisplaysVersionHeader()
+        {
+            // Arrange
+            _mockVersionService.Setup(x => x.GetDisplayVersion()).Returns(APP_NAME_AND_VERSION);
+            var provider = CreateProvider();
+            var context = new ConsoleRenderContext { ServiceStats = Array.Empty<IServiceStats>() };
+
+            // Act
+            var result = provider.GetContent(context);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2); // Version + empty line
+            result[0].Should().Be(APP_NAME_AND_VERSION);
+            result[1].Should().BeEmpty();
+            _mockVersionService.Verify(x => x.GetDisplayVersion(), Times.Once);
         }
 
         #endregion
@@ -988,7 +1090,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object);
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object);
         }
 
         private MainStatusContentProvider CreateProviderWithExternalEditor()
@@ -998,7 +1101,8 @@ namespace SharpBridge.Tests.UI.Providers
                 _mockTransformationFormatter.Object,
                 _mockPhoneFormatter.Object,
                 _mockPCFormatter.Object,
-                _mockExternalEditorService.Object);
+                _mockExternalEditorService.Object,
+                _mockVersionService.Object);
         }
 
         private static IServiceStats CreateServiceStats(string serviceName, string status, bool isHealthy, IFormattableObject? entity)

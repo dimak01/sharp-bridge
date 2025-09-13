@@ -73,6 +73,7 @@ jobs:
               -p:Version=$VERSION \
               -p:AssemblyVersion=${{ steps.release-info.outputs.clean_version }}.0 \
               -p:FileVersion=${{ steps.release-info.outputs.clean_version }}.0 \
+              -p:AssemblyInformationalVersion=$VERSION \
               -o ./publish/$platform
           done
 

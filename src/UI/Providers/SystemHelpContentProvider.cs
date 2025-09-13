@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using SharpBridge.Infrastructure.Utilities;
 using SharpBridge.Interfaces;
 using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Interfaces.Core;
 using SharpBridge.Interfaces.Core.Services;
 using SharpBridge.Interfaces.UI.Components;
 using SharpBridge.Interfaces.UI.Formatters;
@@ -31,6 +32,7 @@ namespace SharpBridge.UI.Providers
         private readonly IParameterTableConfigurationManager _parameterTableConfigurationManager;
         private readonly ITableFormatter _tableFormatter;
         private readonly IExternalEditorService _externalEditorService;
+        private readonly IVersionService _versionService;
 
         /// <summary>
         /// Initializes a new instance of the SystemHelpContentProvider
@@ -40,12 +42,14 @@ namespace SharpBridge.UI.Providers
         /// <param name="tableFormatter">Table formatter for creating formatted tables</param>
         /// <param name="networkStatusFormatter">Network status formatter for troubleshooting information</param>
         /// <param name="externalEditorService">Service for opening files in external editors</param>
-        public SystemHelpContentProvider(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService)
+        /// <param name="versionService">The version service for displaying application version</param>
+        public SystemHelpContentProvider(IShortcutConfigurationManager shortcutConfigurationManager, IParameterTableConfigurationManager parameterTableConfigurationManager, ITableFormatter tableFormatter, INetworkStatusFormatter networkStatusFormatter, IExternalEditorService externalEditorService, IVersionService versionService)
         {
             _shortcutConfigurationManager = shortcutConfigurationManager ?? throw new ArgumentNullException(nameof(shortcutConfigurationManager));
             _parameterTableConfigurationManager = parameterTableConfigurationManager ?? throw new ArgumentNullException(nameof(parameterTableConfigurationManager));
             _tableFormatter = tableFormatter ?? throw new ArgumentNullException(nameof(tableFormatter));
             _externalEditorService = externalEditorService ?? throw new ArgumentNullException(nameof(externalEditorService));
+            _versionService = versionService ?? throw new ArgumentNullException(nameof(versionService));
         }
 
         /// <summary>
@@ -58,6 +62,10 @@ namespace SharpBridge.UI.Providers
         public string RenderSystemHelp(ApplicationConfig applicationConfig, int consoleWidth, NetworkStatus? networkStatus = null)
         {
             var builder = new StringBuilder();
+
+            // Add version header
+            builder.AppendLine(_versionService.GetDisplayVersion());
+            builder.AppendLine();
 
             // Application Configuration sections
             builder.AppendLine(RenderApplicationConfiguration(applicationConfig));
