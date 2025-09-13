@@ -1,3 +1,6 @@
+// Copyright 2025 Dimak@Shift
+// SPDX-License-Identifier: MIT
+
 using SharpBridge.Interfaces.Configuration.Services.Remediation;
 using SharpBridge.Models.Configuration;
 
