@@ -11,17 +11,21 @@
 ## What is Sharp Bridge?
 
 Sharp Bridge is a **lightweight, real-time VTube Studio Plugin** that connects iPhone's VTube Studio to VTube Studio on PC.  
-It processes face tracking data through a configurable transformation engine and delivers it seamlessly to your PC application via WebSocket communication.
+It transforms iPhone blendshapes into custom VTube Studio parameters, with advanced mathematical expressions and custom non-linear interpolations supported.
 
 ## Why Sharp Bridge?
 
-### 🚀 Lightweight & Efficient
+### 🚀 Lightweight
 
 We're a self-contained .NET-based executable with minimal resource usage - you can run it on a potato with 40Mb of RAM available and a spare change your CPU can offer.  
 GPU Usage? What's a "GPU"?    
 We're also **console-based** - because you can't have a heavy GUI if you don't have a GUI :3  
 
-### ⚙️ Highly Configurable with a Solid Feature Set
+### 🆓 Completely Free!
+
+No subscriptions, no paid features, no limitations. You're welcome.
+
+### ⚙️ Transparent Configuration
 
 Fully configurable iPhone blendshape → Custom PC VTube Studio parameter transformations with math expressions and functions & Bezier interpolations.  
 All that in a fully transparent JSON configuration file you can open via in-app shortcut, edit and hot-reload at runtime.  
@@ -49,9 +53,7 @@ We understand that streaming and content creation require rock-solid stability. 
   <img src="docs/Resources/network-diagnostics.png" alt="Network Diagnostics" style="width: 100%;">
 
 
-### 🆓 Completely Free!
 
-No subscriptions, no paid features, no limitations. You're welcome.
 
 ## Quick Start
 
