@@ -1,3 +1,6 @@
+// Copyright 2025 Dimak@Shift
+// SPDX-License-Identifier: MIT
+
 using SharpBridge.Interfaces.Infrastructure.Services;
 
 namespace SharpBridge.Interfaces.UI.Formatters

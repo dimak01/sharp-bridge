@@ -10,7 +10,7 @@
 
 ## What is Sharp Bridge?
 
-Sharp Bridge is a **lightweight, real-time bridge application** that connects iPhone's VTube Studio to VTube Studio on PC.  
+Sharp Bridge is a **lightweight, real-time VTube Studio Plugin** that connects iPhone's VTube Studio to VTube Studio on PC.  
 It processes face tracking data through a configurable transformation engine and delivers it seamlessly to your PC application via WebSocket communication.
 
 ## Why Sharp Bridge?

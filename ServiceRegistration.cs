@@ -1,3 +1,6 @@
+// Copyright 2025 Dimak@Shift
+// SPDX-License-Identifier: MIT
+
 using Microsoft.Extensions.DependencyInjection;
 using SharpBridge.Core.Services;
 

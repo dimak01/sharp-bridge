@@ -1,6 +1,6 @@
 # Sharp Bridge User Guide
 
-Welcome to the Sharp Bridge User Guide! This guide will help you get started with Sharp Bridge and learn how to use its features effectively.
+Welcome to the Sharp Bridge User Guide! This guide will help you get started with Sharp Bridge plugin and learn how to use its features effectively.
 
 ## Quick Start
 

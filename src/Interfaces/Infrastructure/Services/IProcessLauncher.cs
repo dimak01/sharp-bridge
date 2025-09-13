@@ -1,3 +1,6 @@
+// Copyright 2025 Dimak@Shift
+// SPDX-License-Identifier: MIT
+
 using System.Diagnostics;
 
 namespace SharpBridge.Interfaces.Infrastructure.Services
