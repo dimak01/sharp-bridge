@@ -20,11 +20,11 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 - **Dependency management** - How modules depend on each other
 - **Extension points** - Where new features can be added
 
-### [Deployment](Deployment.md)
-- **Self-contained executable** - No external dependencies
-- **System requirements** - Windows platform specifics
-- **Configuration files** - File structure and locations
-- **Installation** - Distribution and setup
+### [Release Process](ReleaseProcess.md)
+- **Release workflow** - GitHub Actions automation
+- **Version management** - Semantic versioning and tagging
+- **Build process** - Self-contained executable creation
+- **Quality gates** - Coverage and testing requirements
 
 ## Key Architectural Principles
 
@@ -46,7 +46,7 @@ Sharp Bridge is a real-time bridge application that connects iPhone's VTube Stud
 
 1. **Understand the architecture** - Start with [Architecture](Architecture.md)
 2. **Explore the code** - Review [Code Organization](CodeOrganization.md)
-3. **Set up development** - Check [Deployment](Deployment.md) for requirements
+3. **Learn the release process** - Check [Release Process](ReleaseProcess.md) for workflows
 4. **Read the code** - The implementation is the source of truth
 
 ## Cross-References

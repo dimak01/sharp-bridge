@@ -56,6 +56,14 @@ The **central coordinator** that manages the entire application lifecycle and co
 - `ITransformationEngine` - Data transformation
 - `IConsoleModeManager` - UI management
 - `IConfigManager` - Configuration management
+- `IVTubeStudioPCParameterManager` - VTube Studio parameter synchronization
+- `IApplicationInitializationService` - Application startup and initialization
+- `IRecoveryPolicy` - Recovery timing and behavior
+- `IAppLogger` - Application logging
+- `IFileChangeWatcher` - Configuration change monitoring
+- `IConsoleWindowManager` - Console window management
+- `IShortcutConfigurationManager` - Keyboard shortcut management
+- `IParameterColorService` - Console color coding
 
 ### VTubeStudioPhoneClient
 **UDP client** that receives tracking data from iPhone VTube Studio.
@@ -103,6 +111,95 @@ The **central coordinator** that manages the entire application lifecycle and co
 - `IVTSParameterAdapter` - Parameter adaptation
 - `IConfigManager` - Configuration management
 
+### VTubeStudioPCParameterManager
+**Parameter synchronization manager** that handles VTube Studio parameter creation and management.
+
+**Key Responsibilities:**
+- Synchronizes parameter definitions with VTube Studio
+- Creates missing parameters automatically
+- Manages parameter lifecycle and cleanup
+- Handles parameter prefix configuration
+
+**Key Dependencies:**
+- `IVTubeStudioPCClient` - PC communication for parameter operations
+- `IConfigManager` - Configuration management
+
+### ApplicationInitializationService
+**Initialization coordinator** that handles application startup and component initialization.
+
+**Key Responsibilities:**
+- Coordinates component initialization sequence
+- Handles graceful startup with partial failures
+- Manages initialization progress display
+- Ensures proper component startup order
+
+**Key Dependencies:**
+- `IVTubeStudioPCClient` - PC client initialization
+- `IVTubeStudioPhoneClient` - Phone client initialization
+- `ITransformationEngine` - Transformation engine initialization
+- `IConfigManager` - Configuration loading
+
+### RecoveryPolicy
+**Recovery timing manager** that defines when and how often recovery attempts should be made.
+
+**Key Responsibilities:**
+- Determines recovery attempt intervals
+- Manages exponential backoff strategies
+- Prevents excessive recovery attempts
+- Configures recovery timing based on component type
+
+**Key Dependencies:**
+- `VTubeStudioPCConfig` - Recovery interval configuration
+
+### Infrastructure Services
+
+#### IAppLogger
+**Application logging service** that provides structured logging throughout the application.
+
+**Key Responsibilities:**
+- Structured logging with Serilog
+- File rotation and retention management
+- Log level configuration
+- Error and performance tracking
+
+#### IFileChangeWatcher
+**File change monitoring service** that detects configuration file changes for hot-reload.
+
+**Key Responsibilities:**
+- Monitors configuration files for changes
+- Raises change events for hot-reload
+- Supports multiple file watchers
+- Handles file system events
+
+#### IConsoleWindowManager
+**Console window management service** that handles console sizing and user preferences.
+
+**Key Responsibilities:**
+- Console window size management
+- User preference persistence
+- Size change tracking
+- Window restoration
+
+### UI Services
+
+#### IShortcutConfigurationManager
+**Keyboard shortcut management service** that handles shortcut configuration and registration.
+
+**Key Responsibilities:**
+- Loads shortcut configurations
+- Registers keyboard shortcuts
+- Manages shortcut descriptions
+- Handles shortcut validation
+
+#### IParameterColorService
+**Console color coding service** that provides color coding for parameter display.
+
+**Key Responsibilities:**
+- Parameter value color coding
+- Status-based color assignment
+- Console color management
+- Visual indicator generation
+
 ## Console UI System
 
 The application features a **console-based user interface** with dynamic configuration and user preferences:
@@ -126,6 +223,7 @@ The application features a **console-based user interface** with dynamic configu
 │  │ + Size Control  │    │ + MainStatus     │    │ + Progress Bars                 │ │
 │  │ + User Prefs    │    │ + SystemHelp     │    │ + Responsive Design             │ │
 │  └─────────────────┘    │ + NetworkStatus  │    └─────────────────────────────────┘ │
+│                         │ + Initialization │                                        │
 │                         └──────────────────┘                                        │
 │                                   │                                                 │
 │                                   ▼                                                 │
@@ -151,6 +249,7 @@ The application features a **console-based user interface** with dynamic configu
 - **Main Status** - Real-time monitoring and parameter display (default)
 - **System Help** - Configuration management and system information (F1)
 - **Network Status** - Network diagnostics and troubleshooting (F2)
+- **Initialization** - Application startup progress and status
 
 #### Key Features
 - **Real-time Status Display** - Live service health monitoring with color-coded indicators
@@ -176,23 +275,6 @@ The application uses a **consolidated configuration system** with hot-reload cap
 - **User Preferences** - Persistent user settings (verbosity, console dimensions, parameter table customization)
 - **Validation** - Configuration change detection and validation
 
-## Service Registration & Dependency Injection
-
-The application uses a **DI system** with keyed services and factory patterns:
-
-### Service Registration Architecture
-- **Keyed Services** - Multiple file watchers for different configuration files
-- **Factory Patterns** - UDP client factory for different use cases
-- **Configuration Loading** - Consolidated configuration with section access
-- **Lifecycle Management** - Scoped orchestrator with singleton services
-
-### Core Services
-- **Configuration Services** - `IConfigManager`, `ApplicationConfig`, `UserPreferences`
-- **Network Services** - `IWebSocketWrapper`, `IUdpClientWrapperFactory`
-- **File Watching** - Multiple `IFileChangeWatcher` instances
-- **Console Services** - `IConsoleModeManager`, `IKeyboardInputHandler`, formatters
-- **Configuration Managers** - `IShortcutConfigurationManager`, `IParameterTableConfigurationManager`
-- **Business Services** - `ITransformationEngine`, `IVTubeStudioPCClient`, `IVTubeStudioPhoneClient`
 
 ## Resiliency & Recovery Architecture
 
@@ -238,24 +320,24 @@ Extensive use of DI container for loose coupling and testability.
 ### Performance
 - **Real-time processing** - < 100ms latency for data transformation
 - **Efficient networking** - UDP for iPhone, WebSocket for PC
-- **Optimized rendering** - Console updates at 10 FPS
+- **Optimized rendering** - Console updates at 10 FPS with minimal CPU usage
 
 ### Reliability
 - **Automatic recovery** - Failed services are automatically reinitialized
-- **Health monitoring** - Real-time health status tracking
-- **Graceful degradation** - Continues operation with reduced functionality
+- **Health monitoring** - Real-time health status tracking with graceful degradation
+- **Resilient design** - Application continues operating with reduced functionality
 
 ### Maintainability
-- **Modular design** - Clear separation of concerns
-- **Interface-based** - Components depend on abstractions
-- **Configuration-driven** - Behavior controlled by configuration
-- **Comprehensive logging** - Structured logging with Serilog
+- **Modular design** - Clear separation of concerns across architectural layers
+- **Interface-based** - Components depend on abstractions for loose coupling
+- **Configuration-driven** - Behavior controlled by configuration with hot-reload
+- **Comprehensive logging** - Structured logging with Serilog for debugging
 
 ### Usability
-- **Console UI** - Real-time status display with interactive controls
+- **Console UI** - Real-time status display with interactive controls and multiple modes
 - **Hot-reload** - Configuration changes without restart
-- **User preferences** - Persistent settings for UI customization
-- **Help system** - Built-in help and troubleshooting
+- **User preferences** - Persistent settings for UI customization and verbosity levels
+- **Built-in diagnostics** - Help system and network troubleshooting capabilities
 
 ## Next Steps
 
