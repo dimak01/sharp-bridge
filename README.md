@@ -65,8 +65,10 @@ No subscriptions, no paid features, no limitations. You're welcome.
 2. **Extract** the ZIP file to your desired location
 3. **Connect your devices** - Ensure iPhone VTube Studio and PC VTube Studio are running and connected
 4. **Run** `SharpBridge.exe`
-5. **Follow the setup** - The app will guide you through first-time configuration
-6. **Start tracking** - Your iPhone face tracking will now appear in PC VTube Studio!
+5. ⚠️ **Grant VTube Studio PC API access** - When prompted in VTS PC, click "Allow" to grant SharpBridge plugin access
+6. ⚠️ **Grant Windows Firewall access** - When Windows asks about network access, click "Allow access" (recommended) or use in-app help to configure manually later
+7. **Follow the setup** - The app will guide you through first-time configuration
+8. **Start tracking** - Your iPhone face tracking will now appear in PC VTube Studio!
 
 **Need help?** Check our [User Guide](docs/UserGuide/README.md) for detailed instructions and troubleshooting.
 

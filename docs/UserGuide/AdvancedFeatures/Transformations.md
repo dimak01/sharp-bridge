@@ -216,21 +216,65 @@ Interpolation controls how parameter values are smoothed between their calculate
 - Rigger designs parameter range to accommodate both the overshoot peak and normal end state
 
 ### Designing Bezier Curves
-Use external tools to design and visualize Bezier curves:
 
-- **[cubic-bezier.com](https://cubic-bezier.com/)** - Interactive Bezier curve designer with preview
-- **CSS Easing Functions** - Many tools support CSS cubic-bezier format
-- **Control Point Format**: Convert from `cubic-bezier(x1, y1, x2, y2)` to `[x1, y1, x2, y2]` (middle control points only)
-- **Format**: Use `controlPoints` array with middle control points only
+**Recommended Animation Easing Tools:**
+
+1. **[cubic-bezier.com](https://cubic-bezier.com/)** ⭐ **Best Choice**
+   - Designed specifically for animation easing
+   - Real-time preview of easing curves
+   - Library of common easing functions
+   - Easy to copy values and compare curves
+   - **Important**: You must add `[0, 0, ...]` at the start and `[..., 1, 1]` at the end
+
+2. **[Easing Functions Cheat Sheet](https://easings.net/)**
+   - Comprehensive library of easing functions
+   - Visual previews and mathematical formulas
+   - CSS cubic-bezier values provided
+   - **Note**: Convert CSS format to Sharp Bridge format
+
+3. **[Material Design Easing](https://m2.material.io/design/motion/speed.html#easing)**
+   - Google's easing guidelines for smooth animations
+   - Standard easing curves for UI animations
+   - Good reference for natural motion
+
+**Control Point Format Conversion:**
+- **CSS Format**: `cubic-bezier(x1, y1, x2, y2)` → **Sharp Bridge**: `[0, 0, x1, y1, x2, y2, 1, 1]`
+- **Example**: `cubic-bezier(0.25, 0.1, 0.25, 1)` becomes `[0, 0, 0.25, 0.1, 0.25, 1, 1, 1]`
+
+**⚠️ Important Format Note:**
+- **Always use decimal format**: `0.06` not `.06`
+- **CSS tools often show**: `cubic-bezier(.06,.35,.94,1.03)`
+- **Sharp Bridge needs**: `[0, 0, 0.06, 0.35, 0.94, 1.03, 1, 1]`
+- **Add leading zeros and start/end control points** before copying values from CSS tools
+
+**Step-by-Step Guide for cubic-bezier.com:**
+
+1. **Go to [cubic-bezier.com](https://cubic-bezier.com/)**
+2. **Adjust the curve** by dragging the control points
+3. **Preview the animation** using the "Preview & compare" feature
+4. **Copy the CSS value** (e.g., `cubic-bezier(0.25, 0.1, 0.25, 1)`)
+5. **Convert to Sharp Bridge format**:
+   - CSS: `cubic-bezier(0.25, 0.1, 0.25, 1)`
+   - Sharp Bridge: `[0, 0, 0.25, 0.1, 0.25, 1, 1, 1]`
 
 ### Common Easing Curves
+
+#### Linear (No Easing)
+```json
+{
+  "interpolation": {
+    "type": "BezierInterpolation",
+    "controlPoints": [0, 0, 1, 1]
+  }
+}
+```
 
 #### Ease In (Slow Start)
 ```json
 {
   "interpolation": {
     "type": "BezierInterpolation",
-    "controlPoints": [0.42, 0, 1, 1]
+    "controlPoints": [0, 0, 0.42, 0, 1, 1]
   }
 }
 ```
@@ -240,7 +284,7 @@ Use external tools to design and visualize Bezier curves:
 {
   "interpolation": {
     "type": "BezierInterpolation", 
-    "controlPoints": [0, 0, 0.58, 1]
+    "controlPoints": [0, 0, 0.58, 1, 1, 1]
   }
 }
 ```
@@ -250,7 +294,27 @@ Use external tools to design and visualize Bezier curves:
 {
   "interpolation": {
     "type": "BezierInterpolation",
-    "controlPoints": [0.42, 0, 0.58, 1]
+    "controlPoints": [0, 0, 0.42, 0, 0.58, 1, 1, 1]
+  }
+}
+```
+
+#### Bounce Effect
+```json
+{
+  "interpolation": {
+    "type": "BezierInterpolation",
+    "controlPoints": [0, 0, 0.25, 0.1, 0.25, 1, 1, 1]
+  }
+}
+```
+
+#### Overshoot (Dramatic Effect)
+```json
+{
+  "interpolation": {
+    "type": "BezierInterpolation",
+    "controlPoints": [0, 0, 0.2, 0.3, 0.6, 1.0, 0.8, 0.8]
   }
 }
 ```

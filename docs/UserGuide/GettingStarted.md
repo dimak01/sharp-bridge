@@ -12,9 +12,12 @@
 1. **Start VTube Studio on your PC**
 2. **Start tracking on your iPhone VTube Studio app**
 3. **Launch Sharp Bridge** (`SharpBridge.exe`)
-4. **Follow the first-time setup prompts** if this is your first time
-5. **Wait for initialization to complete** (watch the progress display)
-6. **Watch the Main Status mode** for connection confirmations
+4. **Grant VTube Studio API access** - When prompted, click "Allow" to grant SharpBridge plugin access
+   <img src="../Resources/vts-access-warning.png" alt="VTube Studio API Permission Dialog" width="100%">
+5. **Grant Windows Firewall access** - When Windows asks about network access, click "Allow access" (recommended) or use in-app help to configure manually later
+6. **Follow the first-time setup prompts** if this is your first time
+7. **Wait for initialization to complete** (watch the progress display)
+8. **Watch the Main Status mode** for connection confirmations
 
 <img src="../Resources/first-time-setup.gif" alt="First-time Setup Process" width="100%">
 

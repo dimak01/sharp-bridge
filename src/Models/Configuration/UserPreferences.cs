@@ -29,7 +29,7 @@ namespace SharpBridge.Models.Configuration
         /// <summary>
         /// Preferred console window width
         /// </summary>
-        public int PreferredConsoleWidth { get; set; } = 175;
+        public int PreferredConsoleWidth { get; set; } = 180;
 
         /// <summary>
         /// Preferred console window height

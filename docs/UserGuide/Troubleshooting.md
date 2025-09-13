@@ -97,6 +97,39 @@ Press **F1** to access configuration details and shortcuts.
 - **Firewall issues**: Use Network Status mode (F2) to get copy-paste firewall commands
 - **VTube Studio not running**: Start VTube Studio on PC first
 - **API not enabled**: Enable API in VTube Studio settings
+- **Permission denied**: Grant VTube Studio API access when prompted (see below)
+
+#### VTube Studio API Permission Dialog
+**What You'll See:**
+- VTube Studio shows a security dialog asking to grant SharpBridge plugin access
+- Dialog shows "SharpBridge" plugin by "Dimak@Shift" requesting API access
+- Options: "Deny" (red) or "Allow" (blue)
+
+**What to Do:**
+1. **Click "Allow"** to grant SharpBridge access to VTube Studio API
+2. **If you clicked "Deny"**: Restart Sharp Bridge to get the dialog again
+3. **If dialog doesn't appear**: Check that VTube Studio is running and API is enabled
+
+**Why This Happens:**
+- VTube Studio requires explicit permission for plugins to access the API
+- This is a one-time setup step for security
+- You can revoke access later in VTube Studio settings if needed
+
+#### Windows Firewall Permission Dialog
+**What You'll See:**
+- Windows Firewall shows a security dialog asking to allow SharpBridge network access
+- Dialog shows "Windows Firewall has blocked some features of this app"
+- Options: "Allow access" or "Cancel"
+
+**What to Do:**
+1. **Click "Allow access"** (recommended) - This allows both incoming and outgoing network connections
+2. **If you clicked "Cancel"**: Use Network Status mode (F2) to get copy-paste firewall commands
+3. **If dialog doesn't appear**: Check Windows Firewall settings or use in-app diagnostics
+
+**Why This Happens:**
+- Sharp Bridge uses both TCP (VTube Studio PC) and UDP (iPhone) connections
+- Windows Firewall blocks network access by default for security
+- This is a one-time setup step for network communication
 
 ### Configuration Issues
 
