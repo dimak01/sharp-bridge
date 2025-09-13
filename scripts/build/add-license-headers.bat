@@ -3,7 +3,7 @@ echo Adding SPDX license headers to Sharp Bridge source files...
 echo.
 
 REM Add license headers to source files
-addlicense -c "Dimak@Shift" -y 2025 -l mit -s=only src/ Tests/ Program.cs ServiceRegistration.cs
+addlicense -c "Dimak@Shift" -y 2025 -l mit -s=only src/ tests/ Program.cs ServiceRegistration.cs
 
 if %ERRORLEVEL% EQU 0 (
     echo.
