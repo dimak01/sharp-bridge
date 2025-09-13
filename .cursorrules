@@ -7,21 +7,13 @@ Sharp Bridge is a .NET/C# application that bridges iPhone's VTube Studio to VTub
 
 ### Core Documentation
 - **README.md** - Main project documentation, installation, configuration, and usage guide
-- **Docs/ProjectOverview.md** - Detailed architecture overview, component descriptions, and system design
-- **Docs/ReleaseProcess.md** - Release management and versioning procedures
+- **docs/Technical/Architecture.md** - Detailed architecture overview, component descriptions, and system design
+- **docs/Technical/DevelopmentGuide.md** - Development workflow and best practices
+- **docs/Technical/ReleaseProcess.md** - Release management and versioning procedures
 
-### Feature-Specific Documentation
-- **Docs/FirewallAnalysisLogic-v2.md** - Firewall analysis implementation details
-- **Docs/FirewallAnalysisImplementation-Checklist.md** - Firewall analysis checklist
-- **Docs/NetworkPortStatusMonitoring.md** - Network port monitoring implementation
-- **Docs/NetworkPortStatusMonitoring-Checklist.md** - Network monitoring checklist
-
-### Release Information
-- **Docs/ReleaseNotes/v*.md** - Release note files
-- **Docs/ReleaseNotes/ReleaseNotesTemplate.md** - Release notes template to be used when creating a new release
-
-### Future Planning
-- **Docs/FutureImprovements/GitHubActionsLocal.md** - CI/CD improvements
+### User Documentation
+- **docs/UserGuide/** - User-facing documentation and guides
+- **docs/ReleaseNotes/** - Release note files
 
 ## Development Guidelines
 
@@ -39,22 +31,31 @@ Sharp Bridge is a .NET/C# application that bridges iPhone's VTube Studio to VTub
 - **Console UI System** - Real-time status display and interactive controls
 
 ### Code Organization
-- **Interfaces/** - All interface definitions
-- **Models/** - Data models and DTOs
-- **Services/** - Core business logic implementations
-- **Utilities/** - Helper classes and utilities
-- **Tests/** - Unit tests organized by component
+- **src/Interfaces/** - All interface definitions
+- **src/Models/** - Data models and DTOs
+- **src/Core/** - Core business logic implementations
+- **src/Infrastructure/** - Infrastructure services and utilities
+- **src/UI/** - Console UI components and formatters
+- **src/Configuration/** - Configuration management
+- **tests/** - Unit tests organized by component
 - **configs/** - Configuration files and templates
 
 ### Configuration System
 - Single but modular `ApplicationConfig.json` file for all settings
 - Hot-reload capabilities for configuration changes
+- Transformation rules in separate JSON files
 
 ### Testing Strategy
 - Comprehensive unit tests for all components
-- Test data in `Tests/TestData/`
+- Test data in `tests/TestData/`
 - Mock implementations for external dependencies
+- 100% branch coverage expectation
 - Coverage reporting with coverlet
+
+### Version Management
+- Semantic versioning (SemVer) for releases
+- Use `IVersionService` for version display in UI
+- Assembly versioning in `.csproj` for CI/CD
 
 ## Development Workflow
 1. Always refer to existing documentation when implementing new features
@@ -67,13 +68,15 @@ Sharp Bridge is a .NET/C# application that bridges iPhone's VTube Studio to VTub
 - Maintain the console UI system's design principles
 - Follow the existing configuration management approach
 - Consider the real-time nature of the application
+- Use constructor injection and interface-based design
+- DTOs are immutable - return new instances, don't mutate existing ones
 
 ## Documentation Updates
 When making significant changes, consider updating:
 - README.md for user-facing changes
-- ProjectOverview.md for architectural changes
-- Release notes for new features or breaking changes
-- Relevant feature-specific documentation 
+- docs/Technical/Architecture.md for architectural changes
+- docs/UserGuide/ for user workflow changes
+- docs/ReleaseNotes/ for new features or breaking changes
 
 ## Other very important notes for AI
 - NEVER RUN OUR APPLICATION OR EXECUTE ANY OTHER TEMPORARY SCRIPTS WHEN DEBUGGING/TROUBLESHOOTING/VALIDATING/EXECUTING ANY TERMINAL COMMANDS!
