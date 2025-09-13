@@ -111,7 +111,7 @@ jobs:
         id: release-notes
         run: |
           VERSION=${{ steps.release-info.outputs.version }}
-          RELEASE_FILE="Docs/ReleaseNotes/v$VERSION.md"
+          RELEASE_FILE="docs/ReleaseNotes/v$VERSION.md"
           
           if [ -f "$RELEASE_FILE" ]; then
             echo "Found release notes file: $RELEASE_FILE"
@@ -123,7 +123,7 @@ jobs:
             echo "❌ RELEASE FAILURE: No release notes file found: $RELEASE_FILE"
             echo ""
             echo "Please create the release notes file before creating the release tag:"
-            echo "1. Copy the template: cp Docs/ReleaseNotes/ReleaseNotesTemplate.md $RELEASE_FILE"
+            echo "1. Copy the template: cp docs/ReleaseNotes/ReleaseNotesTemplate.md $RELEASE_FILE"
             echo "2. Edit the release notes: nano $RELEASE_FILE"
             echo "3. Commit and push: git add $RELEASE_FILE && git commit -m 'Add release notes for v$VERSION' && git push"
             echo "4. Then create the tag: git tag v$VERSION && git push origin v$VERSION"
