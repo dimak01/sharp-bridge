@@ -10,20 +10,21 @@
 
 ## What is Sharp Bridge?
 
-Sharp Bridge is a **lightweight, real-time bridge application** that connects iPhone's VTube Studio to VTube Studio on PC. It processes face tracking data through a configurable transformation engine and delivers it seamlessly to your PC application via WebSocket communication.
+Sharp Bridge is a **lightweight, real-time bridge application** that connects iPhone's VTube Studio to VTube Studio on PC.  
+It processes face tracking data through a configurable transformation engine and delivers it seamlessly to your PC application via WebSocket communication.
 
 ## Why Sharp Bridge?
 
 ### 🚀 Lightweight & Efficient
 
-We're a self-contained .NET-based executable with minimal resource usage - you can run it on a potato with 40Mb of RAM available and a spare change of CPU.  
+We're a self-contained .NET-based executable with minimal resource usage - you can run it on a potato with 40Mb of RAM available and a spare change your CPU can offer.  
 GPU Usage? What's a "GPU"?    
 We're also **console-based** - because you can't have a heavy GUI if you don't have a GUI :3  
 
 ### ⚙️ Highly Configurable with a Solid Feature Set
 
-Fully configurable iPhone blendshape → Custom VTS parameter transformations with mathematical expressions & Bezier interpolations supported.  
-All in a fully transparent JSON configuration file you can open via in-app shortcut, edit and hot-reload at runtime.  
+Fully configurable iPhone blendshape → Custom PC VTube Studio parameter transformations with math expressions and functions & Bezier interpolations.  
+All that in a fully transparent JSON configuration file you can open via in-app shortcut, edit and hot-reload at runtime.  
 
 And we can be as verbose showing it as you want!  
 * If you need every bit of detail when rigging, here you go:  
@@ -90,7 +91,8 @@ Your input helps make Sharp Bridge better for everyone!
 
 ## Acknowledgments
 
-- [ovROG/rusty-bridge](https://github.com/ovROG/rusty-bridge) - An alternative lightweight Rust implementation that inspired this project - thanks folks!
+- [DenchiSoft](https://github.com/DenchiSoft/VTubeStudio) - For providing [an awesome documentation of their API](https://github.com/DenchiSoft/VTubeStudio?tab=readme-ov-file#api-details)! You rock! 
+- [ovROG/rusty-bridge](https://github.com/ovROG/rusty-bridge) - An alternative lightweight Rust implementation that inspired this project and helped me figure out some of the initial steps - thanks folks!
 - **VBridger** - Thanks for being a powerhouse while still providing room for niche/alternative solutions like this one to exist!
 
 ## License
