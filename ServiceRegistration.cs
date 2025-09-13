@@ -1,17 +1,55 @@
 using Microsoft.Extensions.DependencyInjection;
-using SharpBridge.Interfaces;
-using SharpBridge.Models;
-using SharpBridge.Services;
-using SharpBridge.Services.Validators;
-using SharpBridge.Services.Remediation;
-using SharpBridge.Utilities;
+using SharpBridge.Core.Services;
 
 using System;
-using System.Net.WebSockets;
-using System.Threading.Tasks;
 using Serilog;
 using System.IO;
-using SharpBridge.Repositories;
+using SharpBridge.Infrastructure.Repositories;
+using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.Infrastructure.Services;
+using SharpBridge.Infrastructure.Wrappers;
+using SharpBridge.Interfaces.UI.Components;
+using SharpBridge.Interfaces.UI.Managers;
+using SharpBridge.UI.Managers;
+using SharpBridge.Configuration.Extractors;
+using SharpBridge.Interfaces.Configuration.Factories;
+using SharpBridge.Configuration.Factories;
+using SharpBridge.Configuration.Utilities;
+using SharpBridge.Interfaces.Configuration.Services.Validators;
+using SharpBridge.UI.Components;
+using SharpBridge.Configuration.Services.Validators;
+using SharpBridge.Configuration.Services.Remediation;
+using SharpBridge.Interfaces.Configuration.Services.Remediation;
+using SharpBridge.Configuration.Services;
+using SharpBridge.Interfaces.Configuration.Managers;
+using SharpBridge.Configuration.Managers;
+using SharpBridge.Models.Configuration;
+using SharpBridge.Interfaces.Core.Adapters;
+using SharpBridge.Core.Adapters;
+using SharpBridge.Interfaces.Infrastructure.Wrappers;
+using SharpBridge.Interfaces.Infrastructure.Factories;
+using SharpBridge.Infrastructure.Factories;
+using SharpBridge.Interfaces.Core.Clients;
+using SharpBridge.Interfaces.Infrastructure;
+using SharpBridge.Core.Clients;
+using SharpBridge.Interfaces.Domain;
+using SharpBridge.Interfaces.Core.Engines;
+using SharpBridge.Core.Engines;
+using SharpBridge.Interfaces.Core.Services;
+using SharpBridge.Interfaces.Core.Managers;
+using SharpBridge.Core.Managers;
+using SharpBridge.Interfaces.UI.Formatters;
+using SharpBridge.UI.Formatters;
+using SharpBridge.Interfaces.Infrastructure.Interop;
+using SharpBridge.Utilities.ComInterop;
+using SharpBridge.Interfaces.Infrastructure.Providers;
+using SharpBridge.Infrastructure.Providers;
+using SharpBridge.UI.Providers;
+using SharpBridge.Interfaces.UI.Providers;
+using SharpBridge.Domain.Services;
+using SharpBridge.Interfaces.Core.Orchestrators;
+using SharpBridge.Core.Orchestrators;
+using SharpBridge.UI.Services;
 
 namespace SharpBridge
 {
@@ -52,7 +90,7 @@ namespace SharpBridge
             services.AddSingleton<IConsoleWindowManager, ConsoleWindowManager>();
 
             // Register field extractors
-            services.AddTransient<SharpBridge.Services.FieldExtractors.ConfigSectionFieldExtractor>();
+            services.AddTransient<ConfigSectionFieldExtractor>();
 
             // Register field extractors factory
             services.AddSingleton<IConfigSectionFieldExtractorsFactory, ConfigSectionFieldExtractorsFactory>();
@@ -153,6 +191,9 @@ namespace SharpBridge
             // Register UDP client factory
             services.AddSingleton<IUdpClientWrapperFactory, UdpClientWrapperFactory>();
 
+            // Register version service
+            services.AddSingleton<IVersionService, VersionService>();
+
             // Register core services
             services.AddSingleton<IVTubeStudioPhoneClient>(provider =>
             {
@@ -171,18 +212,18 @@ namespace SharpBridge
 
             // Register file change watchers - multiple instances for different config files
             services.AddKeyedSingleton<IFileChangeWatcher>(TRANSFORMATION_ENGINE_CONFIG_KEY, (provider, key) =>
-                new SharpBridge.Utilities.FileSystemChangeWatcher(
+                new FileSystemChangeWatcher(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IFileSystemWatcherFactory>()));
 
             services.AddKeyedSingleton<IFileChangeWatcher>(APPLICATION_CONFIG_KEY, (provider, key) =>
-                new SharpBridge.Utilities.FileSystemChangeWatcher(
+                new FileSystemChangeWatcher(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetRequiredService<IFileSystemWatcherFactory>()));
 
             // Register transformation rules repository
             services.AddSingleton<ITransformationRulesRepository>(provider =>
-                new SharpBridge.Repositories.FileBasedTransformationRulesRepository(
+                new FileBasedTransformationRulesRepository(
                     provider.GetRequiredService<IAppLogger>(),
                     provider.GetKeyedService<IFileChangeWatcher>(TRANSFORMATION_ENGINE_CONFIG_KEY)!,
                     provider.GetKeyedService<IFileChangeWatcher>(APPLICATION_CONFIG_KEY)!,
@@ -248,7 +289,7 @@ namespace SharpBridge
                 ));
 
             // Register Windows-specific dependencies for firewall engine (unified facade only)
-            services.AddSingleton<IWindowsInterop, Utilities.ComInterop.WindowsInterop>();
+            services.AddSingleton<IWindowsInterop, WindowsInterop>();
             services.AddSingleton<IProcessInfo, ProcessInfo>();
 
             // Register network monitoring services
@@ -277,7 +318,8 @@ namespace SharpBridge
                     provider.GetRequiredService<IParameterTableConfigurationManager>(),
                     provider.GetRequiredService<ITableFormatter>(),
                     provider.GetRequiredService<INetworkStatusFormatter>(),
-                    provider.GetRequiredService<IExternalEditorService>()
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IVersionService>()
                 ));
             services.AddSingleton<ISystemHelpRenderer>(provider => provider.GetRequiredService<SystemHelpContentProvider>());
 
@@ -305,7 +347,8 @@ namespace SharpBridge
                     provider.GetRequiredService<TransformationEngineInfoFormatter>(),
                     provider.GetRequiredService<PhoneTrackingInfoFormatter>(),
                     provider.GetRequiredService<PCTrackingInfoFormatter>(),
-                    provider.GetRequiredService<IExternalEditorService>()
+                    provider.GetRequiredService<IExternalEditorService>(),
+                    provider.GetRequiredService<IVersionService>()
                 ));
             services.AddSingleton<IMainStatusRenderer>(provider => provider.GetRequiredService<MainStatusContentProvider>());
 
@@ -398,7 +441,7 @@ namespace SharpBridge
 
             // Configure Serilog with file-only output to avoid interfering with console GUI
             return new LoggerConfiguration()
-                .MinimumLevel.Warning()
+                .MinimumLevel.Information()
                 .WriteTo.File(
                     path: Path.Combine(logDirectory, "sharp-bridge-.log"),
                     rollingInterval: RollingInterval.Day,

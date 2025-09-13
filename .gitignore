@@ -280,3 +280,6 @@ FakesAssemblies/
 # Rider
 .idea/
 *.sln.iml
+
+# Custom project-specific files
+auth_token.txt

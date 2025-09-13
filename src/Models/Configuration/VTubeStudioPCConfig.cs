@@ -1,0 +1,113 @@
+using System;
+using System.ComponentModel;
+using System.Text.Json.Serialization;
+using SharpBridge.Interfaces;
+using SharpBridge.Interfaces.Configuration;
+
+namespace SharpBridge.Models.Configuration
+{
+    /// <summary>
+    /// Configuration for VTube Studio PC client
+    /// </summary>
+    public class VTubeStudioPCConfig : IConfigSection
+    {
+        // ========================================
+        // User-Configurable Settings
+        // ========================================
+
+        /// <summary>
+        /// Host address of VTube Studio
+        /// </summary>
+        [Description("VTube Studio PC Host Address")]
+        public string Host { get; set; }
+
+        /// <summary>
+        /// Port number of VTube Studio API
+        /// </summary>
+        [Description("VTube Studio PC API Port")]
+        public int Port { get; set; }
+
+        /// <summary>
+        /// Use port discovery if the specified port doesn't connect
+        /// </summary>
+        [Description("Enable Automatic Port Discovery")]
+        public bool UsePortDiscovery { get; set; }
+
+        /// <summary>
+        /// Prefix to add to parameter names when sending to VTube Studio PC.
+        /// Helps avoid naming conflicts with other plugins. Empty prefix is allowed.
+        /// Must be 0-15 characters, alphanumeric only, no spaces.
+        /// </summary>
+        [Description("Parameter Name Prefix for VTube Studio PC")]
+        public string ParameterPrefix { get; set; }
+
+        // ========================================
+        // Internal Settings (Not User-Configurable)
+        // ========================================
+
+        /// <summary>
+        /// Plugin name for authentication
+        /// </summary>
+        [JsonIgnore]
+        public string PluginName { get; set; }
+
+        /// <summary>
+        /// Plugin developer name for authentication
+        /// </summary>
+        [JsonIgnore]
+        public string PluginDeveloper { get; set; }
+
+        /// <summary>
+        /// Path to saved authentication token file
+        /// </summary>
+        [JsonIgnore]
+        public string TokenFilePath { get; set; }
+
+        /// <summary>
+        /// Connection timeout in milliseconds
+        /// </summary>
+        [JsonIgnore]
+        public int ConnectionTimeoutMs { get; set; }
+
+        /// <summary>
+        /// Reconnection delay in milliseconds
+        /// </summary>
+        [JsonIgnore]
+        public int ReconnectionDelayMs { get; set; }
+
+        /// <summary>
+        /// The interval in seconds between recovery attempts when services are unhealthy
+        /// </summary>
+        [JsonIgnore]
+        public double RecoveryIntervalSeconds { get; set; }
+
+        /// <summary>
+        /// Constructor to ensure all required fields are properly initialized
+        /// </summary>
+        /// <param name="host">Host address for VTube Studio (default: "localhost")</param>
+        /// <param name="port">Port number for VTube Studio API (default: 8001)</param>
+        /// <param name="usePortDiscovery">Enable port discovery (default: true)</param>
+        /// <param name="parameterPrefix">Prefix for parameter names in VTube Studio PC (default: "SB_")</param>
+        public VTubeStudioPCConfig(string host = "localhost", int port = 8001, bool usePortDiscovery = true, string parameterPrefix = "SB_")
+        {
+            Host = host;
+            Port = port;
+            UsePortDiscovery = usePortDiscovery;
+            ParameterPrefix = parameterPrefix;
+
+            // Set internal defaults only if not already set
+            if (string.IsNullOrEmpty(PluginName))
+                PluginName = "SharpBridge";
+            if (string.IsNullOrEmpty(PluginDeveloper))
+                PluginDeveloper = "Dimak@Shift";
+            if (string.IsNullOrEmpty(TokenFilePath))
+                TokenFilePath = "auth_token.txt";
+            if (ConnectionTimeoutMs == 0)
+                ConnectionTimeoutMs = 5000;
+            if (ReconnectionDelayMs == 0)
+                ReconnectionDelayMs = 2000;
+            if (Math.Abs(RecoveryIntervalSeconds) < double.Epsilon)
+                RecoveryIntervalSeconds = 2.0;
+        }
+    }
+}

@@ -3,8 +3,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using SharpBridge.Interfaces;
-using SharpBridge.Utilities;
+using SharpBridge.Interfaces.Core.Orchestrators;
 
 namespace SharpBridge
 {
@@ -53,7 +52,7 @@ namespace SharpBridge
 
             // Setup DI container
             var services = new ServiceCollection();
-            services.AddSharpBridgeServices("./Configs");
+            services.AddSharpBridgeServices("./configs");
 
             using var serviceProvider = services.BuildServiceProvider();
 

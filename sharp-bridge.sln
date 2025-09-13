@@ -4,7 +4,7 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpBridge", "SharpBridge.csproj", "{C26540E3-170B-5B6F-74EB-D40ACB034F13}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{9CF47860-2CEA-F379-09D8-9AEF27965D12}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tests", "tests\Tests.csproj", "{9CF47860-2CEA-F379-09D8-9AEF27965D12}"
 	ProjectSection(ProjectDependencies) = postProject
 		{C26540E3-170B-5B6F-74EB-D40ACB034F13} = {C26540E3-170B-5B6F-74EB-D40ACB034F13}
 	EndProjectSection

@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "SharpBridge": {
-      "commandName": "Project",
-      "nativeDebugging": true
-    }
-  }
-}
