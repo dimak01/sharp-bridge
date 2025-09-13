@@ -1,0 +1,252 @@
+[
+    {
+        "name": "FaceAngleX",
+        "func": "- HeadRotY * 1",
+        "min": -90.0,
+        "max": 90.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "FaceAngleY",
+        "func": "(- HeadRotX * 1) + ((EyeBlinkLeft + EyeBlinkRight) * -1)",
+        "min": -90.0,
+        "max": 90.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "FaceAngleZ",
+        "func": "HeadRotZ * 1",
+        "min": -90.0,
+        "max": 90.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "MouthOpen",
+        "func": "((JawOpen - MouthClose) - ((MouthRollUpper + MouthRollLower) * 0.2))",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "EyeLeftX",
+        "func": "(EyeLookInLeft - 0.1) - EyeLookOutLeft",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "EyeLeftY",
+        "func": "(EyeLookUpLeft - EyeLookDownLeft) + (BrowOuterUpLeft * 0.15)",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "EyeRightX",
+        "func": "(EyeLookInRight - 0.1) - EyeLookOutRight",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "EyeRightY",
+        "func": "(EyeLookUpRight - EyeLookDownRight) + (BrowOuterUpRight * 0.15)",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "EyeOpenLeft",
+        "func": "0.5 + ((EyeBlinkLeft * -0.8) + (EyeWideLeft * 0.8))",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "EyeOpenRight",
+        "func": "0.5 + ((EyeBlinkRight * -0.8) + (EyeWideRight * 0.8))",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "MouthX",
+        "func": "MouthLeft - MouthRight",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "BrowLeftY",
+        "func": "0.5 + (BrowOuterUpLeft - BrowDownLeft) + ((MouthRight - MouthLeft) / 8)",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "BrowRightY",
+        "func": "0.5 + (BrowOuterUpRight - BrowDownRight) + ((MouthLeft - MouthRight) / 8)",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "BodyAngleX",
+        "func": "- HeadRotY * 1.5",
+        "min": -90.0,
+        "max": 90.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "SmoothEyeX",
+        "func": "EyeLookInLeft - EyeLookOutLeft",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0,
+        "interpolation": {
+            "type": "BezierInterpolation",
+            "controlPoints": [
+                0.2,
+                0.1,
+                0.8,
+                0.9
+            ]
+        }
+    },
+    {
+        "name": "SmoothEyeY",
+        "func": "EyeLookUpLeft - EyeLookDownLeft",
+        "min": -1.0,
+        "max": 1.0,
+        "defaultValue": 0,
+        "interpolation": {
+            "type": "BezierInterpolation",
+            "controlPoints": [
+                0.42,
+                0,
+                0.58,
+                1
+            ]
+        }
+    },
+    {
+        "name": "EaseInMouth",
+        "func": "JawOpen - MouthClose",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0,
+        "interpolation": {
+            "type": "BezierInterpolation",
+            "controlPoints": [
+                0.42,
+                0,
+                1,
+                1
+            ]
+        }
+    },
+    {
+        "name": "EaseOutBrow",
+        "func": "BrowOuterUpLeft + BrowOuterUpRight",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0,
+        "interpolation": {
+            "type": "BezierInterpolation",
+            "controlPoints": [
+                0,
+                0,
+                0.58,
+                1
+            ]
+        }
+    },
+    {
+        "name": "AnticipationEye",
+        "func": "EyeBlinkLeft + EyeBlinkRight",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0,
+        "interpolation": {
+            "type": "BezierInterpolation",
+            "controlPoints": [
+                0.6,
+                0.28,
+                0.735,
+                0.045
+            ]
+        }
+    },
+    {
+        "name": "SharpTransitionMouth",
+        "func": "MouthSmileLeft + MouthSmileRight",
+        "min": 0.0,
+        "max": 1.0,
+        "defaultValue": 0,
+        "interpolation": {
+            "type": "BezierInterpolation",
+            "controlPoints": [
+                0.55,
+                0.085,
+                0.68,
+                0.53
+            ]
+        }
+    },
+    {
+        "name": "CustomParameter1Parent",
+        "func": "CheekPuff",
+        "min": 0,
+        "max": 1,
+        "defaultValue": 0
+    },
+    {
+        "name": "CustomParameter2Child",
+        "func": "-CustomParameter1Parent",
+        "min": -1,
+        "max": 0,
+        "defaultValue": 0
+    },
+    {
+        "name": "CustomParameter3Child",
+        "func": "-CustomParameter2Child * 2",
+        "min": 0,
+        "max": 2,
+        "defaultValue": 0
+    },
+    {
+        "name": "MO",
+        "func": "MouthOpen*10",
+        "min": 0,
+        "max": 10,
+        "defaultValue": 0
+    },
+    {
+        "name": "StepFunctionExample",
+        "func": "if(MO <= 1, 1, if(MO <= 2, 2, if(MO <= 3, 3, if(MO <= 4, 4, if(MO <= 5, 5, if(MO <= 6, 6, if(MO <= 7, 7, if(MO <= 8, 8, if(MO <= 9, 9, 10)))))))))",
+        "min": 1,
+        "max": 10,
+        "defaultValue": 1
+    },
+    {
+        "name": "ConditionalExpression",
+        "func": "if(HeadRotX > 0, HeadRotX * 1.2, HeadRotX * 0.8)",
+        "min": -90.0,
+        "max": 90.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "MathematicalFunction",
+        "func": "Sin(HeadRotX * 0.1) * 10 + Cos(HeadRotY * 0.1) * 5",
+        "min": -15.0,
+        "max": 15.0,
+        "defaultValue": 0
+    },
+    {
+        "name": "ComplexExpression",
+        "func": "if(Abs(HeadRotX) > 0.1, HeadRotX * 1.5 + (BrowOuterUpLeft * 0.2), 0)",
+        "min": -90.0,
+        "max": 90.0,
+        "defaultValue": 0
+    }
+]
