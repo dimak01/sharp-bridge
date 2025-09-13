@@ -242,7 +242,7 @@ namespace SharpBridge.Tests.Configuration.Services.Remediation
             // Verify default value was shown in prompt
             _mockConsole.Verify(x => x.WriteLines(It.Is<string[]>(lines =>
                 lines.Any(line => line.Contains("Enter new value (or press Enter for default value of")) &&
-                lines.Any(line => line.Contains("configs/vts_transforms.json"))
+                lines.Any(line => line.Contains("configs/showcase-transforms.json"))
             )), Times.Once);
         }
 
