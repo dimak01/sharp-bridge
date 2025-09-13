@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using Moq;
-using SharpBridge.Core.Services;
 using SharpBridge.Interfaces.Infrastructure.Services;
+using SharpBridge.UI.Services;
 using SharpBridge.UI.Utilities;
 using Xunit;
 

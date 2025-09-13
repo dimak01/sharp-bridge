@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SharpBridge.Interfaces;
 using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Interfaces.UI.Components;
 using SharpBridge.UI.Utilities;
-using SharpBridge.Utilities;
 
-namespace SharpBridge.Core.Services
+namespace SharpBridge.UI.Services
 {
     /// <summary>
     /// Service implementation for providing color-coded parameter names and expressions.
