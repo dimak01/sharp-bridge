@@ -171,11 +171,38 @@ namespace SharpBridge.Configuration.Managers
         /// <param name="config">Application configuration containing shortcut definitions</param>
         public void LoadFromConfiguration(GeneralSettingsConfig config)
         {
+            ClearShortcutCollections();
+            PopulateEmptyConfigWithDefaults(config);
+            
+            var defaultShortcuts = GetDefaultShortcuts();
+            var configShortcuts = config?.Shortcuts;
+            var usedCombinations = new Dictionary<Shortcut, ShortcutAction>(ShortcutComparer.Instance);
+
+            foreach (var action in Enum.GetValues<ShortcutAction>())
+            {
+                var (shortcut, originalString) = DetermineShortcutForAction(action, defaultShortcuts, configShortcuts);
+                ProcessShortcutForAction(action, shortcut, originalString, usedCombinations);
+            }
+
+            LogLoadingSummary();
+        }
+
+        /// <summary>
+        /// Clears all shortcut-related collections
+        /// </summary>
+        private void ClearShortcutCollections()
+        {
             _mappedShortcuts.Clear();
             _incorrectShortcuts.Clear();
             _explicitlyDisabled.Clear();
+        }
 
-            // If shortcuts dictionary is empty, populate it with defaults for serialization
+        /// <summary>
+        /// Populates empty config with default shortcuts for serialization
+        /// </summary>
+        /// <param name="config">Configuration to populate</param>
+        private void PopulateEmptyConfigWithDefaults(GeneralSettingsConfig config)
+        {
             if (config?.Shortcuts != null && config.Shortcuts.Count == 0)
             {
                 var defaults = GetDefaultShortcuts();
@@ -184,77 +211,128 @@ namespace SharpBridge.Configuration.Managers
                     config.Shortcuts[action.ToString()] = _parser.FormatShortcut(shortcut);
                 }
             }
+        }
 
-            var defaultShortcuts = GetDefaultShortcuts();
-            var configShortcuts = config?.Shortcuts;
-            var usedCombinations = new Dictionary<Shortcut, ShortcutAction>(ShortcutComparer.Instance);
+        /// <summary>
+        /// Determines the shortcut and original string for a given action
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <param name="defaultShortcuts">Default shortcuts dictionary</param>
+        /// <param name="configShortcuts">Configuration shortcuts dictionary</param>
+        /// <returns>Tuple of shortcut and original string</returns>
+        private (Shortcut? shortcut, string? originalString) DetermineShortcutForAction(
+            ShortcutAction action, 
+            Dictionary<ShortcutAction, Shortcut> defaultShortcuts, 
+            Dictionary<string, string>? configShortcuts)
+        {
+            var actionName = action.ToString();
 
-            foreach (var action in Enum.GetValues<ShortcutAction>())
+            if (configShortcuts == null)
             {
-                var actionName = action.ToString();
-
-                // Determine source: config vs defaults vs missing
-                Shortcut? shortcut;
-                string? originalString;
-
-                if (configShortcuts == null)
-                {
-                    // No config - use defaults
-                    shortcut = defaultShortcuts[action];
-                    originalString = _parser.FormatShortcut(shortcut);
-                }
-                else
-                {
-                    // Config exists - only use explicitly defined shortcuts
-                    originalString = configShortcuts.TryGetValue(actionName, out var configValue) ? configValue : null;
-
-                    if (string.IsNullOrWhiteSpace(originalString))
-                    {
-                        shortcut = null;
-                    }
-                    else
-                    {
-                        shortcut = _parser.ParseShortcut(originalString);
-                    }
-                }
-
-                // Handle disabled shortcuts
-                if (shortcut == null)
-                {
-                    _mappedShortcuts[action] = null;
-
-                    if (string.IsNullOrWhiteSpace(originalString))
-                    {
-                        _explicitlyDisabled.Add(action);
-
-                        _logger.Debug("No shortcut defined for action: {0}", action);
-                    }
-                    else
-                    {
-                        _incorrectShortcuts[action] = originalString;
-
-                        _logger.Warning("Invalid shortcut format for {0}: {1}", action, originalString);
-                    }
-                    continue;
-                }
-
-                // Handle conflicts - simple resolution: first valid wins
-                if (usedCombinations.TryGetValue(shortcut, out var conflictingAction))
-                {
-                    _mappedShortcuts[action] = null;
-                    _incorrectShortcuts[action] = originalString!; // Treat as invalid due to conflict
-
-                    _logger.Warning("Duplicate shortcut {0} for actions {1} and {2}, disabling {1}", originalString!, action, conflictingAction);
-                    continue;
-                }
-
-                // Success - register the shortcut
-                _mappedShortcuts[action] = shortcut;
-                usedCombinations[shortcut] = action;
-                _logger.Debug("Mapped shortcut {0} to action {1}", originalString!, action);
+                // No config - use defaults
+                var shortcut = defaultShortcuts[action];
+                var originalString = _parser.FormatShortcut(shortcut);
+                return (shortcut, originalString);
             }
 
-            // Log summary
+            // Config exists - only use explicitly defined shortcuts
+            var configValue = configShortcuts.TryGetValue(actionName, out var value) ? value : null;
+
+            if (string.IsNullOrWhiteSpace(configValue))
+            {
+                return (null, null);
+            }
+
+            var parsedShortcut = _parser.ParseShortcut(configValue);
+            return (parsedShortcut, configValue);
+        }
+
+        /// <summary>
+        /// Processes a shortcut for a given action, handling conflicts and validation
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <param name="shortcut">The parsed shortcut</param>
+        /// <param name="originalString">The original string representation</param>
+        /// <param name="usedCombinations">Dictionary tracking used shortcut combinations</param>
+        private void ProcessShortcutForAction(
+            ShortcutAction action, 
+            Shortcut? shortcut, 
+            string? originalString, 
+            Dictionary<Shortcut, ShortcutAction> usedCombinations)
+        {
+            if (shortcut == null)
+            {
+                HandleDisabledShortcut(action, originalString);
+                return;
+            }
+
+            if (usedCombinations.TryGetValue(shortcut, out var conflictingAction))
+            {
+                HandleConflictingShortcut(action, originalString!, conflictingAction);
+                return;
+            }
+
+            RegisterValidShortcut(action, shortcut, originalString!, usedCombinations);
+        }
+
+        /// <summary>
+        /// Handles a disabled shortcut (null or invalid)
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <param name="originalString">The original string representation</param>
+        private void HandleDisabledShortcut(ShortcutAction action, string? originalString)
+        {
+            _mappedShortcuts[action] = null;
+
+            if (string.IsNullOrWhiteSpace(originalString))
+            {
+                _explicitlyDisabled.Add(action);
+                _logger.Debug("No shortcut defined for action: {0}", action);
+            }
+            else
+            {
+                _incorrectShortcuts[action] = originalString;
+                _logger.Warning("Invalid shortcut format for {0}: {1}", action, originalString);
+            }
+        }
+
+        /// <summary>
+        /// Handles a conflicting shortcut (duplicate)
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <param name="originalString">The original string representation</param>
+        /// <param name="conflictingAction">The action that already uses this shortcut</param>
+        private void HandleConflictingShortcut(ShortcutAction action, string originalString, ShortcutAction conflictingAction)
+        {
+            _mappedShortcuts[action] = null;
+            _incorrectShortcuts[action] = originalString;
+
+            _logger.Warning("Duplicate shortcut {0} for actions {1} and {2}, disabling {1}", originalString, action, conflictingAction);
+        }
+
+        /// <summary>
+        /// Registers a valid shortcut
+        /// </summary>
+        /// <param name="action">The shortcut action</param>
+        /// <param name="shortcut">The parsed shortcut</param>
+        /// <param name="originalString">The original string representation</param>
+        /// <param name="usedCombinations">Dictionary tracking used shortcut combinations</param>
+        private void RegisterValidShortcut(
+            ShortcutAction action, 
+            Shortcut shortcut, 
+            string originalString, 
+            Dictionary<Shortcut, ShortcutAction> usedCombinations)
+        {
+            _mappedShortcuts[action] = shortcut;
+            usedCombinations[shortcut] = action;
+            _logger.Debug("Mapped shortcut {0} to action {1}", originalString, action);
+        }
+
+        /// <summary>
+        /// Logs the loading summary
+        /// </summary>
+        private void LogLoadingSummary()
+        {
             var enabledCount = _mappedShortcuts.Values.Count(v => v != null);
             var totalCount = _mappedShortcuts.Count;
             _logger.Info("Loaded {0}/{1} shortcuts successfully, {2} issues found",

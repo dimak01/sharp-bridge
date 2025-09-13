@@ -169,41 +169,12 @@ namespace SharpBridge.Configuration.Utilities
 
             try
             {
-                // Use Path.GetFullPath to validate the path format
-                // This will throw an exception if the path contains invalid characters
-                _ = Path.GetFullPath(path);
-
-                // Check for invalid characters in the path
-                var invalidChars = Path.GetInvalidPathChars()
-                    .Union(Path.GetInvalidFileNameChars())
-                    .Where(c => c != Path.DirectorySeparatorChar && c != Path.AltDirectorySeparatorChar)
-                    .ToArray();
-
-                // Check for invalid characters, but allow colon if it's used as drive separator
-                var hasInvalidChars = false;
-                var foundInvalidChars = new List<char>();
-
-                for (int i = 0; i < path.Length; i++)
+                ValidatePathFormat(path);
+                var invalidChars = FindInvalidCharacters(path);
+                
+                if (invalidChars.Any())
                 {
-                    if (invalidChars.Contains(path[i]))
-                    {
-                        // Special case: allow colon if it's followed by backslash (drive separator)
-                        if (path[i] == ':' && i + 1 < path.Length && path[i + 1] == '\\')
-                        {
-                            continue; // Skip this colon as it's a drive separator
-                        }
-
-                        hasInvalidChars = true;
-                        if (!foundInvalidChars.Contains(path[i]))
-                        {
-                            foundInvalidChars.Add(path[i]);
-                        }
-                    }
-                }
-
-                if (hasInvalidChars)
-                {
-                    return CreateValidationIssue(field, $"File path contains invalid characters: {string.Join(", ", foundInvalidChars)}");
+                    return CreateValidationIssue(field, $"File path contains invalid characters: {string.Join(", ", invalidChars)}");
                 }
 
                 return null; // Validation passed
@@ -216,6 +187,72 @@ namespace SharpBridge.Configuration.Utilities
             {
                 return CreateValidationIssue(field, $"Unsupported file path: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Validates the path format using Path.GetFullPath
+        /// </summary>
+        /// <param name="path">The path to validate</param>
+        private static void ValidatePathFormat(string path)
+        {
+            // Use Path.GetFullPath to validate the path format
+            // This will throw an exception if the path contains invalid characters
+            _ = Path.GetFullPath(path);
+        }
+
+        /// <summary>
+        /// Finds invalid characters in the path, allowing drive separators
+        /// </summary>
+        /// <param name="path">The path to check</param>
+        /// <returns>List of invalid characters found</returns>
+        private static List<char> FindInvalidCharacters(string path)
+        {
+            var invalidChars = GetInvalidPathCharacters();
+            var foundInvalidChars = new List<char>();
+
+            for (int i = 0; i < path.Length; i++)
+            {
+                if (invalidChars.Contains(path[i]))
+                {
+                    // Special case: allow colon if it's followed by backslash (drive separator)
+                    if (IsDriveSeparator(path, i))
+                    {
+                        continue; // Skip this colon as it's a drive separator
+                    }
+
+                    if (!foundInvalidChars.Contains(path[i]))
+                    {
+                        foundInvalidChars.Add(path[i]);
+                    }
+                }
+            }
+
+            return foundInvalidChars;
+        }
+
+        /// <summary>
+        /// Gets the set of invalid path characters
+        /// </summary>
+        /// <returns>Array of invalid path characters</returns>
+        private static char[] GetInvalidPathCharacters()
+        {
+            return Path.GetInvalidPathChars()
+                .Union(Path.GetInvalidFileNameChars())
+                .Where(c => c != Path.DirectorySeparatorChar && c != Path.AltDirectorySeparatorChar)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Checks if a character at the given position is a drive separator (colon followed by backslash)
+        /// </summary>
+        /// <param name="path">The path string</param>
+        /// <param name="index">The character index</param>
+        /// <returns>True if it's a drive separator</returns>
+        private static bool IsDriveSeparator(string path, int index)
+        {
+            return path[index] == ':' && 
+                   index + 1 < path.Length && 
+                   path[index + 1] == '\\';
         }
 
         /// <summary>
