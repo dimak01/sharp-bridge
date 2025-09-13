@@ -136,12 +136,14 @@ Interpolation controls how parameter values are smoothed between their calculate
 
 ### Bezier Curve Interpolation
 - **Behavior**: Custom smooth curves using control points
-- **Use Case**: Non-linear parameter responses, easing effects
-- **Control Points**: 2-8 points defining the curve shape
+- **Use Case**: Non-linear parameter responses, easing effects, overshooting curves, reverse curves
+- **Control Points**: 2-8 points defining the curve shape (including start and end points)
 - **Performance**: Limited to 8 control points for optimal performance
+- **Flexibility**: Full control over curve shape - can overshoot, reverse, or use partial ranges
 
-#### Bezier Configuration Example
+#### Bezier Configuration Examples
 
+**Basic Smooth Curve:**
 ```json
 {
   "name": "SmoothEyeX",
@@ -151,19 +153,67 @@ Interpolation controls how parameter values are smoothed between their calculate
   "defaultValue": 0,
   "interpolation": {
     "type": "BezierInterpolation",
-    "controlPoints": [0.3, 0.1, 0.7, 0.9]
+    "controlPoints": [0, 0, 0.3, 0.1, 0.7, 0.9, 1, 1]
   }
 }
 ```
 
-**Note**: The system automatically adds implicit start point (0,0) and end point (1,1), so you only need to specify the middle control points.
+**Overshooting Curve (reaches 1.0 early, then drops off):**
+```json
+{
+  "name": "DramaticEyeX",
+  "func": "EyeLookInLeft - EyeLookOutLeft",
+  "min": -1.0,
+  "max": 1.0,
+  "defaultValue": 0,
+  "interpolation": {
+    "type": "BezierInterpolation",
+    "controlPoints": [0, 0, 0.2, 0.3, 0.6, 1.0, 0.8, 0.8]
+  }
+}
+```
+
+**Note**: This curve reaches 1.0 at input 0.6, then drops to 0.8 at input 1.0. The rigger should design the parameter range wider (e.g., -1.5 to 1.5) to accommodate the overshoot.
+
+**Reverse Curve (decreasing when input increases):**
+```json
+{
+  "name": "InverseEyeX",
+  "func": "EyeLookInLeft - EyeLookOutLeft",
+  "min": -1.0,
+  "max": 1.0,
+  "defaultValue": 0,
+  "interpolation": {
+    "type": "BezierInterpolation",
+    "controlPoints": [0, 1, 0.5, 0.5, 1, 0]
+  }
+}
+```
+
+**Note**: You must specify all control points including start and end points.
 
 ### Interpolation Behavior
-- **Input Range**: 0.0 to 1.0 (normalized from min/max)
-- **Output Range**: 0.0 to 1.0 (constrained by control point Y values)
+- **Input Range**: 0.0 to 1.0 (normalized from min/max) - this is always fixed
+- **Output Range**: Can exceed 0.0 to 1.0 range for dramatic effects (overshooting)
+- **Overshooting Strategy**: Curves can reach 1.0 earlier in the input range, then "drop off" to values like 0.8-0.9
+- **Rigger Responsibility**: Design parameter ranges wider than usual to accommodate extreme overshoots
 - **Fallback**: Falls back to linear interpolation on errors
 - **Performance**: Bezier curves are more CPU-intensive than linear
 - **Limitations**: Cannot produce values outside the range of control point Y coordinates
+
+### Understanding Overshooting Curves
+
+**Key Concept**: Bezier interpolations are normalized 0 to 1, but parameters can have any range. With overshoot, the maximum value occurs before the end of the input range.
+
+**The Challenge**: 
+- **Normal case**: Parameter goes from min to max, with max at t=1 (fully open eyes at t=1)
+- **Overshoot case**: Maximum value occurs at t<1, then "drops off" to 0.8-0.9 of max at t=1
+- **Rigger's job**: Set up parameter ranges to accommodate both the exaggerated overshoot peak AND the normal-looking end state
+
+**Example**: For eye opening with overshoot:
+- Curve peaks at 1.0 when t=0.7 (exaggerated open)
+- Drops to 0.8 when t=1.0 (normal-looking open)
+- Rigger designs parameter range to accommodate both the overshoot peak and normal end state
 
 ### Designing Bezier Curves
 Use external tools to design and visualize Bezier curves:
