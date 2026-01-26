@@ -251,7 +251,7 @@ namespace SharpBridge.Core.Clients
             {
                 _status = PCClientStatus.SendingData;
 
-                var adaptedParameters = _parameterAdapter.AdaptTrackingParameters(trackingData.Parameters);
+                var adaptedParameters = _parameterAdapter.AdaptTrackingParameters(trackingData.Parameters, defaultParameterNames: []);
                 var request = new InjectParamsRequest
                 {
                     FaceFound = trackingData.FaceFound,

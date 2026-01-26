@@ -33,28 +33,25 @@ namespace SharpBridge.Core.Adapters
         /// Adapts a collection of VTS parameters by applying the configured prefix to their names
         /// </summary>
         /// <param name="parameters">Original parameters</param>
+        /// <param name="defaultParameterNames">Existing default parameter names</param>
         /// <returns>Adapted parameters with prefixed names ready for VTube Studio PC</returns>
-        public IEnumerable<VTSParameter> AdaptParameters(IEnumerable<VTSParameter> parameters)
-        {
-            ArgumentNullException.ThrowIfNull(parameters);
-
-            // If no prefix is configured, return parameters unchanged
-            if (string.IsNullOrEmpty(_config.ParameterPrefix))
-            {
-                return parameters;
-            }
-
-            return parameters.Select(AdaptParameter);
-        }
+        public IEnumerable<VTSParameter> AdaptParameters(IEnumerable<VTSParameter> parameters, IEnumerable<string> defaultParameterNames) => parameters.Select(p => AdaptParameter(p, defaultParameterNames));
 
         /// <summary>
         /// Adapts a single VTS parameter by applying the configured prefix to its name
         /// </summary>
         /// <param name="parameter">Original parameter</param>
+        /// <param name="defaultParameterNames">Existing default parameters</param>
         /// <returns>Adapted parameter with prefixed name</returns>
-        public VTSParameter AdaptParameter(VTSParameter parameter)
+        public VTSParameter AdaptParameter(VTSParameter parameter, IEnumerable<string> defaultParameterNames)
         {
             ArgumentNullException.ThrowIfNull(parameter);
+            ArgumentNullException.ThrowIfNull(defaultParameterNames);
+
+            if (defaultParameterNames.Contains(parameter.Name))
+            {
+                return parameter;
+            }
 
             // Create a new VTSParameter with the prefixed name, preserving all other properties
             return new VTSParameter(
@@ -70,23 +67,18 @@ namespace SharpBridge.Core.Adapters
         /// Creates new TrackingParam instances to avoid mutating the originals.
         /// </summary>
         /// <param name="trackingParams">Original tracking parameters.</param>
+        /// <param name="defaultParameterNames">Existing default parameter names</param>
         /// <returns>Adapted tracking parameters with prefixed IDs, ready for VTube Studio PC.</returns>
-        public IEnumerable<TrackingParam> AdaptTrackingParameters(IEnumerable<TrackingParam> trackingParams)
+        public IEnumerable<TrackingParam> AdaptTrackingParameters(IEnumerable<TrackingParam> trackingParams, IEnumerable<string> defaultParameterNames)
         {
             if (trackingParams == null)
             {
                 return [];
             }
 
-            var prefix = _config.ParameterPrefix;
-            if (string.IsNullOrEmpty(prefix))
-            {
-                return trackingParams; // No prefix configured, return as-is
-            }
-
             return [.. trackingParams.Select(tp => new TrackingParam
             {
-                Id = $"{prefix}{tp.Id}",
+                Id = defaultParameterNames.Contains(tp.Id) ? tp.Id : AdaptParameterName(tp.Id),
                 Value = tp.Value,
                 Weight = tp.Weight
             })];
@@ -97,7 +89,7 @@ namespace SharpBridge.Core.Adapters
         /// </summary>
         /// <param name="parameterName">Original parameter name</param>
         /// <returns>Adapted parameter name with prefixed name</returns>
-        public string AdaptParameterName(string parameterName)
+        private string AdaptParameterName(string parameterName)
         {
             return _config.ParameterPrefix + parameterName;
         }

@@ -60,7 +60,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptParameters(parameters).ToList();
+            var result = adapter.AdaptParameters(parameters, []).ToList();
 
             // Assert
             result.Should().HaveCount(2);
@@ -86,7 +86,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptParameters(parameters).ToList();
+            var result = adapter.AdaptParameters(parameters, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);
@@ -108,7 +108,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptParameters(parameters).ToList();
+            var result = adapter.AdaptParameters(parameters, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);
@@ -124,7 +124,7 @@ namespace SharpBridge.Tests.Core.Adapters
             var parameters = new List<VTSParameter>();
 
             // Act
-            var result = adapter.AdaptParameters(parameters).ToList();
+            var result = adapter.AdaptParameters(parameters, []).ToList();
 
             // Assert
             result.Should().BeEmpty();
@@ -138,7 +138,7 @@ namespace SharpBridge.Tests.Core.Adapters
             var adapter = new VTSParameterPrefixAdapter(config);
 
             // Act & Assert
-            var action = () => adapter.AdaptParameters(null!);
+            var action = () => adapter.AdaptParameters(null!, []);
             action.Should().Throw<ArgumentNullException>()
                 .WithParameterName("parameters");
         }
@@ -155,7 +155,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptParameters(parameters).ToList();
+            var result = adapter.AdaptParameters(parameters, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);
@@ -172,7 +172,7 @@ namespace SharpBridge.Tests.Core.Adapters
             var parameters = new List<VTSParameter> { originalParameter };
 
             // Act
-            var result = adapter.AdaptParameters(parameters).ToList();
+            var result = adapter.AdaptParameters(parameters, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);
@@ -195,7 +195,7 @@ namespace SharpBridge.Tests.Core.Adapters
             var adapter = new VTSParameterPrefixAdapter(config);
 
             // Act
-            var result = adapter.AdaptTrackingParameters(null!);
+            var result = adapter.AdaptTrackingParameters(null!, []);
 
             // Assert
             result.Should().BeEmpty();
@@ -210,7 +210,7 @@ namespace SharpBridge.Tests.Core.Adapters
             var trackingParams = new List<TrackingParam>();
 
             // Act
-            var result = adapter.AdaptTrackingParameters(trackingParams);
+            var result = adapter.AdaptTrackingParameters(trackingParams, []);
 
             // Assert
             result.Should().BeEmpty();
@@ -229,7 +229,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+            var result = adapter.AdaptTrackingParameters(trackingParams, []).ToList();
 
             // Assert
             result.Should().HaveCount(2);
@@ -253,7 +253,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+            var result = adapter.AdaptTrackingParameters(trackingParams, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);
@@ -274,7 +274,7 @@ namespace SharpBridge.Tests.Core.Adapters
             };
 
             // Act
-            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+            var result = adapter.AdaptTrackingParameters(trackingParams, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);
@@ -293,7 +293,7 @@ namespace SharpBridge.Tests.Core.Adapters
             var trackingParams = new List<TrackingParam> { originalParam };
 
             // Act
-            var result = adapter.AdaptTrackingParameters(trackingParams).ToList();
+            var result = adapter.AdaptTrackingParameters(trackingParams, []).ToList();
 
             // Assert
             result.Should().HaveCount(1);

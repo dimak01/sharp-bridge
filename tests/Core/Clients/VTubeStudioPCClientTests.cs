@@ -56,12 +56,6 @@ namespace SharpBridge.Tests.Core.Clients
                 .Returns(Task.CompletedTask);
             _mockWebSocket.Setup(x => x.Dispose())
                 .Callback(() => _mockWebSocket.Setup(x => x.State).Returns(WebSocketState.Closed));
-
-            // Setup default parameter adapter behavior
-            _mockParameterAdapter.Setup(x => x.AdaptParameters(It.IsAny<IEnumerable<VTSParameter>>()))
-                .Returns<IEnumerable<VTSParameter>>(parameters => parameters);
-            _mockParameterAdapter.Setup(x => x.AdaptTrackingParameters(It.IsAny<IEnumerable<TrackingParam>>()))
-                .Returns<IEnumerable<TrackingParam>>(parameters => parameters);
         }
 
         private VTubeStudioPCClient CreateClient(IAppLogger? logger = null, VTubeStudioPCConfig? config = null, IWebSocketWrapper? webSocket = null, IPortDiscoveryService? portDiscoveryService = null, IVTSParameterAdapter? parameterAdapter = null, bool setupMock = true)

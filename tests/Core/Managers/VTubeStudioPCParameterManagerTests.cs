@@ -35,9 +35,7 @@ namespace SharpBridge.Tests.Core.Managers
             _mockParameterAdapter = new Mock<IVTSParameterAdapter>();
 
             // Set up default adapter behavior - return prefixed parameter names
-            _mockParameterAdapter.Setup(x => x.AdaptParameterName(It.IsAny<string>()))
-                .Returns<string>(name => $"SB_{name}");
-            _mockParameterAdapter.Setup(x => x.AdaptParameters(It.IsAny<IEnumerable<VTSParameter>>()))
+            _mockParameterAdapter.Setup(x => x.AdaptParameters(It.IsAny<IEnumerable<VTSParameter>>(), It.IsAny<IEnumerable<string>>()))
                 .Returns<IEnumerable<VTSParameter>>(parameters => parameters.Select(p => new VTSParameter($"SB_{p.Name}", p.Min, p.Max, p.DefaultValue)));
 
             _parameterManager = new VTubeStudioPCParameterManager(_mockWebSocket.Object, _mockLogger.Object, _mockParameterAdapter.Object);
@@ -62,7 +60,8 @@ namespace SharpBridge.Tests.Core.Managers
             var result = await _parameterManager.GetParametersAsync(CancellationToken.None);
 
             // Assert
-            result.Should().BeEmpty();
+            result.CustomParameters.Should().BeEmpty();
+            result.DefaultParameters.Should().BeEmpty();
         }
 
         [Fact]
@@ -75,22 +74,24 @@ namespace SharpBridge.Tests.Core.Managers
                 new VTSParameter("Param2", -1.0, 1.0, 0.0)
             };
 
+            var expectedResponse = new InputParameterListResponse
+            {
+                ModelLoaded = true,
+                ModelName = "TestModel",
+                ModelId = "TestId",
+                CustomParameters = expectedParameters,
+                DefaultParameters = new List<VTSParameter>()
+            };
+
             _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
                 "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new InputParameterListResponse
-                {
-                    ModelLoaded = true,
-                    ModelName = "TestModel",
-                    ModelId = "TestId",
-                    CustomParameters = expectedParameters,
-                    DefaultParameters = new List<VTSParameter>()
-                });
+                .ReturnsAsync(expectedResponse);
 
             // Act
             var result = await _parameterManager.GetParametersAsync(CancellationToken.None);
 
             // Assert
-            result.Should().BeEquivalentTo(expectedParameters);
+            result.Should().BeEquivalentTo(expectedResponse);
         }
 
         // [Fact]
@@ -163,13 +164,13 @@ namespace SharpBridge.Tests.Core.Managers
         public async Task DeleteParameterAsync_Succeeds_WhenParameterExists()
         {
             // Arrange
-            var parameterName = "TestParam";
+            var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
                 "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new object());
 
             // Act
-            var result = await _parameterManager.DeleteParameterAsync(parameterName, CancellationToken.None);
+            var result = await _parameterManager.DeleteParameterAsync(parameter, CancellationToken.None);
 
             // Assert
             result.Should().BeTrue();
@@ -179,13 +180,13 @@ namespace SharpBridge.Tests.Core.Managers
         public async Task DeleteParameterAsync_ReturnsFalse_WhenParameterDoesNotExist()
         {
             // Arrange
-            var parameterName = "TestParam";
+            var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
                 "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter not found"));
-
+            
             // Act
-            var result = await _parameterManager.DeleteParameterAsync(parameterName, CancellationToken.None);
+            var result = await _parameterManager.DeleteParameterAsync(parameter, CancellationToken.None);
 
             // Assert
             result.Should().BeFalse();
