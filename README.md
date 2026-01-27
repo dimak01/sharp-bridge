@@ -27,7 +27,7 @@ No subscriptions, no paid features, no limitations. You're welcome.
 
 ### ⚙️ Transparent Configuration
 
-Fully configurable iPhone blendshape → Custom PC VTube Studio parameter transformations with math expressions and functions & Bezier interpolations.  
+Fully configurable iPhone blendshape → Custom PC VTube Studio parameter transformations with math expressions and functions & Bezier interpolations (not sure what ARKit blendshapes are? Check out [this awesome guide](https://pooyadeperson.com/the-ultimate-guide-to-creating-arkits-52-facial-blendshapes/?character=real)).  
 All that in a fully transparent JSON configuration file you can open via in-app shortcut, edit and hot-reload at runtime.  
 
 And we can be as verbose showing it as you want!  

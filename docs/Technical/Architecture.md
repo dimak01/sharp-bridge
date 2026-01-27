@@ -162,6 +162,15 @@ The application startup is a carefully orchestrated sequence of steps, each with
 Console Setup → Transformation Engine → File Watchers → PC Client → Phone Client → Parameter Sync → Final Setup
 ```
 
+**Parameter Sync Step:**
+During the "Parameter Sync" step, Sharp Bridge:
+1. **Retrieves the list of existing parameters** from VTube Studio on PC, including both default model parameters and any custom parameters
+2. **Compares transformation rule names** against the list of default parameters
+3. **Skips default parameters** - If a transformation rule's name matches a default VTube Studio parameter, it is skipped (default parameters cannot be modified or recreated)
+4. **Creates or updates custom parameters** - For transformation rules that don't match default parameters, Sharp Bridge creates them as custom parameters or updates existing custom parameters
+
+This automatic detection ensures that transformation rules can reuse default VTube Studio parameter names without conflicts, while unique names are automatically created as custom parameters.
+
 Each step is tracked by the [`InitializationContentProvider`](../../src/UI/Providers/InitializationContentProvider.cs), which displays real-time progress with color-coded status indicators:
 - **`[OK]`** - Step completed successfully
 - **`[RUN]`** - Step currently in progress  
