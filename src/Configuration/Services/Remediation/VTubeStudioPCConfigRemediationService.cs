@@ -51,18 +51,6 @@ namespace SharpBridge.Configuration.Services.Remediation
                 "It is recommended to keep this setting enabled.",
                 "",
                 "Allowed values: \u001b[96mtrue\u001b[0m to enable, \u001b[96mfalse\u001b[0m to disable."
-            },
-            ["ParameterPrefix"] = new[]
-            {
-                "This prefix will be added to all parameter names when sending to VTube Studio PC.",
-                "Helps avoid naming conflicts with other plugins.",
-                "",
-                "Requirements:",
-                "- 0-15 characters long",
-                "- Alphanumeric characters only (no spaces)",
-                "- Empty prefix is allowed (no prefix will be added)",
-                "",
-                "Default: \u001b[96mSB_\u001b[0m"
             }
         };
 
@@ -73,8 +61,7 @@ namespace SharpBridge.Configuration.Services.Remediation
         {
             ["Host"] = "localhost",
             ["Port"] = 8001,
-            ["UsePortDiscovery"] = true,
-            ["ParameterPrefix"] = "SB_"
+            ["UsePortDiscovery"] = true
         };
 
 
@@ -97,9 +84,7 @@ namespace SharpBridge.Configuration.Services.Remediation
         /// <returns>True if the configuration section should fall back to defaults</returns>
         protected override bool ShouldFallBackToDefaults(List<ConfigFieldState> fields)
         {
-            // Check if only ParameterPrefix is missing (it's optional with a default)
-            var missingFields = fields.Where(f => f.Value == null).Select(f => f.FieldName).ToList();
-            return missingFields.Count == 1 && missingFields.Contains("ParameterPrefix");
+            return false;
         }
 
         /// <summary>
@@ -264,9 +249,6 @@ namespace SharpBridge.Configuration.Services.Remediation
                         case "UsePortDiscovery" when field.Value is bool usePortDiscovery:
                             config.UsePortDiscovery = usePortDiscovery;
                             break;
-                        case "ParameterPrefix" when field.Value is string parameterPrefix:
-                            config.ParameterPrefix = parameterPrefix;
-                            break;
                     }
                 }
             }
@@ -282,7 +264,7 @@ namespace SharpBridge.Configuration.Services.Remediation
         protected override List<FieldValidationIssue> SortIssuesByFieldOrder(List<FieldValidationIssue> issues)
         {
             // Define field order - dependencies must come before dependent fields
-            var fieldOrder = new[] { "Host", "UsePortDiscovery", "Port", "ParameterPrefix" };
+            var fieldOrder = new[] { "Host", "UsePortDiscovery", "Port" };
 
             return issues
                 .OrderBy(issue => GetFieldOrder(issue.FieldName, fieldOrder))

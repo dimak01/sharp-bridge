@@ -7,7 +7,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Interfaces;
-using SharpBridge.Interfaces.Core.Adapters;
 using SharpBridge.Interfaces.Core.Managers;
 using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Interfaces.Infrastructure.Wrappers;
@@ -24,18 +23,15 @@ namespace SharpBridge.Core.Managers
     {
         private readonly IWebSocketWrapper _webSocket;
         private readonly IAppLogger _logger;
-        private readonly IVTSParameterAdapter _parameterAdapter;
         /// <summary>
         /// Creates a new instance of the VTubeStudioPCParameterManager
         /// </summary>
         /// <param name="webSocket">WebSocket wrapper for communication with VTube Studio</param>
         /// <param name="logger">Application logger</param>
-        /// <param name="parameterAdapter">Adapter for transforming parameters before sending to VTube Studio</param>
-        public VTubeStudioPCParameterManager(IWebSocketWrapper webSocket, IAppLogger logger, IVTSParameterAdapter parameterAdapter)
+        public VTubeStudioPCParameterManager(IWebSocketWrapper webSocket, IAppLogger logger)
         {
             _webSocket = webSocket ?? throw new ArgumentNullException(nameof(webSocket));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _parameterAdapter = parameterAdapter ?? throw new ArgumentNullException(nameof(parameterAdapter));
         }
 
         /// <summary>
@@ -112,17 +108,16 @@ namespace SharpBridge.Core.Managers
             {
                 var parametersInfo = await GetExistingParametersAsync(cancellationToken);
                 var existingDefaultParameterNames = new HashSet<string>(parametersInfo.DefaultParameters.Select(p => p.Name));
-                var adaptedParameter = _parameterAdapter.AdaptParameter(parameter, existingDefaultParameterNames);
 
-                if (existingDefaultParameterNames.Contains(adaptedParameter.Name))
+                if (existingDefaultParameterNames.Contains(parameter.Name))
                 {
-                    _logger.Warning("Cannot delete default VTS parameter: {0}", adaptedParameter.Name);
+                    _logger.Warning("Cannot delete default VTS parameter: {0}", parameter.Name);
                     return false;
                 }
 
                 var request = new ParameterDeletionRequest
                 {
-                    ParameterName = adaptedParameter.Name
+                    ParameterName = parameter.Name
                 };
 
                 await _webSocket.SendRequestAsync<ParameterDeletionRequest, object>(
@@ -147,16 +142,12 @@ namespace SharpBridge.Core.Managers
         {
             try
             {
-                // Apply parameter adapter to get prefixed parameters for VTube Studio
-
                 var parametersInfo = await GetExistingParametersAsync(cancellationToken);
 
                 var existingCustomParameterNames = new HashSet<string>(parametersInfo.CustomParameters.Select(p => p.Name));
                 var existingDefaultParameterNames = new HashSet<string>(parametersInfo.DefaultParameters.Select(p => p.Name));
 
-                var adaptedParameters = _parameterAdapter.AdaptParameters(desiredParameters, existingDefaultParameterNames);
-
-                foreach (var parameter in adaptedParameters)
+                foreach (var parameter in desiredParameters)
                 {
                     if (existingDefaultParameterNames.Contains(parameter.Name))
                     {

@@ -62,12 +62,5 @@ namespace SharpBridge.Interfaces.Configuration.Services.Validators
         /// <param name="field">The field to validate</param>
         /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
         FieldValidationIssue? ValidateFilePath(ConfigFieldState field);
-
-        /// <summary>
-        /// Validates that a field contains a valid parameter prefix for VTube Studio PC.
-        /// </summary>
-        /// <param name="field">The field to validate</param>
-        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
-        FieldValidationIssue? ValidateParameterPrefix(ConfigFieldState field);
     }
 }

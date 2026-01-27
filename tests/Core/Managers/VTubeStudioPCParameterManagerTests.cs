@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Moq;
@@ -14,7 +15,6 @@ using Xunit;
 using FluentAssertions;
 using SharpBridge.Interfaces.Infrastructure.Services;
 using SharpBridge.Interfaces.Infrastructure.Wrappers;
-using SharpBridge.Interfaces.Core.Adapters;
 using SharpBridge.Core.Managers;
 using SharpBridge.Models.Domain;
 using SharpBridge.Models.Api;
@@ -25,20 +25,14 @@ namespace SharpBridge.Tests.Core.Managers
     {
         private readonly Mock<IAppLogger> _mockLogger;
         private readonly Mock<IWebSocketWrapper> _mockWebSocket;
-        private readonly Mock<IVTSParameterAdapter> _mockParameterAdapter;
         private readonly VTubeStudioPCParameterManager _parameterManager;
 
         public VTubeStudioPCParameterManagerTests()
         {
             _mockLogger = new Mock<IAppLogger>();
             _mockWebSocket = new Mock<IWebSocketWrapper>();
-            _mockParameterAdapter = new Mock<IVTSParameterAdapter>();
 
-            // Set up default adapter behavior - return prefixed parameter names
-            _mockParameterAdapter.Setup(x => x.AdaptParameters(It.IsAny<IEnumerable<VTSParameter>>(), It.IsAny<IEnumerable<string>>()))
-                .Returns<IEnumerable<VTSParameter>>(parameters => parameters.Select(p => new VTSParameter($"SB_{p.Name}", p.Min, p.Max, p.DefaultValue)));
-
-            _parameterManager = new VTubeStudioPCParameterManager(_mockWebSocket.Object, _mockLogger.Object, _mockParameterAdapter.Object);
+            _parameterManager = new VTubeStudioPCParameterManager(_mockWebSocket.Object, _mockLogger.Object);
         }
 
         [Fact]
@@ -165,6 +159,16 @@ namespace SharpBridge.Tests.Core.Managers
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>()
+                });
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
                 "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new object());
@@ -181,6 +185,16 @@ namespace SharpBridge.Tests.Core.Managers
         {
             // Arrange
             var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>()
+                });
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
                 "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Parameter not found"));
@@ -190,7 +204,7 @@ namespace SharpBridge.Tests.Core.Managers
 
             // Assert
             result.Should().BeFalse();
-            _mockLogger.Verify(x => x.Error("Failed to delete parameter {0}: {1}", "SB_TestParam", "Parameter not found"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Failed to delete parameter {0}: {1}", "TestParam", "Parameter not found"), Times.Once);
         }
 
         [Fact]
@@ -203,8 +217,6 @@ namespace SharpBridge.Tests.Core.Managers
                 new VTSParameter("NewParam", -1.0, 1.0, 0.0)      // Create new
             };
 
-            // Adapter will use default behavior (add SB_ prefix)
-
             // Setup GetParametersAsync to return existing parameters
             _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
                 "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
@@ -213,21 +225,21 @@ namespace SharpBridge.Tests.Core.Managers
                     ModelLoaded = true,
                     ModelName = "TestModel",
                     ModelId = "TestId",
-                    CustomParameters = new List<VTSParameter> { new VTSParameter("SB_ExistingParam", -1.0, 1.0, 0.0) },
+                    CustomParameters = new List<VTSParameter> { new VTSParameter("ExistingParam", -1.0, 1.0, 0.0) },
                     DefaultParameters = new List<VTSParameter>()
                 });
 
             // Setup UpdateParameterAsync to succeed
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
-                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "SB_ExistingParam"),
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "ExistingParam"),
                 It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "SB_ExistingParam" });
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "ExistingParam" });
 
             // Setup CreateParameterAsync to succeed
             _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
-                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "SB_NewParam"),
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "NewParam"),
                 It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "SB_NewParam" });
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "NewParam" });
 
             // Act
             var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
@@ -235,10 +247,10 @@ namespace SharpBridge.Tests.Core.Managers
             // Assert
             result.Should().BeTrue();
             _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
-                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "SB_ExistingParam"),
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "ExistingParam"),
                 It.IsAny<CancellationToken>()), Times.Once);
             _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
-                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "SB_NewParam"),
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "NewParam"),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -251,8 +263,6 @@ namespace SharpBridge.Tests.Core.Managers
                 new VTSParameter("ExistingParam", -1.0, 1.0, 0.5)
             };
 
-            // Adapter will use default behavior (add SB_ prefix)
-
             // Setup GetParametersAsync to return existing parameters
             _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
                 "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
@@ -261,7 +271,7 @@ namespace SharpBridge.Tests.Core.Managers
                     ModelLoaded = true,
                     ModelName = "TestModel",
                     ModelId = "TestId",
-                    CustomParameters = new List<VTSParameter> { new VTSParameter("SB_ExistingParam", -1.0, 1.0, 0.0) },
+                    CustomParameters = new List<VTSParameter> { new VTSParameter("ExistingParam", -1.0, 1.0, 0.0) },
                     DefaultParameters = new List<VTSParameter>()
                 });
 
@@ -277,8 +287,8 @@ namespace SharpBridge.Tests.Core.Managers
             result.Should().BeFalse();
 
             // Verify error was logged at parameter level
-            _mockLogger.Verify(x => x.Error("Failed to {0} parameter {1}: {2}", "update", "SB_ExistingParam", "Update failed"), Times.Once);
-            _mockLogger.Verify(x => x.Error("Failed to update parameter: {0}", "SB_ExistingParam"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Failed to {0} parameter {1}: {2}", "update", "ExistingParam", "Update failed"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Failed to update parameter: {0}", "ExistingParam"), Times.Once);
         }
 
         [Fact]
@@ -289,8 +299,6 @@ namespace SharpBridge.Tests.Core.Managers
             {
                 new VTSParameter("ExistingParam", -1.0, 1.0, 0.5)
             };
-
-            // Adapter will use default behavior (add SB_ prefix)
 
             // Setup GetParametersAsync to fail
             _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
@@ -306,5 +314,460 @@ namespace SharpBridge.Tests.Core.Managers
             // Verify error was logged
             _mockLogger.Verify(x => x.Error("Failed to synchronize parameters: {0}", "Get parameters failed"), Times.Once);
         }
+
+        #region Constructor Null Validation Tests
+
+        [Fact]
+        public void Constructor_WithNullWebSocket_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new VTubeStudioPCParameterManager(null!, _mockLogger.Object));
+            
+            exception.ParamName.Should().Be("webSocket");
+        }
+
+        [Fact]
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new VTubeStudioPCParameterManager(_mockWebSocket.Object, null!));
+            
+            exception.ParamName.Should().Be("logger");
+        }
+
+        #endregion
+
+        #region Default Parameter Protection Tests - DeleteParameterAsync
+
+        [Fact]
+        public async Task DeleteParameterAsync_ReturnsFalse_WhenParameterIsDefault()
+        {
+            // Arrange
+            var parameter = new VTSParameter("DefaultParam", -1.0, 1.0, 0.0);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter> { new VTSParameter("DefaultParam", -1.0, 1.0, 0.0) }
+                });
+
+            // Act
+            var result = await _parameterManager.DeleteParameterAsync(parameter, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Warning("Cannot delete default VTS parameter: {0}", "DefaultParam"), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteParameterAsync_DoesNotSendDeletionRequest_WhenParameterIsDefault()
+        {
+            // Arrange
+            var parameter = new VTSParameter("DefaultParam", -1.0, 1.0, 0.0);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter> { new VTSParameter("DefaultParam", -1.0, 1.0, 0.0) }
+                });
+
+            // Act
+            await _parameterManager.DeleteParameterAsync(parameter, CancellationToken.None);
+
+            // Assert
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterDeletionRequest, object>(
+                "ParameterDeletionRequest", It.IsAny<ParameterDeletionRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteParameterAsync_HandlesExceptionDuringGetParameters()
+        {
+            // Arrange
+            var parameter = new VTSParameter("TestParam", -1.0, 1.0, 0.0);
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Get parameters failed"));
+
+            // Act
+            var result = await _parameterManager.DeleteParameterAsync(parameter, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error("Failed to delete parameter {0}: {1}", "TestParam", "Get parameters failed"), Times.Once);
+        }
+
+        #endregion
+
+        #region Default Parameter Protection Tests - TrySynchronizeParametersAsync
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_SkipsDefaultParameter_WhenParameterIsInDefaultList()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("DefaultParam", -1.0, 1.0, 0.0), // This is a default parameter
+                new VTSParameter("CustomParam", -1.0, 1.0, 0.0)  // This should be created
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter> { new VTSParameter("DefaultParam", -1.0, 1.0, 0.0) }
+                });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam"),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "CustomParam" });
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam"), Times.Once);
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam"),
+                It.IsAny<CancellationToken>()), Times.Once);
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "DefaultParam"),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_LogsError_WhenParameterIsInDefaultList()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("DefaultParam", -1.0, 1.0, 0.0)
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter> { new VTSParameter("DefaultParam", -1.0, 1.0, 0.0) }
+                });
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeTrue(); // Returns true because no operations failed (just skipped)
+            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_ContinuesWithOtherParameters_WhenOneIsDefault()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("DefaultParam", -1.0, 1.0, 0.0), // Skip this
+                new VTSParameter("CustomParam1", -1.0, 1.0, 0.0),  // Create this
+                new VTSParameter("CustomParam2", -1.0, 1.0, 0.0)  // Create this
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter> { new VTSParameter("DefaultParam", -1.0, 1.0, 0.0) }
+                });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam1"),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "CustomParam1" });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam2"),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "CustomParam2" });
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeTrue();
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam1"),
+                It.IsAny<CancellationToken>()), Times.Once);
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam2"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_HandlesMultipleDefaultParameters()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("DefaultParam1", -1.0, 1.0, 0.0),
+                new VTSParameter("DefaultParam2", -1.0, 1.0, 0.0),
+                new VTSParameter("CustomParam", -1.0, 1.0, 0.0)
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>
+                    {
+                        new VTSParameter("DefaultParam1", -1.0, 1.0, 0.0),
+                        new VTSParameter("DefaultParam2", -1.0, 1.0, 0.0)
+                    }
+                });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam"),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "CustomParam" });
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeTrue();
+            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam1"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam2"), Times.Once);
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam"),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        #endregion
+
+        #region TrySynchronizeParametersAsync - Creation Failure Tests
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_ReturnsFalse_WhenParameterCreationFails()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("NewParam", -1.0, 1.0, 0.0)
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>()
+                });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Creation failed"));
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Error("Failed to {0} parameter {1}: {2}", "create", "NewParam", "Creation failed"), Times.Once);
+            _mockLogger.Verify(x => x.Error("Failed to create parameter: {0}", "NewParam"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_LogsError_WhenParameterCreationFails()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("NewParam", -1.0, 1.0, 0.0)
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>()
+                });
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new Exception("Creation failed"));
+
+            // Act
+            await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            _mockLogger.Verify(x => x.Error("Failed to create parameter: {0}", "NewParam"), Times.Once);
+        }
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_ReturnsFalse_WhenResponseNameMismatch()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>
+            {
+                new VTSParameter("NewParam", -1.0, 1.0, 0.0)
+            };
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>()
+                });
+
+            // Response has different parameter name (simulating mismatch)
+            // When response name doesn't match, CreateOrUpdateParameterAsync returns false
+            // which causes TrySynchronizeParametersAsync to log and return false
+            _mockWebSocket.Setup(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "NewParam"),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ParameterCreationResponse { ParameterName = "DifferentParam" });
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeFalse();
+            // When CreateOrUpdateParameterAsync returns false (name mismatch), 
+            // TrySynchronizeParametersAsync logs "Failed to create parameter: {0}"
+            _mockLogger.Verify(x => x.Error("Failed to create parameter: {0}", "NewParam"), Times.Once);
+        }
+
+        #endregion
+
+        #region Edge Cases
+
+        [Fact]
+        public async Task TrySynchronizeParametersAsync_HandlesEmptyDesiredParametersList()
+        {
+            // Arrange
+            var desiredParameters = new List<VTSParameter>();
+
+            _mockWebSocket.Setup(x => x.SendRequestAsync<InputParameterListRequest, InputParameterListResponse>(
+                "InputParameterListRequest", It.IsAny<InputParameterListRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new InputParameterListResponse
+                {
+                    ModelLoaded = true,
+                    ModelName = "TestModel",
+                    ModelId = "TestId",
+                    CustomParameters = new List<VTSParameter>(),
+                    DefaultParameters = new List<VTSParameter>()
+                });
+
+            // Act
+            var result = await _parameterManager.TrySynchronizeParametersAsync(desiredParameters, CancellationToken.None);
+
+            // Assert
+            result.Should().BeTrue();
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateOrUpdateParameterAsync_ReturnsFalse_WhenParameterIsInDefaultList()
+        {
+            // Arrange
+            // This test covers the defensive check at line 71 in CreateOrUpdateParameterAsync
+            // Since CreateOrUpdateParameterAsync is private, we use reflection to test it directly
+            // This tests the defensive check that prevents creating/updating default parameters
+            var parameter = new VTSParameter("DefaultParam", -1.0, 1.0, 0.0);
+            var defaultParameterNames = new List<string> { "DefaultParam", "OtherDefault" };
+
+            // Use reflection to access the private method
+            var method = typeof(VTubeStudioPCParameterManager).GetMethod(
+                "CreateOrUpdateParameterAsync",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            method.Should().NotBeNull("CreateOrUpdateParameterAsync method should exist");
+
+            // Act
+            var task = (Task<bool>)method!.Invoke(_parameterManager, new object[]
+            {
+                parameter,
+                false, // isUpdate
+                defaultParameterNames,
+                CancellationToken.None
+            })!;
+
+            var result = await task;
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Warning("Cannot create or update default VTS parameter: {0}", "DefaultParam"), Times.Once);
+            // Verify that no WebSocket request was sent (the method should return early)
+            _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
+                "ParameterCreationRequest", It.IsAny<ParameterCreationRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task CreateOrUpdateParameterAsync_LogsWarning_WhenUpdatingDefaultParameter()
+        {
+            // Arrange
+            // Test the defensive check when isUpdate is true
+            var parameter = new VTSParameter("DefaultParam", -1.0, 1.0, 0.5);
+            var defaultParameterNames = new List<string> { "DefaultParam" };
+
+            var method = typeof(VTubeStudioPCParameterManager).GetMethod(
+                "CreateOrUpdateParameterAsync",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            method.Should().NotBeNull("CreateOrUpdateParameterAsync method should exist");
+
+            // Act
+            var task = (Task<bool>)method!.Invoke(_parameterManager, new object[]
+            {
+                parameter,
+                true, // isUpdate
+                defaultParameterNames,
+                CancellationToken.None
+            })!;
+
+            var result = await task;
+
+            // Assert
+            result.Should().BeFalse();
+            _mockLogger.Verify(x => x.Warning("Cannot create or update default VTS parameter: {0}", "DefaultParam"), Times.Once);
+        }
+
+        #endregion
     }
 }

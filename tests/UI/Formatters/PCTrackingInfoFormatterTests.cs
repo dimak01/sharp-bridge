@@ -51,7 +51,6 @@ namespace SharpBridge.Tests.UI.Formatters
         private readonly Mock<IParameterColorService> _mockColorService;
         private readonly Mock<IShortcutConfigurationManager> _mockShortcutManager;
         private readonly UserPreferences _userPreferences;
-        private readonly VTubeStudioPCConfig _pcConfig;
         private readonly PCTrackingInfoFormatter _formatter;
 
         // Mock class for testing wrong entity type
@@ -78,13 +77,11 @@ namespace SharpBridge.Tests.UI.Formatters
 
             _userPreferences = new UserPreferences { PCClientVerbosity = VerbosityLevel.Normal };
 
-            _pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "SB_");
-
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
             mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression, ParameterTableColumn.Interpolation });
             mockColumnConfigManager.Setup(x => x.GetDefaultParameterTableColumns()).Returns(new[] { ParameterTableColumn.ParameterName, ParameterTableColumn.ProgressBar, ParameterTableColumn.Value, ParameterTableColumn.Range, ParameterTableColumn.MinMax, ParameterTableColumn.Expression, ParameterTableColumn.Interpolation });
 
-            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            _formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
         }
 
         #region Helper Methods
@@ -802,8 +799,7 @@ namespace SharpBridge.Tests.UI.Formatters
 
             // Act & Assert
             var mockUserPreferences = new Mock<UserPreferences>();
-            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "SB_");
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object, mockColumnConfigManager.Object, pcConfig);
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, mockUserPreferences.Object, mockColumnConfigManager.Object);
             formatter.Should().NotBeNull();
         }
 
@@ -812,7 +808,7 @@ namespace SharpBridge.Tests.UI.Formatters
         {
             // Act & Assert
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
-            Action act = () => _ = new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            Action act = () => _ = new PCTrackingInfoFormatter(null!, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             act.Should().Throw<ArgumentNullException>().WithParameterName("console");
         }
 
@@ -820,7 +816,7 @@ namespace SharpBridge.Tests.UI.Formatters
         public void Constructor_WithNullColumnConfigManager_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Action act = () => _ = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, null!, _pcConfig);
+            Action act = () => _ = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, null!);
             act.Should().Throw<ArgumentNullException>().WithParameterName("columnConfigManager");
         }
 
@@ -835,7 +831,7 @@ namespace SharpBridge.Tests.UI.Formatters
             };
 
             // Act
-            _ = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            _ = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, userPreferences, mockColumnConfigManager.Object);
 
             // Assert
             mockColumnConfigManager.Verify(x => x.LoadFromUserPreferences(userPreferences), Times.Once);
@@ -849,7 +845,7 @@ namespace SharpBridge.Tests.UI.Formatters
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
             mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(customColumns);
 
-            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -868,7 +864,7 @@ namespace SharpBridge.Tests.UI.Formatters
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
             mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(emptyColumns);
 
-            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -887,7 +883,7 @@ namespace SharpBridge.Tests.UI.Formatters
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
             mockColumnConfigManager.Setup(x => x.GetParameterTableColumns()).Returns(singleColumn);
 
-            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, _pcConfig);
+            var formatter = new PCTrackingInfoFormatter(_mockConsole.Object, _mockTableFormatter.Object, _mockColorService.Object, _mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -910,8 +906,7 @@ namespace SharpBridge.Tests.UI.Formatters
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
-            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "SB_");
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, pcConfig);
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -921,8 +916,6 @@ namespace SharpBridge.Tests.UI.Formatters
             // Assert
             result.Should().NotBeNullOrEmpty();
             result.Should().Contain("Alt+P"); // Should contain the shortcut
-            result.Should().Contain("Parameter Prefix in VTube Studio PC:"); // Should contain the prefix label
-            result.Should().Contain("SB_"); // Should contain the prefix value
         }
 
         [Fact]
@@ -937,8 +930,7 @@ namespace SharpBridge.Tests.UI.Formatters
             mockShortcutManager.Setup(m => m.GetDisplayString(It.IsAny<ShortcutAction>())).Returns("Alt+P");
             var mockColumnConfigManager = new Mock<IParameterTableConfigurationManager>();
 
-            var pcConfig = new VTubeStudioPCConfig("localhost", 8001, true, "");
-            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object, pcConfig);
+            var formatter = new PCTrackingInfoFormatter(mockConsole.Object, mockTableFormatter.Object, mockColorService.Object, mockShortcutManager.Object, _userPreferences, mockColumnConfigManager.Object);
             var trackingInfo = CreatePCTrackingInfo();
             var serviceStats = CreateServiceStats(trackingInfo);
 
@@ -946,8 +938,7 @@ namespace SharpBridge.Tests.UI.Formatters
             var result = formatter.Format(serviceStats);
 
             // Assert
-            result.Should().Contain("Parameter Prefix in VTube Studio PC:"); // Should contain the prefix label
-            result.Should().Contain("None"); // Should contain the "None" value
+            result.Should().NotBeNullOrEmpty();
         }
 
 

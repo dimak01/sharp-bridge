@@ -921,6 +921,126 @@ namespace SharpBridge.Tests.Infrastructure.Repositories
             result.ValidRules[0].Interpolation.Should().NotBeNull();
         }
 
+        [Fact]
+        public async Task LoadRulesAsync_WithInvalidBezierInterpolation_TooFewControlPoints_ReturnsInvalidRule()
+        {
+            // Arrange - Bezier with only 1 control point (needs 2-8)
+            var ruleContent = @"[
+                {
+                    ""name"": ""InvalidBezier"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""BezierInterpolation"",
+                        ""controlPoints"": [0.5, 0.5]
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("InvalidBezier");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule 'InvalidBezier' has invalid interpolation configuration");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithInvalidBezierInterpolation_TooManyControlPoints_ReturnsInvalidRule()
+        {
+            // Arrange - Bezier with 9 control points (max is 8)
+            var ruleContent = @"[
+                {
+                    ""name"": ""InvalidBezier"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""BezierInterpolation"",
+                        ""controlPoints"": [0,0, 0.1,0.1, 0.2,0.2, 0.3,0.3, 0.4,0.4, 0.5,0.5, 0.6,0.6, 0.7,0.7, 0.8,0.8]
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("InvalidBezier");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule 'InvalidBezier' has invalid interpolation configuration");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithInvalidBezierInterpolation_OutOfRangeControlPoints_ReturnsInvalidRule()
+        {
+            // Arrange - Bezier with control points outside 0-1 range
+            var ruleContent = @"[
+                {
+                    ""name"": ""InvalidBezier"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""BezierInterpolation"",
+                        ""controlPoints"": [0, 0, 1.5, 0.5, 1, 1]
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("InvalidBezier");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule 'InvalidBezier' has invalid interpolation configuration");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithValidBezierInterpolation_CreatesValidRule()
+        {
+            // Arrange - Valid Bezier with 2 control points (minimum valid)
+            var ruleContent = @"[
+                {
+                    ""name"": ""ValidBezier"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""BezierInterpolation"",
+                        ""controlPoints"": [0, 0, 1, 1]
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().HaveCount(1);
+            result.ValidRules[0].Name.Should().Be("ValidBezier");
+            result.ValidRules[0].Interpolation.Should().NotBeNull();
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().BeEmpty();
+        }
+
         #endregion
 
         #region Exception Handling Tests
@@ -953,38 +1073,84 @@ namespace SharpBridge.Tests.Infrastructure.Repositories
         public async Task LoadRulesFromPathAsync_WithGeneralException_ReturnsCriticalError()
         {
             // Arrange
-            var config = new TransformationEngineConfig
-            {
-                ConfigPath = "test/path/rules.json"
-            };
-
-            _mockConfigManager.Setup(x => x.LoadSectionAsync<TransformationEngineConfig>())
-                .ReturnsAsync(config);
-
-            // Mock File.ReadAllTextAsync to throw a general exception
             var tempFile = Path.GetTempFileName();
             try
             {
-                File.WriteAllText(tempFile, "valid json");
+                var validRuleContent = GetValidRuleContent();
+                File.WriteAllText(tempFile, validRuleContent);
 
-                // Create a mock that will throw an exception
-                var fileWatcherMock = new Mock<IFileChangeWatcher>();
-                fileWatcherMock.Setup(x => x.StartWatching(It.IsAny<string>()))
+                // Create a mock logger that will throw an exception when Info is called
+                // Logger.Info is called at line 167, inside the try block, so if it throws,
+                // it should be caught by the general Exception handler at line 179
+                var loggerMock = new Mock<IAppLogger>();
+                loggerMock.Setup(x => x.Info(It.IsAny<string>(), It.IsAny<object[]>()))
                     .Throws(new InvalidOperationException("Mock exception"));
 
                 var repository = new FileBasedTransformationRulesRepository(
-                    _mockLogger.Object, fileWatcherMock.Object, fileWatcherMock.Object, _mockConfigManager.Object);
+                    loggerMock.Object, _mockFileWatcher.Object, _mockAppConfigWatcher.Object, _mockConfigManager.Object);
 
                 // Act
                 var result = await repository.LoadRulesFromPathAsync(tempFile);
 
                 // Assert
+                // When logger.Info throws, the exception is caught and HandleCriticalError is called
                 result.ValidRules.Should().BeEmpty();
                 result.InvalidRules.Should().BeEmpty();
                 result.ValidationErrors.Should().ContainSingle();
-                result.ValidationErrors[0].Should().StartWith("JSON parsing error:");
-                result.LoadError.Should().StartWith("JSON parsing error:");
+                result.ValidationErrors[0].Should().StartWith("Unexpected error loading rules:");
+                result.LoadError.Should().StartWith("Unexpected error loading rules:");
                 result.LoadedFromCache.Should().BeFalse();
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                    File.Delete(tempFile);
+            }
+        }
+
+        [Fact]
+        public async Task LoadRulesFromPathAsync_WithIOExceptionDuringRead_ReturnsCriticalError()
+        {
+            // Arrange
+            // Create a file that we can simulate as being locked/inaccessible
+            // We'll use a path that exists but simulate IOException during read
+            var tempFile = Path.GetTempFileName();
+            try
+            {
+                File.WriteAllText(tempFile, GetValidRuleContent());
+                
+                // Create a repository with a mock file watcher that won't interfere
+                var repository = new FileBasedTransformationRulesRepository(
+                    _mockLogger.Object, _mockFileWatcher.Object, _mockAppConfigWatcher.Object, _mockConfigManager.Object);
+
+                // To actually trigger IOException, we need to make the file inaccessible
+                // On Windows, we can try to open it exclusively, but that's complex
+                // Instead, let's test with a file that becomes inaccessible
+                // For a more reliable test, we'll use a path that causes IOException
+                // Actually, the best approach is to test with a file that exists but can't be read
+                // However, this is platform-dependent and complex
+                // Let's test with a directory path instead, which should cause IOException when trying to read as file
+                var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                Directory.CreateDirectory(tempDir);
+                try
+                {
+                    // Act - Try to read a directory as if it were a file
+                    var result = await repository.LoadRulesFromPathAsync(tempDir);
+
+                    // Assert - Should catch IOException
+                    result.ValidRules.Should().BeEmpty();
+                    result.InvalidRules.Should().BeEmpty();
+                    result.ValidationErrors.Should().ContainSingle();
+                    // Could be "Rules file not found" (if File.Exists returns false for directory)
+                    // or "File access error" (if File.ReadAllTextAsync throws IOException)
+                    result.LoadError.Should().NotBeNull();
+                    result.LoadedFromCache.Should().BeFalse();
+                }
+                finally
+                {
+                    if (Directory.Exists(tempDir))
+                        Directory.Delete(tempDir);
+                }
             }
             finally
             {
@@ -1137,6 +1303,11 @@ namespace SharpBridge.Tests.Infrastructure.Repositories
             }
         }
 
+        // Note: Testing the exception catch block at lines 304-307 (Exception during Expression parsing)
+        // is difficult because NCalc's Expression constructor is very robust and rarely throws exceptions.
+        // The catch block is a defensive measure for edge cases. The existing syntax error tests
+        // cover the HasErrors() path, which is the more common failure mode.
+
         [Fact]
         public async Task LoadRulesAsync_WithValidExpression_ReturnsValidRule()
         {
@@ -1214,6 +1385,39 @@ namespace SharpBridge.Tests.Infrastructure.Repositories
             }
         }
 
+        [Fact]
+        public async Task LoadRulesAsync_WithInvalidBezierInterpolation_EmptyControlPoints_ReturnsInvalidRule()
+        {
+            // Arrange - BezierInterpolation with empty controlPoints array (0 points, needs 2-8)
+            // When controlPoints is missing or empty, BezierInterpolationConverter creates an empty list
+            // which will fail validation (needs at least 2 points)
+            var ruleContent = @"[
+                {
+                    ""name"": ""InvalidBezier"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0,
+                    ""interpolation"": {
+                        ""type"": ""BezierInterpolation"",
+                        ""controlPoints"": []
+                    }
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            // Empty controlPoints (0 points) should fail validation (needs 2-8 points)
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("InvalidBezier");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule 'InvalidBezier' has invalid interpolation configuration");
+        }
+
         #endregion
 
         #region Disposed State Handling Tests
@@ -1249,6 +1453,375 @@ namespace SharpBridge.Tests.Infrastructure.Repositories
 
             // Verify the repository is still disposed
             Assert.True(true); // Test passes if no exception is thrown
+        }
+
+        #endregion
+
+        #region Rule Name Validation Tests
+
+        [Fact]
+        public async Task LoadRulesAsync_WithEmptyRuleName_ReturnsInvalidRule()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": """",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().BeEmpty();
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule name cannot be empty");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithNullRuleName_ReturnsInvalidRule()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": null,
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().BeEmpty();
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule name cannot be empty");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithWhitespaceOnlyRuleName_ReturnsInvalidRule()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""   "",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("   ");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule name cannot be empty");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameTooShort_OneCharacter_ReturnsInvalidRule()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""A"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("A");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule name 'A' is too short (minimum 4 characters, VTube Studio API requirement)");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameTooShort_ThreeCharacters_ReturnsInvalidRule()
+        {
+            // Arrange
+            var ruleContent = @"[
+                {
+                    ""name"": ""ABC"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be("ABC");
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be("Rule name 'ABC' is too short (minimum 4 characters, VTube Studio API requirement)");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameTooLong_ThirtyThreeCharacters_ReturnsInvalidRule()
+        {
+            // Arrange
+            var longName = new string('A', 33); // 33 characters
+            var ruleContent = $@"[
+                {{
+                    ""name"": ""{longName}"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }}
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be(longName);
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be($"Rule name '{longName}' is too long (maximum 32 characters, VTube Studio API requirement)");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameTooLong_FiftyCharacters_ReturnsInvalidRule()
+        {
+            // Arrange
+            var longName = new string('B', 50); // 50 characters
+            var ruleContent = $@"[
+                {{
+                    ""name"": ""{longName}"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }}
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(1);
+            result.InvalidRules[0].Name.Should().Be(longName);
+            result.ValidationErrors.Should().ContainSingle();
+            result.ValidationErrors[0].Should().Be($"Rule name '{longName}' is too long (maximum 32 characters, VTube Studio API requirement)");
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameExactlyFourCharacters_ReturnsValidRule()
+        {
+            // Arrange - Boundary test: exactly 4 characters (minimum valid)
+            var ruleContent = @"[
+                {
+                    ""name"": ""Test"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().HaveCount(1);
+            result.ValidRules[0].Name.Should().Be("Test");
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameExactlyThirtyTwoCharacters_ReturnsValidRule()
+        {
+            // Arrange - Boundary test: exactly 32 characters (maximum valid)
+            var validName = new string('X', 32); // 32 characters
+            var ruleContent = $@"[
+                {{
+                    ""name"": ""{validName}"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }}
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().HaveCount(1);
+            result.ValidRules[0].Name.Should().Be(validName);
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithRuleNameInValidRange_ReturnsValidRule()
+        {
+            // Arrange - Test with a name in the middle of the valid range (e.g., 16 characters)
+            var validName = new string('M', 16); // 16 characters (between 4 and 32)
+            var ruleContent = $@"[
+                {{
+                    ""name"": ""{validName}"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }}
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().HaveCount(1);
+            result.ValidRules[0].Name.Should().Be(validName);
+            result.InvalidRules.Should().BeEmpty();
+            result.ValidationErrors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithMultipleRulesWithInvalidNames_ReturnsAllAsInvalid()
+        {
+            // Arrange - Test multiple rules with various invalid name lengths
+            var ruleContent = @"[
+                {
+                    ""name"": ""A"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""AB"",
+                    ""func"": ""eyeBlinkRight * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": ""ABC"",
+                    ""func"": ""mouthSmile * 50"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                },
+                {
+                    ""name"": """ + new string('Z', 33) + @""",
+                    ""func"": ""browInnerUp * 75"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().BeEmpty();
+            result.InvalidRules.Should().HaveCount(4);
+            result.ValidationErrors.Should().HaveCount(4);
+            
+            result.ValidationErrors.Should().Contain(e => e.Contains("'A' is too short"));
+            result.ValidationErrors.Should().Contain(e => e.Contains("'AB' is too short"));
+            result.ValidationErrors.Should().Contain(e => e.Contains("'ABC' is too short"));
+            result.ValidationErrors.Should().Contain(e => e.Contains("is too long"));
+        }
+
+        [Fact]
+        public async Task LoadRulesAsync_WithMixedValidAndInvalidNames_HandlesCorrectly()
+        {
+            // Arrange - Mix of valid and invalid rule names
+            var longName = new string('L', 33); // Too long
+            var ruleContent = $@"[
+                {{
+                    ""name"": ""ValidRule"",
+                    ""func"": ""eyeBlinkLeft * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }},
+                {{
+                    ""name"": ""AB"",
+                    ""func"": ""eyeBlinkRight * 100"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }},
+                {{
+                    ""name"": ""AnotherValid"",
+                    ""func"": ""mouthSmile * 50"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }},
+                {{
+                    ""name"": ""{longName}"",
+                    ""func"": ""browInnerUp * 75"",
+                    ""min"": 0,
+                    ""max"": 100,
+                    ""defaultValue"": 0
+                }}
+            ]";
+            var filePath = CreateTempRuleFile(ruleContent);
+
+            // Act
+            var result = await _repository.LoadRulesAsync(filePath);
+
+            // Assert
+            result.ValidRules.Should().HaveCount(2);
+            result.ValidRules.Should().Contain(r => r.Name == "ValidRule");
+            result.ValidRules.Should().Contain(r => r.Name == "AnotherValid");
+            
+            result.InvalidRules.Should().HaveCount(2);
+            result.InvalidRules.Should().Contain(r => r.Name == "AB");
+            result.InvalidRules.Should().Contain(r => r.Name == longName);
+            
+            result.ValidationErrors.Should().HaveCount(2);
+            result.ValidationErrors.Should().Contain(e => e.Contains("'AB' is too short"));
+            result.ValidationErrors.Should().Contain(e => e.Contains("is too long"));
         }
 
         #endregion

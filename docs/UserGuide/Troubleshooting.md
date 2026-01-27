@@ -24,7 +24,6 @@ The main console shows real-time status for all components:
 
 **PC Client Status:**
 - Face detection status (✓ Detected / ✗ Not Found)  
-- Parameter prefix configuration
 - Parameter table with current values and ranges
 - Service health indicator
 
@@ -91,7 +90,6 @@ Press **F1** to access configuration details and shortcuts.
 **Quick Diagnosis:**
 1. **Check Network Status (F2)** - Look for "Blocked" indicators
 2. **Check VTube Studio PC** - Ensure it's running and API is enabled
-3. **Check parameter prefix** - Verify it matches VTube Studio settings
 
 **Solutions:**
 - **Firewall issues**: Use Network Status mode (F2) to get copy-paste firewall commands
@@ -144,7 +142,6 @@ Press **F1** to access configuration details and shortcuts.
 1. **Check Failed Rules table** - Look for specific error messages
 2. **Check "Up to Date" status** - If "No", configuration has issues
 3. **Check parameter names** - Ensure they match VTube Studio exactly
-4. **Check parameter prefix** - Verify it matches VTube Studio settings
 
 **Solutions:**
 - **Invalid JSON**: Fix syntax errors shown in Failed Rules table
@@ -236,7 +233,7 @@ Logs are stored in the `logs/` directory:
 - **Firewall issues**: Use Network Status mode (F2) → Copy-paste firewall commands
 - **Configuration errors**: Check Failed Rules table → Fix specific errors → Press Alt+K
 - **Connection issues**: Check service status colors → Follow specific error guidance
-- **Parameter issues**: Check parameter prefix → Verify parameter names match VTube Studio
+- **Parameter issues**: Verify parameter names match VTube Studio
 
 ### When to Check Logs
 - **Application crashes** - Check logs for crash details

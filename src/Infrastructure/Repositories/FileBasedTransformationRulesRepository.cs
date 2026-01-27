@@ -247,6 +247,25 @@ namespace SharpBridge.Infrastructure.Repositories
             transformationRule = null!;
             error = string.Empty;
 
+            // Validate rule name length (VTube Studio API requirement: 4-32 characters)
+            if (string.IsNullOrWhiteSpace(rule.Name))
+            {
+                error = "Rule name cannot be empty";
+                return false;
+            }
+
+            if (rule.Name.Length < 4)
+            {
+                error = $"Rule name '{rule.Name}' is too short (minimum 4 characters, VTube Studio API requirement)";
+                return false;
+            }
+
+            if (rule.Name.Length > 32)
+            {
+                error = $"Rule name '{rule.Name}' is too long (maximum 32 characters, VTube Studio API requirement)";
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(rule.Func))
             {
                 error = $"Rule '{rule.Name}' has an empty expression";

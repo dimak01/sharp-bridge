@@ -274,37 +274,6 @@ namespace SharpBridge.Configuration.Utilities
             return hostNameType == UriHostNameType.Dns;
         }
 
-
-        [System.Text.RegularExpressions.GeneratedRegex(@"^[a-zA-Z0-9_]+$", System.Text.RegularExpressions.RegexOptions.None, 100)]
-        private static partial System.Text.RegularExpressions.Regex ParameterPrefixRegex();
-
-        /// <summary>
-        /// Validates that a field contains a valid parameter prefix for VTube Studio PC.
-        /// </summary>
-        /// <param name="field">The field to validate</param>
-        /// <returns>FieldValidationIssue if validation fails, null if validation passes</returns>
-        public FieldValidationIssue? ValidateParameterPrefix(ConfigFieldState field)
-        {
-            if (field.Value is not string prefix)
-            {
-                return CreateValidationIssue(field, $"Parameter prefix must be a string, got {field.Value?.GetType().Name ?? "null"}");
-            }
-
-            // Check length (0-15 characters, empty is allowed)
-            if (prefix.Length > 15)
-            {
-                return CreateValidationIssue(field, "Parameter prefix cannot exceed 15 characters");
-            }
-
-            // Check format (alphanumeric and underscores only, no spaces)
-            if (!string.IsNullOrEmpty(prefix) && !ParameterPrefixRegex().IsMatch(prefix))
-            {
-                return CreateValidationIssue(field, "Parameter prefix must contain only alphanumeric characters and underscores, no spaces");
-            }
-
-            return null; // Validation passed
-        }
-
         /// <summary>
         /// Creates a validation issue with consistent formatting.
         /// </summary>

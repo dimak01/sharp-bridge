@@ -8,7 +8,7 @@ Sharp Bridge uses a modular configuration system with hot-reload capabilities. A
 Main application settings with hot-reload support:
 - **GeneralSettings** - Editor command, keyboard shortcuts
 - **PhoneClient** - iPhone IP address, ports, connection settings
-- **PCClient** - Host, port, parameter prefix, discovery settings
+- **PCClient** - Host, port, discovery settings
 - **TransformationEngine** - Config path, evaluation settings
 
 ### UserPreferences.json

@@ -27,8 +27,6 @@ using SharpBridge.Configuration.Services;
 using SharpBridge.Interfaces.Configuration.Managers;
 using SharpBridge.Configuration.Managers;
 using SharpBridge.Models.Configuration;
-using SharpBridge.Interfaces.Core.Adapters;
-using SharpBridge.Core.Adapters;
 using SharpBridge.Interfaces.Infrastructure.Wrappers;
 using SharpBridge.Interfaces.Infrastructure.Factories;
 using SharpBridge.Infrastructure.Factories;
@@ -147,13 +145,6 @@ namespace SharpBridge
                 return configManager.LoadSectionAsync<VTubeStudioPCConfig>().GetAwaiter().GetResult();
             });
 
-            // Register VTS parameter adapter
-            services.AddSingleton<IVTSParameterAdapter>(provider =>
-            {
-                var pcConfig = provider.GetRequiredService<VTubeStudioPCConfig>();
-                return new VTSParameterPrefixAdapter(pcConfig);
-            });
-
             services.AddSingleton(provider =>
             {
                 var configManager = provider.GetRequiredService<IConfigManager>();
@@ -251,7 +242,6 @@ namespace SharpBridge
                     provider.GetRequiredService<IConfigManager>(),
                     provider.GetRequiredService<IWebSocketWrapper>(),
                     provider.GetRequiredService<IPortDiscoveryService>(),
-                    provider.GetRequiredService<IVTSParameterAdapter>(),
                     appConfigWatcher
                 );
             });
@@ -338,9 +328,7 @@ namespace SharpBridge
                     provider.GetRequiredService<IParameterColorService>(),
                     provider.GetRequiredService<IShortcutConfigurationManager>(),
                     provider.GetRequiredService<UserPreferences>(),
-                    provider.GetRequiredService<IParameterTableConfigurationManager>(),
-                    provider.GetRequiredService<VTubeStudioPCConfig>()
-                ));
+                    provider.GetRequiredService<IParameterTableConfigurationManager>()));
             services.AddSingleton<TransformationEngineInfoFormatter>();
 
             // Register MainStatusRenderer both as interface and concrete class

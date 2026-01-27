@@ -36,7 +36,7 @@ Set default verbosity levels in `UserPreferences.json`:
 - **Detailed**: All above + unlimited blend shapes (no row limit)
 
 #### PC Client Display  
-- **Basic**: Face detection status + parameter prefix
+- **Basic**: Face detection status
 - **Normal**: All above + parameter table (limited rows)
 - **Detailed**: All above + unlimited parameters (no row limit)
 
