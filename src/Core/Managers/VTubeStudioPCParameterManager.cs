@@ -107,7 +107,7 @@ namespace SharpBridge.Core.Managers
             ArgumentNullException.ThrowIfNull(parameter);
             try
             {
-                var parametersInfo = await GetExistingParametersAsync(cancellationToken);
+                var parametersInfo = await GetParametersAsync(cancellationToken);
                 var existingDefaultParameterNames = new HashSet<string>(parametersInfo.DefaultParameters.Select(p => p.Name));
 
                 if (existingDefaultParameterNames.Contains(parameter.Name))
@@ -143,7 +143,7 @@ namespace SharpBridge.Core.Managers
         {
             try
             {
-                var parametersInfo = await GetExistingParametersAsync(cancellationToken);
+                var parametersInfo = await GetParametersAsync(cancellationToken);
 
                 var existingCustomParameterNames = new HashSet<string>(parametersInfo.CustomParameters.Select(p => p.Name));
                 var existingDefaultParameterNames = new HashSet<string>(parametersInfo.DefaultParameters.Select(p => p.Name));
@@ -183,12 +183,6 @@ namespace SharpBridge.Core.Managers
                 _logger.Error("Failed to synchronize parameters: {0}", ex.Message);
                 return false;
             }
-        }
-
-        private async Task<InputParameterListResponse> GetExistingParametersAsync(CancellationToken cancellationToken)
-        {
-            var existingParameters = await GetParametersAsync(cancellationToken);
-            return existingParameters;
         }
     }
 }
