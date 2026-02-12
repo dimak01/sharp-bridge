@@ -152,7 +152,7 @@ namespace SharpBridge.Core.Managers
                 {
                     if (existingDefaultParameterNames.Contains(parameter.Name))
                     {
-                        _logger.Error("Parameter {0} was found in default parameters, skipping", parameter.Name);
+                        _logger.Info("Parameter {0} was found in default parameters, skipping", parameter.Name);
                         continue;
                     }
 
