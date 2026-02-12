@@ -451,7 +451,7 @@ namespace SharpBridge.Tests.Core.Managers
 
             // Assert
             result.Should().BeTrue();
-            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam"), Times.Once);
+            _mockLogger.Verify(x => x.Info("Parameter {0} was found in default parameters, skipping", "DefaultParam"), Times.Once);
             _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
                 "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam"),
                 It.IsAny<CancellationToken>()), Times.Once);
@@ -461,7 +461,7 @@ namespace SharpBridge.Tests.Core.Managers
         }
 
         [Fact]
-        public async Task TrySynchronizeParametersAsync_LogsError_WhenParameterIsInDefaultList()
+        public async Task TrySynchronizeParametersAsync_LogsInfo_WhenParameterIsInDefaultList()
         {
             // Arrange
             var desiredParameters = new List<VTSParameter>
@@ -485,7 +485,7 @@ namespace SharpBridge.Tests.Core.Managers
 
             // Assert
             result.Should().BeTrue(); // Returns true because no operations failed (just skipped)
-            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam"), Times.Once);
+            _mockLogger.Verify(x => x.Info("Parameter {0} was found in default parameters, skipping", "DefaultParam"), Times.Once);
         }
 
         [Fact]
@@ -569,8 +569,8 @@ namespace SharpBridge.Tests.Core.Managers
 
             // Assert
             result.Should().BeTrue();
-            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam1"), Times.Once);
-            _mockLogger.Verify(x => x.Error("Parameter {0} was found in default parameters, skipping", "DefaultParam2"), Times.Once);
+            _mockLogger.Verify(x => x.Info("Parameter {0} was found in default parameters, skipping", "DefaultParam1"), Times.Once);
+            _mockLogger.Verify(x => x.Info("Parameter {0} was found in default parameters, skipping", "DefaultParam2"), Times.Once);
             _mockWebSocket.Verify(x => x.SendRequestAsync<ParameterCreationRequest, ParameterCreationResponse>(
                 "ParameterCreationRequest", It.Is<ParameterCreationRequest>(r => r.ParameterName == "CustomParam"),
                 It.IsAny<CancellationToken>()), Times.Once);
