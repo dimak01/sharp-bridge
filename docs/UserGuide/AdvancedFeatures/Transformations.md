@@ -42,6 +42,8 @@ Sharp Bridge automatically retrieves the list of default VTube Studio parameters
 **Example:**
 If your model has a default parameter `FaceAngleX`, you can create a transformation rule with `"name": "FaceAngleX"` and Sharp Bridge will use the existing default parameter. If you want a custom parameter, use a unique name like `"name": "CustomFaceAngleX"` and it will be created as a custom parameter.
 
+**Parameter name length:** Transformation rule names must be between 4 and 32 characters (VTube Studio API requirement). Names outside this range will fail validation.
+
 ### Basic Structure
 ```json
 {
@@ -586,6 +588,7 @@ Create discrete step functions using nested conditional logic:
 ### Automatic Validation
 - **JSON syntax** - Ensures valid JSON format
 - **Required fields** - Verifies all necessary fields are present
+- **Parameter name length** - Rule names must be 4–32 characters (VTube Studio API requirement)
 - **Value ranges** - Validates min/max values are appropriate
 - **Expression syntax** - Checks mathematical expressions are valid
 
