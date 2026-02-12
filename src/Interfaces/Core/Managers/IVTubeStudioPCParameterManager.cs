@@ -19,7 +19,7 @@ namespace SharpBridge.Interfaces.Core.Managers
         /// Gets all existing parameters from VTube Studio
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Collection of existing parameters</returns>
+        /// <returns>Response containing default and custom input parameters along with model metadata</returns>
         Task<InputParameterListResponse> GetParametersAsync(CancellationToken cancellationToken);
 
 
