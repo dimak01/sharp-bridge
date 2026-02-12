@@ -342,6 +342,16 @@ namespace SharpBridge.Tests.Core.Managers
         #region Default Parameter Protection Tests - DeleteParameterAsync
 
         [Fact]
+        public async Task DeleteParameterAsync_ThrowsArgumentNullException_WhenParameterIsNull()
+        {
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(() =>
+                _parameterManager.DeleteParameterAsync(null!, CancellationToken.None));
+
+            exception.ParamName.Should().Be("parameter");
+        }
+
+        [Fact]
         public async Task DeleteParameterAsync_ReturnsFalse_WhenParameterIsDefault()
         {
             // Arrange

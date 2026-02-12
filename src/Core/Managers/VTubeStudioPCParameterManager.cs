@@ -104,6 +104,7 @@ namespace SharpBridge.Core.Managers
         /// <returns>True if parameter was deleted successfully</returns>
         public async Task<bool> DeleteParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(parameter);
             try
             {
                 var parametersInfo = await GetExistingParametersAsync(cancellationToken);
