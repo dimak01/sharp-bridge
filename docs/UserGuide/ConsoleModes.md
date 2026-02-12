@@ -18,7 +18,7 @@ Sharp Bridge provides three distinct console modes, each optimized for different
 ### Key Information Displayed
 - **Transformation Engine**: Number of valid/invalid rules, config file path, up-to-date status
 - **Phone Client**: Face detection status, position/rotation data, blend shapes
-- **PC Client**: Face detection status, parameter values, parameter prefix
+- **PC Client**: Face detection status, parameter values
 - **Service Status**: Running/stopped status for all components
 
 ### When to Use
@@ -41,7 +41,7 @@ Sharp Bridge provides three distinct console modes, each optimized for different
 ### Key Information Displayed
 - **General Settings**: Editor command and other general configuration
 - **Phone Client Config**: IP address, ports, connection settings
-- **PC Client Config**: Host, port, parameter prefix, discovery settings
+- **PC Client Config**: Host, port, discovery settings
 - **Transformation Engine**: Config path, evaluation settings
 - **Keyboard Shortcuts**: All shortcuts with their current status (Active/Invalid/Disabled)
 - **Parameter Columns**: Order and configuration of PC parameter table columns

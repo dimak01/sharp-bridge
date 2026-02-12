@@ -36,14 +36,6 @@ namespace SharpBridge.Models.Configuration
         [Description("Enable Automatic Port Discovery")]
         public bool UsePortDiscovery { get; set; }
 
-        /// <summary>
-        /// Prefix to add to parameter names when sending to VTube Studio PC.
-        /// Helps avoid naming conflicts with other plugins. Empty prefix is allowed.
-        /// Must be 0-15 characters, alphanumeric only, no spaces.
-        /// </summary>
-        [Description("Parameter Name Prefix for VTube Studio PC")]
-        public string ParameterPrefix { get; set; }
-
         // ========================================
         // Internal Settings (Not User-Configurable)
         // ========================================
@@ -90,13 +82,11 @@ namespace SharpBridge.Models.Configuration
         /// <param name="host">Host address for VTube Studio (default: "localhost")</param>
         /// <param name="port">Port number for VTube Studio API (default: 8001)</param>
         /// <param name="usePortDiscovery">Enable port discovery (default: true)</param>
-        /// <param name="parameterPrefix">Prefix for parameter names in VTube Studio PC (default: "SB_")</param>
-        public VTubeStudioPCConfig(string host = "localhost", int port = 8001, bool usePortDiscovery = true, string parameterPrefix = "SB_")
+        public VTubeStudioPCConfig(string host = "localhost", int port = 8001, bool usePortDiscovery = true)
         {
             Host = host;
             Port = port;
             UsePortDiscovery = usePortDiscovery;
-            ParameterPrefix = parameterPrefix;
 
             // Set internal defaults only if not already set
             if (string.IsNullOrEmpty(PluginName))

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpBridge.Models;
+using SharpBridge.Models.Api;
 using SharpBridge.Models.Domain;
 
 namespace SharpBridge.Interfaces.Core.Managers
@@ -18,8 +19,8 @@ namespace SharpBridge.Interfaces.Core.Managers
         /// Gets all existing parameters from VTube Studio
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Collection of existing parameters</returns>
-        Task<IEnumerable<VTSParameter>> GetParametersAsync(CancellationToken cancellationToken);
+        /// <returns>Response containing default and custom input parameters along with model metadata</returns>
+        Task<InputParameterListResponse> GetParametersAsync(CancellationToken cancellationToken);
 
 
         /// <summary>
@@ -33,10 +34,10 @@ namespace SharpBridge.Interfaces.Core.Managers
         /// <summary>
         /// Deletes a parameter from VTube Studio
         /// </summary>
-        /// <param name="parameterName">Name of the parameter to delete</param>
+        /// <param name="parameter">Parameter to delete</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if parameter was deleted successfully</returns>
-        Task<bool> DeleteParameterAsync(string parameterName, CancellationToken cancellationToken);
+        Task<bool> DeleteParameterAsync(VTSParameter parameter, CancellationToken cancellationToken);
 
     }
 }

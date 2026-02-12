@@ -26,6 +26,24 @@ Transformations are mathematical expressions that convert iPhone face tracking d
 - **Value Range** - Minimum and maximum allowed values
 - **Default Value** - Fallback value when calculation fails
 
+### Parameter Names and Default Parameter Protection
+
+**Automatic Default Parameter Detection:**
+Sharp Bridge automatically retrieves the list of default VTube Studio parameters from your loaded model during initialization. When synchronizing transformation rules with VTube Studio, the system compares each transformation rule's parameter name against this list of default parameters.
+
+**Behavior:**
+- **Default Parameters**: If a transformation rule's name matches a default VTube Studio parameter (e.g., `FaceAngleX`, `EyeOpenLeft`), Sharp Bridge will **skip creating or updating** that parameter. This is because default parameters are built into the model and cannot be modified or recreated as custom parameters.
+- **Custom Parameters**: If a transformation rule's name does not match any default parameter, Sharp Bridge will create or update it as a custom parameter in VTube Studio.
+
+**Why This Matters:**
+- **Reuse Default Parameters**: You can use the same names as default VTube Studio parameters in your transformation rules. The system will automatically detect them and use the existing default parameters instead of trying to create duplicates.
+- **Custom Parameters**: For parameters unique to your setup, simply use a name that doesn't match any default parameter, and Sharp Bridge will create it as a custom parameter.
+
+**Example:**
+If your model has a default parameter `FaceAngleX`, you can create a transformation rule with `"name": "FaceAngleX"` and Sharp Bridge will use the existing default parameter. If you want a custom parameter, use a unique name like `"name": "CustomFaceAngleX"` and it will be created as a custom parameter.
+
+**Parameter name length:** Transformation rule names must be between 4 and 32 characters (VTube Studio API requirement). Names outside this range will fail validation.
+
 ### Basic Structure
 ```json
 {
@@ -570,6 +588,7 @@ Create discrete step functions using nested conditional logic:
 ### Automatic Validation
 - **JSON syntax** - Ensures valid JSON format
 - **Required fields** - Verifies all necessary fields are present
+- **Parameter name length** - Rule names must be 4–32 characters (VTube Studio API requirement)
 - **Value ranges** - Validates min/max values are appropriate
 - **Expression syntax** - Checks mathematical expressions are valid
 
