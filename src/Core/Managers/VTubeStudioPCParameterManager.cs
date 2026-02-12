@@ -99,7 +99,7 @@ namespace SharpBridge.Core.Managers
         /// <summary>
         /// Deletes a parameter from VTube Studio
         /// </summary>
-        /// <param name="parameterName">Name of the parameter to delete</param>
+        /// <param name="parameter">Parameter to delete</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if parameter was deleted successfully</returns>
         public async Task<bool> DeleteParameterAsync(VTSParameter parameter, CancellationToken cancellationToken)
